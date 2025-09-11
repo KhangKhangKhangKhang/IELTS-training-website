@@ -1,15 +1,54 @@
 import { Card } from '@/components/ui/card'
-import React from 'react'
+import React, { use } from 'react'
 import { useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import API from '@/services/axios.custom'
+import { loginAPI } from '@/services/api'
+import { useAuth } from '@/context/authContext'
+import { useNavigate } from 'react-router'
 
-const login = () => {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+
+  // const handleLogin = async(e) => {
+  //   e.preventDefault();
+  //   try {
+  //     const res = await loginAPI({ email, password });
+  //     const {user , accessToken} = res.data;
+  //     login(user, accessToken);
+  //     useNavigate('/');
+  //     alert("Đăng nhập thành công");
+  //   } catch (error) {
+  //     console.error("Login failed:", error);
+  //     alert("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+  //   }
+  // }
+
+const handleLogin = async (e) => {
+  e.preventDefault(); // 🚀 chặn reload trang
+
+  if (!email || !password) {
+    alert("Vui lòng nhập đầy đủ thông tin");
+    return;
+  }
+
+  try {
+    const res = await loginAPI({ email, password });
+    if (res && res.token) {
+      localStorage.setItem("token", res.token); // Lưu token vào localStorage
+    }
+    navigate('/'); // 🚀 chuyển hướng sau khi đăng nhập thành công
+  } catch (error) {
+    console.error("Login failed:", error);
+    alert("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+  }
+};
+
   return (
     <>
       <div className='flex justify-center items-center  min-h-screen bg-gradient-to-br from-primary-50 to-primary-100'>
@@ -24,7 +63,7 @@ const login = () => {
               <h2 className='text-3xl font-bold text-gray-800'>Đăng nhập</h2>
               <p className='text-gray-600 mt-2'>Đăng nhập để sử dụng được nhiều tính năng hơn</p>
             </div>
-            <form className='space-y-4'>
+            <form onSubmit={handleLogin} className='space-y-4'>
               {
                 // input email
               }
@@ -57,10 +96,16 @@ const login = () => {
               </div>
 
               <div className=' flex justify-end items-end'>
-                <p className='text-sm text-gray-600 hover:text-primary hover:underline cursor-pointer'>Quên mật khẩu?</p>
+                <p className='text-sm text-gray-600 hover:text-primary hover:underline cursor-pointer'
+                onClick={() => navigate('/forgetPassword')}>
+                  
+                    Quên mật khẩu?
+
+
+                  </p>
               </div>
               <div>
-                <Button input className='w-full h-10'>
+                <Button type="submit" className='w-full h-10' >
                   Đăng nhập
                 </Button>
               </div>
@@ -97,4 +142,4 @@ const login = () => {
   )
 }
 
-export default login
+export default Login

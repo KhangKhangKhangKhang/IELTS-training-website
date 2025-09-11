@@ -7,9 +7,11 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
 const forgetPassword = () => {
+  const [email, setEmail] = useState('');
+
   return (
-    <> 
-    <div className='flex justify-center items-center  min-h-screen bg-gradient-to-br from-primary-50 to-primary-100'>
+    <>
+      <div className='flex justify-center items-center  min-h-screen bg-gradient-to-br from-primary-50 to-primary-100'>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -21,10 +23,24 @@ const forgetPassword = () => {
               <h2 className='text-3xl font-bold text-gray-800'>Đặt lại mật khẩu</h2>
               <p className='text-gray-600 mt-2'>Nhập email để khôi phục</p>
             </div>
+            <div className='space-y-2'>
+              <label className='block text-gray-700 mb-2' htmlFor='email' >Email</label>
+              <Input
+                type='email'
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder='Nhập email của bạn'
+                required
+              > </Input>
+
+              <Button className='mt-7  h-10 w-full' >
+                Gửi
+              </Button>
+            </div>
           </div>
 
 
-          
+
         </motion.div>
       </div>
     </>

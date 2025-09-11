@@ -5,6 +5,12 @@ import { Eye, EyeOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@/components/ui/input-otp"
 
 const OTP = () => {
   return (
@@ -19,7 +25,22 @@ const OTP = () => {
           <div className='bg-white p-8 rounded-lg shadow-xl space-y-6'>
             <div className='text-center mb-6'>
               <h2 className='text-3xl font-bold text-gray-800'>OTP</h2>
-              <p className='text-gray-600 mt-2'>Nhập OTP</p>
+              <p className='text-gray-600 mt-2'>Nhập OTP gồm 6 số từ email</p>
+              <div className='mt-7 flex justify-center items-between'>
+                <InputOTP maxLength={6}  >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <Button type='hidden' className='mt-7  h-10 w-5/6' >
+                Xác nhận
+                </Button>
             </div>
           </div>
 
