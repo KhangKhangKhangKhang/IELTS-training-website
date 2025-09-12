@@ -5,10 +5,27 @@ import { Eye, EyeOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-
+import { forgetPasswordAPI } from '@/services/api'
+import { useNavigate } from 'react-router'
 const forgetPassword = () => {
   const [email, setEmail] = useState('');
+  const navigate = useNavigate();
 
+  const handleForgetPassword = async (e) => {
+    e.preventDefault();
+    if (!email) {
+      alert("Vui lòng nhập email");
+      return;
+    } 
+    try {
+      const res = await forgetPasswordAPI({ email });
+      if (res) {
+        navigate('/otp', {state: {email}});
+      }
+    } catch (error) {
+      console.error("Error sending reset email:", error);
+    }
+  }
   return (
     <>
       <div className='flex justify-center items-center  min-h-screen bg-gradient-to-br from-primary-50 to-primary-100'>
@@ -33,7 +50,7 @@ const forgetPassword = () => {
                 required
               > </Input>
 
-              <Button className='mt-7  h-10 w-full' >
+              <Button onClick={handleForgetPassword} className='mt-7  h-10 w-full' >
                 Gửi
               </Button>
             </div>

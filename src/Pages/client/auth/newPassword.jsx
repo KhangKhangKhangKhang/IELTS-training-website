@@ -11,6 +11,27 @@ const newPassword = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleNewPassword = async (e) => {
+    e.preventDefault(); // 🚀 chặn reload trang
+    if (!password || !confirmPassword) {
+      alert("Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+    if (password !== confirmPassword) {
+      alert("Mật khẩu không khớp");
+      return;
+    }
+    try {
+      const res = await resetPasswordAPI({email, otp, password ,confirmPassword});
+      if (res) {
+        nagvigate('/login');
+      }
+    } catch (error) {
+      
+    }
+  }
+      
   return (
     <>
       <div className='flex justify-center items-center  min-h-screen bg-gradient-to-br from-primary-50 to-primary-100'>

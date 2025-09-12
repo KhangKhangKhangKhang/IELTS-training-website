@@ -5,12 +5,36 @@ import { Eye, EyeOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { signupAPI } from '@/services/api'
+import { useNavigate } from 'react-router'
 
 const SignUp = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState('');
+    const nagvigate = useNavigate();
+
+    const handleSIgnUp = async (e) => {
+        e.preventDefault(); // 🚀 chặn reload trang
+        if (!email || !password || !confirmPassword) {
+            alert("Vui lòng nhập đầy đủ thông tin");
+            return;
+        }
+        if (password !== confirmPassword) {
+            alert("Mật khẩu không khớp");
+            return;
+        }
+        try {
+            const res = await signupAPI({ email, password ,confirmPassword});
+            if (res) {
+                nagvigate('/otp', {state: {email}});
+            }    
+        } 
+        catch (error) {
+            console.error("Sign up failed:", error);
+        }
+    }
     return (
         <>
             <div className='flex justify-center items-center  min-h-screen bg-gradient-to-br from-primary-50 to-primary-100'>
@@ -23,9 +47,9 @@ const SignUp = () => {
                     <div className='bg-white p-8 rounded-lg shadow-xl space-y-6'>
                         <div className='text-center mb-6'>
                             <h2 className='text-3xl font-bold text-gray-800'>Đăng ký</h2>
-                            <p className='text-gray-600 mt-2'>Welcome back! Please login to your account.</p>
+                            <p className='text-gray-600 mt-2'>Đăng ký để tạo tài khoản mới.</p>
                         </div>
-                        <form className='space-y-4'>
+                        <form onSubmit={handleSIgnUp} className='space-y-4'>
                             <div className='space-y-2'>
                                 <label className='block text-gray-700 mb-2' htmlFor='email' >Email</label>
                                 <Input
@@ -86,7 +110,7 @@ const SignUp = () => {
                                 {
                                     // button đăng ký
                                 }
-                                <Button  input className='w-full h-10'>
+                                <Button  type="submit" className='w-full h-10'>
                                     Đăng ký
                                 </Button>
                             </div>

@@ -98,10 +98,7 @@ const handleLogin = async (e) => {
               <div className=' flex justify-end items-end'>
                 <p className='text-sm text-gray-600 hover:text-primary hover:underline cursor-pointer'
                 onClick={() => navigate('/forgetPassword')}>
-                  
                     Quên mật khẩu?
-
-
                   </p>
               </div>
               <div>
@@ -120,7 +117,7 @@ const handleLogin = async (e) => {
               </div>
             </div>
 
-            <div className="mt-4">
+            <div >
           <button
             //onClick={handleGoogleLogin}
             className="w-full h-10 py-3 bg-white text-primary font-semibold border border-gray-300 rounded-lg flex items-center justify-center gap-3 shadow-md hover:shadow-lg transition-all"
@@ -132,6 +129,18 @@ const handleLogin = async (e) => {
             />
             <span>Đăng nhập với Google</span>
           </button>
+        </div>
+
+        <div className='text-center mt-4'>
+          <p className='text-gray-600'>
+            Chưa có tài khoản?{' '}
+            <span
+              className='text-primary font-semibold hover:underline cursor-pointer'
+              onClick={() => navigate('/signUp')}
+            >
+              Đăng ký
+            </span>
+          </p>
         </div>
 
 

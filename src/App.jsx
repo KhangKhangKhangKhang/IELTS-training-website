@@ -5,11 +5,15 @@ import OTP from './Pages/client/auth/OTP';
 import NewPassword from './Pages/client/auth/newPassword'; 
 import HomePage from './Pages/client/homePage';
 import Login from './Pages/client/auth/login';
+import Header from './components/Header';
+import Navbar from './components/navBar';
  
 function App() {
   return (
+    <>
+
     <Router>
-      <Routes>
+        <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signUp" element={<SignUp />} />
         <Route path="/forgetPassword" element={<ForgetPassword />} />
@@ -18,6 +22,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
       </Routes>
     </Router>
+    </>
   );
 }
 
