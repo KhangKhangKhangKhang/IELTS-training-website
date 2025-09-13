@@ -6,10 +6,12 @@ import { motion } from 'framer-motion'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { forgetPasswordAPI } from '@/services/api'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 const forgetPassword = () => {
   const [email, setEmail] = useState('');
   const navigate = useNavigate();
+
+
 
   const handleForgetPassword = async (e) => {
     e.preventDefault();
@@ -20,8 +22,9 @@ const forgetPassword = () => {
     try {
       const res = await forgetPasswordAPI({ email });
       if (res) {
-        navigate('/otp', {state: {email}});
+        navigate('/otp', {state: {email}, mode: "RESET_LINK", otp_reset: res.otp});
       }
+
     } catch (error) {
       console.error("Error sending reset email:", error);
     }

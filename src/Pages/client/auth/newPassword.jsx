@@ -77,11 +77,9 @@ const newPassword = () => {
               </div>
             </div>
 
-            <div className=' flex justify-end items-end'>
-              <p className='text-sm text-gray-600 hover:text-primary hover:underline cursor-pointer'>Quên mật khẩu?</p>
-            </div>
+
             <div>
-              <Button input className='w-full h-10'>
+              <Button input className='mt-7 w-full h-10'>
                 Xác nhận
               </Button>
             </div>

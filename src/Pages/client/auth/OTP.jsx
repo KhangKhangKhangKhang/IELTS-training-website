@@ -15,14 +15,18 @@ import {
 import { verifyOtpAPI } from '@/services/api'
 import { resendOtpAPI } from '@/services/api'
 import { useNavigate } from 'react-router-dom'
+
 const OTP = () => {
   
   const [otp, setOtp] = useState("");
   const location = useLocation();
   const email = location.state?.email || "";
+  const mode = location.state?.mode || "OTP";
   const navigate = useNavigate();
+  const otp_reset = location.state?.otp_reset || "";
 
   const handleVerifyOtp = async() => {
+    if(mode === "OTP"){
     try {
       const response = await verifyOtpAPI({email, otp});
       console.log("OTP verified successfully:", response);
@@ -34,6 +38,19 @@ const OTP = () => {
       console.error("Error verifying OTP:", error);
     }
   }
+  else if (mode === "RESET_LINK") {
+    try {
+      const response = await ({email, otp});
+      console.log("OTP verified successfully:", response);
+      navigate('/newPassword', {state: {email, otp}});
+    }
+    catch (error) {
+      console.error("Error verifying OTP:", error);
+    }
+  }
+}  
+      
+  
 
   // resend OTP
   const handleResendOtp = async () => {
@@ -47,7 +64,7 @@ const OTP = () => {
     // }
     try {
     console.log("Payload resend:", { email }); // check dữ liệu gửi đi
-    const response = await resendOtpAPI({ email });
+    const response = await resendOtpAPI({ email, type: "FORGOT_PASSWORD" });
     console.log(email)
     console.log("Resend OTP success:", response.data);
   } catch (error) {
