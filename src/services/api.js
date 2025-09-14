@@ -30,3 +30,8 @@ export const resetPasswordAPI = async (data) => {
   const res = await API.post("/auth/reset-password", data);
   return res.data; // { message: "Password reset successful" }
 }
+
+export const introspectAPI = async (data) => {
+  const res = await API.post("/auth/introspect", { token: data });
+  return res.data; // { active: true/false, ... }
+}

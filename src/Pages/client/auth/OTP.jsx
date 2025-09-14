@@ -38,16 +38,6 @@ const OTP = () => {
       console.error("Error verifying OTP:", error);
     }
   }
-  else if (mode === "RESET_LINK") {
-    try {
-      const response = await ({email, otp});
-      console.log("OTP verified successfully:", response);
-      navigate('/newPassword', {state: {email, otp}});
-    }
-    catch (error) {
-      console.error("Error verifying OTP:", error);
-    }
-  }
 }  
       
   
