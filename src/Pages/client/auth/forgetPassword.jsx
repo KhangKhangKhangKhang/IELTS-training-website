@@ -22,7 +22,7 @@ const forgetPassword = () => {
     try {
       const res = await forgetPasswordAPI({ email });
       if (res) {
-        navigate('/otp', {state: {email}, mode: "RESET_LINK", otp_reset: res.otp});
+        navigate('/otp', {state: {email, mode: "RESET_LINK"}});
       }
 
     } catch (error) {

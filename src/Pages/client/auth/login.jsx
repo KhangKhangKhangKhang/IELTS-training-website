@@ -40,7 +40,7 @@ const handleLogin = async (e) => {
   try {
     const res = await loginAPI({ email, password });
     if (res && res.token) {
-      localStorage.setItem("token", res.token); // Lưu token vào localStorage
+      localStorage.setItem("access_token", res.data.access_token); // Lưu token vào localStorage
     }
     navigate('/'); // 🚀 chuyển hướng sau khi đăng nhập thành công
   } catch (error) {

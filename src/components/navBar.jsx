@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Home, BookOpen, BarChart3, BookMarked, Bell, Menu, X, User } from 'lucide-react';
 
 const Navbar = () => {
@@ -34,6 +34,7 @@ const Navbar = () => {
   ];
 
   return (
+    <>
     <nav className="bg-slate-800 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
@@ -147,6 +148,8 @@ const Navbar = () => {
         </div>
       )}
     </nav>
+    <Outlet />
+    </>
   );
 };
 

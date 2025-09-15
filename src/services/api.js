@@ -10,9 +10,9 @@ export const signupAPI = async (data) => {
   return res.data; // { email, otp }
 };
 
-// verify OTP API
+// verify OTP API register
 export const verifyOtpAPI = async (data) => {
-  const res = await API.post("/auth/verify-otp", data);
+  const res = await API.post("/auth/verify-otp-register", data);
   return res.data; // { message: "success" }
 };
 
@@ -34,4 +34,9 @@ export const resetPasswordAPI = async (data) => {
 export const introspectAPI = async (data) => {
   const res = await API.post("/auth/introspect", { token: data });
   return res.data; // { active: true/false, ... }
+}
+
+export const resetPasswordOTP = async (data) => {
+  const res = await API.post("/auth/checkotp-reset-password", data);
+  return res.data; // { message: "OTP verified" }
 }

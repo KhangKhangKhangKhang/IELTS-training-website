@@ -13,7 +13,7 @@ const SignUp = () => {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState('');
-    const nagvigate = useNavigate();
+    const navigate = useNavigate();
 
     const handleSIgnUp = async (e) => {
         e.preventDefault(); // 🚀 chặn reload trang
@@ -28,7 +28,7 @@ const SignUp = () => {
         try {
             const res = await signupAPI({ email, password ,confirmPassword});
             if (res) {
-                nagvigate('/otp', {state: {email}});
+                navigate('/otp', {state: {email}});
             }    
         } 
         catch (error) {
@@ -102,7 +102,10 @@ const SignUp = () => {
                                 // link đăng nhập
                             }
                             <div className=' flex justify-end items-end'>
-                                <p className='text-sm text-gray-600 hover:text-primary hover:underline cursor-pointer'>Đã có tài khoản?</p>
+                                <p className='text-sm text-gray-600 hover:text-primary hover:underline cursor-pointer'  
+                                onClick={() => navigate('/login')}>
+                                    Đã có tài khoản?
+                                </p>
                             </div>
                             <div>
 

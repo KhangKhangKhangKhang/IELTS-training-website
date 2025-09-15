@@ -1,20 +1,19 @@
-import { Card } from '@/components/ui/card'
+
 import React from 'react'
 import { useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Await, useLocation } from 'react-router-dom'
 import {
   InputOTP,
   InputOTPGroup,
-  InputOTPSeparator,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
 import { verifyOtpAPI } from '@/services/api'
 import { resendOtpAPI } from '@/services/api'
 import { useNavigate } from 'react-router-dom'
+import { resetPasswordOTP } from '@/services/api'
+
 
 const OTP = () => {
   
@@ -23,7 +22,6 @@ const OTP = () => {
   const email = location.state?.email || "";
   const mode = location.state?.mode || "OTP";
   const navigate = useNavigate();
-  const otp_reset = location.state?.otp_reset || "";
 
   const handleVerifyOtp = async() => {
     if(mode === "OTP"){
@@ -38,28 +36,36 @@ const OTP = () => {
       console.error("Error verifying OTP:", error);
     }
   }
+  else 
+    try {
+      const response = await resetPasswordOTP({email, otp});
+      navigate('/newpassword', {state: {email}});
+      console.log("Reset OTP verified successfully:", response);
+    } catch (error) {
+      console.error("Error verifying reset OTP:", error);
+    }
 }  
+  
       
   
 
   // resend OTP
   const handleResendOtp = async () => {
-    // try {
-    //   const response = await resendOtpAPI({email});
-    //   console.log("OTP resent successfully:", res);
-
-    // }
-    // catch (error) {
-    //   console.error("Error resending OTP:", error);
-    // }
-    try {
-    console.log("Payload resend:", { email }); // check dữ liệu gửi đi
-    const response = await resendOtpAPI({ email, type: "FORGOT_PASSWORD" });
-    console.log(email)
-    console.log("Resend OTP success:", response.data);
-  } catch (error) {
-    console.error("Resend OTP error:", error.response?.data || error.message);
-  }
+    if (mode === "OTP") {
+      try {
+        const response = await resendOtpAPI({ email });
+        console.log("OTP resent successfully:", response);
+      } catch (error) {
+        console.error("Error resending OTP:", error);
+      }
+    } else if (mode === "RESET_PASSWORD") {
+      try {
+        const response = await resendOtpAPI({ email, type: "" });
+        console.log("Reset OTP resent successfully:", response);
+      } catch (error) {
+        console.error("Error resending reset OTP:", error);
+      }
+    }
   }
   return (
     <> 

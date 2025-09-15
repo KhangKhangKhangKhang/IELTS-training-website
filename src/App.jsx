@@ -20,9 +20,10 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/otp" element={<Otp />} />
-        <Route path="/forget-password" element={<ForgetPassword />} />
-        <Route path="/new-password" element={<NewPassword />} />
+        <Route path="/forgetpassword" element={<ForgetPassword />} />
+        <Route path="/newpassword" element={<NewPassword />} />
         <Route path="test-vocab" element={<Vocabulary />} />
+        <Route path="header" element={<Header />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
