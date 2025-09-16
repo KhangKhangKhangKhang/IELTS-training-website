@@ -6,7 +6,10 @@ import { NavigationMenu,
   NavigationMenuLink, 
   NavigationMenuList, 
   NavigationMenuTrigger } from "@/components/ui/navigation-menu"
+
 function Header  () {
+  const tokens = localStorage.getItem("access_token");
+  console.log("access_tokens", tokens);
   return (
 <>
 

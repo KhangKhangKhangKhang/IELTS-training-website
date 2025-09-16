@@ -15,22 +15,33 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
-  // const handleLogin = async(e) => {
-  //   e.preventDefault();
-  //   try {
-  //     const res = await loginAPI({ email, password });
-  //     const {user , accessToken} = res.data;
-  //     login(user, accessToken);
-  //     useNavigate('/');
-  //     alert("Đăng nhập thành công");
-  //   } catch (error) {
-  //     console.error("Login failed:", error);
-  //     alert("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
-  //   }
-  // }
+const handleGoogleLogin = () => {
+  const popup = window.open(
+    "http://localhost:3000/auth/google/login",
+    "_blank",
+    "width=500,height=600"
+  );
+
+  // Nghe message từ popup
+  const handleMessage = (event) => {
+    // 🔒 Kiểm tra origin để chắc chắn chỉ nhận từ BE của bạn
+    if (event.origin !== "http://localhost:3000") return;
+
+    const { access_token, user } = event.data; // BE sẽ postMessage về 2 thông tin này
+    if (access_token) {
+      localStorage.setItem("accessToken", access_token); // 🚀 đồng bộ như login thường
+      localStorage.setItem("user", JSON.stringify(user));
+      window.removeEventListener("message", handleMessage);
+      popup.close();
+      navigate("/"); // điều hướng sau login thành công
+    }
+  };
+
+  window.addEventListener("message", handleMessage);
+};
 
 const handleLogin = async (e) => {
-  e.preventDefault(); // 🚀 chặn reload trang
+  e.preventDefault();
 
   if (!email || !password) {
     alert("Vui lòng nhập đầy đủ thông tin");
@@ -39,10 +50,18 @@ const handleLogin = async (e) => {
 
   try {
     const res = await loginAPI({ email, password });
-    if (res && res.token) {
-      localStorage.setItem("access_token", res.data.access_token); // Lưu token vào localStorage
+    console.log("Login response:", res);
+
+    const token = res?.data?.data?.access_token;
+    const user = res?.data?.user;
+
+    if (token) {
+      localStorage.setItem("accessToken", token); // 🚀 thống nhất dùng accessToken
+      localStorage.setItem("user", JSON.stringify(user));
+      navigate('/'); 
+    } else {
+      alert("Login thất bại: không tìm thấy token");
     }
-    navigate('/'); // 🚀 chuyển hướng sau khi đăng nhập thành công
   } catch (error) {
     console.error("Login failed:", error);
     alert("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
@@ -119,7 +138,7 @@ const handleLogin = async (e) => {
 
             <div >
           <button
-            //onClick={handleGoogleLogin}
+            onClick={handleGoogleLogin}
             className="w-full h-10 py-3 bg-white text-primary font-semibold border border-gray-300 rounded-lg flex items-center justify-center gap-3 shadow-md hover:shadow-lg transition-all"
           >
             <img
