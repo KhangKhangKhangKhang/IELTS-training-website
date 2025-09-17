@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import API from '@/services/axios.custom'
-import { loginAPI } from '@/services/api'
+import { loginAPI } from '@/services/apiAuth'
 import { useAuth } from '@/context/authContext'
 import { useNavigate } from 'react-router'
 
@@ -22,18 +22,35 @@ const handleGoogleLogin = () => {
     "width=500,height=600"
   );
 
-  // Nghe message từ popup
-  const handleMessage = (event) => {
-    // 🔒 Kiểm tra origin để chắc chắn chỉ nhận từ BE của bạn
+  const handleMessage = async (event) => {
     if (event.origin !== "http://localhost:3000") return;
 
-    const { access_token, user } = event.data; // BE sẽ postMessage về 2 thông tin này
+    const { access_token } = event.data;
     if (access_token) {
-      localStorage.setItem("accessToken", access_token); // 🚀 đồng bộ như login thường
-      localStorage.setItem("user", JSON.stringify(user));
-      window.removeEventListener("message", handleMessage);
-      popup.close();
-      navigate("/"); // điều hướng sau login thành công
+      try {
+        // Lưu tạm token
+        localStorage.setItem("accessToken", access_token);
+
+        // 🚀 Bước 2: gọi API google-callback để lấy user info
+        const res = await API.get("/auth/google-callback", {
+          headers: { Authorization: `Bearer ${access_token}` }
+        });
+
+        console.log("Google callback response:", res.data);
+
+        // tuỳ BE trả về gì, nhưng giả sử nó có user trong res.data
+        const { user } = res.data;
+        if (user) {
+          localStorage.setItem("user", JSON.stringify(user));
+        }
+
+        navigate("/"); // login thành công
+      } catch (err) {
+        console.error("Error fetching Google user info:", err);
+      } finally {
+        window.removeEventListener("message", handleMessage);
+        popup.close();
+      }
     }
   };
 
@@ -53,7 +70,7 @@ const handleLogin = async (e) => {
     console.log("Login response:", res);
 
     const token = res?.data?.data?.access_token;
-    const user = res?.data?.user;
+    const user = res?.data?.data?.user;
 
     if (token) {
       localStorage.setItem("accessToken", token); // 🚀 thống nhất dùng accessToken

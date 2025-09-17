@@ -24,14 +24,14 @@ const Navbar = () => {
     },
     { 
       name: 'Giải Đề', 
-      href: '/practice', 
-      current: location.pathname === '/practice',
+      href: '/test', 
+      current: location.pathname === '/test',
       icon: BookOpen
     },
     { 
       name: 'Thống Kê', 
-      href: '/statistics', 
-      current: location.pathname === '/statistics',
+      href: '/statistic', 
+      current: location.pathname === '/statistic',
       icon: BarChart3
     },
     { 

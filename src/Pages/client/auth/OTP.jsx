@@ -9,10 +9,10 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
-import { verifyOtpAPI } from '@/services/api'
-import { resendOtpAPI } from '@/services/api'
+import { verifyOtpAPI } from '@/services/apiAuth'
+import { resendOtpAPI } from '@/services/apiAuth'
 import { useNavigate } from 'react-router-dom'
-import { resetPasswordOTP } from '@/services/api'
+import { resetPasswordOTP } from '@/services/apiAuth'
 
 
 const OTP = () => {

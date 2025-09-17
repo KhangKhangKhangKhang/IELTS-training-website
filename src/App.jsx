@@ -10,6 +10,8 @@ import Navbar from './components/navBar';
 import ProtectedRoute from './context/protectedRoute';
 import Otp from './Pages/client/auth/OTP';
 import Vocabulary from './Pages/client/vocabulary';
+import Statistic from './Pages/client/statistic';
+import Test from './Pages/client/test';
  
 function App() {
   return (
@@ -22,15 +24,17 @@ function App() {
         <Route path="/otp" element={<Otp />} />
         <Route path="/forgetpassword" element={<ForgetPassword />} />
         <Route path="/newpassword" element={<NewPassword />} />
-        <Route path="test-vocab" element={<Vocabulary />} />
-        <Route path="header" element={<Header />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
+        
           <Route element={<Navbar />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/vocabulary" element={<Vocabulary/>} />
+            <Route path="/statistic" element={<Statistic/>} />
+            <Route path="/test" element={<Test/>} />
           </Route>
+          
         </Route>
       </Routes>
     </BrowserRouter>
