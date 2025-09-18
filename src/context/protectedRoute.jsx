@@ -4,7 +4,7 @@ import { introspectAPI } from "@/services/apiAuth";
 import { useAuth } from "./authContext";
 
 const ProtectedRoute = () => {
-  const { isAuth, loading,user } = useAuth();  
+  const { isAuth, loading, user } = useAuth();  
   const role = user?.role; 
 
 

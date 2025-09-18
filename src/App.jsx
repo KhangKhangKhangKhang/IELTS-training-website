@@ -12,6 +12,7 @@ import Otp from './Pages/client/auth/OTP';
 import Vocabulary from './Pages/client/vocabulary';
 import Statistic from './Pages/client/statistic';
 import Test from './Pages/client/test';
+import AuthRoute from './context/authRoute';
  
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
       <BrowserRouter>
       <Routes>
         {/* Public routes */}
+        <Route element={<AuthRoute />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/otp" element={<Otp />} />

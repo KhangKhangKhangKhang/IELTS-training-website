@@ -1,20 +1,46 @@
-import React, { useState } from 'react';
+ import React, { useContext, useState } from 'react';
 import { Plus, Minus, Search, Edit, Trash2, BookOpen, X, Check } from 'lucide-react';
+import { createTopicAPI } from '../../services/apiVocab';
+import { useAuth } from '@/context/authContext';
+import { getTopicsByUserAPI } from '@/services/apiVocab';
+import { useEffect } from 'react';
 
 const Vocabulary = () => {
+     const { user, loading, isAuth } = useAuth();
+    useEffect(() => {
+    const fetchTopics = async () => {
+      if (!user?.idUser) return;
+      setLoadingTopics(true);
+      setError(null);
+      try {
+        const res = await getTopicsByUserAPI(user.idUser);
+        setTopics(res.data.data || []);
+      } catch (err) {
+        console.error("Failed to fetch topics:", err);
+        setError("Không thể tải danh sách chủ đề");
+      } finally {
+        setLoadingTopics(false);
+      }
+    };
+
+    fetchTopics();
+  }, [user?.idUser]);
+
+    // const user = localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")) : null;
+    // console.log("Current user:", user.idUser);
   // TODO: Call API to fetch topics
   const [topics, setTopics] = useState([]);
   
   // TODO: Call API to fetch vocabularies
   const [vocabularies, setVocabularies] = useState([]);
-  
+  const [loadingTopics, setLoadingTopics] = useState(false);
   const [newTopic, setNewTopic] = useState('');
   const [showAddTopic, setShowAddTopic] = useState(false);
   const [showDeleteTopics, setShowDeleteTopics] = useState(false);
   const [showEditTopic, setShowEditTopic] = useState(false);
   const [selectedTopicIds, setSelectedTopicIds] = useState([]);
   const [topicToEdit, setTopicToEdit] = useState(null);
-
+  const [error, setError] = useState(null);
   const [newVocabulary, setNewVocabulary] = useState({
     word: '',
     type: '',
@@ -29,10 +55,17 @@ const Vocabulary = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // ============= TOPIC HANDLERS =============
-  const handleAddTopic = () => {
-    // TODO: Call API to add topic
-    setShowAddTopic(false);
-    setNewTopic('');
+  const handleAddTopic = async () => {
+    try {
+        const res = await createTopicAPI({nameTopic: newTopic, idUser: user.idUser});
+        setTopics((prev) => [...prev, res.data]);
+        setShowAddTopic(false);
+        setNewTopic("");
+        console.log("Topic created:", res);
+    } catch (error) {
+        console.error("Failed to create topic:", error);
+    }
+
   };
 
   const handleDeleteTopics = () => {
@@ -121,29 +154,29 @@ const Vocabulary = () => {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {topics.map(topic => (
-              <div key={topic.id} className="flex items-center space-x-2">
-                <button
-                  onClick={() => handleSelectTopic(topic.id)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium ${
-                    topic.isSelected
-                      ? 'bg-slate-800 text-white'
-                      : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                  }`}
-                >
-                  {topic.name}
-                </button>
-                <button
-                  onClick={() => {
-                    setTopicToEdit(topic);
-                    setShowEditTopic(true);
-                  }}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  <Edit size={16} />
-                </button>
-              </div>
-            ))}
+                      {topics.map(topic => (
+                          <div key={topic.idTopic} className="flex items-center space-x-2">
+                              <button
+                                  onClick={() => handleSelectTopic(topic.idTopic)}
+                                  className={`px-4 py-2 rounded-full text-sm font-medium ${topic.isSelected
+                                          ? 'bg-slate-800 text-white'
+                                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                                      }`}
+                              >
+                                  {topic.nameTopic}
+                              </button>
+                              <button
+                                  onClick={() => {
+                                      setTopicToEdit(topic);
+                                      setShowEditTopic(true);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800"
+                              >
+                                  <Edit size={16} />
+                              </button>
+                          </div>
+                      ))}
+
           </div>
         </div>
 
