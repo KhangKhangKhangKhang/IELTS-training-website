@@ -9,3 +9,11 @@ export const createTopicAPI = async (data) => {
 export const getTopicsByUserAPI = (idUser) => {
   return API.get(`/topic/get-all-by-idUser/${idUser}`);
 };
+
+// export const updateTopicAPI = (idTopic, payload) =>
+//   API.patch(`/topic/update/${idTopic}`, payload).then((res) => res.data);
+
+export const updateTopicAPI = async (idTopic, payload) =>{
+  const res = await API.patch(`/topic/update/${idTopic}`,payload);
+  return res.data;
+}

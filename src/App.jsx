@@ -20,16 +20,16 @@ function App() {
       <BrowserRouter>
       <Routes>
         {/* Public routes */}
-        <Route element={<AuthRoute />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/otp" element={<Otp />} />
-        <Route path="/forgetpassword" element={<ForgetPassword />} />
-        <Route path="/newpassword" element={<NewPassword />} />
+        {/* <Route element={<AuthRoute />}> */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/otp" element={<Otp />} />
+          <Route path="/forgetpassword" element={<ForgetPassword />} />
+          <Route path="/newpassword" element={<NewPassword />} />
+        {/* </Route>   */}
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
-        
           <Route element={<Navbar />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/vocabulary" element={<Vocabulary/>} />

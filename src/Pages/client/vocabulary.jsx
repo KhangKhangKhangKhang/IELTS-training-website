@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 
 const Vocabulary = () => {
      const { user, loading, isAuth } = useAuth();
+
     useEffect(() => {
     const fetchTopics = async () => {
       if (!user?.idUser) return;
@@ -26,8 +27,7 @@ const Vocabulary = () => {
     fetchTopics();
   }, [user?.idUser]);
 
-    // const user = localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")) : null;
-    // console.log("Current user:", user.idUser);
+
   // TODO: Call API to fetch topics
   const [topics, setTopics] = useState([]);
   
