@@ -19,7 +19,7 @@ function App() {
     <>
       <BrowserRouter>
       <Routes>
-        {/* Public routes */}
+        
         {/* <Route element={<AuthRoute />}> */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />

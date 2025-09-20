@@ -17,3 +17,8 @@ export const updateTopicAPI = async (idTopic, payload) =>{
   const res = await API.patch(`/topic/update/${idTopic}`,payload);
   return res.data;
 }
+
+export const deleteTopicAPI = async (idTopic) => {
+  const res = await API.delete(`/topic/delete/${idTopic}`);
+  return res.data;
+};
