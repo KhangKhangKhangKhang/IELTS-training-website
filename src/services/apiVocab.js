@@ -32,8 +32,8 @@ export const createVocabAPI = async (data) => {
   return res.data;
 };
 
-export const updateVocabAPI = async (idTuVung) => {
-  const res = await API.patch(`/vocabulary/${idTuVung}`);
+export const updateVocabAPI = async (idTuVung, payload) => {
+  const res = await API.patch(`/vocabulary/${idTuVung}`, payload);
   return res.data;
 };
 

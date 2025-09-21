@@ -18,7 +18,7 @@ const Login = () => {
 
   const handleGoogleLogin = () => {
     const baseURL = API.defaults.baseURL; // 👈 lấy lại baseURL
-    window.location.href = `${baseURL}/auth/google/login`;
+    window.location.href = `http://localhost:3000/auth/google/login`;
   };
 
   useEffect(() => {

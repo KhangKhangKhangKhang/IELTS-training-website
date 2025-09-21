@@ -130,8 +130,28 @@ const Vocabulary = () => {
   };
 
   // ============= VOCABULARY HANDLERS =============
-  const handleAddVocabulary = () => {
-    // TODO: Call API to add vocabulary
+  const handleAddVocabulary = async () => {
+  if (!selectedTopic) {
+    setError("Vui lòng chọn một chủ đề trước khi thêm từ vựng");
+    return;
+  }
+  if (!user?.idUser) {
+    setError("Không thể xác định người dùng. Vui lòng đăng nhập lại.");
+    return;
+  }
+  const requestBody = {
+    idUser: user.idUser,
+    idTopic: selectedTopic.idTopic,
+    word: newVocabulary.word,
+    phonetic: newVocabulary.phonetic,
+    meaning: newVocabulary.meaning,
+    example: newVocabulary.example,
+    loaiTuVung: newVocabulary.loaiTuVung,
+  };
+  try {
+    console.log("Sending request with body:", requestBody);
+    const res = await createVocabAPI(requestBody);
+    setVocabularies((prev) => [...prev, res.data]);
     setShowAddVocabulary(false);
     setNewVocabulary({
       word: "",
@@ -140,7 +160,14 @@ const Vocabulary = () => {
       meaning: "",
       example: "",
     });
-  };
+    console.log("Vocabulary added:", res);
+  } catch (error) {
+    console.error("Error adding vocabulary:", error.response?.data || error.message);
+    console.log("user.idUser:", user.idUser);
+    console.log("selectedTopic:", selectedTopic);
+    setError(error.response?.data?.message || "Không thể thêm từ vựng");
+  }
+};
 
   const handleDeleteVocabulary = async (id) => {
     if (!window.confirm("Bạn có chắc muốn xóa từ vựng này?")) return;
@@ -155,40 +182,38 @@ const Vocabulary = () => {
     }
   };
 
-  const handleEditVocabulary = (idTuVung) => {
-    if (!vocabToEdit) return;
-    try {
-      const res = updateVocabAPI(idTuVung, {
-        idUser: vocabToEdit.idUser,
-        idTopic: vocabToEdit.idTopic,
-        word: vocabToEdit.word,
-        phonetic: vocabToEdit.phonetic,
-        meaning: vocabToEdit.meaning,
-        example: vocabToEdit.example,
-        loaiTuVung: vocabToEdit.loaiTuVung,
-      });
-      setTopics((prev) =>
-        prev.map((t) =>
-          t.idTuVung === vocabToEdit.idTuVung
-            ? {
-                ...t,
-                idUser: vocabToEdit.idUser,
-                idTopic: vocabToEdit.idTopic,
-                word: vocabToEdit.word,
-                phonetic: vocabToEdit.phonetic,
-                meaning: vocabToEdit.meaning,
-                example: vocabToEdit.example,
-                loaiTuVung: vocabToEdit.loaiTuVung,
-              }
-            : t
-        )
-      );
-      console.log("idTopic:", res);
-    } catch (error) {}
+ const handleEditVocabulary = async () => {
+  if (!vocabToEdit) return;
 
+  try {
+    const res = await updateVocabAPI(vocabToEdit.idTuVung, {
+      idUser: user.idUser,                  // lấy từ context
+      idTopic: selectedTopic.idTopic,       // lấy từ chủ đề đang chọn
+      word: vocabToEdit.word,
+      phonetic: vocabToEdit.phonetic,
+      meaning: vocabToEdit.meaning,
+      example: vocabToEdit.example,
+      loaiTuVung: vocabToEdit.loaiTuVung,
+    });
+
+    // Cập nhật state vocabularies
+    setVocabularies((prev) =>
+      prev.map((v) =>
+        v.idTuVung === vocabToEdit.idTuVung
+          ? { ...v, ...vocabToEdit }
+          : v
+      )
+    );
+
+    console.log("Vocabulary updated:", res);
     setShowEditVocabulary(false);
     setVocabToEdit(null);
-  };
+  } catch (error) {
+    console.error("Failed to update vocabulary:", error);
+    setError("Không thể cập nhật từ vựng");
+  }
+};
+
 
   // ============= FILTERING =============
   const selectedTopic = topics.find((topic) => topic.isSelected);
@@ -499,22 +524,26 @@ const Vocabulary = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Loại từ
-                  </label>
-                  <input
-                    type="text"
-                    value={newVocabulary.type}
-                    onChange={(e) =>
-                      setNewVocabulary({
-                        ...newVocabulary,
-                        type: e.target.value,
-                      })
-                    }
-                    placeholder="Noun, Verb, Adjective..."
-                    className="w-full p-2 border border-slate-300 rounded-md"
-                  />
-                </div>
+  <label className="block text-sm font-medium text-slate-700 mb-1">
+    Loại từ
+  </label>
+  <select
+    value={newVocabulary.loaiTuVung}
+    onChange={(e) =>
+      setNewVocabulary({
+        ...newVocabulary,
+        loaiTuVung: e.target.value,
+      })
+    }
+    className="w-full p-2 border border-slate-300 rounded-md uppercase"
+  >
+    <option value="">Chọn loại từ</option>
+    <option value="noun">Noun </option>
+    <option value="verb">Verb </option>
+    <option value="adjective">Adjective</option>
+    <option value="adverb">Adverb </option>
+  </select>
+</div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
