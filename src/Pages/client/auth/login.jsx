@@ -6,17 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import API from "@/services/axios.custom";
 import { loginAPI } from "@/services/apiAuth";
-import { useAuth } from "@/context/authContext";
 import { useNavigate } from "react-router";
+import { useAuth } from "@/context/authContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { setUser, setIsAuth } = useAuth();
 
   const handleGoogleLogin = () => {
-    window.location.href = `http://localhost:3000/auth/google/login`;
+    window.location.href = `https://ielts-training-app-sdtg.onrender.com/auth/google/login`;
   };
 
   useEffect(() => {
@@ -29,6 +30,8 @@ const Login = () => {
       localStorage.setItem("user", JSON.stringify(user));
 
       navigate("/");
+      setUser(user);
+      setIsAuth(true);
     }
   }, []);
 
@@ -51,6 +54,8 @@ const Login = () => {
         localStorage.setItem("accessToken", token); // 🚀 thống nhất dùng accessToken
         localStorage.setItem("user", JSON.stringify(user));
         navigate("/");
+        setUser(user);
+        setIsAuth(true);
       } else {
         alert("Login thất bại: không tìm thấy token");
       }

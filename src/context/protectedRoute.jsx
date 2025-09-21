@@ -13,7 +13,6 @@ const isUser = path.includes("user");
 const isAdmin = path.includes("admin");
 const isTeacher = path.includes("teacher");
 
-
   if (isAuth === null) {
     return <p>Loading...</p>; // hoặc spinner
   }

@@ -26,6 +26,7 @@ function App() {
           <Route path="/otp" element={<Otp />} />
           <Route path="/forgetpassword" element={<ForgetPassword />} />
           <Route path="/newpassword" element={<NewPassword />} />
+          <Route path="/test-vocab" element={<Vocabulary/> } />
         {/* </Route>   */}
 
         {/* Protected routes */}

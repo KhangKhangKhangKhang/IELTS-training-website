@@ -10,10 +10,10 @@ const [user, setUser] = useState(
     : ""
 );  const [isAuth, setIsAuth] = useState(null); 
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
   const checkAuth = async () => {
     const token = localStorage.getItem("accessToken");
+
     if (!token) {
       setIsAuth(false);
       setUser(null);
