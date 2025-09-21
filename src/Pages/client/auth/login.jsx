@@ -17,7 +17,8 @@ const Login = () => {
   const { setUser, setIsAuth } = useAuth();
 
   const handleGoogleLogin = () => {
-    window.location.href = `https://ielts-training-app-sdtg.onrender.com/auth/google/login`;
+    const baseURL = API.defaults.baseURL; // 👈 lấy lại baseURL
+    window.location.href = `${baseURL}/auth/google/login`;
   };
 
   useEffect(() => {
@@ -28,6 +29,8 @@ const Login = () => {
     if (token && user) {
       localStorage.setItem("accessToken", token);
       localStorage.setItem("user", JSON.stringify(user));
+      console.log("user:", user);
+      console.log("token:", token);
 
       navigate("/");
       setUser(user);
@@ -53,6 +56,8 @@ const Login = () => {
       if (token) {
         localStorage.setItem("accessToken", token); // 🚀 thống nhất dùng accessToken
         localStorage.setItem("user", JSON.stringify(user));
+        setUser(user);
+        setIsAuth(true);
         navigate("/");
         setUser(user);
         setIsAuth(true);
