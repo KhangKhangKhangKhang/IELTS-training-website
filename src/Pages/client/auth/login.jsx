@@ -14,9 +14,11 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { setUser, setIsAuth } = useAuth();
 
   const handleGoogleLogin = () => {
-    window.location.href = `http://localhost:3000/auth/google/login`;
+    const baseURL = API.defaults.baseURL; // 👈 lấy lại baseURL
+    window.location.href = `${baseURL}/auth/google/login`;
   };
 
   useEffect(() => {
@@ -27,6 +29,8 @@ const Login = () => {
     if (token && user) {
       localStorage.setItem("accessToken", token);
       localStorage.setItem("user", JSON.stringify(user));
+      console.log("user:", user);
+      console.log("token:", token);
 
       navigate("/");
     }
@@ -50,6 +54,8 @@ const Login = () => {
       if (token) {
         localStorage.setItem("accessToken", token); // 🚀 thống nhất dùng accessToken
         localStorage.setItem("user", JSON.stringify(user));
+        setUser(user);
+        setIsAuth(true);
         navigate("/");
       } else {
         alert("Login thất bại: không tìm thấy token");
