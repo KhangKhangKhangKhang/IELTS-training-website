@@ -6,8 +6,9 @@ export const createTopicAPI = async (data) => {
   return res.data; // { message, data, status }
 };
 
-export const getTopicsByUserAPI = (idUser) => {
-  return API.get(`/topic/get-all-by-idUser/${idUser}`);
+export const getTopicsByUserAPI = async (idUser) => {
+  const res = await API.get(`/topic/get-all-by-idUser/${idUser}`);
+  return res.data
 };
 
 // export const updateTopicAPI = (idTopic, payload) =>
@@ -28,9 +29,10 @@ export const getVocabAPI = async (idTopic) => {
 };
 
 export const createVocabAPI = async (data) => {
-  const res = await API.post(`/vocabulary/create-vocabulary`);
-  return res.data;
+  const res = await API.post(`/vocabulary/create-vocabulary`, data);
+  return res.data; // => { message, data }
 };
+
 
 export const updateVocabAPI = async (idTuVung, payload) => {
   const res = await API.patch(`/vocabulary/${idTuVung}`, payload);
