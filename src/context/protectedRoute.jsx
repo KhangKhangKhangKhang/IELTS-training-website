@@ -9,20 +9,6 @@ const ProtectedRoute = () => {
   const { isAuth, loading, user } = useAuth();  
   const role = user?.role; 
 
-if(!isAuth){
-return (
-      <Result
-        status="404"
-        title="Not Login"
-        subTitle="Bạn vui lòng đăng nhập để sử dụng tính năng này."
-        extra={
-          <Button type="primary">
-            <Link to="/signin">Đăng nhập</Link>
-          </Button>
-        }
-      />
-    );
-  }
 const path = location.pathname;
 const isUser = path.includes("user");
 const isAdmin = path.includes("admin");
@@ -46,8 +32,12 @@ if (isForbidden) {
       />
     );
   }
+if (isAuth === null) {
+    return <p>Loading...</p>; // hoặc spinner
+  }
 
-  return <Outlet />;
+  
+  return isAuth ?  <Outlet /> : <Navigate to={"/login"}/> ;
 };
 
 export default ProtectedRoute;

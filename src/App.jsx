@@ -6,7 +6,7 @@ import NewPassword from './Pages/client/auth/newPassword';
 import HomePage from './Pages/client/homePage';
 import Login from './Pages/client/auth/login';
 import Header from './components/Header';
-import Navbar from './components/navBar';
+import Navbar from './components/ui/navBar/navBar';
 import ProtectedRoute from './context/protectedRoute';
 import Otp from './Pages/client/auth/OTP';
 import Vocabulary from './Pages/client/vocabulary';
@@ -30,15 +30,15 @@ function App() {
         {/* </Route>   */}
 
         {/* Protected routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<Navbar />}>
+        {/* <Route element={<ProtectedRoute />}>
+          <Route element=''}>
             <Route path="/" element={<HomePage />} />
             <Route path="/vocabulary" element={<Vocabulary/>} />
             <Route path="/statistic" element={<Statistic/>} />
             <Route path="/test" element={<Test/>} />
-          </Route>
-          
-        </Route>
+          </Route> */}
+{/*           
+        </Route> */}
       </Routes>
     </BrowserRouter>
     </>
