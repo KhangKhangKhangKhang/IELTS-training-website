@@ -24,9 +24,10 @@ const Login = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get("token");
-    const user = urlParams.get("user");
+    const userParam = urlParams.get("user");
 
-    if (token && user) {
+    if (token && userParam) {
+      const user = JSON.parse(decodeURIComponent(userParam));
       localStorage.setItem("accessToken", token);
       localStorage.setItem("user", JSON.stringify(user));
       console.log("user:", user);
