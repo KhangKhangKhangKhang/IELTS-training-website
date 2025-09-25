@@ -1,6 +1,20 @@
-import React, { useState } from 'react';
-import { href, Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, BookOpen, BarChart3, BookMarked, Bell, Menu, X, User, Settings, LogOut, User as UserIcon, FilePlus2, Users2, } from 'lucide-react';
+import React, { useState } from "react";
+import { href, Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import {
+  Home,
+  BookOpen,
+  BarChart3,
+  BookMarked,
+  Bell,
+  Menu,
+  X,
+  User,
+  Settings,
+  LogOut,
+  User as UserIcon,
+  FilePlus2,
+  Users2,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,49 +30,49 @@ const NavbarTeacher = () => {
   const navigate = useNavigate();
 
   const navigation = [
-    { 
-      name: 'Trang Chủ', 
-      href: '/', 
-      current: location.pathname === '/',
-      icon: Home
-    },
-    { 
-      name: 'Giải Đề', 
-      href: '/test', 
-      current: location.pathname === '/test',
-      icon: BookOpen
-    },
-    { 
-      name: 'Thống Kê', 
-      href: '/statistic', 
-      current: location.pathname === '/statistic',
-      icon: BarChart3
-    },
-    { 
-      name: 'Từ Vựng', 
-      href: '/vocabulary', 
-      current: location.pathname === '/vocabulary',
-      icon: BookMarked
+    {
+      name: "Trang Chủ",
+      href: "/teacher",
+      current: location.pathname === "/teacher",
+      icon: Home,
     },
     {
-        name: 'Tạo đề',
-        href: '/teacher/createTest',
-        curent: location.pathname ==='/teacher/createTest',
-        icon: FilePlus2
-    },    {
-        name: 'Danh sách',
-        href: '/teacher/userList',
-        curent: location.pathname ==='/teacher/userList',
-        icon: Users2
+      name: "Giải Đề",
+      href: "/teacher/test",
+      current: location.pathname === "/teacher/test",
+      icon: BookOpen,
     },
-
+    {
+      name: "Thống Kê",
+      href: "/teacher/statistic",
+      current: location.pathname === "/teacher/statistic",
+      icon: BarChart3,
+    },
+    {
+      name: "Từ Vựng",
+      href: "/teacher/vocabulary",
+      current: location.pathname === "/teacher/vocabulary",
+      icon: BookMarked,
+    },
+    {
+      name: "Tạo đề",
+      href: "/teacher/createTest",
+      curent: location.pathname === "/teacher/createTest",
+      icon: FilePlus2,
+    },
+    {
+      name: "Danh sách",
+      href: "/teacher/userList",
+      curent: location.pathname === "/teacher/userList",
+      icon: Users2,
+    },
   ];
 
   const handleLogout = () => {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("user");
-    console.log('Đăng xuất');
-     navigate('/login');
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
+    console.log("Đăng xuất");
+    navigate("/login");
   };
 
   return (
@@ -69,7 +83,10 @@ const NavbarTeacher = () => {
             {/* Logo và menu chính */}
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <Link to="/" className="text-slate-100 text-xl font-bold flex items-center">
+                <Link
+                  to="/"
+                  className="text-slate-100 text-xl font-bold flex items-center"
+                >
                   <BookOpen className="h-6 w-6 mr-2" />
                   IELTS AI Practice
                 </Link>
@@ -83,8 +100,8 @@ const NavbarTeacher = () => {
                       to={item.href}
                       className={`${
                         item.current
-                          ? 'border-slate-500 text-slate-100'
-                          : 'border-transparent text-slate-300 hover:border-slate-300 hover:text-slate-100'
+                          ? "border-slate-500 text-slate-100"
+                          : "border-transparent text-slate-300 hover:border-slate-300 hover:text-slate-100"
                       } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
                     >
                       <IconComponent className="h-5 w-5 mr-1" />
@@ -97,7 +114,6 @@ const NavbarTeacher = () => {
 
             {/* Phần bên phải */}
             <div className="hidden sm:ml-6 sm:flex sm:items-center">
-
               {/* Profile dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -108,7 +124,10 @@ const NavbarTeacher = () => {
                     </div>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700 text-slate-100">
+                <DropdownMenuContent
+                  align="end"
+                  className="w-56 bg-slate-800 border-slate-700 text-slate-100"
+                >
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium">Người dùng</p>
@@ -116,22 +135,22 @@ const NavbarTeacher = () => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-slate-700" />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     className="cursor-pointer focus:bg-slate-700 focus:text-slate-100"
-                    onClick={() => navigate('/profile')}
+                    onClick={() => navigate("/profile")}
                   >
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>Hồ sơ</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     className="cursor-pointer focus:bg-slate-700 focus:text-slate-100"
-                    onClick={() => navigate('/settings')}
+                    onClick={() => navigate("/settings")}
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Cài đặt</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-slate-700" />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     className="cursor-pointer focus:bg-red-600 focus:text-white text-red-300"
                     onClick={handleLogout}
                   >
@@ -171,8 +190,8 @@ const NavbarTeacher = () => {
                     to={item.href}
                     className={`${
                       item.current
-                        ? 'bg-slate-900 border-slate-500 text-white'
-                        : 'border-transparent text-slate-300 hover:bg-slate-700 hover:border-slate-300 hover:text-white'
+                        ? "bg-slate-900 border-slate-500 text-white"
+                        : "border-transparent text-slate-300 hover:bg-slate-700 hover:border-slate-300 hover:text-white"
                     } flex items-center pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors duration-200`}
                     onClick={() => setIsMenuOpen(false)}
                   >
@@ -183,7 +202,6 @@ const NavbarTeacher = () => {
               })}
             </div>
 
-
             <div className="pt-4 pb-3 border-t border-slate-700">
               <div className="flex items-center px-4">
                 <div className="flex-shrink-0">
@@ -192,26 +210,30 @@ const NavbarTeacher = () => {
                   </div>
                 </div>
                 <div className="ml-3">
-                  <div className="text-base font-medium text-white">Người dùng</div>
-                  <div className="text-sm font-medium text-slate-400">user@example.com</div>
+                  <div className="text-base font-medium text-white">
+                    Người dùng
+                  </div>
+                  <div className="text-sm font-medium text-slate-400">
+                    user@example.com
+                  </div>
                 </div>
               </div>
               <div className="mt-3 px-2 space-y-1">
-                <Link 
-                  to="/profile" 
+                <Link
+                  to="/profile"
                   className="block px-3 py-2 rounded-md text-base font-medium text-slate-400 hover:text-white hover:bg-slate-700"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Hồ sơ
                 </Link>
-                <Link 
-                  to="/settings" 
+                <Link
+                  to="/settings"
                   className="block px-3 py-2 rounded-md text-base font-medium text-slate-400 hover:text-white hover:bg-slate-700"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Cài đặt
                 </Link>
-                <button 
+                <button
                   onClick={handleLogout}
                   className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-400 hover:text-white hover:bg-red-700"
                 >

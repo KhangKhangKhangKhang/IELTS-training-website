@@ -283,9 +283,7 @@ const Vocabulary = () => {
     ? vocabularies.filter(
         (vocab) =>
           vocab.idTopic === selectedTopic.idTopic &&
-          (vocab.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            vocab.meaning.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            vocab.example.toLowerCase().includes(searchTerm.toLowerCase()))
+          (vocab.word.toLowerCase().includes(searchTerm.toLowerCase()) )
       )
     : [];
 

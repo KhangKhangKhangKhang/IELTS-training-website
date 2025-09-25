@@ -13,7 +13,6 @@ const [user, setUser] = useState(
   useEffect(() => {
   const checkAuth = async () => {
     const token = localStorage.getItem("accessToken");
-
     if (!token) {
       setIsAuth(false);
       setUser(null);
