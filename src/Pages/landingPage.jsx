@@ -11,9 +11,9 @@ import {
   Target,
 } from "lucide-react";
 import { Button, Card } from "antd";
-import FloatingWords from "./FloatingWords";
-import StatsSection from "./StatsSection";
-
+import FloatingWords from "@/components/landingPage/FloatingWords";
+import StatsSection from "@/components/landingPage/StatsSection";
+import { Link, Navigate } from "react-router";
 const LandingPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -51,21 +51,10 @@ const Navbar = () => {
             className="flex items-center space-x-2"
           >
             <BookOpen className="h-8 w-8 text-blue-400" />
-            <span className="text-2xl font-bold text-white">AIELTS</span>
+            <span className="text-2xl font-bold text-white">
+              AIELTS - IELTS cho mọi người
+            </span>
           </motion.div>
-
-          {/* Navigation Links */}
-          <div className="hidden md:flex space-x-8">
-            {["Giới thiệu", "Tính năng", "Thống kê", "Từ vựng"].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase()}`}
-                className="text-slate-300 hover:text-white transition-colors"
-              >
-                {item}
-              </a>
-            ))}
-          </div>
 
           {/* Auth Buttons */}
           <motion.div
@@ -74,10 +63,10 @@ const Navbar = () => {
             className="flex space-x-4"
           >
             <Button ghost className="text-white border-slate-600">
-              Đăng nhập
+              <Link to="/login">đăng nhập</Link>
             </Button>
             <Button type="primary" className="bg-blue-600 hover:bg-blue-700">
-              Đăng ký ngay
+              <Link to="/signUp">đăng ký</Link>
             </Button>
           </motion.div>
         </div>
@@ -90,34 +79,25 @@ const Navbar = () => {
 const HeroSection = () => {
   return (
     <section id="giới-thiệu" className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto text-center">
+      <div className="max-w-7xl mx-auto  text-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <h1 className="text-6xl md:text-8xl font-bold mb-4">
-            <span className="text-blue-400">A</span>
-            <span className="text-white">IELTS</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-slate-300 mb-8 max-w-3xl mx-auto">
-            AI cũng học được - Nền tảng luyện thi IELTS thông minh với công nghệ
-            AI
-          </p>
+          <div className="flex justify-center items-center mb-7">
+            <span className="text-blue-400 text-9xl">AI</span>
+            <div className="flex-col text-left justify-between items-start">
+              <div className="text-white text-6xl">ELTS</div>
+              <div className="text-slate-500 text-4xl">
+                cũng có thể học được
+              </div>
+            </div>
+          </div>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="large"
-              type="primary"
-              className="bg-blue-600 hover:bg-blue-700 h-12 px-8 text-lg"
-            >
+            <Button size="Large" type="primary">
               Bắt đầu học ngay
               <ArrowRight className="ml-2" />
-            </Button>
-            <Button
-              size="large"
-              className="text-white border-slate-600 h-12 px-8 text-lg"
-            >
-              Xem demo
             </Button>
           </div>
         </motion.div>
@@ -205,15 +185,17 @@ const FeaturesSection = () => {
             >
               <Card
                 className="h-full bg-slate-800/50 border-slate-700 hover:border-blue-500 transition-all duration-300"
-                bodyStyle={{ padding: "2rem" }}
+                style={{ padding: "2rem" }}
               >
                 <feature.icon
                   className={`h-12 w-12 text-${feature.color}-400 mb-4`}
                 />
-                <h3 className="text-xl font-bold text-white mb-2">
+                <h3 className="text-xl font-bold text-slate-700 mb-2">
                   {feature.title}
                 </h3>
-                <p className="text-slate-300 mb-4">{feature.description}</p>
+                <p className="text-slate-500 font-medium mb-4">
+                  {feature.description}
+                </p>
 
                 {feature.skills && (
                   <div className="flex flex-wrap gap-2">

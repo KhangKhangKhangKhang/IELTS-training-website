@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Link } from "react-router-dom";
+import { Navigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { introspectAPI } from "@/services/apiAuth";
 import { useAuth } from "./authContext";
@@ -7,15 +7,27 @@ import { Button, Result, Spin } from "antd";
 const ProtectedRoute = () => {
   const { isAuth, loading, user } = useAuth();
   const role = user?.role;
+  const location = useLocation();
 
   const path = location.pathname;
-  const isUser = path.includes("user");
+  const isUser =
+    path.startsWith("/") &&
+    !path.startsWith("/admin") &&
+    !path.startsWith("/teacher");
   const isAdmin = path.includes("admin");
   const isTeacher = path.includes("teacher");
 
   const isForbidden =
-    (role === "user" && (isAdmin || isTeacher)) ||
-    (role === "teacher" && isAdmin);
+    (role === "USER" && (isAdmin || isTeacher)) ||
+    (role === "GIAOVIEN" && isAdmin);
+
+  if (isAuth === null) {
+    return (
+      <div className="text-center py-12">
+        <Spin size="large" />
+      </div>
+    ); // hoặc spinner
+  }
   if (!isAuth) {
     return <Navigate to={"/landingPage"} />;
   }
@@ -34,15 +46,7 @@ const ProtectedRoute = () => {
       />
     );
   }
-  if (isAuth === null) {
-    return (
-      <div className="text-center py-12">
-        <Spin size="large" />
-      </div>
-    ); // hoặc spinner
-  }
-
-  return isAuth ? <Outlet /> : <Navigate to={"/login"} />;
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

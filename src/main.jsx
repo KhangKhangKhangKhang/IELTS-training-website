@@ -18,6 +18,7 @@ import SignUp from "./Pages/client/auth/signUp";
 import OTP from "./Pages/client/auth/OTP";
 import NewPassword from "./Pages/client/auth/newPassword";
 import ForgetPassword from "./Pages/client/auth/forgetPassword";
+import LandingPage from "./Pages/landingPage";
 
 const router = createBrowserRouter([
   // --- User Routes ---
@@ -63,6 +64,7 @@ const router = createBrowserRouter([
   { path: "OTP", element: <OTP /> },
   { path: "newPassword", element: <NewPassword /> },
   { path: "forgetPassword", element: <ForgetPassword /> },
+  { path: "landingPage", element: <LandingPage /> },
 ]);
 createRoot(document.getElementById("root")).render(
   <StrictMode>

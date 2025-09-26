@@ -61,9 +61,7 @@ const SignUp = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Nhập email của bạn"
                   required
-                >
-                  {" "}
-                </Input>
+                ></Input>
               </div>
               {
                 // input password
