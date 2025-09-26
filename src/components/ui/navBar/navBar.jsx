@@ -5,7 +5,6 @@ import {
   BookOpen,
   BarChart3,
   BookMarked,
-  Bell,
   Menu,
   X,
   User,
@@ -57,40 +56,37 @@ const Navbar = () => {
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
-    console.log("Đăng xuất");
     navigate("/landingPage");
   };
 
   return (
     <>
-      <nav className="bg-slate-900 shadow-lg">
+      <nav className="bg-slate-900 shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            {/* Logo và menu chính */}
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <Link
-                  to="/"
-                  className="text-slate-100 text-xl font-bold flex items-center"
-                >
-                  <BookOpen className="h-6 w-6 mr-2" />
-                  AIELTS
-                </Link>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Bên trái: Logo + Menu */}
+            <div className="flex items-center space-x-8">
+              <Link
+                to="/"
+                className="text-slate-100 text-xl font-bold flex items-center gap-2 hover:text-blue-400 transition-colors"
+              >
+                <BookOpen className="h-6 w-6" />
+                AIELTS
+              </Link>
+              <div className="hidden sm:flex sm:space-x-6">
                 {navigation.map((item) => {
-                  const IconComponent = item.icon;
+                  const Icon = item.icon;
                   return (
                     <Link
                       key={item.name}
                       to={item.href}
                       className={`${
                         item.current
-                          ? "border-slate-500 text-slate-100"
-                          : "border-transparent text-slate-300 hover:border-slate-300 hover:text-slate-100"
-                      } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                          ? "border-b-2 border-blue-500 text-white"
+                          : "text-slate-300 hover:text-white hover:border-b-2 hover:border-slate-500"
+                      } flex items-center gap-1 px-2 py-1 text-sm font-medium transition-all duration-200`}
                     >
-                      <IconComponent className="h-5 w-5 mr-1" />
+                      <Icon className="h-5 w-5" />
                       {item.name}
                     </Link>
                   );
@@ -98,21 +94,20 @@ const Navbar = () => {
               </div>
             </div>
 
-            {/* Phần bên phải */}
-            <div className="hidden sm:ml-6 sm:flex sm:items-center">
-              {/* Profile dropdown */}
+            {/* Bên phải: Dropdown user */}
+            <div className="hidden sm:flex sm:items-center">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="bg-slate-800 flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-white">
-                    <span className="sr-only">Mở menu người dùng</span>
-                    <div className="h-8 w-8 rounded-full bg-slate-600 flex items-center justify-center text-slate-200 font-medium">
-                      <User className="h-5 w-5" />
-                    </div>
+                  <button className="flex items-center justify-center rounded-full bg-slate-700 hover:bg-slate-600 p-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white focus:ring-offset-slate-800">
+                    <User className="h-6 w-6 text-slate-200" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="w-56 bg-slate-800 border-slate-700 text-slate-100"
+                  className="w-56 bg-slate-800 border border-slate-700 text-slate-100 rounded-lg shadow-lg
+                  data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
+                  data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
+                  duration-200"
                 >
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
@@ -122,113 +117,110 @@ const Navbar = () => {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-slate-700" />
                   <DropdownMenuItem
-                    className="cursor-pointer focus:bg-slate-700 focus:text-slate-100"
+                    className="cursor-pointer focus:bg-slate-700"
                     onClick={() => navigate("/profile")}
                   >
                     <UserIcon className="mr-2 h-4 w-4" />
-                    <span>Hồ sơ</span>
+                    Hồ sơ
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    className="cursor-pointer focus:bg-slate-700 focus:text-slate-100"
+                    className="cursor-pointer focus:bg-slate-700"
                     onClick={() => navigate("/settings")}
                   >
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Cài đặt</span>
+                    Cài đặt
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-slate-700" />
                   <DropdownMenuItem
-                    className="cursor-pointer focus:bg-red-600 focus:text-white text-red-300"
+                    className="cursor-pointer text-red-400 focus:bg-red-600 focus:text-white"
                     onClick={handleLogout}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Đăng xuất</span>
+                    Đăng xuất
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
 
             {/* Nút menu mobile */}
-            <div className="flex items-center sm:hidden">
+            <div className="flex sm:hidden">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                className="p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white transition"
               >
-                <span className="sr-only">Mở menu chính</span>
-                {!isMenuOpen ? (
-                  <Menu className="block h-6 w-6" />
+                {isMenuOpen ? (
+                  <X className="h-6 w-6" />
                 ) : (
-                  <X className="block h-6 w-6" />
+                  <Menu className="h-6 w-6" />
                 )}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Menu mobile, hiển thị/ẩn dựa trên trạng thái menu */}
-        {isMenuOpen && (
-          <div className="sm:hidden">
-            <div className="pt-2 pb-3 space-y-1">
-              {navigation.map((item) => {
-                const IconComponent = item.icon;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`${
-                      item.current
-                        ? "bg-slate-900 border-slate-500 text-white"
-                        : "border-transparent text-slate-300 hover:bg-slate-700 hover:border-slate-300 hover:text-white"
-                    } flex items-center pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors duration-200`}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <IconComponent className="h-5 w-5 mr-3" />
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </div>
+        {/* Menu mobile */}
+        <div
+          className={`sm:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+            isMenuOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="pt-2 pb-3 space-y-1">
+            {navigation.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`${
+                    item.current
+                      ? "bg-slate-900 border-slate-500 text-white"
+                      : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                  } flex items-center pl-3 pr-4 py-2 text-base font-medium transition-all`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Icon className="h-5 w-5 mr-3" />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
 
-            <div className="pt-4 pb-3 border-t border-slate-700">
-              <div className="flex items-center px-4">
-                <div className="flex-shrink-0">
-                  <div className="h-10 w-10 rounded-full bg-slate-600 flex items-center justify-center text-slate-200 font-medium">
-                    <User className="h-5 w-5" />
-                  </div>
-                </div>
-                <div className="ml-3">
-                  <div className="text-base font-medium text-white">
-                    Người dùng
-                  </div>
-                  <div className="text-sm font-medium text-slate-400">
-                    user@example.com
-                  </div>
-                </div>
+          <div className="pt-4 pb-3 border-t border-slate-700">
+            <div className="flex items-center px-4">
+              <div className="h-10 w-10 rounded-full bg-slate-600 flex items-center justify-center text-slate-200 font-medium">
+                <User className="h-5 w-5" />
               </div>
-              <div className="mt-3 px-2 space-y-1">
-                <Link
-                  to="/profile"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-slate-400 hover:text-white hover:bg-slate-700"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Hồ sơ
-                </Link>
-                <Link
-                  to="/settings"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-slate-400 hover:text-white hover:bg-slate-700"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Cài đặt
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-400 hover:text-white hover:bg-red-700"
-                >
-                  Đăng xuất
-                </button>
+              <div className="ml-3">
+                <p className="text-base font-medium text-white">Người dùng</p>
+                <p className="text-sm font-medium text-slate-400">
+                  user@example.com
+                </p>
               </div>
+            </div>
+            <div className="mt-3 px-2 space-y-1">
+              <Link
+                to="/profile"
+                className="block px-3 py-2 rounded-md text-base text-slate-400 hover:text-white hover:bg-slate-700 transition"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Hồ sơ
+              </Link>
+              <Link
+                to="/settings"
+                className="block px-3 py-2 rounded-md text-base text-slate-400 hover:text-white hover:bg-slate-700 transition"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Cài đặt
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left px-3 py-2 rounded-md text-base text-red-400 hover:text-white hover:bg-red-700 transition"
+              >
+                Đăng xuất
+              </button>
             </div>
           </div>
-        )}
+        </div>
       </nav>
       <Outlet />
     </>

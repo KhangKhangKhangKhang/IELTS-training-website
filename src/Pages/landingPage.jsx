@@ -51,9 +51,10 @@ const Navbar = () => {
             className="flex items-center space-x-2"
           >
             <BookOpen className="h-8 w-8 text-blue-400" />
-            <span className="text-2xl font-bold text-white">
-              AIELTS - IELTS cho mọi người
-            </span>
+            <div className="flex flex-col">
+              <span className="text-2xl font-bold text-blue-400">AIELTS</span>
+              <span className="text-sm text-gray-300">IELTS cho mọi người</span>
+            </div>
           </motion.div>
 
           {/* Auth Buttons */}
