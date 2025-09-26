@@ -27,6 +27,7 @@ const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       {
+        path: "/",
         element: <Navbar />,
         children: [
           { index: true, element: <HomePage /> },
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       {
+        path: "/teacher",
         element: <NavbarTeacher />,
         children: [
           { index: true, element: <HomePage /> },
