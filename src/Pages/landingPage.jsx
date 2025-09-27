@@ -1,6 +1,7 @@
 // components/LandingPage.jsx
 import React from "react";
 import { motion } from "framer-motion";
+import "@ant-design/v5-patch-for-react-19";
 import {
   BookOpen,
   TrendingUp,
