@@ -4,22 +4,24 @@ import { SearchOutlined } from "@ant-design/icons";
 import { mockExamsAPI } from "@/lib/mockExamsAPI";
 import ExamSelector from "@/components/test/examSelector";
 import ExamCard from "@/components/test/examCard";
+import { getAPITest } from "@/services/apiTest";
+import { useNavigate } from "react-router";
 
 const TestPage = () => {
-  const [examType, setExamType] = useState("Listening");
+  const [loaiDe, setLoaiDe] = useState("LISTENING");
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+  const navigate = useNavigate();
 
   // Giả lập API call
   useEffect(() => {
     const fetchExams = async () => {
       setLoading(true);
       try {
-        // Trong thực tế: await getExamsByUser(userId, examType)
-        const data = await mockExamsAPI(examType);
-        setExams(data);
+        const res = await getAPITest();
+        setExams(res.data);
       } catch (error) {
         console.error("Lỗi tải dữ liệu:", error);
       } finally {
@@ -28,23 +30,28 @@ const TestPage = () => {
     };
 
     fetchExams();
-  }, [examType]);
+  }, [loaiDe]);
 
-  const filteredExams = exams
-    .filter(
-      (exam) =>
-        exam.title.toLowerCase().includes(searchText.toLowerCase()) ||
-        exam.description.toLowerCase().includes(searchText.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (sortBy === "newest")
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      if (sortBy === "mostAttempts") return b.attempts - a.attempts;
-      return 0;
-    });
+  const filteredExams = Array.isArray(exams)
+    ? exams
+        .filter((exam) => {
+          const matchLoaiDe = loaiDe === "ALL" || exam.loaiDe === loaiDe;
+          const matchSearch =
+            exam.title.toLowerCase().includes(searchText.toLowerCase()) ||
+            exam.description.toLowerCase().includes(searchText.toLowerCase());
+          return matchLoaiDe && matchSearch;
+        })
+        .sort((a, b) => {
+          if (sortBy === "newest")
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          if (sortBy === "mostAttempts") return b.attempts - a.attempts;
+          return 0;
+        })
+    : [];
 
-  const handleExamClick = (examId) => {
-    router.push(`/test/${examId}`);
+  const handleExamClick = () => {
+    console.log(loaiDe);
+    navigate(`/test/${loaiDe}`);
   };
 
   return (
@@ -57,7 +64,7 @@ const TestPage = () => {
               <label className="block text-sm font-medium mb-2">
                 Loại đề thi
               </label>
-              <ExamSelector currentType={examType} onTypeChange={setExamType} />
+              <ExamSelector currentType={loaiDe} onTypeChange={setLoaiDe} />
             </Col>
 
             <Col xs={24} md={10}>
@@ -95,7 +102,7 @@ const TestPage = () => {
         ) : (
           <Row gutter={[24, 24]}>
             {filteredExams.map((exam) => (
-              <Col key={exam.id} xs={24} sm={12} lg={8} xl={6}>
+              <Col key={exam.idDe} xs={24} sm={12} lg={8} xl={6}>
                 <ExamCard exam={exam} onExamClick={handleExamClick} />
               </Col>
             ))}

@@ -11,9 +11,9 @@ import { DownOutlined } from "@ant-design/icons";
 
 const ExamSelector = ({ currentType, onTypeChange }) => {
   const examTypes = [
-    { key: "Listening", label: "Listening" },
-    { key: "Writing", label: "Writing" },
-    { key: "Reading", label: "Reading" },
+    { key: "LISTENING", label: "Listening" },
+    { key: "WRITING", label: "Writing" },
+    { key: "READING", label: "Reading" },
   ];
 
   return (

@@ -19,6 +19,9 @@ import OTP from "./Pages/client/auth/OTP";
 import NewPassword from "./Pages/client/auth/newPassword";
 import ForgetPassword from "./Pages/client/auth/forgetPassword";
 import LandingPage from "./Pages/landingPage";
+import Listening from "./components/test/listening";
+import Reading from "./components/test/reading";
+import Writing from "./components/test/writing";
 
 const router = createBrowserRouter([
   // --- User Routes ---
@@ -38,6 +41,14 @@ const router = createBrowserRouter([
           { path: "profile", element: <Profile /> },
         ],
       },
+    ],
+  },
+  {
+    path: "*/test",
+    children: [
+      { path: "/LISTENING", element: <Listening /> },
+      { path: "/READING", element: <Reading /> },
+      { path: "WRITING", element: <Writing /> },
     ],
   },
 

@@ -10,7 +10,7 @@ const ExamCard = ({ exam, onExamClick }) => {
       cover={
         <img
           alt={exam.title}
-          src={exam.thumbnail}
+          src={exam.img ? exam.img : "ảnh đẹp"}
           className="h-48 object-cover"
         />
       }
@@ -19,22 +19,22 @@ const ExamCard = ({ exam, onExamClick }) => {
           <ClockCircleOutlined /> {exam.duration}p
         </div>,
         <div key="questions">
-          <FileTextOutlined /> {exam.questions} Số câu hỏi
+          <FileTextOutlined /> {exam.numberQuestion} câu hỏi
         </div>,
       ]}
-      onClick={() => onExamClick(exam.id)}
+      onClick={() => onExamClick(exam.idDe)}
     >
       <div className="flex justify-between items-start mb-2">
         <Badge
           color={
-            exam.type === "Listening"
+            exam.loaiDe === "Listening"
               ? "blue"
-              : exam.type === "Writing"
+              : exam.loaiDe === "Writing"
               ? "green"
               : "orange"
           }
         >
-          {exam.type}
+          {exam.loaiDe}
         </Badge>
       </div>
       <Card.Meta
