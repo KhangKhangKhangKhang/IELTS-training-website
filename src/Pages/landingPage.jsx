@@ -14,7 +14,7 @@ import {
 import { Button, Card } from "antd";
 import FloatingWords from "@/components/landingPage/FloatingWords";
 import StatsSection from "@/components/landingPage/StatsSection";
-import { Link, Navigate } from "react-router";
+import { useNavigate } from "react-router";
 const LandingPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -41,6 +41,7 @@ const LandingPage = () => {
 
 // Component Navbar cho Landing Page
 const Navbar = () => {
+  const navigate = useNavigate();
   return (
     <nav className="fixed w-full bg-slate-900/80 backdrop-blur-md z-50 border-b border-slate-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -64,11 +65,19 @@ const Navbar = () => {
             animate={{ opacity: 1, x: 0 }}
             className="flex space-x-4"
           >
-            <Button ghost className="text-white border-slate-600">
-              <Link to="/login">đăng nhập</Link>
+            <Button
+              ghost
+              className="text-white border-slate-600"
+              onClick={() => navigate("/login")}
+            >
+              Login
             </Button>
-            <Button type="primary" className="bg-blue-600 hover:bg-blue-700">
-              <Link to="/signUp">đăng ký</Link>
+            <Button
+              type="primary"
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => navigate("/signup")}
+            >
+              Sign up
             </Button>
           </motion.div>
         </div>
