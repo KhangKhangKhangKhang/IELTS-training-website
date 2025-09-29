@@ -1,7 +1,7 @@
 import { Navigate, Outlet, Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { introspectAPI } from "@/services/apiAuth";
-import { useAuth } from "./authContext";
+import { useAuth } from "../authContext";
 import { Button, Result, Spin } from "antd";
 
 const ProtectedRoute = () => {
@@ -16,6 +16,7 @@ const ProtectedRoute = () => {
   const isForbidden =
     (role === "USER" && (isAdmin || isTeacher)) ||
     (role === "GIAOVIEN" && isAdmin);
+
   if (location.pathname === "/") {
     if (role === "USER") {
       return <Navigate to="/homepage" replace />;

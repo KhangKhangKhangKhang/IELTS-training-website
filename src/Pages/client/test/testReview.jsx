@@ -23,6 +23,7 @@ const TestPage = () => {
       try {
         const res = await getAPITest();
         setExams(res.data);
+        console.log(res.data);
       } catch (error) {
         console.error("Lỗi tải dữ liệu:", error);
       } finally {
@@ -51,7 +52,7 @@ const TestPage = () => {
     : [];
 
   const handleExamClick = (exam) => {
-    navigate("doTest", {
+    navigate("/doTest", {
       state: { idDe: exam.idDe, loaiDe: exam.loaiDe },
     });
   };
@@ -108,6 +109,7 @@ const TestPage = () => {
                 <ExamCard
                   exam={exam}
                   onExamClick={() => {
+                    console.log("exam", exam);
                     handleExamClick(exam);
                   }}
                 />

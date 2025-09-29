@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import { AuthProvider } from "./context/authContext";
 import { createBrowserRouter, RouterProvider } from "react-router";
-import ProtectedRoute from "./context/protectedRoute";
+import ProtectedRoute from "./context/auth/protectedRoute";
 import path from "path";
 import Navbar from "./components/ui/navBar/navBar";
 import HomePage from "./Pages/client/homePage";
@@ -20,6 +20,7 @@ import ForgetPassword from "./Pages/client/auth/forgetPassword";
 import LandingPage from "./Pages/landingPage";
 import Test from "./Pages/client/test/testReview";
 import TestDetail from "./Pages/client/test/testDetail";
+import CreateTest from "./Pages/teacher/createTest";
 
 const router = createBrowserRouter([
   // --- User Routes ---
@@ -60,6 +61,7 @@ const router = createBrowserRouter([
           { path: "profile", element: <Profile /> },
           { path: "userList", element: <UserList /> },
           { path: "doTest", element: <TestDetail /> },
+          { path: "createTest", element: <CreateTest /> },
         ],
       },
     ],
