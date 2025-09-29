@@ -9,7 +9,6 @@ import Navbar from "./components/ui/navBar/navBar";
 import HomePage from "./Pages/client/homePage";
 import Statistic from "./Pages/client/statistic";
 import Vocabulary from "./Pages/client/vocabulary";
-import Test from "./Pages/client/test";
 import NavbarTeacher from "./components/ui/navBar/navBarTeacher";
 import Profile from "./Pages/client/profile";
 import UserList from "./Pages/teacher/userList";
@@ -19,9 +18,8 @@ import OTP from "./Pages/client/auth/OTP";
 import NewPassword from "./Pages/client/auth/newPassword";
 import ForgetPassword from "./Pages/client/auth/forgetPassword";
 import LandingPage from "./Pages/landingPage";
-import Listening from "./components/test/listening";
-import Reading from "./components/test/reading";
-import Writing from "./components/test/writing";
+import Test from "./Pages/client/test/testReview";
+import TestDetail from "./Pages/client/test/testDetail";
 
 const router = createBrowserRouter([
   // --- User Routes ---
@@ -38,17 +36,10 @@ const router = createBrowserRouter([
           { path: "statistic", element: <Statistic /> },
           { path: "vocabulary", element: <Vocabulary /> }, // match /vocabulary
           { path: "test", element: <Test /> },
+          { path: "doTest", element: <TestDetail /> },
           { path: "profile", element: <Profile /> },
         ],
       },
-    ],
-  },
-  {
-    path: "*/test",
-    children: [
-      { path: "/LISTENING", element: <Listening /> },
-      { path: "/READING", element: <Reading /> },
-      { path: "WRITING", element: <Writing /> },
     ],
   },
 
@@ -68,6 +59,7 @@ const router = createBrowserRouter([
           { path: "test", element: <Test /> },
           { path: "profile", element: <Profile /> },
           { path: "userList", element: <UserList /> },
+          { path: "doTest", element: <TestDetail /> },
         ],
       },
     ],

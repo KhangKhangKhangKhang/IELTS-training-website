@@ -5,7 +5,7 @@ import { mockExamsAPI } from "@/lib/mockExamsAPI";
 import ExamSelector from "@/components/test/examSelector";
 import ExamCard from "@/components/test/examCard";
 import { getAPITest } from "@/services/apiTest";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 
 const TestPage = () => {
   const [loaiDe, setLoaiDe] = useState("LISTENING");
@@ -14,6 +14,7 @@ const TestPage = () => {
   const [searchText, setSearchText] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Giả lập API call
   useEffect(() => {
@@ -49,9 +50,10 @@ const TestPage = () => {
         })
     : [];
 
-  const handleExamClick = () => {
-    console.log(loaiDe);
-    navigate(`/test/${loaiDe}`);
+  const handleExamClick = (exam) => {
+    navigate("doTest", {
+      state: { idDe: exam.idDe, loaiDe: exam.loaiDe },
+    });
   };
 
   return (
@@ -103,7 +105,12 @@ const TestPage = () => {
           <Row gutter={[24, 24]}>
             {filteredExams.map((exam) => (
               <Col key={exam.idDe} xs={24} sm={12} lg={8} xl={6}>
-                <ExamCard exam={exam} onExamClick={handleExamClick} />
+                <ExamCard
+                  exam={exam}
+                  onExamClick={() => {
+                    handleExamClick(exam);
+                  }}
+                />
               </Col>
             ))}
           </Row>

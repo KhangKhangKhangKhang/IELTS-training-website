@@ -1,7 +1,7 @@
 import React from "react";
 
 const Writing = () => {
-  return <div></div>;
+  return <div>Writings</div>;
 };
 
 export default Writing;
