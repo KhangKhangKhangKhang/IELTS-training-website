@@ -72,6 +72,7 @@ const router = createBrowserRouter([
   { path: "newPassword", element: <NewPassword /> },
   { path: "forgetPassword", element: <ForgetPassword /> },
   { path: "landingPage", element: <LandingPage /> },
+  { path: "_test", element: <Test /> },
 ]);
 createRoot(document.getElementById("root")).render(
   <StrictMode>

@@ -72,7 +72,7 @@ const NavbarTeacher = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
     console.log("Đăng xuất");
-    navigate("/login");
+    navigate("/landingPage");
   };
 
   return (

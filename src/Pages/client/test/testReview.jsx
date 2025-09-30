@@ -6,6 +6,7 @@ import ExamSelector from "@/components/test/examSelector";
 import ExamCard from "@/components/test/examCard";
 import { getAPITest } from "@/services/apiTest";
 import { useLocation, useNavigate } from "react-router";
+import { useAuth } from "@/context/authContext";
 
 const TestPage = () => {
   const [loaiDe, setLoaiDe] = useState("LISTENING");
@@ -14,6 +15,7 @@ const TestPage = () => {
   const [searchText, setSearchText] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const navigate = useNavigate();
+  const { user } = useAuth();
   const location = useLocation();
 
   // Giả lập API call
@@ -52,9 +54,12 @@ const TestPage = () => {
     : [];
 
   const handleExamClick = (exam) => {
-    navigate("/doTest", {
-      state: { idDe: exam.idDe, loaiDe: exam.loaiDe },
-    });
+    if (!user) {
+      navigate("/login");
+    } else
+      navigate("/doTest", {
+        state: { idDe: exam.idDe, loaiDe: exam.loaiDe },
+      });
   };
 
   return (
