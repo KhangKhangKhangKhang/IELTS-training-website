@@ -88,6 +88,7 @@ const Navbar = () => {
 
 // Hero Section Component
 const HeroSection = () => {
+  const navigate = useNavigate();
   return (
     <section id="giới-thiệu" className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto  text-center">
@@ -106,7 +107,11 @@ const HeroSection = () => {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="Large" type="primary">
+            <Button
+              onClick={() => navigate("/test-test")}
+              size="Large"
+              type="primary"
+            >
               Bắt đầu học ngay
               <ArrowRight className="ml-2" />
             </Button>
