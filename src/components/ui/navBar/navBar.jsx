@@ -8,9 +8,7 @@ import {
   Menu,
   X,
   User,
-  Settings,
   LogOut,
-  User as UserIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -20,9 +18,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import ProfileModal from "./profileModal"; // Component riêng cho modal profile
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -57,6 +57,14 @@ const Navbar = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
     navigate("/landingPage");
+  };
+
+  const openProfileModal = () => {
+    setIsProfileModalOpen(true);
+  };
+
+  const closeProfileModal = () => {
+    setIsProfileModalOpen(false);
   };
 
   return (
@@ -118,17 +126,10 @@ const Navbar = () => {
                   <DropdownMenuSeparator className="bg-slate-700" />
                   <DropdownMenuItem
                     className="cursor-pointer focus:bg-slate-700"
-                    onClick={() => navigate("/profile")}
+                    onClick={openProfileModal}
                   >
-                    <UserIcon className="mr-2 h-4 w-4" />
+                    <User className="mr-2 h-4 w-4" />
                     Hồ sơ
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="cursor-pointer focus:bg-slate-700"
-                    onClick={() => navigate("/settings")}
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    Cài đặt
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-slate-700" />
                   <DropdownMenuItem
@@ -198,20 +199,15 @@ const Navbar = () => {
               </div>
             </div>
             <div className="mt-3 px-2 space-y-1">
-              <Link
-                to="/profile"
-                className="block px-3 py-2 rounded-md text-base text-slate-400 hover:text-white hover:bg-slate-700 transition"
-                onClick={() => setIsMenuOpen(false)}
+              <button
+                onClick={() => {
+                  openProfileModal();
+                  setIsMenuOpen(false);
+                }}
+                className="block w-full text-left px-3 py-2 rounded-md text-base text-slate-400 hover:text-white hover:bg-slate-700 transition"
               >
                 Hồ sơ
-              </Link>
-              <Link
-                to="/settings"
-                className="block px-3 py-2 rounded-md text-base text-slate-400 hover:text-white hover:bg-slate-700 transition"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Cài đặt
-              </Link>
+              </button>
               <button
                 onClick={handleLogout}
                 className="block w-full text-left px-3 py-2 rounded-md text-base text-red-400 hover:text-white hover:bg-red-700 transition"
@@ -222,6 +218,10 @@ const Navbar = () => {
           </div>
         </div>
       </nav>
+
+      {/* Profile Modal */}
+      <ProfileModal isOpen={isProfileModalOpen} onClose={closeProfileModal} />
+
       <Outlet />
     </>
   );

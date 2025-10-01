@@ -77,7 +77,7 @@ const NavbarTeacher = () => {
 
   return (
     <>
-      <nav className="bg-slate-800 shadow-lg">
+      <nav className="bg-slate-900 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             {/* Logo và menu chính */}
