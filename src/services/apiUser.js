@@ -10,7 +10,7 @@ export const getAllUserAPI = async (params = {}) => {
 };
 
 export const createUserAPI = async (data) => {
-  const res = await API.post(`/users/get-all`, data);
+  const res = await API.post(`/users/create-user`, data);
   return res.data;
 };
 
