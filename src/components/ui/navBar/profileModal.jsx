@@ -1,17 +1,38 @@
 // ProfileModal.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X, Camera, User } from "lucide-react"; // Thêm User vào import
+import { userProfileAPI } from "@/services/apiUser";
+import { useAuth } from "@/context/authContext";
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
-    fullName: "Nguyễn Văn A",
-    email: "user@example.com",
-    phone: "0123456789",
-    address: "Hà Nội, Việt Nam",
+    fullName: "",
+    email: "",
+    phone: "",
+    address: "",
     avatar: "",
   });
+  const { user } = useAuth();
 
   const [errors, setErrors] = useState({});
+  useEffect(() => {
+    if (isOpen && user.idUser) {
+      userProfileAPI(user.idUser)
+        .then((res) => {
+          const data = res.data; // từ response
+          setFormData({
+            fullName: data.nameUser || "",
+            email: data.email || "",
+            phone: data.phoneNumber || "",
+            address: data.address || "",
+            avatar: data.avatar || "",
+          });
+        })
+        .catch((err) => {
+          console.error("Lỗi load user:", err);
+        });
+    }
+  }, [isOpen, user.id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

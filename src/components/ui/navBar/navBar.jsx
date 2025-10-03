@@ -103,44 +103,24 @@ const Navbar = () => {
             </div>
 
             {/* Bên phải: Dropdown user */}
-            <div className="hidden sm:flex sm:items-center">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center justify-center rounded-full bg-slate-700 hover:bg-slate-600 p-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white focus:ring-offset-slate-800">
-                    <User className="h-6 w-6 text-slate-200" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-56 bg-slate-800 border border-slate-700 text-slate-100 rounded-lg shadow-lg
-                  data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
-                  data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95
-                  duration-200"
-                >
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">Người dùng</p>
-                      <p className="text-xs text-slate-400">user@example.com</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-slate-700" />
-                  <DropdownMenuItem
-                    className="cursor-pointer focus:bg-slate-700"
-                    onClick={openProfileModal}
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    Hồ sơ
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-slate-700" />
-                  <DropdownMenuItem
-                    className="cursor-pointer text-red-400 focus:bg-red-600 focus:text-white"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Đăng xuất
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {/* Bên phải: User + Logout */}
+            <div className="hidden sm:flex sm:items-center gap-4">
+              {/* Nút mở Profile */}
+              <button
+                onClick={openProfileModal}
+                className="flex items-center justify-center rounded-full bg-slate-700 hover:bg-slate-600 p-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white focus:ring-offset-slate-800"
+              >
+                <User className="h-6 w-6 text-slate-200" />
+              </button>
+
+              {/* Nút Logout */}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition"
+              >
+                <LogOut className="h-4 w-4" />
+                Đăng xuất
+              </button>
             </div>
 
             {/* Nút menu mobile */}

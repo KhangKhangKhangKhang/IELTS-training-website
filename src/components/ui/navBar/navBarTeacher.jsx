@@ -1,31 +1,22 @@
 import React, { useState } from "react";
-import { href, Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
   BookOpen,
   BarChart3,
   BookMarked,
-  Bell,
   Menu,
   X,
   User,
-  Settings,
   LogOut,
-  User as UserIcon,
   FilePlus2,
   Users2,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import ProfileModal from "./profileModal"; // modal profile
 
 const NavbarTeacher = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -57,13 +48,13 @@ const NavbarTeacher = () => {
     {
       name: "Tạo đề",
       href: "/teacher/createTest",
-      curent: location.pathname === "/teacher/createTest",
+      current: location.pathname === "/teacher/createTest",
       icon: FilePlus2,
     },
     {
       name: "Danh sách",
       href: "/teacher/userList",
-      curent: location.pathname === "/teacher/userList",
+      current: location.pathname === "/teacher/userList",
       icon: Users2,
     },
   ];
@@ -71,9 +62,11 @@ const NavbarTeacher = () => {
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("user");
-    console.log("Đăng xuất");
     navigate("/landingPage");
   };
+
+  const openProfileModal = () => setIsProfileModalOpen(true);
+  const closeProfileModal = () => setIsProfileModalOpen(false);
 
   return (
     <>
@@ -93,7 +86,7 @@ const NavbarTeacher = () => {
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                 {navigation.map((item) => {
-                  const IconComponent = item.icon;
+                  const Icon = item.icon;
                   return (
                     <Link
                       key={item.name}
@@ -104,7 +97,7 @@ const NavbarTeacher = () => {
                           : "border-transparent text-slate-300 hover:border-slate-300 hover:text-slate-100"
                       } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
                     >
-                      <IconComponent className="h-5 w-5 mr-1" />
+                      <Icon className="h-5 w-5 mr-1" />
                       {item.name}
                     </Link>
                   );
@@ -112,53 +105,21 @@ const NavbarTeacher = () => {
               </div>
             </div>
 
-            {/* Phần bên phải */}
-            <div className="hidden sm:ml-6 sm:flex sm:items-center">
-              {/* Profile dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="bg-slate-800 flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-white">
-                    <span className="sr-only">Mở menu người dùng</span>
-                    <div className="h-8 w-8 rounded-full bg-slate-600 flex items-center justify-center text-slate-200 font-medium">
-                      <User className="h-5 w-5" />
-                    </div>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-56 bg-slate-800 border-slate-700 text-slate-100"
-                >
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">Người dùng</p>
-                      <p className="text-xs text-slate-400">user@example.com</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-slate-700" />
-                  <DropdownMenuItem
-                    className="cursor-pointer focus:bg-slate-700 focus:text-slate-100"
-                    onClick={() => navigate("/profile")}
-                  >
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    <span>Hồ sơ</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="cursor-pointer focus:bg-slate-700 focus:text-slate-100"
-                    onClick={() => navigate("/settings")}
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Cài đặt</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-slate-700" />
-                  <DropdownMenuItem
-                    className="cursor-pointer focus:bg-red-600 focus:text-white text-red-300"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Đăng xuất</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {/* Bên phải: User + Logout */}
+            <div className="hidden sm:flex sm:items-center gap-4">
+              <button
+                onClick={openProfileModal}
+                className="flex items-center justify-center rounded-full bg-slate-700 hover:bg-slate-600 p-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white focus:ring-offset-slate-800"
+              >
+                <User className="h-6 w-6 text-slate-200" />
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition"
+              >
+                <LogOut className="h-4 w-4" />
+                Đăng xuất
+              </button>
             </div>
 
             {/* Nút menu mobile */}
@@ -167,7 +128,6 @@ const NavbarTeacher = () => {
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
               >
-                <span className="sr-only">Mở menu chính</span>
                 {!isMenuOpen ? (
                   <Menu className="block h-6 w-6" />
                 ) : (
@@ -178,12 +138,12 @@ const NavbarTeacher = () => {
           </div>
         </div>
 
-        {/* Menu mobile, hiển thị/ẩn dựa trên trạng thái menu */}
+        {/* Menu mobile */}
         {isMenuOpen && (
           <div className="sm:hidden">
             <div className="pt-2 pb-3 space-y-1">
               {navigation.map((item) => {
-                const IconComponent = item.icon;
+                const Icon = item.icon;
                 return (
                   <Link
                     key={item.name}
@@ -195,7 +155,7 @@ const NavbarTeacher = () => {
                     } flex items-center pl-3 pr-4 py-2 border-l-4 text-base font-medium transition-colors duration-200`}
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    <IconComponent className="h-5 w-5 mr-3" />
+                    <Icon className="h-5 w-5 mr-3" />
                     {item.name}
                   </Link>
                 );
@@ -204,38 +164,29 @@ const NavbarTeacher = () => {
 
             <div className="pt-4 pb-3 border-t border-slate-700">
               <div className="flex items-center px-4">
-                <div className="flex-shrink-0">
-                  <div className="h-10 w-10 rounded-full bg-slate-600 flex items-center justify-center text-slate-200 font-medium">
-                    <User className="h-5 w-5" />
-                  </div>
+                <div className="h-10 w-10 rounded-full bg-slate-600 flex items-center justify-center text-slate-200 font-medium">
+                  <User className="h-5 w-5" />
                 </div>
                 <div className="ml-3">
-                  <div className="text-base font-medium text-white">
-                    Người dùng
-                  </div>
-                  <div className="text-sm font-medium text-slate-400">
+                  <p className="text-base font-medium text-white">Người dùng</p>
+                  <p className="text-sm font-medium text-slate-400">
                     user@example.com
-                  </div>
+                  </p>
                 </div>
               </div>
               <div className="mt-3 px-2 space-y-1">
-                <Link
-                  to="/profile"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-slate-400 hover:text-white hover:bg-slate-700"
-                  onClick={() => setIsMenuOpen(false)}
+                <button
+                  onClick={() => {
+                    openProfileModal();
+                    setIsMenuOpen(false);
+                  }}
+                  className="block w-full text-left px-3 py-2 rounded-md text-base text-slate-400 hover:text-white hover:bg-slate-700"
                 >
                   Hồ sơ
-                </Link>
-                <Link
-                  to="/settings"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-slate-400 hover:text-white hover:bg-slate-700"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Cài đặt
-                </Link>
+                </button>
                 <button
                   onClick={handleLogout}
-                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-400 hover:text-white hover:bg-red-700"
+                  className="block w-full text-left px-3 py-2 rounded-md text-base text-red-400 hover:text-white hover:bg-red-700"
                 >
                   Đăng xuất
                 </button>
@@ -244,6 +195,10 @@ const NavbarTeacher = () => {
           </div>
         )}
       </nav>
+
+      {/* Profile Modal */}
+      <ProfileModal isOpen={isProfileModalOpen} onClose={closeProfileModal} />
+
       <Outlet />
     </>
   );
