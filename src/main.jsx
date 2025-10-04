@@ -66,6 +66,27 @@ const router = createBrowserRouter([
       },
     ],
   },
+  {
+    path: "/admin",
+    element: <ProtectedRoute />,
+    children: [
+      {
+        path: "/admin",
+        element: <NavbarTeacher />,
+        children: [
+          { index: true, element: <HomePage /> },
+          { path: "homepage", element: <HomePage /> },
+          { path: "statistic", element: <Statistic /> },
+          { path: "vocabulary", element: <Vocabulary /> }, // match /teacher/vocabulary
+          { path: "test", element: <Test /> },
+          { path: "profile", element: <Profile /> },
+          { path: "userList", element: <UserList /> },
+          { path: "doTest", element: <TestDetail /> },
+          { path: "createTest", element: <CreateTest /> },
+        ],
+      },
+    ],
+  },
   { path: "login", element: <Login /> },
   { path: "signup", element: <SignUp /> },
   { path: "OTP", element: <OTP /> },

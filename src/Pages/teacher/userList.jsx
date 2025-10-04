@@ -1,21 +1,41 @@
 import React, { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, Select, message } from "antd";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  Table,
+  Button,
+  Modal,
+  Form,
+  Input,
+  Select,
+  message,
+  Card,
+  Tag,
+  Space,
+  Avatar,
+} from "antd";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 import {
   getAllUserAPI,
   createUserAPI,
   updateUserAPI,
   deleteUserAPI,
 } from "@/services/apiUser";
+import { useAuth } from "@/context/authContext";
+
+const { Option } = Select;
 
 const UserList = () => {
   const [dataSource, setDataSource] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false); // modal add/edit
+  const [open, setOpen] = useState(false);
   const [form] = Form.useForm();
   const [editingUser, setEditingUser] = useState(null);
+  const { user } = useAuth();
 
-  // fetch list
   const fetchUser = async () => {
     setLoading(true);
     try {
@@ -35,23 +55,19 @@ const UserList = () => {
     fetchUser();
   }, []);
 
-  // mở modal để thêm user
   const handleAdd = () => {
     setEditingUser(null);
     form.resetFields();
     setOpen(true);
   };
 
-  // submit form (tạo hoặc update)
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
       if (editingUser) {
-        // update
         await updateUserAPI(editingUser.idUser, values);
         message.success("Cập nhật người dùng thành công");
       } else {
-        // create
         await createUserAPI(values);
         message.success("Thêm người dùng thành công");
       }
@@ -63,23 +79,45 @@ const UserList = () => {
     }
   };
 
-  // edit user
   const handleEdit = (record) => {
     setEditingUser(record);
     form.setFieldsValue(record);
     setOpen(true);
   };
 
-  // delete user
   const handleDelete = async (record) => {
-    try {
-      await deleteUserAPI(record.idUser);
-      message.success("Xóa người dùng thành công");
-      fetchUser();
-    } catch (error) {
-      console.log(error);
-      message.error("Xóa thất bại");
+    Modal.confirm({
+      title: "Xác nhận xóa",
+      content: `Bạn có chắc chắn muốn xóa người dùng "${record.nameUser}"?`,
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          await deleteUserAPI(record.idUser);
+          message.success("Xóa người dùng thành công");
+          fetchUser();
+        } catch (error) {
+          console.log(error);
+          message.error("Xóa thất bại");
+        }
+      },
+    });
+  };
+
+  const getRoleColor = (role) => {
+    switch (role) {
+      case "ADMIN":
+        return "red";
+      case "GIAOVIEN":
+        return "blue";
+      default:
+        return "green";
     }
+  };
+
+  const getAccountTypeColor = (type) => {
+    return type === "GOOGLE" ? "orange" : "gray";
   };
 
   const columns = [
@@ -87,17 +125,22 @@ const UserList = () => {
       title: "Avatar",
       dataIndex: "avatar",
       key: "avatar",
-      render: (text) =>
-        text ? (
-          <img src={text} alt="avatar" className="w-10 h-10 rounded-full" />
-        ) : (
-          "N/A"
-        ),
+      align: "center",
+      width: 80,
+      render: (avatar) => (
+        <Avatar
+          size="large"
+          src={avatar}
+          icon={<UserOutlined />}
+          className="border border-gray-300"
+        />
+      ),
     },
     {
       title: "Tên người dùng",
       dataIndex: "nameUser",
       key: "nameUser",
+      sorter: (a, b) => a.nameUser.localeCompare(b.nameUser),
     },
     {
       title: "Email",
@@ -105,124 +148,212 @@ const UserList = () => {
       key: "email",
     },
     {
-      title: "Địa chỉ",
-      dataIndex: "address",
-      key: "address",
+      title: "Vai trò",
+      dataIndex: "role",
+      key: "role",
+      align: "center",
+      render: (role) => (
+        <Tag color={getRoleColor(role)} className="font-semibold">
+          {role}
+        </Tag>
+      ),
+      filters: [
+        { text: "ADMIN", value: "ADMIN" },
+        { text: "USER", value: "USER" },
+        { text: "GIAOVIEN", value: "GIAOVIEN" },
+      ],
+      onFilter: (value, record) => record.role === value,
+    },
+    {
+      title: "Loại tài khoản",
+      dataIndex: "accountType",
+      key: "accountType",
+      align: "center",
+      render: (type) => <Tag color={getAccountTypeColor(type)}>{type}</Tag>,
     },
     {
       title: "Số điện thoại",
       dataIndex: "phoneNumber",
       key: "phoneNumber",
+      render: (phone) => phone || "N/A",
     },
     {
-      title: "Actions",
-      key: "actions",
-      render: (_, record) => (
-        <div className="flex gap-3">
-          <EditOutlined
-            onClick={() => handleEdit(record)}
-            style={{ color: "blue" }}
-            className="cursor-pointer text-blue-600"
-          />
-          <DeleteOutlined
-            onClick={() => handleDelete(record)}
-            style={{ color: "red" }}
-            className="cursor-pointer text-red-600"
-          />
-        </div>
-      ),
+      title: "Địa chỉ",
+      dataIndex: "address",
+      key: "address",
+      ellipsis: true,
+      render: (address) => address || "N/A",
     },
+    ...(user.role === "ADMIN"
+      ? [
+          {
+            title: "Thao tác",
+            key: "actions",
+            align: "center",
+            width: 120,
+            render: (_, record) => (
+              <Space size="middle">
+                <Button
+                  type="link"
+                  icon={<EditOutlined />}
+                  onClick={() => handleEdit(record)}
+                  className="text-blue-500"
+                />
+                <Button
+                  type="link"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleDelete(record)}
+                />
+              </Space>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
-    <div className="flex flex-col items-center ml-10 mr-10 justify-center p-1">
-      <div className="my-4 text-xl font-semibold">Danh sách người dùng</div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <Card
+        className="shadow-lg rounded-xl border-0"
+        bodyStyle={{ padding: 0 }}
+      >
+        <div className="bg-white rounded-xl p-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">
+                Quản lý người dùng
+              </h1>
+              <p className="text-gray-600">
+                Tổng số người dùng: {dataSource.length}
+              </p>
+            </div>
+            {user.role === "ADMIN" && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleAdd}
+                size="large"
+                className="bg-blue-600 hover:bg-blue-700 border-0 shadow-md"
+              >
+                Thêm người dùng
+              </Button>
+            )}
+          </div>
 
-      <div className="flex flex-row justify-end items-end w-full mr-10 my-2">
-        <Button type="primary" onClick={handleAdd}>
-          Add User
-        </Button>
-      </div>
-
-      <Table
-        bordered
-        loading={loading}
-        rowKey={"idUser"}
-        pagination={{ pageSize: 8 }}
-        className="w-full m-5"
-        columns={columns}
-        dataSource={dataSource}
-      />
+          {/* Table */}
+          <Table
+            bordered
+            loading={loading}
+            rowKey={"idUser"}
+            pagination={{
+              pageSize: 8,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} của ${total} người dùng`,
+            }}
+            columns={columns}
+            dataSource={dataSource}
+            className="rounded-lg overflow-hidden"
+            scroll={{ x: 1000 }}
+          />
+        </div>
+      </Card>
 
       {/* Modal form */}
       <Modal
-        title={editingUser ? "Chỉnh sửa người dùng" : "Thêm người dùng"}
+        title={
+          <div className="text-xl font-semibold">
+            {editingUser ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
+          </div>
+        }
         open={open}
         onCancel={() => setOpen(false)}
         onOk={handleSubmit}
         okText={editingUser ? "Cập nhật" : "Tạo mới"}
+        cancelText="Hủy"
+        width={600}
+        styles={{
+          body: { padding: "24px 0" },
+        }}
       >
-        <Form form={form} layout="vertical">
-          <Form.Item label="Avatar" name="avatar">
-            <Input placeholder="http://example.com/avatar.jpg" />
-          </Form.Item>
-          <Form.Item
-            label="Tên người dùng"
-            name="nameUser"
-            rules={[{ required: true, message: "Nhập tên người dùng" }]}
-          >
-            <Input />
-          </Form.Item>
+        <Form
+          form={form}
+          layout="vertical"
+          className="px-1"
+          requiredMark="optional"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Form.Item
+              label="Tên người dùng"
+              name="nameUser"
+              rules={[
+                { required: true, message: "Vui lòng nhập tên người dùng" },
+              ]}
+            >
+              <Input size="large" placeholder="Nhập tên người dùng" />
+            </Form.Item>
 
-          <Form.Item
-            label="Email"
-            name="email"
-            rules={[
-              { required: true, type: "email", message: "Email không hợp lệ" },
-            ]}
-          >
-            <Input />
-          </Form.Item>
+            <Form.Item
+              label="Email"
+              name="email"
+              rules={[
+                {
+                  required: true,
+                  type: "email",
+                  message: "Email không hợp lệ",
+                },
+              ]}
+            >
+              <Input size="large" placeholder="Nhập địa chỉ email" />
+            </Form.Item>
+          </div>
 
           {!editingUser && (
             <Form.Item
-              label="Password"
+              label="Mật khẩu"
               name="password"
-              rules={[{ required: true, message: "Nhập mật khẩu" }]}
+              rules={[{ required: true, message: "Vui lòng nhập mật khẩu" }]}
             >
-              <Input.Password />
+              <Input.Password size="large" placeholder="Nhập mật khẩu" />
             </Form.Item>
           )}
 
-          <Form.Item label="Số điện thoại" name="phoneNumber">
-            <Input />
-          </Form.Item>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Form.Item label="Số điện thoại" name="phoneNumber">
+              <Input size="large" placeholder="Nhập số điện thoại" />
+            </Form.Item>
 
-          <Form.Item label="Địa chỉ" name="address">
-            <Input />
-          </Form.Item>
+            <Form.Item label="Địa chỉ" name="address">
+              <Input size="large" placeholder="Nhập địa chỉ" />
+            </Form.Item>
+          </div>
 
-          <Form.Item label="Role" name="role" initialValue="USER">
-            <Select
-              options={[
-                { value: "USER", label: "USER" },
-                { value: "ADMIN", label: "ADMIN" },
-                { value: "GIAOVIEN", label: "GIAOVIEN" },
-              ]}
-            />
-          </Form.Item>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Form.Item label="Vai trò" name="role" initialValue="USER">
+              <Select size="large">
+                <Option value="USER">USER</Option>
+                <Option value="ADMIN">ADMIN</Option>
+                <Option value="GIAOVIEN">GIÁO VIÊN</Option>
+              </Select>
+            </Form.Item>
 
-          <Form.Item
-            label="Account Type"
-            name="accountType"
-            initialValue="LOCAL"
-          >
-            <Select
-              options={[
-                { value: "LOCAL", label: "LOCAL" },
-                { value: "GOOGLE", label: "GOOGLE" },
-              ]}
-            />
+            <Form.Item
+              label="Loại tài khoản"
+              name="accountType"
+              initialValue="LOCAL"
+            >
+              <Select size="large">
+                <Option value="LOCAL">LOCAL</Option>
+                <Option value="GOOGLE">GOOGLE</Option>
+              </Select>
+            </Form.Item>
+          </div>
+
+          <Form.Item label="Avatar URL" name="avatar">
+            <Input size="large" placeholder="https://example.com/avatar.jpg" />
           </Form.Item>
         </Form>
       </Modal>
