@@ -1,50 +1,48 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { introspectAPI } from "@/services/apiAuth";
-
+import Cookies from "js-cookie";
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-const [user, setUser] = useState(
-  localStorage.getItem("user") 
-    ? JSON.parse(localStorage.getItem("user")) 
-    : ""
-);  const [isAuth, setIsAuth] = useState(null); 
+  const [user, setUser] = useState(
+    Cookies.get("user") ? JSON.parse(Cookies.get("user")) : ""
+  );
+  const [isAuth, setIsAuth] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-  const checkAuth = async () => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      setIsAuth(false);
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const res = await introspectAPI(token);
-      if (res?.data?.active) {
-        const storedUser = localStorage.getItem("user");
-        setIsAuth(true);
-        setUser(storedUser ? JSON.parse(storedUser) : null);
-      } else {
+    const checkAuth = async () => {
+      const token = Cookies.get("accessToken");
+      if (!token) {
         setIsAuth(false);
         setUser(null);
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("user");
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      setIsAuth(false);
-      setUser(null);
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("user");
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  checkAuth();
-}, []);
+      try {
+        const res = await introspectAPI(token);
+        if (res?.data?.active) {
+          const storedUser = Cookies.get("user");
+          setIsAuth(true);
+          setUser(storedUser ? JSON.parse(storedUser) : null);
+        } else {
+          setIsAuth(false);
+          setUser(null);
+          Cookies.remove("accessToken");
+          Cookies.remove("user");
+        }
+      } catch (error) {
+        setIsAuth(false);
+        setUser(null);
+        Cookies.remove("accessToken");
+        Cookies.remove("user");
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    checkAuth();
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, isAuth, loading, setUser, setIsAuth }}>

@@ -8,6 +8,7 @@ import API from "@/services/axios.custom";
 import { loginAPI } from "@/services/apiAuth";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/context/authContext";
+import Cookies from "js-cookie";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -28,14 +29,13 @@ const Login = () => {
 
     if (token && userParam) {
       const user = JSON.parse(decodeURIComponent(userParam));
-      localStorage.setItem("accessToken", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      Cookies.set("accessToken", token);
+      Cookies.set("user", JSON.stringify(user));
       console.log("user:", user);
       console.log("token:", token);
-
-      navigate("/");
       setUser(user);
       setIsAuth(true);
+      navigate("/");
     }
   }, []);
 
@@ -55,13 +55,11 @@ const Login = () => {
       const user = res?.data?.data?.user;
 
       if (token) {
-        localStorage.setItem("accessToken", token); // 🚀 thống nhất dùng accessToken
-        localStorage.setItem("user", JSON.stringify(user));
+        Cookies.set("accessToken", token); // 🚀 thống nhất dùng accessToken
+        Cookies.set("user", JSON.stringify(user));
         setUser(user);
         setIsAuth(true);
         navigate("/");
-        setUser(user);
-        setIsAuth(true);
       } else {
         alert("Login thất bại: không tìm thấy token");
       }
