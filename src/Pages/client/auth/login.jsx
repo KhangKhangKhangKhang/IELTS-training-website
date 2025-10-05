@@ -26,11 +26,13 @@ const Login = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get("token");
     const userParam = urlParams.get("user");
+    const refreshToken = urlParams.get("refreshToken");
 
     if (token && userParam) {
       const user = JSON.parse(decodeURIComponent(userParam));
       Cookies.set("accessToken", token);
       Cookies.set("user", JSON.stringify(user));
+      Cookies.set("refreshToken", refreshToken);
       console.log("user:", user);
       console.log("token:", token);
       setUser(user);
@@ -57,6 +59,7 @@ const Login = () => {
       if (token) {
         Cookies.set("accessToken", token); // 🚀 thống nhất dùng accessToken
         Cookies.set("user", JSON.stringify(user));
+        Cookies.set("refreshToken", res?.data?.data?.refresh_token);
         setUser(user);
         setIsAuth(true);
         navigate("/");
