@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, BookOpen, Sparkles } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  BookOpen,
+  Sparkles,
+  AlertTriangle,
+} from "lucide-react";
 import {
   createTopicAPI,
   updateTopicAPI,
@@ -87,18 +95,22 @@ const Vocabulary = () => {
     return () => clearTimeout(timer);
   }, [newVocabulary.word, showAddVocabulary]);
 
+  // Hàm áp dụng gợi ý - CẬP NHẬT để bao gồm cả loại từ và level
   const applySuggestion = () => {
     if (suggestion) {
       setNewVocabulary((prev) => ({
         ...prev,
-        phonetic: suggestion.phonetic || "",
-        meaning: suggestion.meaning || "",
-        example: suggestion.example || "",
+        loaiTuVung: suggestion.loaiTuVung || prev.loaiTuVung,
+        phonetic: suggestion.phonetic || prev.phonetic,
+        meaning: suggestion.meaning || prev.meaning,
+        example: suggestion.example || prev.example,
+        level: suggestion.level || prev.level,
       }));
       setSuggestion(null);
     }
   };
 
+  // ============= CÁC HÀM XỬ LÝ KHÁC GIỮ NGUYÊN =============
   const handleAddTopic = async () => {
     if (!newTopic.trim()) {
       setValidationErrors({
@@ -617,6 +629,7 @@ const Vocabulary = () => {
           </div>
         )}
 
+        {/* Modal Add Vocabulary - ĐÃ CẬP NHẬT VỚI GỢI Ý ĐẦY ĐỦ */}
         {showAddVocabulary && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
@@ -669,8 +682,20 @@ const Vocabulary = () => {
                     )}
                 </div>
 
+                {/* Hiển thị gợi ý - ĐÃ CẬP NHẬT VỚI LOẠI TỪ VÀ LEVEL */}
                 {suggestion && (
                   <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                    <div className="flex items-start mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <AlertTriangle
+                        className="text-yellow-500 mr-2 mt-0.5 flex-shrink-0"
+                        size={16}
+                      />
+                      <p className="text-xs text-yellow-700">
+                        <span className="font-medium">Lưu ý:</span> Gợi ý từ AI
+                        có thể không chính xác 100%. Vui lòng kiểm tra lại thông
+                        tin trước khi lưu.
+                      </p>
+                    </div>
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-sm font-medium text-blue-800">
                         💡 Gợi ý từ AI
@@ -679,12 +704,31 @@ const Vocabulary = () => {
                         onClick={applySuggestion}
                         className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
                       >
-                        Áp dụng
+                        Áp dụng tất cả
                       </button>
                     </div>
 
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {suggestion.loaiTuVung && (
+                        <div>
+                          <span className="text-xs text-blue-600 font-medium">
+                            Loại từ:{" "}
+                          </span>
+                          <span>{suggestion.loaiTuVung}</span>
+                        </div>
+                      )}
+                      {suggestion.level && (
+                        <div>
+                          <span className="text-xs text-blue-600 font-medium">
+                            Level:{" "}
+                          </span>
+                          <span>{suggestion.level}</span>
+                        </div>
+                      )}
+                    </div>
+
                     {suggestion.phonetic && (
-                      <div className="mb-1">
+                      <div className="mt-2">
                         <span className="text-xs text-blue-600 font-medium">
                           Phát âm:{" "}
                         </span>
@@ -693,7 +737,7 @@ const Vocabulary = () => {
                     )}
 
                     {suggestion.meaning && (
-                      <div className="mb-1">
+                      <div className="mt-2">
                         <span className="text-xs text-blue-600 font-medium">
                           Nghĩa:{" "}
                         </span>
@@ -702,7 +746,7 @@ const Vocabulary = () => {
                     )}
 
                     {suggestion.example && (
-                      <div>
+                      <div className="mt-2">
                         <span className="text-xs text-blue-600 font-medium">
                           Ví dụ:{" "}
                         </span>
@@ -748,6 +792,7 @@ const Vocabulary = () => {
                     <option value="IDIOM">Idiom</option>
                     <option value="PREPOSITION">Preposition</option>
                     <option value="CONJUNCTION">Conjunction</option>
+                    <option value="INTERJECTION">Interjection</option>
                   </select>
                 </div>
 
@@ -871,6 +916,7 @@ const Vocabulary = () => {
           </div>
         )}
 
+        {/* Modal Edit Vocabulary - GIỮ NGUYÊN */}
         {showEditVocabulary && vocabToEdit && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -936,6 +982,7 @@ const Vocabulary = () => {
                     <option value="IDIOM">Idiom</option>
                     <option value="PREPOSITION">Preposition</option>
                     <option value="CONJUNCTION">Conjunction</option>
+                    <option value="INTERJECTION">Interjection</option>
                   </select>
                 </div>
 
