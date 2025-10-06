@@ -1,7 +1,7 @@
 // ProfileModal.jsx
 import React, { useState, useEffect } from "react";
-import { X, Camera, User } from "lucide-react"; // Thêm User vào import
-import { userProfileAPI } from "@/services/apiUser";
+import { X, Camera, User } from "lucide-react";
+import { userProfileAPI, updateUserAPI } from "@/services/apiUser";
 import { useAuth } from "@/context/authContext";
 
 const ProfileModal = ({ isOpen, onClose }) => {
@@ -11,28 +11,36 @@ const ProfileModal = ({ isOpen, onClose }) => {
     phone: "",
     address: "",
     avatar: "",
+    avatarFile: null,
+    gender: "Male", // mặc định
+    level: "Low", // mặc định
   });
   const { user } = useAuth();
-
   const [errors, setErrors] = useState({});
+
+  // ✅ Load thông tin user
   useEffect(() => {
     if (isOpen && user.idUser) {
       userProfileAPI(user.idUser)
         .then((res) => {
-          const data = res.data; // từ response
-          setFormData({
+          const data = res.data;
+          setFormData((prev) => ({
+            ...prev,
             fullName: data.nameUser || "",
             email: data.email || "",
             phone: data.phoneNumber || "",
             address: data.address || "",
             avatar: data.avatar || "",
-          });
+            avatarFile: null,
+            gender: data.gender || "Male",
+            level: data.level || "Low",
+          }));
         })
         .catch((err) => {
           console.error("Lỗi load user:", err);
         });
     }
-  }, [isOpen, user.id]);
+  }, [isOpen, user.idUser]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -41,7 +49,6 @@ const ProfileModal = ({ isOpen, onClose }) => {
       [name]: value,
     }));
 
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -52,24 +59,60 @@ const ProfileModal = ({ isOpen, onClose }) => {
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.email) {
       newErrors.email = "Email là bắt buộc";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email không hợp lệ";
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  // ✅ Submit update
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      // Xử lý lưu thông tin ở đây
-      console.log("Form data:", formData);
-      // Gọi API hoặc xử lý lưu thông tin
+    if (!validateForm()) return;
+
+    try {
+      const form = new FormData();
+      form.append("nameUser", formData.fullName);
+      form.append("email", formData.email);
+      form.append("phoneNumber", formData.phone);
+      form.append("address", formData.address);
+      form.append("gender", formData.gender);
+      form.append("level", formData.level);
+
+      if (formData.avatarFile) {
+        form.append("avatar", formData.avatarFile);
+      }
+
+      await updateUserAPI(user.idUser, form);
+
+      alert("Cập nhật thông tin thành công!");
       onClose();
+    } catch (error) {
+      console.error("Lỗi cập nhật thông tin:", error);
+      console.log("Dữ liệu gửi đi:", formData);
+      alert("Có lỗi xảy ra khi cập nhật.");
+    }
+  };
+
+  // ✅ Avatar preview
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData((prev) => ({
+        ...prev,
+        avatarFile: file,
+      }));
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setFormData((prev) => ({
+          ...prev,
+          avatar: ev.target.result,
+        }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -78,20 +121,6 @@ const ProfileModal = ({ isOpen, onClose }) => {
       ...prev,
       [field]: "",
     }));
-  };
-
-  const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setFormData((prev) => ({
-          ...prev,
-          avatar: e.target.result,
-        }));
-      };
-      reader.readAsDataURL(file);
-    }
   };
 
   if (!isOpen) return null;
@@ -149,24 +178,13 @@ const ProfileModal = ({ isOpen, onClose }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Họ và tên
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              {formData.fullName && (
-                <button
-                  type="button"
-                  onClick={() => handleDelete("fullName")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+            <input
+              type="text"
+              name="fullName"
+              value={formData.fullName}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
           {/* Email */}
@@ -174,26 +192,15 @@ const ProfileModal = ({ isOpen, onClose }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email *
             </label>
-            <div className="relative">
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.email ? "border-red-500" : "border-gray-300"
-                }`}
-              />
-              {formData.email && (
-                <button
-                  type="button"
-                  onClick={() => handleDelete("email")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.email ? "border-red-500" : "border-gray-300"
+              }`}
+            />
             {errors.email && (
               <p className="mt-1 text-sm text-red-600">{errors.email}</p>
             )}
@@ -204,24 +211,13 @@ const ProfileModal = ({ isOpen, onClose }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Số điện thoại
             </label>
-            <div className="relative">
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              {formData.phone && (
-                <button
-                  type="button"
-                  onClick={() => handleDelete("phone")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
           {/* Address */}
@@ -229,24 +225,46 @@ const ProfileModal = ({ isOpen, onClose }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Địa chỉ
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              {formData.address && (
-                <button
-                  type="button"
-                  onClick={() => handleDelete("address")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+            <input
+              type="text"
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Gender */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Giới tính
+            </label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Male">Nam</option>
+              <option value="Female">Nữ</option>
+            </select>
+          </div>
+
+          {/* Level */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Trình độ
+            </label>
+            <select
+              name="level"
+              value={formData.level}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Low">Thấp</option>
+              <option value="Mid">Trung bình</option>
+              <option value="High">Cao</option>
+            </select>
           </div>
 
           {/* Buttons */}
@@ -254,13 +272,13 @@ const ProfileModal = ({ isOpen, onClose }) => {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
             >
               Huỷ
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
             >
               Lưu thông tin
             </button>
