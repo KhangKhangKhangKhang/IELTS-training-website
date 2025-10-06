@@ -1,5 +1,5 @@
-import React, { useContext, useState } from "react";
-import { Plus, Search, Edit, Trash2, BookOpen } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Search, Edit, Trash2, BookOpen, Sparkles } from "lucide-react";
 import {
   createTopicAPI,
   updateTopicAPI,
@@ -8,13 +8,13 @@ import {
   getVocabAPI,
   deleteVocabAPI,
   updateVocabAPI,
+  suggestVocabAPI,
 } from "../../services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import { getTopicsByUserAPI } from "@/services/apiVocab";
-import { useEffect } from "react";
 
 const Vocabulary = () => {
-  const { user, loading, isAuth } = useAuth();
+  const { user } = useAuth();
   const [topics, setTopics] = useState([]);
   const [vocabularies, setVocabularies] = useState([]);
   const [loadingTopics, setLoadingTopics] = useState(false);
@@ -29,16 +29,20 @@ const Vocabulary = () => {
     phonetic: "",
     meaning: "",
     example: "",
+    level: "Low",
   });
   const [showAddVocabulary, setShowAddVocabulary] = useState(false);
   const [showEditVocabulary, setShowEditVocabulary] = useState(false);
   const [vocabToEdit, setVocabToEdit] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // State mới để quản lý lỗi validation
+
+  // State cho tính năng suggest
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestion, setSuggestion] = useState(null);
+
   const [validationErrors, setValidationErrors] = useState({
     topic: "",
-    vocabulary: ""
+    vocabulary: "",
   });
 
   useEffect(() => {
@@ -59,16 +63,51 @@ const Vocabulary = () => {
 
     fetchTopics();
   }, [user?.idUser]);
-  
 
-  // ============= TOPIC HANDLERS =============
-  const handleAddTopic = async () => {
-    // Kiểm tra validation
-    if (!newTopic.trim()) {
-      setValidationErrors({ ...validationErrors, topic: "Vui lòng nhập tên chủ đề" });
+  // Effect cho suggest từ vựng
+  useEffect(() => {
+    if (!showAddVocabulary || newVocabulary.word.trim().length < 2) {
+      setSuggestion(null);
       return;
     }
-    
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsSuggesting(true);
+        const word = newVocabulary.word.trim();
+        const res = await suggestVocabAPI(word);
+        setSuggestion(res);
+      } catch (error) {
+        console.error("Failed to get suggestion:", error);
+      } finally {
+        setIsSuggesting(false);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [newVocabulary.word, showAddVocabulary]);
+
+  const applySuggestion = () => {
+    if (suggestion) {
+      setNewVocabulary((prev) => ({
+        ...prev,
+        phonetic: suggestion.phonetic || "",
+        meaning: suggestion.meaning || "",
+        example: suggestion.example || "",
+      }));
+      setSuggestion(null);
+    }
+  };
+
+  const handleAddTopic = async () => {
+    if (!newTopic.trim()) {
+      setValidationErrors({
+        ...validationErrors,
+        topic: "Vui lòng nhập tên chủ đề",
+      });
+      return;
+    }
+
     try {
       const res = await createTopicAPI({
         nameTopic: newTopic,
@@ -77,11 +116,9 @@ const Vocabulary = () => {
       setTopics((prev) => [...prev, res.data]);
       setShowAddTopic(false);
       setNewTopic("");
-      setValidationErrors({ ...validationErrors, topic: "" }); // Reset lỗi
-      console.log("Topic created:", res);
+      setValidationErrors({ ...validationErrors, topic: "" });
     } catch (error) {
       console.error("Failed to create topic:", error);
-      console.log(error.response?.data.message)
       setError("Không thể tạo chủ đề mới");
     }
   };
@@ -98,7 +135,6 @@ const Vocabulary = () => {
     try {
       await deleteTopicAPI(topicId);
       setTopics((prev) => prev.filter((t) => t.idTopic !== topicId));
-      console.log("Topic deleted:", topicId);
     } catch (error) {
       console.error("Failed to delete topic:", error);
       setError("Không thể xóa chủ đề");
@@ -107,13 +143,15 @@ const Vocabulary = () => {
 
   const handleEditTopic = async () => {
     if (!topicToEdit) return;
-    
-    // Kiểm tra validation
+
     if (!topicToEdit.nameTopic.trim()) {
-      setValidationErrors({ ...validationErrors, topic: "Vui lòng nhập tên chủ đề" });
+      setValidationErrors({
+        ...validationErrors,
+        topic: "Vui lòng nhập tên chủ đề",
+      });
       return;
     }
-    
+
     try {
       const res = await updateTopicAPI(topicToEdit.idTopic, {
         nameTopic: topicToEdit.nameTopic,
@@ -127,10 +165,9 @@ const Vocabulary = () => {
             : t
         )
       );
-      console.log("Topic updated:", res);
       setShowEditTopic(false);
       setTopicToEdit(null);
-      setValidationErrors({ ...validationErrors, topic: "" }); // Reset lỗi
+      setValidationErrors({ ...validationErrors, topic: "" });
     } catch (error) {
       console.error("Failed to update topic:", error);
       setError("Không thể cập nhật chủ đề");
@@ -152,7 +189,6 @@ const Vocabulary = () => {
     }
   };
 
-  // ============= VOCABULARY HANDLERS =============
   const handleAddVocabulary = async () => {
     if (!selectedTopic) {
       setError("Vui lòng chọn một chủ đề trước khi thêm từ vựng");
@@ -162,14 +198,13 @@ const Vocabulary = () => {
       setError("Không thể xác định người dùng. Vui lòng đăng nhập lại.");
       return;
     }
-    
-    // Kiểm tra validation
+
     const vocabErrors = validateVocabulary(newVocabulary);
     if (vocabErrors) {
       setValidationErrors({ ...validationErrors, vocabulary: vocabErrors });
       return;
     }
-    
+
     try {
       const res = await createVocabAPI({
         idUser: user.idUser,
@@ -179,23 +214,26 @@ const Vocabulary = () => {
         meaning: newVocabulary.meaning,
         example: newVocabulary.example,
         loaiTuVung: newVocabulary.loaiTuVung,
-      })
+        level: newVocabulary.level,
+      });
       setVocabularies((prev) => [...prev, res.data]);
       setShowAddVocabulary(false);
-      setSearchTerm(""); // Reset search term
+      setSearchTerm("");
       setNewVocabulary({
         word: "",
         loaiTuVung: "",
         phonetic: "",
         meaning: "",
         example: "",
+        level: "Low",
       });
-      setValidationErrors({ ...validationErrors, vocabulary: "" }); // Reset lỗi
-      console.log("Vocabulary added:", res);
+      setSuggestion(null);
+      setValidationErrors({ ...validationErrors, vocabulary: "" });
     } catch (error) {
-      console.error("Error adding vocabulary:", error.response?.data || error.message);
-      console.log("user.idUser:", user.idUser);
-      console.log("selectedTopic:", selectedTopic);
+      console.error(
+        "Error adding vocabulary:",
+        error.response?.data || error.message
+      );
       setError(error.response?.data?.message || "Không thể thêm từ vựng");
     }
   };
@@ -206,7 +244,6 @@ const Vocabulary = () => {
     try {
       await deleteVocabAPI(id, user.idUser);
       setVocabularies((prev) => prev.filter((v) => v.idTuVung !== id));
-      console.log("Vocab deleted:", id);
     } catch (err) {
       console.error("Failed to delete vocabulary:", err);
       setError("Không thể xóa từ vựng");
@@ -216,7 +253,6 @@ const Vocabulary = () => {
   const handleEditVocabulary = async () => {
     if (!vocabToEdit) return;
 
-    // Kiểm tra validation
     const vocabErrors = validateVocabulary(vocabToEdit);
     if (vocabErrors) {
       setValidationErrors({ ...validationErrors, vocabulary: vocabErrors });
@@ -225,65 +261,59 @@ const Vocabulary = () => {
 
     try {
       const res = await updateVocabAPI(vocabToEdit.idTuVung, {
-        idUser: user.idUser,                  // lấy từ context
-        idTopic: selectedTopic.idTopic,       // lấy từ chủ đề đang chọn
+        idUser: user.idUser,
+        idTopic: selectedTopic.idTopic,
         word: vocabToEdit.word,
         phonetic: vocabToEdit.phonetic,
         meaning: vocabToEdit.meaning,
         example: vocabToEdit.example,
         loaiTuVung: vocabToEdit.loaiTuVung,
+        level: vocabToEdit.level,
       });
 
-      // Cập nhật state vocabularies
       setVocabularies((prev) =>
         prev.map((v) =>
-          v.idTuVung === vocabToEdit.idTuVung
-            ? { ...v, ...vocabToEdit }
-            : v
+          v.idTuVung === vocabToEdit.idTuVung ? { ...v, ...vocabToEdit } : v
         )
       );
-
-      console.log("Vocabulary updated:", res);
       setShowEditVocabulary(false);
       setVocabToEdit(null);
-      setValidationErrors({ ...validationErrors, vocabulary: "" }); // Reset lỗi
+      setValidationErrors({ ...validationErrors, vocabulary: "" });
     } catch (error) {
       console.error("Failed to update vocabulary:", error);
       setError("Không thể cập nhật từ vựng");
     }
   };
 
-  // Hàm validation cho từ vựng - 
   const validateVocabulary = (vocab) => {
     const errors = [];
-    if (!vocab.word.trim()) {
-      errors.push("từ vựng");
-    }
-    if (!vocab.meaning.trim()) {
-      errors.push("nghĩa");
-    }
-    if (!vocab.loaiTuVung.trim()) {
-      errors.push("loại từ");
-    }
-    
+    if (!vocab.word.trim()) errors.push("từ vựng");
+    if (!vocab.meaning.trim()) errors.push("nghĩa");
+    if (!vocab.loaiTuVung.trim()) errors.push("loại từ");
+
     if (errors.length > 0) {
       return `Vui lòng nhập ${errors.join(", ")}`;
     }
     return null;
   };
 
-  // Hàm reset lỗi khi đóng modal
   const resetValidationErrors = () => {
     setValidationErrors({ topic: "", vocabulary: "" });
   };
 
-  // ============= FILTERING =============
+  const handleCloseAddVocabulary = () => {
+    setShowAddVocabulary(false);
+    setSuggestion(null);
+    setIsSuggesting(false);
+    resetValidationErrors();
+  };
+
   const selectedTopic = topics.find((topic) => topic.isSelected);
   const filteredVocabularies = selectedTopic
     ? vocabularies.filter(
         (vocab) =>
           vocab.idTopic === selectedTopic.idTopic &&
-          (vocab.word.toLowerCase().includes(searchTerm.toLowerCase()) )
+          vocab.word.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : [];
 
@@ -306,14 +336,13 @@ const Vocabulary = () => {
           </div>
         )}
 
-        {/* Header: Topics */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-slate-700">Chủ đề</h2>
             <div className="flex space-x-2">
               <button
                 onClick={() => setShowAddTopic(true)}
-                className="bg-slate-700 hover:cursor-pointer hover:bg-slate-600 text-white p-2 rounded-full transition-colors"
+                className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-full transition-colors"
                 title="Thêm chủ đề mới"
               >
                 <Plus size={18} />
@@ -326,7 +355,7 @@ const Vocabulary = () => {
               <div key={topic.idTopic} className="relative group">
                 <button
                   onClick={() => handleSelectTopic(topic.idTopic)}
-                  className={`px-4 py-2 rounded-full hover:cursor-pointer text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     topic.isSelected
                       ? "bg-slate-800 text-white"
                       : "bg-slate-200 text-slate-700 hover:bg-slate-300"
@@ -335,7 +364,6 @@ const Vocabulary = () => {
                   {topic.nameTopic}
                 </button>
 
-                {/* Action buttons that appear on hover */}
                 <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
                   <button
                     onClick={(e) => {
@@ -343,7 +371,7 @@ const Vocabulary = () => {
                       setTopicToEdit(topic);
                       setShowEditTopic(true);
                     }}
-                    className="bg-blue-500 text-white hover:cursor-pointer p-1 rounded-full hover:bg-blue-600 transition-colors"
+                    className="bg-blue-500 text-white p-1 rounded-full hover:bg-blue-600 transition-colors"
                     title="Chỉnh sửa chủ đề"
                   >
                     <Edit size={12} />
@@ -370,7 +398,6 @@ const Vocabulary = () => {
           </div>
         </div>
 
-        {/* Modal Add Topic */}
         {showAddTopic && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-96">
@@ -380,7 +407,6 @@ const Vocabulary = () => {
                 value={newTopic}
                 onChange={(e) => {
                   setNewTopic(e.target.value);
-                  // Clear error khi người dùng bắt đầu nhập
                   if (validationErrors.topic) {
                     setValidationErrors({ ...validationErrors, topic: "" });
                   }
@@ -393,7 +419,9 @@ const Vocabulary = () => {
                 onKeyPress={(e) => e.key === "Enter" && handleAddTopic()}
               />
               {validationErrors.topic && (
-                <p className="text-red-500 text-sm mb-3">{validationErrors.topic}</p>
+                <p className="text-red-500 text-sm mb-3">
+                  {validationErrors.topic}
+                </p>
               )}
               <div className="flex justify-end space-x-2">
                 <button
@@ -416,7 +444,6 @@ const Vocabulary = () => {
           </div>
         )}
 
-        {/* Modal Edit Topic */}
         {showEditTopic && topicToEdit && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-96">
@@ -426,7 +453,6 @@ const Vocabulary = () => {
                 value={topicToEdit.nameTopic}
                 onChange={(e) => {
                   setTopicToEdit({ ...topicToEdit, nameTopic: e.target.value });
-                  // Clear error khi người dùng bắt đầu nhập
                   if (validationErrors.topic) {
                     setValidationErrors({ ...validationErrors, topic: "" });
                   }
@@ -438,7 +464,9 @@ const Vocabulary = () => {
                 onKeyPress={(e) => e.key === "Enter" && handleEditTopic()}
               />
               {validationErrors.topic && (
-                <p className="text-red-500 text-sm mb-3">{validationErrors.topic}</p>
+                <p className="text-red-500 text-sm mb-3">
+                  {validationErrors.topic}
+                </p>
               )}
               <div className="flex justify-end space-x-2">
                 <button
@@ -461,7 +489,6 @@ const Vocabulary = () => {
           </div>
         )}
 
-        {/* Bảng từ vựng */}
         {selectedTopic && (
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex justify-between items-center mb-6">
@@ -484,9 +511,9 @@ const Vocabulary = () => {
                 </div>
                 <button
                   onClick={() => setShowAddVocabulary(true)}
-                  className="bg-slate-800 hover:cursor-pointer hover:bg-slate-700 text-white px-4 py-2 rounded-md flex items-center transition-colors"
+                  className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md flex items-center transition-colors"
                 >
-                  <Plus size={18} className="mr-1 " /> Thêm từ
+                  <Plus size={18} className="mr-1" /> Thêm từ
                 </button>
               </div>
             </div>
@@ -501,6 +528,9 @@ const Vocabulary = () => {
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                         Loại từ
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                        Level
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
                         Phonetic
@@ -518,12 +548,15 @@ const Vocabulary = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
                     {filteredVocabularies.map((vocab, index) => (
-                        <tr key={`temp-${index}`}>
+                      <tr key={vocab.idTuVung || `temp-${index}`}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                           {vocab.word}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
                           {vocab.loaiTuVung}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                          {vocab.level}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
                           {vocab.phonetic}
@@ -567,7 +600,7 @@ const Vocabulary = () => {
                 <p>Chưa có từ vựng nào trong chủ đề này.</p>
                 <button
                   onClick={() => setShowAddVocabulary(true)}
-                  className="mt-4 text-slate-800 hover:text-slate-600 underline hover:cursor-pointer"
+                  className="mt-4 text-slate-800 hover:text-slate-600 underline"
                 >
                   Thêm từ vựng đầu tiên
                 </button>
@@ -584,36 +617,102 @@ const Vocabulary = () => {
           </div>
         )}
 
-        {/* Modal Add Vocabulary - */}
         {showAddVocabulary && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h3 className="text-lg font-semibold mb-4">Thêm từ vựng mới</h3>
+            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <Sparkles className="mr-2 text-yellow-500" size={20} />
+                Thêm từ vựng mới
+              </h3>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Từ vựng *
                   </label>
-                  <input
-                    type="text"
-                    value={newVocabulary.word}
-                    onChange={(e) => {
-                      setNewVocabulary({
-                        ...newVocabulary,
-                        word: e.target.value,
-                      });
-                      // Clear error khi người dùng bắt đầu nhập
-                      if (validationErrors.vocabulary) {
-                        setValidationErrors({ ...validationErrors, vocabulary: "" });
-                      }
-                    }}
-                    className={`w-full p-2 border rounded-md ${
-                      validationErrors.vocabulary && !newVocabulary.word.trim() ? "border-red-500" : "border-slate-300"
-                    }`}
-                    autoFocus
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={newVocabulary.word}
+                      onChange={(e) => {
+                        setNewVocabulary({
+                          ...newVocabulary,
+                          word: e.target.value,
+                        });
+                        if (validationErrors.vocabulary) {
+                          setValidationErrors({
+                            ...validationErrors,
+                            vocabulary: "",
+                          });
+                        }
+                      }}
+                      className={`w-full p-2 border rounded-md pr-10 ${
+                        validationErrors.vocabulary &&
+                        !newVocabulary.word.trim()
+                          ? "border-red-500"
+                          : "border-slate-300"
+                      }`}
+                      placeholder="Nhập từ vựng..."
+                      autoFocus
+                    />
+                    {isSuggesting && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                      </div>
+                    )}
+                  </div>
+                  {newVocabulary.word.length > 0 &&
+                    newVocabulary.word.length < 2 && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Nhập ít nhất 2 ký tự để gợi ý
+                      </p>
+                    )}
                 </div>
+
+                {suggestion && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-sm font-medium text-blue-800">
+                        💡 Gợi ý từ AI
+                      </span>
+                      <button
+                        onClick={applySuggestion}
+                        className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                      >
+                        Áp dụng
+                      </button>
+                    </div>
+
+                    {suggestion.phonetic && (
+                      <div className="mb-1">
+                        <span className="text-xs text-blue-600 font-medium">
+                          Phát âm:{" "}
+                        </span>
+                        <span className="text-sm">{suggestion.phonetic}</span>
+                      </div>
+                    )}
+
+                    {suggestion.meaning && (
+                      <div className="mb-1">
+                        <span className="text-xs text-blue-600 font-medium">
+                          Nghĩa:{" "}
+                        </span>
+                        <span className="text-sm">{suggestion.meaning}</span>
+                      </div>
+                    )}
+
+                    {suggestion.example && (
+                      <div>
+                        <span className="text-xs text-blue-600 font-medium">
+                          Ví dụ:{" "}
+                        </span>
+                        <span className="text-sm italic">
+                          "{suggestion.example}"
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -626,13 +725,18 @@ const Vocabulary = () => {
                         ...newVocabulary,
                         loaiTuVung: e.target.value,
                       });
-                      // Clear error khi người dùng bắt đầu chọn
                       if (validationErrors.vocabulary) {
-                        setValidationErrors({ ...validationErrors, vocabulary: "" });
+                        setValidationErrors({
+                          ...validationErrors,
+                          vocabulary: "",
+                        });
                       }
                     }}
                     className={`w-full p-2 border rounded-md ${
-                      validationErrors.vocabulary && !newVocabulary.loaiTuVung.trim() ? "border-red-500" : "border-slate-300"
+                      validationErrors.vocabulary &&
+                      !newVocabulary.loaiTuVung.trim()
+                        ? "border-red-500"
+                        : "border-slate-300"
                     }`}
                   >
                     <option value="">Chọn loại từ</option>
@@ -644,6 +748,26 @@ const Vocabulary = () => {
                     <option value="IDIOM">Idiom</option>
                     <option value="PREPOSITION">Preposition</option>
                     <option value="CONJUNCTION">Conjunction</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Level
+                  </label>
+                  <select
+                    value={newVocabulary.level}
+                    onChange={(e) =>
+                      setNewVocabulary({
+                        ...newVocabulary,
+                        level: e.target.value,
+                      })
+                    }
+                    className="w-full p-2 border border-slate-300 rounded-md"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Mid">Mid</option>
+                    <option value="High">High</option>
                   </select>
                 </div>
 
@@ -677,13 +801,18 @@ const Vocabulary = () => {
                         ...newVocabulary,
                         meaning: e.target.value,
                       });
-                      // Clear error khi người dùng bắt đầu nhập
                       if (validationErrors.vocabulary) {
-                        setValidationErrors({ ...validationErrors, vocabulary: "" });
+                        setValidationErrors({
+                          ...validationErrors,
+                          vocabulary: "",
+                        });
                       }
                     }}
                     className={`w-full p-2 border rounded-md ${
-                      validationErrors.vocabulary && !newVocabulary.meaning.trim() ? "border-red-500" : "border-slate-300"
+                      validationErrors.vocabulary &&
+                      !newVocabulary.meaning.trim()
+                        ? "border-red-500"
+                        : "border-slate-300"
                     }`}
                   />
                 </div>
@@ -702,20 +831,20 @@ const Vocabulary = () => {
                     }
                     className="w-full p-2 border border-slate-300 rounded-md"
                     rows="2"
+                    placeholder="Nhập câu ví dụ..."
                   />
                 </div>
               </div>
 
               {validationErrors.vocabulary && (
-                <p className="text-red-500 text-sm mt-2">{validationErrors.vocabulary}</p>
+                <p className="text-red-500 text-sm mt-2">
+                  {validationErrors.vocabulary}
+                </p>
               )}
 
               <div className="flex justify-end space-x-2 mt-6">
                 <button
-                  onClick={() => {
-                    setShowAddVocabulary(false);
-                    resetValidationErrors();
-                  }}
+                  onClick={handleCloseAddVocabulary}
                   className="px-4 py-2 text-slate-600 hover:text-slate-800"
                 >
                   Hủy
@@ -723,13 +852,13 @@ const Vocabulary = () => {
                 <button
                   onClick={handleAddVocabulary}
                   disabled={
-                    !newVocabulary.word.trim() || 
-                    !newVocabulary.meaning.trim() || 
+                    !newVocabulary.word.trim() ||
+                    !newVocabulary.meaning.trim() ||
                     !newVocabulary.loaiTuVung.trim()
                   }
                   className={`px-4 py-2 rounded-md ${
-                    !newVocabulary.word.trim() || 
-                    !newVocabulary.meaning.trim() || 
+                    !newVocabulary.word.trim() ||
+                    !newVocabulary.meaning.trim() ||
                     !newVocabulary.loaiTuVung.trim()
                       ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                       : "bg-slate-800 text-white hover:bg-slate-700"
@@ -742,7 +871,6 @@ const Vocabulary = () => {
           </div>
         )}
 
-        {/* Modal Edit Vocabulary - */}
         {showEditVocabulary && vocabToEdit && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -758,13 +886,17 @@ const Vocabulary = () => {
                     value={vocabToEdit.word}
                     onChange={(e) => {
                       setVocabToEdit({ ...vocabToEdit, word: e.target.value });
-                      // Clear error khi người dùng bắt đầu nhập
                       if (validationErrors.vocabulary) {
-                        setValidationErrors({ ...validationErrors, vocabulary: "" });
+                        setValidationErrors({
+                          ...validationErrors,
+                          vocabulary: "",
+                        });
                       }
                     }}
                     className={`w-full p-2 border rounded-md ${
-                      validationErrors.vocabulary && !vocabToEdit.word.trim() ? "border-red-500" : "border-slate-300"
+                      validationErrors.vocabulary && !vocabToEdit.word.trim()
+                        ? "border-red-500"
+                        : "border-slate-300"
                     }`}
                     autoFocus
                   />
@@ -781,13 +913,18 @@ const Vocabulary = () => {
                         ...vocabToEdit,
                         loaiTuVung: e.target.value,
                       });
-                      // Clear error khi người dùng bắt đầu chọn
                       if (validationErrors.vocabulary) {
-                        setValidationErrors({ ...validationErrors, vocabulary: "" });
+                        setValidationErrors({
+                          ...validationErrors,
+                          vocabulary: "",
+                        });
                       }
                     }}
                     className={`w-full p-2 border rounded-md ${
-                      validationErrors.vocabulary && !vocabToEdit.loaiTuVung.trim() ? "border-red-500" : "border-slate-300"
+                      validationErrors.vocabulary &&
+                      !vocabToEdit.loaiTuVung.trim()
+                        ? "border-red-500"
+                        : "border-slate-300"
                     }`}
                   >
                     <option value="">-- Chọn loại từ --</option>
@@ -799,6 +936,26 @@ const Vocabulary = () => {
                     <option value="IDIOM">Idiom</option>
                     <option value="PREPOSITION">Preposition</option>
                     <option value="CONJUNCTION">Conjunction</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Level
+                  </label>
+                  <select
+                    value={vocabToEdit.level || "Low"}
+                    onChange={(e) =>
+                      setVocabToEdit({
+                        ...vocabToEdit,
+                        level: e.target.value,
+                      })
+                    }
+                    className="w-full p-2 border border-slate-300 rounded-md"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Mid">Mid</option>
+                    <option value="High">High</option>
                   </select>
                 </div>
 
@@ -827,14 +984,21 @@ const Vocabulary = () => {
                     type="text"
                     value={vocabToEdit.meaning}
                     onChange={(e) => {
-                      setVocabToEdit({ ...vocabToEdit, meaning: e.target.value });
-                      // Clear error khi người dùng bắt đầu nhập
+                      setVocabToEdit({
+                        ...vocabToEdit,
+                        meaning: e.target.value,
+                      });
                       if (validationErrors.vocabulary) {
-                        setValidationErrors({ ...validationErrors, vocabulary: "" });
+                        setValidationErrors({
+                          ...validationErrors,
+                          vocabulary: "",
+                        });
                       }
                     }}
                     className={`w-full p-2 border rounded-md ${
-                      validationErrors.vocabulary && !vocabToEdit.meaning.trim() ? "border-red-500" : "border-slate-300"
+                      validationErrors.vocabulary && !vocabToEdit.meaning.trim()
+                        ? "border-red-500"
+                        : "border-slate-300"
                     }`}
                   />
                 </div>
@@ -858,7 +1022,9 @@ const Vocabulary = () => {
               </div>
 
               {validationErrors.vocabulary && (
-                <p className="text-red-500 text-sm mt-2">{validationErrors.vocabulary}</p>
+                <p className="text-red-500 text-sm mt-2">
+                  {validationErrors.vocabulary}
+                </p>
               )}
 
               <div className="flex justify-end space-x-2 mt-6">
@@ -874,13 +1040,13 @@ const Vocabulary = () => {
                 <button
                   onClick={handleEditVocabulary}
                   disabled={
-                    !vocabToEdit.word.trim() || 
-                    !vocabToEdit.meaning.trim() || 
+                    !vocabToEdit.word.trim() ||
+                    !vocabToEdit.meaning.trim() ||
                     !vocabToEdit.loaiTuVung.trim()
                   }
                   className={`px-4 py-2 rounded-md ${
-                    !vocabToEdit.word.trim() || 
-                    !vocabToEdit.meaning.trim() || 
+                    !vocabToEdit.word.trim() ||
+                    !vocabToEdit.meaning.trim() ||
                     !vocabToEdit.loaiTuVung.trim()
                       ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                       : "bg-blue-600 text-white hover:bg-blue-500"

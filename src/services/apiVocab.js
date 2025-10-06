@@ -8,7 +8,7 @@ export const createTopicAPI = async (data) => {
 
 export const getTopicsByUserAPI = async (idUser) => {
   const res = await API.get(`/topic/get-all-by-idUser/${idUser}`);
-  return res.data
+  return res.data;
 };
 
 // export const updateTopicAPI = (idTopic, payload) =>
@@ -33,7 +33,6 @@ export const createVocabAPI = async (data) => {
   return res.data; // => { message, data }
 };
 
-
 export const updateVocabAPI = async (idTuVung, payload) => {
   const res = await API.patch(`/vocabulary/${idTuVung}`, payload);
   return res.data;
@@ -47,4 +46,17 @@ export const addVocabToTopic = async (data) => {
 export const deleteVocabAPI = async (id, idUser) => {
   const res = await API.delete(`/vocabulary/${id}/${idUser}`);
   return res.data;
+};
+
+// suggest vocab
+export const suggestVocabAPI = async (word) => {
+  try {
+    const response = await API.get(
+      `/vocabulary/suggest/${encodeURIComponent(word)}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error suggesting vocabulary:", error);
+    throw error;
+  }
 };
