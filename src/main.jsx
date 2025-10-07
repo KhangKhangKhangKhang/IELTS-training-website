@@ -21,6 +21,8 @@ import LandingPage from "./Pages/landingPage";
 import Test from "./Pages/client/test/testReview";
 import TestDetail from "./Pages/client/test/testDetail";
 import CreateTest from "./Pages/teacher/createTest";
+import CashFlowDetailPage from "./Pages/tyxoa";
+import StartingPage from "./Pages/StartingPage";
 
 const router = createBrowserRouter([
   // --- User Routes ---
@@ -39,6 +41,7 @@ const router = createBrowserRouter([
           { path: "test", element: <Test /> },
           { path: "doTest", element: <TestDetail /> },
           { path: "profile", element: <Profile /> },
+          { path: "startingPage", element: <StartingPage /> },
         ],
       },
     ],
@@ -62,12 +65,14 @@ const router = createBrowserRouter([
           { path: "userList", element: <UserList /> },
           { path: "doTest", element: <TestDetail /> },
           { path: "createTest", element: <CreateTest /> },
+          { path: "startingPage", element: <StartingPage /> },
         ],
       },
     ],
   },
   {
     path: "/admin",
+
     element: <ProtectedRoute />,
     children: [
       {
@@ -94,6 +99,7 @@ const router = createBrowserRouter([
   { path: "forgetPassword", element: <ForgetPassword /> },
   { path: "landingPage", element: <LandingPage /> },
   { path: "_test", element: <Test /> },
+  { path: "testingshit", element: <CashFlowDetailPage /> },
 ]);
 createRoot(document.getElementById("root")).render(
   <StrictMode>
