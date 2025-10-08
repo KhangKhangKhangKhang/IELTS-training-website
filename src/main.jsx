@@ -20,9 +20,8 @@ import ForgetPassword from "./Pages/client/auth/forgetPassword";
 import LandingPage from "./Pages/landingPage";
 import Test from "./Pages/client/test/testReview";
 import TestDetail from "./Pages/client/test/testDetail";
-import CreateTest from "./Pages/teacher/createTest";
-import CashFlowDetailPage from "./Pages/tyxoa";
 import StartingPage from "./Pages/StartingPage";
+import TestManager from "./Pages/teacher/testManager";
 
 const router = createBrowserRouter([
   // --- User Routes ---
@@ -64,7 +63,7 @@ const router = createBrowserRouter([
           { path: "profile", element: <Profile /> },
           { path: "userList", element: <UserList /> },
           { path: "doTest", element: <TestDetail /> },
-          { path: "createTest", element: <CreateTest /> },
+          { path: "testManager", element: <TestManager /> },
           { path: "startingPage", element: <StartingPage /> },
         ],
       },
@@ -87,7 +86,7 @@ const router = createBrowserRouter([
           { path: "profile", element: <Profile /> },
           { path: "userList", element: <UserList /> },
           { path: "doTest", element: <TestDetail /> },
-          { path: "createTest", element: <CreateTest /> },
+          { path: "testManager", element: <TestManager /> },
         ],
       },
     ],
@@ -99,7 +98,6 @@ const router = createBrowserRouter([
   { path: "forgetPassword", element: <ForgetPassword /> },
   { path: "landingPage", element: <LandingPage /> },
   { path: "_test", element: <Test /> },
-  { path: "testingshit", element: <CashFlowDetailPage /> },
 ]);
 createRoot(document.getElementById("root")).render(
   <StrictMode>

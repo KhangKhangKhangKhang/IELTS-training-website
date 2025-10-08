@@ -46,9 +46,9 @@ const NavbarTeacher = () => {
       icon: BookMarked,
     },
     {
-      name: "Tạo đề",
-      href: "/teacher/createTest",
-      current: location.pathname === "/teacher/createTest",
+      name: "Quản lý đề",
+      href: "/teacher/testManager",
+      current: location.pathname === "/teacher/testManager",
       icon: FilePlus2,
     },
     {
