@@ -45,6 +45,10 @@ const ExamCard = ({ exam, onExamClick }) => {
           </div>
         }
       />
+      <div className="mt-2">
+        <span className="font-semibold">Độ khó: </span>
+        {exam.level}
+      </div>
     </Card>
   );
 };
