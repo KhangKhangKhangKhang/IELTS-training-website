@@ -14,6 +14,7 @@ const ExamSelector = ({ currentType, onTypeChange }) => {
     { key: "LISTENING", label: "Listening" },
     { key: "WRITING", label: "Writing" },
     { key: "READING", label: "Reading" },
+    { key: "ALL", label: "All" },
   ];
 
   return (
