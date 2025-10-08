@@ -48,7 +48,7 @@ const TestPage = () => {
         .sort((a, b) => {
           if (sortBy === "newest")
             return new Date(b.createdAt) - new Date(a.createdAt);
-          if (sortBy === "mostAttempts") return b.attempts - a.attempts;
+          if (sortBy === "level") return b.level - a.level;
           return 0;
         })
     : [];
@@ -95,7 +95,7 @@ const TestPage = () => {
                 onChange={setSortBy}
                 options={[
                   { value: "newest", label: "Mới nhất" },
-                  { value: "mostAttempts", label: "Lượt làm nhiều" },
+                  { value: "level", label: "Theo cấp độ" },
                 ]}
               />
             </Col>
