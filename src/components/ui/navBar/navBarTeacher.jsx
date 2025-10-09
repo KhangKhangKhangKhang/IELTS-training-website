@@ -11,8 +11,10 @@ import {
   LogOut,
   FilePlus2,
   Users2,
+  Cookie,
 } from "lucide-react";
 import ProfileModal from "./profileModal"; // modal profile
+import Cookies from "js-cookie";
 
 const NavbarTeacher = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -60,8 +62,10 @@ const NavbarTeacher = () => {
   ];
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
+    Cookies.remove("accessToken");
+    Cookies.remove("user");
+    Cookies.remove("refreshToken");
+
     navigate("/landingPage");
   };
 
