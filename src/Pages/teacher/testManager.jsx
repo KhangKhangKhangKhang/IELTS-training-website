@@ -65,7 +65,7 @@ const TestManager = () => {
         .sort((a, b) => {
           if (sortBy === "newest")
             return new Date(b.createdAt) - new Date(a.createdAt);
-          if (sortBy === "mostAttempts") return b.attempts - a.attempts;
+          if (sortBy === "level") return b.level - a.level;
           return 0;
         })
     : [];
@@ -168,7 +168,7 @@ const TestManager = () => {
                 onChange={setSortBy}
                 options={[
                   { value: "newest", label: "Mới nhất" },
-                  { value: "mostAttempts", label: "Lượt làm nhiều" },
+                  { value: "level", label: "Độ khó" },
                 ]}
               />
             </Col>
@@ -192,7 +192,7 @@ const TestManager = () => {
                         {exam.loaiDe}
                       </Tag>
                       <span className="text-sm text-gray-500">
-                        {exam.attempts || 0} lượt làm
+                        Độ khó: <b>{exam.level || "N/A"}</b>
                       </span>
                     </div>
                     <h3 className="font-semibold text-lg text-gray-800 line-clamp-2">
