@@ -209,7 +209,7 @@ const TestManager = () => {
                       <div className="flex justify-between">
                         <span>Số câu:</span>
                         <span className="font-medium">
-                          {exam.questionCount || "N/A"}
+                          {exam.numberQuestion || "N/A"}
                         </span>
                       </div>
                       <div className="flex justify-between">
