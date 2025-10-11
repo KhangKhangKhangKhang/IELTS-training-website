@@ -9,7 +9,7 @@ import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/context/authContext";
 
 const TestPage = () => {
-  const [loaiDe, setLoaiDe] = useState("LISTENING");
+  const [loaiDe, setLoaiDe] = useState("Tất cả");
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -39,7 +39,7 @@ const TestPage = () => {
   const filteredExams = Array.isArray(exams)
     ? exams
         .filter((exam) => {
-          const matchLoaiDe = loaiDe === "ALL" || exam.loaiDe === loaiDe;
+          const matchLoaiDe = loaiDe === "Tất cả" || exam.loaiDe === loaiDe;
           const matchSearch =
             exam.title.toLowerCase().includes(searchText.toLowerCase()) ||
             exam.description.toLowerCase().includes(searchText.toLowerCase());
