@@ -175,14 +175,14 @@ const UserList = () => {
       title: "Số điện thoại",
       dataIndex: "phoneNumber",
       key: "phoneNumber",
-      render: (phone) => phone || "N/A",
+      render: (phone) => phone || "Chưa có",
     },
     {
       title: "Địa chỉ",
       dataIndex: "address",
       key: "address",
       ellipsis: true,
-      render: (address) => address || "N/A",
+      render: (address) => address || "Chưa có",
     },
     ...(user.role === "ADMIN"
       ? [

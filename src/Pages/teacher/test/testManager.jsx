@@ -80,7 +80,7 @@ const TestManager = () => {
   };
 
   const handleCreateExam = () => {
-    navigate("/teacher/exams/create");
+    navigate("./testCreate");
   };
 
   const handleDeleteClick = (exam) => {

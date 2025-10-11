@@ -21,8 +21,8 @@ import LandingPage from "./Pages/landingPage";
 import Test from "./Pages/client/test/testReview";
 import TestDetail from "./Pages/client/test/testDetail";
 import StartingPage from "./Pages/StartingPage";
-import TestManager from "./Pages/teacher/testManager";
-
+import TestManager from "./Pages/teacher/test/testManager";
+import TestCreate from "./Pages/teacher/test/testCreate";
 const router = createBrowserRouter([
   // --- User Routes ---
   {
@@ -64,6 +64,7 @@ const router = createBrowserRouter([
           { path: "userList", element: <UserList /> },
           { path: "doTest", element: <TestDetail /> },
           { path: "testManager", element: <TestManager /> },
+          { path: "testManager/testCreate", element: <TestCreate /> },
           { path: "startingPage", element: <StartingPage /> },
         ],
       },
@@ -86,6 +87,7 @@ const router = createBrowserRouter([
           { path: "profile", element: <Profile /> },
           { path: "userList", element: <UserList /> },
           { path: "doTest", element: <TestDetail /> },
+          { path: "testManager/testCreate", element: <TestCreate /> },
           { path: "testManager", element: <TestManager /> },
         ],
       },
