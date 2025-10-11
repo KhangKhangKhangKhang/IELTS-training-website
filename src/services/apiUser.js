@@ -10,12 +10,16 @@ export const getAllUserAPI = async (params = {}) => {
 };
 
 export const createUserAPI = async (data) => {
-  const res = await API.post(`/users/create-user`, data);
+  const res = await API.post(`/users/create-user`, data, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return res.data;
 };
 
 export const updateUserAPI = async (id, data) => {
-  const res = await API.patch(`/users/${id}`, data);
+  const res = await API.patch(`/users/${id}`, data, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return res.data;
 };
 
