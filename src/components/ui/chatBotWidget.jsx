@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 import {
   MessageCircle,
   X,
@@ -280,8 +281,9 @@ const ChatBotWidget = () => {
                               : "bg-gray-100 text-gray-800 rounded-bl-none border border-gray-200"
                           }`}
                         >
-                          {msg.text}
+                          <ReactMarkdown>{msg.text}</ReactMarkdown>
                         </div>
+
                         <div
                           className={`text-xs text-gray-500 mt-1 ${
                             msg.sender === "user" ? "text-right" : "text-left"
