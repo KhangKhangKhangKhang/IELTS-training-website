@@ -23,6 +23,7 @@ import TestDetail from "./Pages/client/test/testDetail";
 import StartingPage from "./Pages/StartingPage";
 import TestManager from "./Pages/teacher/test/testManager";
 import TestCreate from "./Pages/teacher/test/testCreate";
+import ChatBotWidget from "./components/ui/chatBotWidget";
 const router = createBrowserRouter([
   // --- User Routes ---
   {
@@ -105,6 +106,7 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <AuthProvider>
       <RouterProvider router={router} />
+      <ChatBotWidget />
     </AuthProvider>
   </StrictMode>
 );
