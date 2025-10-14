@@ -23,6 +23,9 @@ export const updateAPITest = async (id, data) => {
 //===============================================================================================
 //PHÂN CHIA GIỮA TEACHER VÀ USER
 //===============================================================================================
+
+// Create new test
+//=================================================================================================
 export const createTestAPI = async (formData) => {
   const bodyFormData = new FormData();
   for (const key in formData) {
@@ -35,5 +38,59 @@ export const createTestAPI = async (formData) => {
     },
   });
 
+  return res.data;
+};
+
+// Get test by ID
+export const createPartAPI = async (data) => {
+  const res = await API.post("/part/create-part", data);
+  return res.data;
+};
+
+export const createPassageAPI = async (formData) => {
+  const res = await API.post("/passage/create-passage", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return res.data;
+};
+
+export const createGroupQuestion = async (data) => {
+  const res = await API.post("/group-question/create-group-question", data);
+  return res.data;
+};
+
+export const createQuestion = async (data) => {
+  const res = await API.post("/question/create-question", data);
+  return res.data;
+};
+
+export const createOption = async (data) => {
+  const res = await API.post("/option/create-many-option", data);
+  return res.data;
+};
+
+export const createAnswer = async (data) => {
+  const res = await API.post("/answer/create-answer", data);
+  return res.data;
+};
+
+export const upsertUserTest = async (data) => {
+  const res = await API.post("/user-test/upsert-user-test", data);
+  return res.data;
+};
+
+export const createUserTestResult = async (idUser, idTest, data) => {
+  const res = await API.post(
+    `/user-test-result/start-test/${idUser}/${idTest}`,
+    data
+  );
+  return res.data;
+};
+
+//delete part
+export const deletePartAPI = async (idPart) => {
+  const res = await API.delete(`/part/delete/${idPart}`);
   return res.data;
 };

@@ -10,7 +10,9 @@ const TestCreate = () => {
 
   const handleCreateSuccess = (testData) => {
     setCreatedTest(testData);
-    navigate(`teacher/testEdit/${testData.idDe}`);
+    navigate(`/teacher/testManager/testEdit/${testData.idDe}`, {
+      state: { exam: testData },
+    });
   };
 
   const handleBackToCreate = () => {
@@ -39,7 +41,9 @@ const TestCreate = () => {
                   type="primary"
                   key="parts"
                   size="large"
-                  onClick={() => navigate(`./testEdit/${createdTest.idDe}`)}
+                  onClick={() =>
+                    navigate(`/teacher/testEdit/${createdTest.idDe}`)
+                  }
                   icon={<ArrowRightOutlined />}
                 >
                   Chuyển đến tạo Parts

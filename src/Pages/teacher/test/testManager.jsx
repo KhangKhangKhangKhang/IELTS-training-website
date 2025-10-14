@@ -63,9 +63,13 @@ const TestManager = () => {
           return matchLoaiDe && matchSearch;
         })
         .sort((a, b) => {
+          const levelValue = { Low: 1, Mid: 2, High: 3 };
           if (sortBy === "newest")
             return new Date(b.createdAt) - new Date(a.createdAt);
-          if (sortBy === "level") return b.level - a.level;
+          if (sortBy === "level-asc")
+            return levelValue[a.level] - levelValue[b.level];
+          if (sortBy === "level-desc")
+            return levelValue[b.level] - levelValue[a.level];
           return 0;
         })
     : [];
@@ -168,7 +172,8 @@ const TestManager = () => {
                 onChange={setSortBy}
                 options={[
                   { value: "newest", label: "Mới nhất" },
-                  { value: "level", label: "Độ khó" },
+                  { value: "level-asc", label: "Dễ -> Khó" },
+                  { value: "level-desc", label: "Khó -> Dễ" },
                 ]}
               />
             </Col>

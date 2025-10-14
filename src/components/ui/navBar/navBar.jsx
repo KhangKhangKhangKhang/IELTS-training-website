@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ProfileModal from "./profileModal"; // Component riêng cho modal profile
-import ChatBotWidget from "../chatBotWidget";
+import ChatBotWidget from "./chatBotWidget";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
