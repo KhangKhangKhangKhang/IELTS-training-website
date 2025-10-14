@@ -44,8 +44,8 @@ export const deleteGrammarCategoriesAPI = async (
   return res.data;
 };
 
-export const createGrammarAPI = async (data) => {
-  const res = await API.create(`/grammar/create-grammar`, data);
+export const createGrammarAPI = async (data, idUser) => {
+  const res = await API.post(`/grammar/create-grammar/${idUser}`, data);
   return res.data;
 };
 
@@ -59,12 +59,17 @@ export const getGrammarAPI = async (idGrammar) => {
   return res.data;
 };
 
-export const updateGrammarAPI = async (data, idGrammar) => {
-  const res = await API.put(`/grammar/update-grammar/${idGrammar}`, data);
+export const updateGrammarAPI = async (data, idGrammar, idUser) => {
+  const res = await API.patch(
+    `/grammar/update-grammar/${idGrammar}/${idUser}`,
+    data
+  );
   return res.data;
 };
 
-export const deleteGrammarAPI = async (idGrammar) => {
-  const res = await API.delete(`/grammar/delete-grammar/${idGrammar}`);
+export const deleteGrammarAPI = async (idGrammar, idUser) => {
+  const res = await API.delete(
+    `/grammar/delete-grammar/${idGrammar}/${idUser}`
+  );
   return res.data;
 };
