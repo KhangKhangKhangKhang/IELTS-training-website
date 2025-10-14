@@ -693,8 +693,8 @@ const Vocabulary = () => {
                     )}
                 </div>
 
-                {/* Hiển thị gợi ý - ĐÃ CẬP NHẬT VỚI LOẠI TỪ VÀ LEVEL */}
-                {/* Hiển thị gợi ý - ĐÃ CẬP NHẬT VỚI LOẠI TỪ VÀ LEVEL */}
+                {/* Hiển thị gợi ý */}
+
                 {suggestion && (
                   <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                     <div className="flex items-start mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
