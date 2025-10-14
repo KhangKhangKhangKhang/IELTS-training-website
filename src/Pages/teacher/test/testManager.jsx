@@ -72,11 +72,11 @@ const TestManager = () => {
 
   // Xử lý các action
   const handleViewExam = (exam) => {
-    navigate(`/teacher/exams/${exam.idDe}`, { state: { exam } });
+    navigate(`./testEdit/${exam.idDe}`, { state: { exam } });
   };
 
   const handleEditExam = (exam) => {
-    navigate(`/teacher/exams/edit/${exam.idDe}`, { state: { exam } });
+    navigate(`./testEdit/${exam.idDe}`, { state: { exam } });
   };
 
   const handleCreateExam = () => {
