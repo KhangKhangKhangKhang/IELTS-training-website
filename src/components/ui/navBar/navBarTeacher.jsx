@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import ProfileModal from "./profileModal"; // modal profile
 import Cookies from "js-cookie";
+import ChatBotWidget from "../chatBotWidget";
 
 const NavbarTeacher = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -204,6 +205,8 @@ const NavbarTeacher = () => {
       <ProfileModal isOpen={isProfileModalOpen} onClose={closeProfileModal} />
 
       <Outlet />
+
+      <ChatBotWidget />
     </>
   );
 };

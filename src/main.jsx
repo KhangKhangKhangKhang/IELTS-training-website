@@ -24,6 +24,7 @@ import StartingPage from "./Pages/StartingPage";
 import TestManager from "./Pages/teacher/test/testManager";
 import TestCreate from "./Pages/teacher/test/testCreate";
 import TestEdit from "./Pages/teacher/test/testEdit";
+import ChatBotWidget from "./components/ui/chatBotWidget";
 const router = createBrowserRouter([
   // --- User Routes ---
   {
