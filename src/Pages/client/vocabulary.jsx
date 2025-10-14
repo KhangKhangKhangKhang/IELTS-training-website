@@ -72,7 +72,7 @@ const Vocabulary = () => {
     fetchTopics();
   }, [user?.idUser]);
 
-  // Effect cho suggest từ vựng
+  // Effect cho suggest từ vựng - ĐÃ THÊM XỬ LÝ LỖI TIMEOUT
   useEffect(() => {
     if (!showAddVocabulary || newVocabulary.word.trim().length < 2) {
       setSuggestion(null);
@@ -87,6 +87,17 @@ const Vocabulary = () => {
         setSuggestion(res);
       } catch (error) {
         console.error("Failed to get suggestion:", error);
+        // THÊM XỬ LÝ LỖI TIMEOUT
+        if (
+          error.code === "ECONNABORTED" ||
+          error.message?.includes("timeout")
+        ) {
+          setError(
+            "Kết nối AI bị timeout. Vui lòng thử lại sau hoặc nhập thủ công."
+          );
+        } else {
+          setError("Không thể lấy gợi ý từ AI. Vui lòng nhập thủ công.");
+        }
       } finally {
         setIsSuggesting(false);
       }
@@ -683,6 +694,7 @@ const Vocabulary = () => {
                 </div>
 
                 {/* Hiển thị gợi ý - ĐÃ CẬP NHẬT VỚI LOẠI TỪ VÀ LEVEL */}
+                {/* Hiển thị gợi ý - ĐÃ CẬP NHẬT VỚI LOẠI TỪ VÀ LEVEL */}
                 {suggestion && (
                   <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                     <div className="flex items-start mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
@@ -757,6 +769,28 @@ const Vocabulary = () => {
                     )}
                   </div>
                 )}
+
+                {/* Hiển thị thông báo khi từ không hợp lệ hoặc timeout */}
+                {newVocabulary.word.trim().length >= 2 &&
+                  !isSuggesting &&
+                  !suggestion && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                      <div className="flex items-center">
+                        <AlertTriangle
+                          className="text-yellow-500 mr-2"
+                          size={40}
+                        />
+                        <p className="text-sm text-yellow-700">
+                          Không tìm thấy gợi ý cho từ "
+                          <span className="font-medium">
+                            {newVocabulary.word}
+                          </span>
+                          ". Có thể từ này không tồn tại hoặc không hợp lệ. Vui
+                          lòng kiểm tra lại chính tả hoặc nhập thủ công.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
