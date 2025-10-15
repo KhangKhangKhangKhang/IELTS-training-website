@@ -69,9 +69,7 @@ const router = createBrowserRouter([
           { path: "testManager", element: <TestManager /> },
           { path: "testManager/testCreate", element: <TestCreate /> },
           { path: "testManager/testEdit/:id", element: <TestEdit /> },
-
           { path: "testManager/testDetail/:id", element: <TestDetail /> },
-
           { path: "startingPage", element: <StartingPage /> },
         ],
       },

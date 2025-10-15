@@ -56,7 +56,7 @@ export const createPassageAPI = async (formData) => {
   return res.data;
 };
 
-export const createGroupQuestion = async (data) => {
+export const createGroupOfQuestionsAPI = async (data) => {
   const res = await API.post("/group-question/create-group-question", data);
   return res.data;
 };
