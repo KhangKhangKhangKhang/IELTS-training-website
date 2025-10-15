@@ -101,3 +101,8 @@ export const removeGrammarFromCategoryAPI = async (
   );
   return res.data;
 };
+
+export const createGrammarWithoutCategoryAPI = async (data, idUser) => {
+  const res = await API.post(`/grammar/create-grammar-alone/${idUser}`, data);
+  return res.data;
+};
