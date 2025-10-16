@@ -10,6 +10,7 @@ import {
   XCircle,
   CheckCircle,
   BookText,
+  Users,
 } from "lucide-react";
 import { Tag } from "antd";
 import {
@@ -17,25 +18,21 @@ import {
   getGrammarCategoriesUserAPI,
   updateGrammarCategoriesAPI,
   deleteGrammarCategoriesAPI,
-  createGrammarAPI,
   getAllGrammarAPI,
+  addGrammarToCategoryAPI,
+  removeGrammarFromCategoryAPI,
+  getGrammarByCategoriesUserAPI,
+  getGrammarInCategories,
+  createGrammarAPI,
   updateGrammarAPI,
   deleteGrammarAPI,
+  createGrammarWithoutCategoryAPI,
 } from "@/services/apiGrammar";
 import { useAuth } from "@/context/authContext";
-
-const initialGrammarItemState = {
-  title: "",
-  explanation: "",
-  level: "Low",
-  commonMistakes: [{ wrong: "", right: "", explanation: "" }],
-  examples: [{ sentence: "", note: "" }],
-};
 
 const Grammar = () => {
   const { user } = useAuth();
 
-  // State cho danh mục ngữ pháp
   const [grammarCategories, setGrammarCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -47,17 +44,33 @@ const Grammar = () => {
   });
   const [categoryToEdit, setCategoryToEdit] = useState(null);
 
-  // State cho các điểm ngữ pháp
   const [grammarItems, setGrammarItems] = useState([]);
-  const [showAddGrammarItem, setShowAddGrammarItem] = useState(false);
-  const [showEditGrammarItem, setShowEditGrammarItem] = useState(false);
-  const [newGrammarItem, setNewGrammarItem] = useState(initialGrammarItemState);
-  const [grammarItemToEdit, setGrammarItemToEdit] = useState(null);
+  const [availableGrammars, setAvailableGrammars] = useState([]);
+  const [showAddGrammarToCategory, setShowAddGrammarToCategory] =
+    useState(false);
+  const [loadingGrammar, setLoadingGrammar] = useState(false);
+
+  // State cho quản lý grammar (admin/teacher)
+  const [showGrammarManagement, setShowGrammarManagement] = useState(false);
+  const [showAddGrammar, setShowAddGrammar] = useState(false);
+  const [showEditGrammar, setShowEditGrammar] = useState(false);
+  const [newGrammar, setNewGrammar] = useState({
+    title: "",
+    explanation: "",
+    level: "Mid",
+    commonMistakes: [],
+    examples: [],
+  });
+  const [grammarToEdit, setGrammarToEdit] = useState(null);
+  const [newMistake, setNewMistake] = useState({ wrong: "", right: "" });
+  const [newExample, setNewExample] = useState({ sentence: "", note: "" });
 
   // State chung
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loadingGrammar, setLoadingGrammar] = useState(false);
+  const [activeTab, setActiveTab] = useState("user");
+
+  const isAdminOrTeacher = user?.role === "ADMIN" || user?.role === "TEACHER";
 
   const getTypeColor = (type) => {
     const colors = {
@@ -68,7 +81,6 @@ const Grammar = () => {
     return colors[type] || "gray";
   };
 
-  // Fetch danh mục ngữ pháp
   useEffect(() => {
     const fetchGrammarCategories = async () => {
       if (!user?.idUser) return;
@@ -88,6 +100,19 @@ const Grammar = () => {
     fetchGrammarCategories();
   }, [user?.idUser]);
 
+  useEffect(() => {
+    const fetchAllGrammars = async () => {
+      try {
+        const res = await getAllGrammarAPI();
+        setAvailableGrammars(res.data.data || res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch available grammars:", err);
+      }
+    };
+
+    fetchAllGrammars();
+  }, [showGrammarManagement]);
+
   // --- XỬ LÝ DANH MỤC ---
   const handleAddCategory = async () => {
     if (!newCategory.name.trim()) {
@@ -96,7 +121,15 @@ const Grammar = () => {
     }
     try {
       const res = await createGrammarCategoriesAPI(newCategory);
-      setGrammarCategories((prev) => [...prev, res.data.data]);
+
+      const newCategoryData = res.data?.data || res.data;
+      if (newCategoryData) {
+        setGrammarCategories((prev) => {
+          const prevArray = Array.isArray(prev) ? prev : [];
+          return [...prevArray, newCategoryData];
+        });
+      }
+
       setShowAddCategory(false);
       setNewCategory({ name: "", description: "", idUser: user?.idUser });
     } catch (error) {
@@ -150,229 +183,302 @@ const Grammar = () => {
     }
   };
 
-  // Hiển thị grammar items theo danh mục
   const handleSelectCategory = async (categoryId) => {
-    const updatedCategories = grammarCategories.map((cat) => ({
+    const updatedCategories = grammarCategories?.map((cat) => ({
       ...cat,
       isSelected: cat.idGrammarCategory === categoryId,
     }));
     setGrammarCategories(updatedCategories);
     setLoadingGrammar(true);
+
+    const selectedCat = grammarCategories.find(
+      (cat) => cat.idGrammarCategory === categoryId
+    );
+
+    if (!selectedCat) {
+      setError("Không tìm thấy chủ đề đã chọn.");
+      setLoadingGrammar(false);
+      return;
+    }
+
     try {
-      const res = await getAllGrammarAPI(categoryId);
-      const rawItems = res.data.data || res.data || [];
+      let rawItems = [];
+
+      if (selectedCat.idUser) {
+        const res = await getGrammarByCategoriesUserAPI(
+          categoryId,
+          user.idUser
+        );
+        rawItems = res.data?.data || res.data || [];
+      } else {
+        const res = await getGrammarInCategories(categoryId);
+        rawItems = res.data?.data?.grammars || res.data?.grammars || [];
+      }
+
+      // Tìm hàm handleSelectCategory và sửa phần xử lý commonMistakes
       const processedItems = rawItems.map((item) => {
+        const grammarData = item.grammar ? item.grammar : item;
+
         const mistakes =
-          typeof item.commonMistakes === "string" && item.commonMistakes
-            ? JSON.parse(item.commonMistakes)
-            : item.commonMistakes || [];
+          typeof grammarData.commonMistakes === "string" &&
+          grammarData.commonMistakes
+            ? JSON.parse(grammarData.commonMistakes)
+            : grammarData.commonMistakes || [];
+
+        // CHUYỂN ĐỔI CẤU TRÚC commonMistakes ĐỂ HIỂN THỊ ĐÚNG
+        const convertedMistakes = mistakes.map((mistake) => ({
+          wrong: mistake.mistake || mistake.wrong,
+          right: mistake.correction || mistake.right,
+        }));
+
         const examples =
-          typeof item.examples === "string" && item.examples
-            ? JSON.parse(item.examples)
-            : item.examples || [];
-        return { ...item, commonMistakes: mistakes, examples };
+          typeof grammarData.examples === "string" && grammarData.examples
+            ? JSON.parse(grammarData.examples)
+            : grammarData.examples || [];
+
+        return {
+          ...grammarData,
+          commonMistakes: convertedMistakes,
+          examples,
+        };
       });
+
       setGrammarItems(processedItems);
     } catch (error) {
       console.error("Failed to fetch grammar items:", error);
-      setError("Không thể tải danh sách ngữ pháp");
-      setGrammarItems([]);
+      if (error.response?.status === 404) {
+        setGrammarItems([]);
+      } else {
+        setError("Không thể tải danh sách ngữ pháp");
+        setGrammarItems([]);
+      }
     } finally {
       setLoadingGrammar(false);
     }
   };
 
-  // --- XỬ LÝ ĐIỂM NGỮ PHÁP ---
-  // Thêm mới
-  const handleNewItemChange = (index, field, value, type) => {
-    setNewGrammarItem((prevState) => {
-      const updatedItems = [...prevState[type]];
-      updatedItems[index][field] = value;
-      return { ...prevState, [type]: updatedItems };
-    });
-  };
-
-  const addNewItem = (type) => {
-    const newItem =
-      type === "commonMistakes"
-        ? { wrong: "", right: "", explanation: "" }
-        : { sentence: "", note: "" };
-    setNewGrammarItem((prevState) => ({
-      ...prevState,
-      [type]: [...prevState[type], newItem],
-    }));
-  };
-
-  const removeNewItem = (index, type) => {
-    if (newGrammarItem[type].length <= 1) return;
-    const updatedItems = newGrammarItem[type].filter((_, i) => i !== index);
-    setNewGrammarItem({ ...newGrammarItem, [type]: updatedItems });
-  };
-
-  const handleAddGrammarItem = async () => {
-    const selectedCategory = grammarCategories.find((cat) => cat.isSelected);
+  const handleAddGrammarToCategory = async (grammarId) => {
+    const selectedCategory = grammarCategories?.find((cat) => cat.isSelected);
     if (!selectedCategory) {
       setError("Vui lòng chọn một chủ đề trước khi thêm.");
       return;
     }
-    if (!newGrammarItem.title.trim() || !newGrammarItem.explanation.trim()) {
-      alert("Cấu trúc và Giải thích là bắt buộc.");
-      return;
-    }
-    const payload = {
-      ...newGrammarItem,
-      idGrammarCategory: selectedCategory.idGrammarCategory,
-      commonMistakes: JSON.stringify(
-        newGrammarItem.commonMistakes.filter((m) => m.wrong || m.right)
-      ),
-      examples: JSON.stringify(
-        newGrammarItem.examples.filter((e) => e.sentence || e.note)
-      ),
-    };
 
     try {
-      const res = await createGrammarAPI(payload, user.idUser);
-      const responseData = res.data.data || res.data;
-
-      if (!responseData) {
-        throw new Error("Không nhận được dữ liệu từ server");
-      }
-
-      const newItem = {
-        ...responseData,
-        commonMistakes:
-          typeof responseData.commonMistakes === "string"
-            ? JSON.parse(responseData.commonMistakes || "[]")
-            : responseData.commonMistakes || [],
-        examples:
-          typeof responseData.examples === "string"
-            ? JSON.parse(responseData.examples || "[]")
-            : responseData.examples || [],
-      };
-
-      setGrammarItems((prevItems) => [...prevItems, newItem]);
-      setShowAddGrammarItem(false);
-      setNewGrammarItem(initialGrammarItemState);
-    } catch (error) {
-      console.error("Failed to create grammar item:", error);
-      setError(error.response?.data?.message || "Thêm ngữ pháp thất bại.");
-    }
-  };
-
-  // Chỉnh sửa
-  const handleEditItemChange = (index, field, value, type) => {
-    setGrammarItemToEdit((prevState) => {
-      const updatedItems = [...prevState[type]];
-      updatedItems[index][field] = value;
-      return { ...prevState, [type]: updatedItems };
-    });
-  };
-
-  const addEditItem = (type) => {
-    const newItem =
-      type === "commonMistakes"
-        ? { wrong: "", right: "", explanation: "" }
-        : { sentence: "", note: "" };
-    setGrammarItemToEdit((prevState) => ({
-      ...prevState,
-      [type]: [...prevState[type], newItem],
-    }));
-  };
-
-  const removeEditItem = (index, type) => {
-    if (grammarItemToEdit[type].length <= 1) return;
-    const updatedItems = grammarItemToEdit[type].filter((_, i) => i !== index);
-    setGrammarItemToEdit({ ...grammarItemToEdit, [type]: updatedItems });
-  };
-
-  const handleEditGrammarItem = async () => {
-    if (!grammarItemToEdit) return;
-    if (
-      !grammarItemToEdit.title.trim() ||
-      !grammarItemToEdit.explanation.trim()
-    ) {
-      alert("Cấu trúc và Giải thích là bắt buộc.");
-      return;
-    }
-
-    let grammarId = grammarItemToEdit.idGrammar;
-
-    if (typeof grammarId === "object") {
-      grammarId = grammarId.idGrammar || grammarId.id || "";
-    }
-
-    grammarId = String(grammarId).trim();
-    console.log("Final grammarId to use:", grammarId);
-
-    if (!grammarId || grammarId === "undefined" || grammarId === "null") {
-      setError("Không tìm thấy ID hợp lệ của điểm ngữ pháp");
-      return;
-    }
-
-    const payload = {
-      title: grammarItemToEdit.title,
-      explanation: grammarItemToEdit.explanation,
-      level: grammarItemToEdit.level,
-      idGrammarCategory: grammarItemToEdit.idGrammarCategory,
-      commonMistakes: JSON.stringify(
-        grammarItemToEdit.commonMistakes.filter((m) => m.wrong || m.right)
-      ),
-      examples: JSON.stringify(
-        grammarItemToEdit.examples.filter((e) => e.sentence || e.note)
-      ),
-    };
-
-    try {
-      const res = await updateGrammarAPI(payload, grammarId, user.idUser);
-
-      const responseData = res.data.data || res.data;
-
-      if (!responseData) {
-        throw new Error("Không nhận được dữ liệu từ server");
-      }
-
-      const updatedItem = {
-        ...responseData,
-        commonMistakes:
-          typeof responseData.commonMistakes === "string"
-            ? JSON.parse(responseData.commonMistakes || "[]")
-            : responseData.commonMistakes || [],
-        examples:
-          typeof responseData.examples === "string"
-            ? JSON.parse(responseData.examples || "[]")
-            : responseData.examples || [],
-      };
-
-      setGrammarItems((prevItems) =>
-        prevItems.map((item) => {
-          const itemId = item.idGrammar?.idGrammar || item.idGrammar;
-          return String(itemId) === grammarId ? updatedItem : item;
-        })
+      await addGrammarToCategoryAPI(
+        selectedCategory.idGrammarCategory,
+        grammarId,
+        user.idUser
       );
-      setShowEditGrammarItem(false);
-      setGrammarItemToEdit(null);
+
+      handleSelectCategory(selectedCategory.idGrammarCategory);
+      setShowAddGrammarToCategory(false);
     } catch (error) {
-      console.error("Failed to update grammar item:", error);
-      setError(error.response?.data?.message || "Cập nhật thất bại.");
+      console.error("Failed to add grammar to category:", error);
+      if (error.response?.data?.message?.includes("already in the category")) {
+        setError("Ngữ pháp này đã có trong chủ đề.");
+      } else if (error.response?.status === 404) {
+        setError("Không tìm thấy chủ đề hoặc ngữ pháp");
+      } else {
+        setError(error.response?.data?.message || "Thêm ngữ pháp thất bại.");
+      }
     }
   };
 
-  const handleDeleteGrammarItem = async (itemId) => {
-    if (window.confirm("Bạn có chắc muốn xóa điểm ngữ pháp này?")) {
+  const handleRemoveGrammarFromCategory = async (grammarId) => {
+    const selectedCategory = grammarCategories?.find((cat) => cat.isSelected);
+    if (!selectedCategory) {
+      setError("Vui lòng chọn một chủ đề.");
+      return;
+    }
+
+    if (window.confirm("Bạn có chắc muốn xóa điểm ngữ pháp này khỏi chủ đề?")) {
       try {
-        await deleteGrammarAPI(itemId, user.idUser);
+        await removeGrammarFromCategoryAPI(
+          selectedCategory.idGrammarCategory,
+          grammarId,
+          user.idUser
+        );
+
         setGrammarItems((prevItems) =>
-          prevItems.filter((item) => item.idGrammar !== itemId)
+          prevItems.filter((item) => item.idGrammar !== grammarId)
         );
       } catch (error) {
-        console.error("Failed to delete grammar item:", error);
+        console.error("Failed to remove grammar from category:", error);
         setError(error.response?.data?.message || "Xóa thất bại.");
       }
     }
   };
 
+  // --- QUẢN LÝ GRAMMAR (ADMIN/TEACHER) ---
+  const handleAddGrammar = async () => {
+    if (!newGrammar.title.trim() || !newGrammar.explanation.trim()) {
+      alert("Tiêu đề và giải thích không được để trống");
+      return;
+    }
+
+    try {
+      const grammarData = {
+        title: newGrammar.title,
+        explanation: newGrammar.explanation,
+        level: newGrammar.level,
+
+        commonMistakes: JSON.stringify(
+          newGrammar.commonMistakes.map((mistake) => ({
+            mistake: mistake.wrong,
+            correction: mistake.right,
+          }))
+        ),
+        examples: JSON.stringify(newGrammar.examples),
+      };
+
+      console.log("Data gửi lên API:", grammarData);
+
+      await createGrammarWithoutCategoryAPI(grammarData, user.idUser);
+
+      const res = await getAllGrammarAPI();
+      setAvailableGrammars(res.data.data || res.data || []);
+
+      setShowAddGrammar(false);
+      setNewGrammar({
+        title: "",
+        explanation: "",
+        level: "Mid",
+        commonMistakes: [],
+        examples: [],
+      });
+      setNewMistake({ wrong: "", right: "" });
+      setNewExample({ sentence: "", note: "" });
+    } catch (error) {
+      console.error("Failed to create grammar:", error);
+      console.error("Error response:", error.response?.data);
+      setError(error.response?.data?.message || "Không thể tạo ngữ pháp mới");
+    }
+  };
+
+  const handleEditGrammar = async () => {
+    if (
+      !grammarToEdit ||
+      !grammarToEdit.title.trim() ||
+      !grammarToEdit.explanation.trim()
+    ) {
+      alert("Tiêu đề và giải thích không được để trống");
+      return;
+    }
+
+    try {
+      // CHUẨN HÓA DỮ LIỆU CHO EDIT
+      const grammarData = {
+        title: grammarToEdit.title,
+        explanation: grammarToEdit.explanation,
+        level: grammarToEdit.level,
+        commonMistakes: JSON.stringify(
+          grammarToEdit.commonMistakes.map((mistake) => ({
+            mistake: mistake.wrong, // Đổi từ 'wrong' thành 'mistake'
+            correction: mistake.right, // Đổi từ 'right' thành 'correction'
+          }))
+        ),
+        examples: JSON.stringify(grammarToEdit.examples),
+      };
+
+      console.log("Data gửi lên API (edit):", grammarData); // Debug
+
+      await updateGrammarAPI(grammarData, grammarToEdit.idGrammar, user.idUser);
+
+      const res = await getAllGrammarAPI();
+      setAvailableGrammars(res.data.data || res.data || []);
+
+      setShowEditGrammar(false);
+      setGrammarToEdit(null);
+    } catch (error) {
+      console.error("Failed to update grammar:", error);
+      console.error("Error response:", error.response?.data); // Debug chi tiết
+      setError(error.response?.data?.message || "Cập nhật ngữ pháp thất bại");
+    }
+  };
+
+  const handleDeleteGrammar = async (grammarId) => {
+    if (window.confirm("Bạn có chắc muốn xóa điểm ngữ pháp này?")) {
+      try {
+        await deleteGrammarAPI(grammarId, user.idUser);
+
+        const res = await getAllGrammarAPI();
+        setAvailableGrammars(res.data.data || res.data || []);
+      } catch (error) {
+        console.error("Failed to delete grammar:", error);
+        setError(error.response?.data?.message || "Xóa ngữ pháp thất bại");
+      }
+    }
+  };
+
+  const addMistake = () => {
+    if (newMistake.wrong.trim() && newMistake.right.trim()) {
+      if (showEditGrammar && grammarToEdit) {
+        setGrammarToEdit({
+          ...grammarToEdit,
+          commonMistakes: [...grammarToEdit.commonMistakes, { ...newMistake }],
+        });
+      } else {
+        setNewGrammar({
+          ...newGrammar,
+          commonMistakes: [...newGrammar.commonMistakes, { ...newMistake }],
+        });
+      }
+      setNewMistake({ wrong: "", right: "" });
+    }
+  };
+
+  const removeMistake = (index) => {
+    if (showEditGrammar && grammarToEdit) {
+      setGrammarToEdit({
+        ...grammarToEdit,
+        commonMistakes: grammarToEdit.commonMistakes.filter(
+          (_, i) => i !== index
+        ),
+      });
+    } else {
+      setNewGrammar({
+        ...newGrammar,
+        commonMistakes: newGrammar.commonMistakes.filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  const addExample = () => {
+    if (newExample.sentence.trim()) {
+      if (showEditGrammar && grammarToEdit) {
+        setGrammarToEdit({
+          ...grammarToEdit,
+          examples: [...grammarToEdit.examples, { ...newExample }],
+        });
+      } else {
+        setNewGrammar({
+          ...newGrammar,
+          examples: [...newGrammar.examples, { ...newExample }],
+        });
+      }
+      setNewExample({ sentence: "", note: "" });
+    }
+  };
+
+  const removeExample = (index) => {
+    if (showEditGrammar && grammarToEdit) {
+      setGrammarToEdit({
+        ...grammarToEdit,
+        examples: grammarToEdit.examples.filter((_, i) => i !== index),
+      });
+    } else {
+      setNewGrammar({
+        ...newGrammar,
+        examples: newGrammar.examples.filter((_, i) => i !== index),
+      });
+    }
+  };
+
   // --- RENDER LOGIC ---
-  const selectedCategory = grammarCategories.find((cat) => cat.isSelected);
+  const selectedCategory = grammarCategories
+    ? grammarCategories.find((cat) => cat?.isSelected)
+    : null;
 
   const filteredGrammarItems = selectedCategory
     ? grammarItems.filter((item) => {
@@ -399,18 +505,52 @@ const Grammar = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center mb-2">
-            <div className="bg-indigo-100 p-3 rounded-xl mr-4">
-              <BookOpen className="text-indigo-600" size={28} />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center">
+              <div className="bg-indigo-100 p-3 rounded-xl mr-4">
+                <BookOpen className="text-indigo-600" size={28} />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900">
+                  Grammar IELTS
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  Quản lý và học ngữ pháp IELTS hiệu quả
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900">
-                Grammar IELTS
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Quản lý và học ngữ pháp IELTS hiệu quả
-              </p>
-            </div>
+
+            {isAdminOrTeacher && (
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => {
+                    setActiveTab("user");
+                    setShowGrammarManagement(false);
+                  }}
+                  className={`px-4 py-2 rounded-xl font-medium transition-colors ${
+                    activeTab === "user"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                >
+                  Học Ngữ Pháp
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab("management");
+                    setShowGrammarManagement(true);
+                  }}
+                  className={`px-4 py-2 rounded-xl font-medium transition-colors flex items-center ${
+                    activeTab === "management"
+                      ? "bg-green-600 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                >
+                  <Users size={18} className="mr-2" />
+                  Quản Lý Ngữ Pháp
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -433,315 +573,501 @@ const Grammar = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar - Categories */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">
-                  Chủ đề ngữ pháp
-                </h2>
-                <button
-                  onClick={() => setShowAddCategory(true)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-xl transition-all duration-200 hover:shadow-md"
-                  title="Thêm chủ đề mới"
-                >
-                  <Plus size={20} />
-                </button>
-              </div>
+        {/* PHẦN QUẢN LÝ GRAMMAR CHO ADMIN/TEACHER */}
+        {showGrammarManagement && isAdminOrTeacher ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Quản Lý Ngữ Pháp Hệ Thống
+              </h2>
+              <button
+                onClick={() => setShowAddGrammar(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl flex items-center transition-all duration-200 hover:shadow-md font-medium"
+              >
+                <Plus size={20} className="mr-2" />
+                Thêm Ngữ Pháp Mới
+              </button>
+            </div>
 
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                {grammarCategories.map((cat) => (
+            <div className="space-y-4">
+              {availableGrammars.length > 0 ? (
+                availableGrammars.map((grammar, index) => (
                   <div
-                    key={cat.idGrammarCategory}
-                    className={`group relative p-4 rounded-xl transition-all duration-200 cursor-pointer ${
-                      cat.isSelected
-                        ? "bg-indigo-50 border-2 border-indigo-200 shadow-sm"
-                        : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
-                    }`}
-                    onClick={() => handleSelectCategory(cat.idGrammarCategory)}
+                    key={grammar.idGrammar}
+                    className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 bg-white group"
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 min-w-0">
-                        <h3
-                          className={`font-semibold truncate ${
-                            cat.isSelected ? "text-indigo-700" : "text-gray-800"
-                          }`}
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center mb-2">
+                          <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                            {index + 1}
+                          </div>
+                          <h3 className="text-xl font-bold text-gray-900 ml-3">
+                            {grammar.title}
+                          </h3>
+                          <div className="ml-4">
+                            <Tag color={getTypeColor(grammar.level)}>
+                              {grammar.level}
+                            </Tag>
+                          </div>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed">
+                          {grammar.explanation}
+                        </p>
+                      </div>
+                      <div className="flex space-x-2 ml-4">
+                        <button
+                          onClick={() => {
+                            const processedGrammar = {
+                              ...grammar,
+                              commonMistakes:
+                                typeof grammar.commonMistakes === "string"
+                                  ? JSON.parse(grammar.commonMistakes)
+                                  : grammar.commonMistakes || [],
+                              examples:
+                                typeof grammar.examples === "string"
+                                  ? JSON.parse(grammar.examples)
+                                  : grammar.examples || [],
+                            };
+                            if (
+                              processedGrammar.commonMistakes &&
+                              processedGrammar.commonMistakes.length > 0
+                            ) {
+                              processedGrammar.commonMistakes =
+                                processedGrammar.commonMistakes.map(
+                                  (mistake) => ({
+                                    wrong: mistake.mistake || mistake.wrong,
+                                    right: mistake.correction || mistake.right,
+                                  })
+                                );
+                            }
+                            setGrammarToEdit(processedGrammar);
+                            setShowEditGrammar(true);
+                          }}
+                          className="text-gray-500 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                          title="Chỉnh sửa ngữ pháp"
                         >
-                          {cat.name}
-                        </h3>
-                        {cat.description && (
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                            {cat.description}
-                          </p>
+                          <Edit size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteGrammar(grammar.idGrammar)}
+                          className="text-gray-500 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                          title="Xóa ngữ pháp"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Hiển thị common mistakes và examples */}
+                    {(grammar.commonMistakes || grammar.examples) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+                        {grammar.commonMistakes &&
+                          grammar.commonMistakes.length > 0 && (
+                            <div className="space-y-3">
+                              <h4 className="font-semibold text-red-700 flex items-center">
+                                <XCircle size={16} className="mr-2" /> Lỗi
+                                thường gặp
+                              </h4>
+                              {/* Trong phần hiển thị common mistakes - SỬA ĐOẠN NÀY */}
+                              {(typeof grammar.commonMistakes === "string"
+                                ? JSON.parse(grammar.commonMistakes)
+                                : grammar.commonMistakes
+                              ).map((mistake, idx) => (
+                                <React.Fragment key={idx}>
+                                  <div className="bg-red-50 rounded-lg border border-red-100 p-4">
+                                    <div className="flex items-center">
+                                      <XCircle
+                                        size={16}
+                                        className="mr-2 text-red-500 flex-shrink-0"
+                                      />
+                                      <p className="text-sm text-red-700">
+                                        {/* SỬA: mistake.wrong -> mistake.mistake */}
+                                        {mistake.mistake || mistake.wrong}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                                    <div className="flex items-center">
+                                      <CheckCircle
+                                        size={16}
+                                        className="mr-2 text-green-500 flex-shrink-0"
+                                      />
+                                      <p className="text-sm text-green-700 font-medium">
+                                        {/* SỬA: mistake.right -> mistake.correction */}
+                                        {mistake.correction || mistake.right}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </React.Fragment>
+                              ))}
+                            </div>
+                          )}
+                        {grammar.examples && grammar.examples.length > 0 && (
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-blue-500 flex items-center">
+                              <BookText size={16} className="mr-2" /> Ví dụ
+                            </h4>
+                            {(typeof grammar.examples === "string"
+                              ? JSON.parse(grammar.examples)
+                              : grammar.examples
+                            ).map((example, idx) => (
+                              <div
+                                key={idx}
+                                className="bg-blue-50 p-4 rounded-lg border border-blue-100"
+                              >
+                                <p className="text-sm text-gray-800 italic">
+                                  "{example.sentence}"
+                                </p>
+                                {example.note && (
+                                  <p className="text-xs text-gray-600 mt-2">
+                                    {example.note}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
-                      <div className="flex space-x-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCategoryToEdit(cat);
-                            setShowEditCategory(true);
-                          }}
-                          className="text-gray-500 hover:text-blue-600 p-1 rounded-lg hover:bg-blue-50 transition-colors"
-                          title="Chỉnh sửa chủ đề"
-                        >
-                          <Edit size={14} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCategory(cat.idGrammarCategory);
-                          }}
-                          className="text-gray-500 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
-                          title="Xóa chủ đề"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                    {cat.isSelected && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <ChevronRight className="text-indigo-500" size={16} />
-                      </div>
                     )}
                   </div>
-                ))}
-
-                {grammarCategories.length === 0 && !loadingCategories && (
-                  <div className="text-center py-8">
-                    <div className="bg-gray-100 p-4 rounded-xl">
-                      <BookOpen
-                        className="text-gray-400 mx-auto mb-2"
-                        size={32}
-                      />
-                      <p className="text-gray-500 text-sm">
-                        Chưa có chủ đề nào
-                      </p>
-                      <button
-                        onClick={() => setShowAddCategory(true)}
-                        className="text-indigo-600 hover:text-indigo-700 text-sm font-medium mt-2"
-                      >
-                        Thêm chủ đề đầu tiên
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {loadingCategories && (
-                  <div className="flex justify-center py-4">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content - Grammar Items */}
-          <div className="lg:col-span-3">
-            {selectedCategory ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mr-2">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-1">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">
-                      {selectedCategory.name}
-                    </h2>
-                    {selectedCategory.description && (
-                      <p className="text-gray-600 mt-1">
-                        {selectedCategory.description}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                    <div className="relative w-100 sm:flex-1">
-                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                        <Search className="text-gray-400" size={20} />
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="Tìm kiếm cấu trúc ngữ pháp..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50 transition-all max-w-2xl"
-                      />
-                    </div>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <div className="bg-gray-50 rounded-2xl p-8 max-w-md mx-auto">
+                    <BookOpen
+                      className="text-gray-400 mx-auto mb-4"
+                      size={48}
+                    />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      Chưa có ngữ pháp nào
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                      Bắt đầu bằng cách thêm điểm ngữ pháp đầu tiên.
+                    </p>
                     <button
-                      onClick={() => setShowAddGrammarItem(true)}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl flex items-center justify-center transition-all duration-200 hover:shadow-md font-medium"
+                      onClick={() => setShowAddGrammar(true)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium transition-colors"
                     >
-                      <Plus size={20} className="mr-2" />
-                      Thêm ngữ pháp
+                      Thêm Ngữ Pháp
                     </button>
                   </div>
                 </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* PHẦN NGƯỜI DÙNG BÌNH THƯỜNG */
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Sidebar - Categories */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Chủ đề ngữ pháp
+                  </h2>
+                  <button
+                    onClick={() => setShowAddCategory(true)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-xl transition-all duration-200 hover:shadow-md"
+                    title="Thêm chủ đề mới"
+                  >
+                    <Plus size={20} />
+                  </button>
+                </div>
 
-                {loadingGrammar ? (
-                  <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-                  </div>
-                ) : filteredGrammarItems.length > 0 ? (
-                  <div className="space-y-4">
-                    {filteredGrammarItems.map((item, index) => (
-                      <div
-                        key={item.idGrammar}
-                        className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 bg-white group"
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <div className="flex items-center mb-2">
-                              <div className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
-                                {index + 1}
-                              </div>
-                              <h3 className="text-xl font-bold text-gray-900 ml-3">
-                                {item.title}
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                  {grammarCategories?.map(
+                    (cat) =>
+                      cat && (
+                        <div
+                          key={cat.idGrammarCategory}
+                          className={`group relative p-4 rounded-xl transition-all duration-200 cursor-pointer ${
+                            cat.isSelected
+                              ? "bg-indigo-50 border-2 border-indigo-200 shadow-sm"
+                              : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
+                          }`}
+                          onClick={() =>
+                            handleSelectCategory(cat.idGrammarCategory)
+                          }
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 min-w-0">
+                              <h3
+                                className={`font-semibold truncate ${
+                                  cat.isSelected
+                                    ? "text-indigo-700"
+                                    : "text-gray-800"
+                                }`}
+                              >
+                                {cat.name}
                               </h3>
-
-                              <div className="ml-4">
-                                <Tag color={getTypeColor(item.level)}>
-                                  {item.level}
-                                </Tag>
-                              </div>
-                            </div>
-                            <p className="text-gray-700 leading-relaxed">
-                              {item.explanation}
-                            </p>
-                          </div>
-                          <div className="flex space-x-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => {
-                                setGrammarItemToEdit({
-                                  ...initialGrammarItemState,
-                                  ...item,
-                                });
-                                setShowEditGrammarItem(true);
-                              }}
-                              className="text-gray-500 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50 transition-colors"
-                              title="Chỉnh sửa"
-                            >
-                              <Edit size={18} />
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleDeleteGrammarItem(item.idGrammar)
-                              }
-                              className="text-gray-500 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-colors"
-                              title="Xóa"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {(item.commonMistakes || item.examples) && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
-                            {item.commonMistakes &&
-                              item.commonMistakes.length > 0 && (
-                                <div className="space-y-3">
-                                  <h4 className="font-semibold text-red-700 flex items-center">
-                                    <XCircle size={16} className="mr-2" /> Lỗi
-                                    thường gặp
-                                  </h4>
-                                  {item.commonMistakes.map((mistake, idx) => (
-                                    <React.Fragment key={idx}>
-                                      <div className="bg-red-50  rounded-lg border border-red-100 p-7">
-                                        <div className="flex items-center">
-                                          <XCircle
-                                            size={16}
-                                            className="mr-2 text-red-500 flex-shrink-0"
-                                          />
-                                          <p className="text-sm text-red-700">
-                                            {mistake.wrong}
-                                          </p>
-                                        </div>
-                                      </div>
-
-                                      <div className="bg-green-50 p-7 rounded-lg border border-green-100">
-                                        <div className="flex items-center">
-                                          <CheckCircle
-                                            size={16}
-                                            className="mr-2 text-green-500 flex-shrink-0"
-                                          />
-                                          <p className="text-sm text-green-700 font-medium">
-                                            {mistake.right}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    </React.Fragment>
-                                  ))}
-                                </div>
+                              {cat.description && (
+                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                  {cat.description}
+                                </p>
                               )}
-                            {item.examples && item.examples.length > 0 && (
-                              <div className="space-y-3">
-                                <h4 className="font-semibold text-blue-500 flex items-center">
-                                  <BookText size={16} className="mr-2" /> Ví dụ
-                                </h4>
-                                {item.examples.map((example, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="bg-blue-50 p-4 rounded-lg border border-blue-100"
-                                  >
-                                    <p className="text-sm text-gray-800 italic">
-                                      "{example.sentence}"
-                                    </p>
-                                    {example.note && (
-                                      <p className="text-xs text-gray-600 mt-2">
-                                        {example.note}
-                                      </p>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                            </div>
+                            <div className="flex space-x-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCategoryToEdit(cat);
+                                  setShowEditCategory(true);
+                                }}
+                                className="text-gray-500 hover:text-blue-600 p-1 rounded-lg hover:bg-blue-50 transition-colors"
+                                title="Chỉnh sửa chủ đề"
+                              >
+                                <Edit size={14} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteCategory(cat.idGrammarCategory);
+                                }}
+                                className="text-gray-500 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
+                                title="Xóa chủ đề"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
-                        )}
+                          {cat.isSelected && (
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                              <ChevronRight
+                                className="text-indigo-500"
+                                size={16}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )
+                  )}
+
+                  {grammarCategories?.length === 0 && !loadingCategories && (
+                    <div className="text-center py-8">
+                      <div className="bg-gray-100 p-4 rounded-xl">
+                        <BookOpen
+                          className="text-gray-400 mx-auto mb-2"
+                          size={32}
+                        />
+                        <p className="text-gray-500 text-sm">
+                          Chưa có chủ đề nào
+                        </p>
+                        <button
+                          onClick={() => setShowAddCategory(true)}
+                          className="text-indigo-600 hover:text-indigo-700 text-sm font-medium mt-2"
+                        >
+                          Thêm chủ đề đầu tiên
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="bg-gray-50 rounded-2xl p-8 max-w-md mx-auto">
-                      <BookOpen
-                        className="text-gray-400 mx-auto mb-4"
-                        size={48}
-                      />
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        Chưa có ngữ pháp nào
-                      </h3>
-                      <p className="text-gray-600 mb-4">
-                        Bắt đầu thêm các điểm ngữ pháp đầu tiên vào chủ đề này.
-                      </p>
+                    </div>
+                  )}
+
+                  {loadingCategories && (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Main Content - Grammar Items */}
+            <div className="lg:col-span-3">
+              {selectedCategory ? (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mr-2">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-1">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        {selectedCategory.name}
+                      </h2>
+                      {selectedCategory.description && (
+                        <p className="text-gray-600 mt-1">
+                          {selectedCategory.description}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                      <div className="relative w-100 sm:flex-1">
+                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                          <Search className="text-gray-400" size={20} />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm cấu trúc ngữ pháp..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50 transition-all max-w-2xl"
+                        />
+                      </div>
                       <button
-                        onClick={() => setShowAddGrammarItem(true)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-medium transition-colors"
+                        onClick={() => setShowAddGrammarToCategory(true)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl flex items-center justify-center transition-all duration-200 hover:shadow-md font-medium"
                       >
+                        <Plus size={20} className="mr-2" />
                         Thêm ngữ pháp
                       </button>
                     </div>
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
-                <BookOpen className="text-gray-400 mx-auto mb-4" size={64} />
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  Chọn một chủ đề ngữ pháp
-                </h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  Chọn một chủ đề từ danh sách bên trái để xem và quản lý các
-                  điểm ngữ pháp, hoặc tạo chủ đề mới.
-                </p>
-                <button
-                  onClick={() => setShowAddCategory(true)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-medium transition-colors inline-flex items-center"
-                >
-                  <Plus size={20} className="mr-2" />
-                  Tạo chủ đề mới
-                </button>
-              </div>
-            )}
+
+                  {loadingGrammar ? (
+                    <div className="flex justify-center py-12">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                    </div>
+                  ) : filteredGrammarItems.length > 0 ? (
+                    <div className="space-y-4">
+                      {filteredGrammarItems.map((item, index) => (
+                        <div
+                          key={item.idGrammar}
+                          className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 bg-white group"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex-1">
+                              <div className="flex items-center mb-2">
+                                <div className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
+                                  {index + 1}
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 ml-3">
+                                  {item.title}
+                                </h3>
+
+                                <div className="ml-4">
+                                  <Tag color={getTypeColor(item.level)}>
+                                    {item.level}
+                                  </Tag>
+                                </div>
+                              </div>
+                              <p className="text-gray-700 leading-relaxed">
+                                {item.explanation}
+                              </p>
+                            </div>
+                            <div className="flex space-x-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() =>
+                                  handleRemoveGrammarFromCategory(
+                                    item.idGrammar
+                                  )
+                                }
+                                className="text-gray-500 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                                title="Xóa khỏi chủ đề"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {(item.commonMistakes || item.examples) && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+                              {item.commonMistakes &&
+                                item.commonMistakes.length > 0 && (
+                                  <div className="space-y-3">
+                                    <h4 className="font-semibold text-red-700 flex items-center">
+                                      <XCircle size={16} className="mr-2" /> Lỗi
+                                      thường gặp
+                                    </h4>
+                                    {item.commonMistakes.map((mistake, idx) => (
+                                      <React.Fragment key={idx}>
+                                        <div className="bg-red-50  rounded-lg border border-red-100 p-7">
+                                          <div className="flex items-center">
+                                            <XCircle
+                                              size={16}
+                                              className="mr-2 text-red-500 flex-shrink-0"
+                                            />
+                                            <p className="text-sm text-red-700">
+                                              {mistake.wrong}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        <div className="bg-green-50 p-7 rounded-lg border border-green-100">
+                                          <div className="flex items-center">
+                                            <CheckCircle
+                                              size={16}
+                                              className="mr-2 text-green-500 flex-shrink-0"
+                                            />
+                                            <p className="text-sm text-green-700 font-medium">
+                                              {mistake.right}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </React.Fragment>
+                                    ))}
+                                  </div>
+                                )}
+                              {item.examples && item.examples.length > 0 && (
+                                <div className="space-y-3">
+                                  <h4 className="font-semibold text-blue-500 flex items-center">
+                                    <BookText size={16} className="mr-2" /> Ví
+                                    dụ
+                                  </h4>
+                                  {item.examples.map((example, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="bg-blue-50 p-4 rounded-lg border border-blue-100"
+                                    >
+                                      <p className="text-sm text-gray-800 italic">
+                                        "{example.sentence}"
+                                      </p>
+                                      {example.note && (
+                                        <p className="text-xs text-gray-600 mt-2">
+                                          {example.note}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="bg-gray-50 rounded-2xl p-8 max-w-md mx-auto">
+                        <BookOpen
+                          className="text-gray-400 mx-auto mb-4"
+                          size={48}
+                        />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                          Chưa có ngữ pháp nào
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                          Thêm các điểm ngữ pháp có sẵn vào chủ đề này.
+                        </p>
+                        <button
+                          onClick={() => setShowAddGrammarToCategory(true)}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-medium transition-colors"
+                        >
+                          Thêm ngữ pháp
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+                  <BookOpen className="text-gray-400 mx-auto mb-4" size={64} />
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    Chọn một chủ đề ngữ pháp
+                  </h3>
+                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                    Chọn một chủ đề từ danh sách bên trái để xem và quản lý các
+                    điểm ngữ pháp, hoặc tạo chủ đề mới.
+                  </p>
+                  <button
+                    onClick={() => setShowAddCategory(true)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-medium transition-colors inline-flex items-center"
+                  >
+                    <Plus size={20} className="mr-2" />
+                    Tạo chủ đề mới
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Modal Thêm Chủ đề */}
         {showAddCategory && (
@@ -878,426 +1204,518 @@ const Grammar = () => {
           </div>
         )}
 
-        {/* Modal Thêm điểm ngữ pháp */}
-        {showAddGrammarItem && (
+        {/* Modal Thêm Grammar vào Category */}
+        {showAddGrammarToCategory && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">
-                  Thêm điểm ngữ pháp mới
+            <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Thêm ngữ pháp vào chủ đề
                 </h3>
                 <button
-                  onClick={() => setShowAddGrammarItem(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  onClick={() => setShowAddGrammarToCategory(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <X size={24} />
                 </button>
               </div>
 
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cấu trúc ngữ pháp *
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ví dụ: Present Perfect"
-                      value={newGrammarItem.title}
-                      onChange={(e) =>
-                        setNewGrammarItem({
-                          ...newGrammarItem,
-                          title: e.target.value,
-                        })
-                      }
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      autoFocus
+              <div className="space-y-4">
+                {availableGrammars.length > 0 ? (
+                  availableGrammars.map((grammar) => (
+                    <div
+                      key={grammar.idGrammar}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">
+                            {grammar.title}
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {grammar.explanation}
+                          </p>
+                          <Tag
+                            color={getTypeColor(grammar.level)}
+                            className="mt-2"
+                          >
+                            {grammar.level}
+                          </Tag>
+                        </div>
+                        <button
+                          onClick={() =>
+                            handleAddGrammarToCategory(grammar.idGrammar)
+                          }
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                        >
+                          Thêm vào chủ đề
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <BookOpen
+                      className="text-gray-400 mx-auto mb-4"
+                      size={48}
                     />
+                    <p className="text-gray-600">
+                      Hiện không có ngữ pháp nào khả dụng để thêm.
+                    </p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cấp độ (Level)
-                    </label>
-                    <select
-                      value={newGrammarItem.level}
-                      onChange={(e) =>
-                        setNewGrammarItem({
-                          ...newGrammarItem,
-                          level: e.target.value,
-                        })
-                      }
-                      className="w-full p-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="Low">Low</option>
-                      <option value="Mid">Mid</option>
-                      <option value="High">High</option>
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Giải thích *
-                  </label>
-                  <textarea
-                    placeholder="Giải thích chi tiết về cấu trúc này..."
-                    value={newGrammarItem.explanation}
-                    onChange={(e) =>
-                      setNewGrammarItem({
-                        ...newGrammarItem,
-                        explanation: e.target.value,
-                      })
-                    }
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    rows="4"
-                  ></textarea>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Lỗi thường gặp */}
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-gray-800">
-                      Lỗi thường gặp
-                    </h4>
-                    {newGrammarItem.commonMistakes.map((mistake, index) => (
-                      <div
-                        key={index}
-                        className="bg-gray-50 p-4 rounded-lg space-y-2 relative border"
-                      >
-                        {newGrammarItem.commonMistakes.length > 1 && (
-                          <button
-                            onClick={() =>
-                              removeNewItem(index, "commonMistakes")
-                            }
-                            className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
-                          >
-                            <X size={16} />
-                          </button>
-                        )}
-                        <input
-                          type="text"
-                          placeholder="Câu sai (wrong)"
-                          value={mistake.wrong}
-                          onChange={(e) =>
-                            handleNewItemChange(
-                              index,
-                              "wrong",
-                              e.target.value,
-                              "commonMistakes"
-                            )
-                          }
-                          className="w-full p-2 border border-gray-200 rounded"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Câu đúng (right)"
-                          value={mistake.right}
-                          onChange={(e) =>
-                            handleNewItemChange(
-                              index,
-                              "right",
-                              e.target.value,
-                              "commonMistakes"
-                            )
-                          }
-                          className="w-full p-2 border border-gray-200 rounded"
-                        />
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => addNewItem("commonMistakes")}
-                      className="text-sm text-indigo-600 font-medium"
-                    >
-                      + Thêm lỗi sai
-                    </button>
-                  </div>
-
-                  {/* Ví dụ */}
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-gray-800">Ví dụ</h4>
-                    {newGrammarItem.examples.map((example, index) => (
-                      <div
-                        key={index}
-                        className="bg-gray-50 p-4 rounded-lg space-y-2 relative border"
-                      >
-                        {newGrammarItem.examples.length > 1 && (
-                          <button
-                            onClick={() => removeNewItem(index, "examples")}
-                            className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
-                          >
-                            <X size={16} />
-                          </button>
-                        )}
-                        <input
-                          type="text"
-                          placeholder="Câu ví dụ (sentence)"
-                          value={example.sentence}
-                          onChange={(e) =>
-                            handleNewItemChange(
-                              index,
-                              "sentence",
-                              e.target.value,
-                              "examples"
-                            )
-                          }
-                          className="w-full p-2 border border-gray-200 rounded"
-                        />
-                        <textarea
-                          placeholder="Ghi chú (note)"
-                          value={example.note}
-                          onChange={(e) =>
-                            handleNewItemChange(
-                              index,
-                              "note",
-                              e.target.value,
-                              "examples"
-                            )
-                          }
-                          className="w-full p-2 border border-gray-200 rounded"
-                          rows="2"
-                        ></textarea>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => addNewItem("examples")}
-                      className="text-sm text-indigo-600 font-medium"
-                    >
-                      + Thêm ví dụ
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
 
-              <div className="flex justify-end space-x-3 mt-8">
+              <div className="flex justify-end mt-6">
                 <button
-                  onClick={() => setShowAddGrammarItem(false)}
-                  className="px-6 py-3 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
+                  onClick={() => setShowAddGrammarToCategory(false)}
+                  className="px-6 py-3 text-gray-700 hover:text-gray-900 font-medium transition-colors"
                 >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleAddGrammarItem}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
-                >
-                  Thêm ngữ pháp
+                  Đóng
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Modal Sửa điểm ngữ pháp */}
-        {showEditGrammarItem && grammarItemToEdit && (
+        {/* Modal Thêm Grammar Mới (Admin/Teacher) */}
+        {showAddGrammar && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">
-                  Chỉnh sửa điểm ngữ pháp
+            <div className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Thêm Ngữ Pháp Mới
                 </h3>
                 <button
-                  onClick={() => setShowEditGrammarItem(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  onClick={() => setShowAddGrammar(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <X size={24} />
                 </button>
               </div>
 
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cấu trúc ngữ pháp *
+                      Tiêu đề *
                     </label>
                     <input
                       type="text"
-                      value={grammarItemToEdit.title}
+                      value={newGrammar.title}
                       onChange={(e) =>
-                        setGrammarItemToEdit({
-                          ...grammarItemToEdit,
-                          title: e.target.value,
-                        })
+                        setNewGrammar({ ...newGrammar, title: e.target.value })
                       }
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      autoFocus
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Ví dụ: Present Perfect Tense"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cấp độ (Level)
+                      Cấp độ
                     </label>
                     <select
-                      value={grammarItemToEdit.level}
+                      value={newGrammar.level}
                       onChange={(e) =>
-                        setGrammarItemToEdit({
-                          ...grammarItemToEdit,
-                          level: e.target.value,
-                        })
+                        setNewGrammar({ ...newGrammar, level: e.target.value })
                       }
-                      className="w-full p-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     >
-                      <option value="Low">Low</option>
-                      <option value="Mid">Mid</option>
-                      <option value="High">High</option>
+                      <option value="Low">Cơ bản</option>
+                      <option value="Mid">Trung bình</option>
+                      <option value="High">Nâng cao</option>
                     </select>
                   </div>
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Giải thích *
                   </label>
                   <textarea
-                    value={grammarItemToEdit.explanation}
+                    value={newGrammar.explanation}
                     onChange={(e) =>
-                      setGrammarItemToEdit({
-                        ...grammarItemToEdit,
+                      setNewGrammar({
+                        ...newGrammar,
                         explanation: e.target.value,
                       })
                     }
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Giải thích chi tiết về cấu trúc ngữ pháp..."
                     rows="4"
-                  ></textarea>
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Lỗi thường gặp */}
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-gray-800">
-                      Lỗi thường gặp
-                    </h4>
-                    {grammarItemToEdit.commonMistakes.map((mistake, index) => (
-                      <div
-                        key={index}
-                        className="bg-gray-50 p-4 rounded-lg space-y-2 relative border"
-                      >
-                        {grammarItemToEdit.commonMistakes.length > 1 && (
-                          <button
-                            onClick={() =>
-                              removeEditItem(index, "commonMistakes")
-                            }
-                            className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
-                          >
-                            <X size={16} />
-                          </button>
-                        )}
-                        <input
-                          type="text"
-                          placeholder="Câu sai (wrong)"
-                          value={mistake.wrong}
-                          onChange={(e) =>
-                            handleEditItemChange(
-                              index,
-                              "wrong",
-                              e.target.value,
-                              "commonMistakes"
-                            )
-                          }
-                          className="w-full p-2 border border-gray-200 rounded"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Câu đúng (right)"
-                          value={mistake.right}
-                          onChange={(e) =>
-                            handleEditItemChange(
-                              index,
-                              "right",
-                              e.target.value,
-                              "commonMistakes"
-                            )
-                          }
-                          className="w-full p-2 border border-gray-200 rounded"
-                        />
-                        <textarea
-                          placeholder="Giải thích (explanation)"
-                          value={mistake.explanation}
-                          onChange={(e) =>
-                            handleEditItemChange(
-                              index,
-                              "explanation",
-                              e.target.value,
-                              "commonMistakes"
-                            )
-                          }
-                          className="w-full p-2 border border-gray-200 rounded"
-                          rows="2"
-                        ></textarea>
-                      </div>
-                    ))}
+                {/* Common Mistakes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lỗi thường gặp
+                  </label>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        value={newMistake.wrong}
+                        onChange={(e) =>
+                          setNewMistake({
+                            ...newMistake,
+                            wrong: e.target.value,
+                          })
+                        }
+                        className="p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Câu sai"
+                      />
+                      <input
+                        type="text"
+                        value={newMistake.right}
+                        onChange={(e) =>
+                          setNewMistake({
+                            ...newMistake,
+                            right: e.target.value,
+                          })
+                        }
+                        className="p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Câu đúng"
+                      />
+                    </div>
                     <button
-                      onClick={() => addEditItem("commonMistakes")}
-                      className="text-sm text-indigo-600 font-medium"
+                      onClick={addMistake}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                     >
-                      + Thêm lỗi sai
+                      Thêm lỗi
                     </button>
                   </div>
 
-                  {/* Ví dụ */}
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-gray-800">Ví dụ</h4>
-                    {grammarItemToEdit.examples.map((example, index) => (
-                      <div
-                        key={index}
-                        className="bg-gray-50 p-4 rounded-lg space-y-2 relative border"
-                      >
-                        {grammarItemToEdit.examples.length > 1 && (
+                  {newGrammar.commonMistakes.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {newGrammar.commonMistakes.map((mistake, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
+                        >
+                          <div className="flex-1">
+                            <div className="text-red-600 text-sm">
+                              ❌ {mistake.wrong}
+                            </div>
+                            <div className="text-green-600 text-sm font-medium">
+                              ✅ {mistake.right}
+                            </div>
+                          </div>
                           <button
-                            onClick={() => removeEditItem(index, "examples")}
-                            className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                            onClick={() => removeMistake(index)}
+                            className="text-red-500 hover:text-red-700 ml-2"
                           >
-                            <X size={16} />
+                            <Trash2 size={16} />
                           </button>
-                        )}
-                        <input
-                          type="text"
-                          placeholder="Câu ví dụ (sentence)"
-                          value={example.sentence}
-                          onChange={(e) =>
-                            handleEditItemChange(
-                              index,
-                              "sentence",
-                              e.target.value,
-                              "examples"
-                            )
-                          }
-                          className="w-full p-2 border border-gray-200 rounded"
-                        />
-                        <textarea
-                          placeholder="Ghi chú (note)"
-                          value={example.note}
-                          onChange={(e) =>
-                            handleEditItemChange(
-                              index,
-                              "note",
-                              e.target.value,
-                              "examples"
-                            )
-                          }
-                          className="w-full p-2 border border-gray-200 rounded"
-                          rows="2"
-                        ></textarea>
-                      </div>
-                    ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Examples */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ví dụ
+                  </label>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        value={newExample.sentence}
+                        onChange={(e) =>
+                          setNewExample({
+                            ...newExample,
+                            sentence: e.target.value,
+                          })
+                        }
+                        className="p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Câu ví dụ"
+                      />
+                      <input
+                        type="text"
+                        value={newExample.note}
+                        onChange={(e) =>
+                          setNewExample({ ...newExample, note: e.target.value })
+                        }
+                        className="p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Ghi chú (tùy chọn)"
+                      />
+                    </div>
                     <button
-                      onClick={() => addEditItem("examples")}
-                      className="text-sm text-indigo-600 font-medium"
+                      onClick={addExample}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                     >
-                      + Thêm ví dụ
+                      Thêm ví dụ
                     </button>
                   </div>
+
+                  {newGrammar.examples.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {newGrammar.examples.map((example, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
+                        >
+                          <div className="flex-1">
+                            <div className="text-gray-800 text-sm">
+                              "{example.sentence}"
+                            </div>
+                            {example.note && (
+                              <div className="text-gray-600 text-xs mt-1">
+                                📝 {example.note}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => removeExample(index)}
+                            className="text-red-500 hover:text-red-700 ml-2"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 mt-8">
+              <div className="flex justify-end space-x-3 mt-6">
                 <button
-                  onClick={() => setShowEditGrammarItem(false)}
-                  className="px-6 py-3 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
+                  onClick={() => setShowAddGrammar(false)}
+                  className="px-6 py-3 text-gray-700 hover:text-gray-900 font-medium transition-colors"
                 >
                   Hủy
                 </button>
                 <button
-                  onClick={handleEditGrammarItem}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                  onClick={handleAddGrammar}
+                  className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium transition-colors"
                 >
-                  Lưu thay đổi
+                  Thêm Ngữ Pháp
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Sửa Grammar (Admin/Teacher) */}
+        {showEditGrammar && grammarToEdit && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Chỉnh Sửa Ngữ Pháp
+                </h3>
+                <button
+                  onClick={() => setShowEditGrammar(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tiêu đề *
+                    </label>
+                    <input
+                      type="text"
+                      value={grammarToEdit.title}
+                      onChange={(e) =>
+                        setGrammarToEdit({
+                          ...grammarToEdit,
+                          title: e.target.value,
+                        })
+                      }
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cấp độ
+                    </label>
+                    <select
+                      value={grammarToEdit.level}
+                      onChange={(e) =>
+                        setGrammarToEdit({
+                          ...grammarToEdit,
+                          level: e.target.value,
+                        })
+                      }
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      <option value="Low">Cơ bản</option>
+                      <option value="Mid">Trung bình</option>
+                      <option value="High">Nâng cao</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Giải thích *
+                  </label>
+                  <textarea
+                    value={grammarToEdit.explanation}
+                    onChange={(e) =>
+                      setGrammarToEdit({
+                        ...grammarToEdit,
+                        explanation: e.target.value,
+                      })
+                    }
+                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    rows="4"
+                  />
+                </div>
+
+                {/* Common Mistakes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lỗi thường gặp
+                  </label>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        value={newMistake.wrong}
+                        onChange={(e) =>
+                          setNewMistake({
+                            ...newMistake,
+                            wrong: e.target.value,
+                          })
+                        }
+                        className="p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Câu sai"
+                      />
+                      <input
+                        type="text"
+                        value={newMistake.right}
+                        onChange={(e) =>
+                          setNewMistake({
+                            ...newMistake,
+                            right: e.target.value,
+                          })
+                        }
+                        className="p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Câu đúng"
+                      />
+                    </div>
+                    <button
+                      onClick={addMistake}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Thêm lỗi
+                    </button>
+                  </div>
+
+                  {grammarToEdit.commonMistakes.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {grammarToEdit.commonMistakes.map((mistake, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
+                        >
+                          <div className="flex-1">
+                            <div className="text-red-600 text-sm">
+                              ❌ {mistake.wrong}
+                            </div>
+                            <div className="text-green-600 text-sm font-medium">
+                              ✅ {mistake.right}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removeMistake(index)}
+                            className="text-red-500 hover:text-red-700 ml-2"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Examples */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ví dụ
+                  </label>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        value={newExample.sentence}
+                        onChange={(e) =>
+                          setNewExample({
+                            ...newExample,
+                            sentence: e.target.value,
+                          })
+                        }
+                        className="p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Câu ví dụ"
+                      />
+                      <input
+                        type="text"
+                        value={newExample.note}
+                        onChange={(e) =>
+                          setNewExample({ ...newExample, note: e.target.value })
+                        }
+                        className="p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Ghi chú (tùy chọn)"
+                      />
+                    </div>
+                    <button
+                      onClick={addExample}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Thêm ví dụ
+                    </button>
+                  </div>
+
+                  {grammarToEdit.examples.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {grammarToEdit.examples.map((example, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
+                        >
+                          <div className="flex-1">
+                            <div className="text-gray-800 text-sm">
+                              "{example.sentence}"
+                            </div>
+                            {example.note && (
+                              <div className="text-gray-600 text-xs mt-1">
+                                📝 {example.note}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => removeExample(index)}
+                            className="text-red-500 hover:text-red-700 ml-2"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => setShowEditGrammar(false)}
+                  className="px-6 py-3 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleEditGrammar}
+                  className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium transition-colors"
+                >
+                  Lưu Thay Đổi
                 </button>
               </div>
             </div>
