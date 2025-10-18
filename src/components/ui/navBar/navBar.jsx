@@ -9,6 +9,7 @@ import {
   X,
   User,
   LogOut,
+  Album,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,6 +52,12 @@ const Navbar = () => {
       href: "/vocabulary",
       current: location.pathname === "/vocabulary",
       icon: BookMarked,
+    },
+    {
+      name: "Ngữ pháp",
+      href: "/grammar",
+      current: location.pathname === "/grammar",
+      icon: Album,
     },
   ];
 

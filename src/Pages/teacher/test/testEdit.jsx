@@ -12,11 +12,11 @@ const TestEdit = () => {
 
   switch (exam.loaiDe) {
     case "READING":
-      return <CreateReading idDe={idDe} exam={exam} />;
+      return <CreateReading idDe={exam.idDe} exam={exam} />;
     case "LISTENING":
-      return <CreateListening idDe={idDe} exam={exam} />;
+      return <CreateListening idDe={exam.idDe} exam={exam} />;
     case "WRITING":
-      return <CreateWriting idDe={idDe} exam={exam} />;
+      return <CreateWriting idDe={exam.idDe} exam={exam} />;
     default:
       return <p>Loại đề không hợp lệ: {exam.loaiDe}</p>;
   }

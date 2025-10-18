@@ -94,3 +94,14 @@ export const deletePartAPI = async (idPart) => {
   const res = await API.delete(`/part/delete/${idPart}`);
   return res.data;
 };
+
+//get
+export const getAllPartByIdAPI = async (idTest) => {
+  const res = await API.get(`/part/get-all-part-by-idTest/${idTest}`);
+  return res.data;
+};
+
+export const getPartByIdAPI = async (idPart) => {
+  const res = await API.get(`/part/get-one/${idPart}`);
+  return res.data;
+};
