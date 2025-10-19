@@ -120,7 +120,7 @@ const NavbarTeacher = () => {
               </button>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition"
+                className="flex items-center h-10 gap-2 px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-500 !text-white text-sm font-medium transition"
               >
                 <LogOut className="h-4 w-4" />
                 Đăng xuất

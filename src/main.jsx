@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import "antd/dist/reset.css"; // <--- CHUYỂN DÒNG NÀY ĐẾN ĐÂY, LÊN TRÊN CÙNG
 import "./index.css";
 import { AuthProvider } from "./context/authContext";
 import { createBrowserRouter, RouterProvider } from "react-router";

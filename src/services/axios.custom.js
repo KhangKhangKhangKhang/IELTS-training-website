@@ -1,6 +1,6 @@
 import axios from "axios";
 import Cookies from "js-cookie";
-import { refreshToken } from "./apiAuth";
+import { refreshTokenAPI } from "./apiAuth";
 
 const API = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
@@ -33,7 +33,7 @@ axios.interceptors.response.use(
         return Promise.reject(err);
       }
       try {
-        const refreshToken = await refreshToken();
+        const refreshToken = await refreshTokenAPI();
         const { Token } = refreshToken?.data || {};
         Cookies.set("accessToken", Token);
         originalConfig.headers.Authorization = `Bearer ${Token}`;

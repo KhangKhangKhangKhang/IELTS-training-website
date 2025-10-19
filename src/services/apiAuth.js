@@ -40,7 +40,7 @@ export const resetPasswordOTP = async (data) => {
   return res.data; // { message: "OTP verified" }
 };
 
-export const refreshToken = async (data) => {
+export const refreshTokenAPI = async (data) => {
   const res = await API.post("/auth/reset-token", data);
   return res.data;
 };

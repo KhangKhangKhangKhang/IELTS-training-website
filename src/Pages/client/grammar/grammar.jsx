@@ -529,8 +529,8 @@ const Grammar = () => {
                   }}
                   className={`px-4 py-2 rounded-xl font-medium transition-colors ${
                     activeTab === "user"
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      ? "bg-indigo-600 !text-white"
+                      : "bg-gray-200 !text-gray-700 hover:bg-gray-300"
                   }`}
                 >
                   Học Ngữ Pháp
@@ -542,8 +542,8 @@ const Grammar = () => {
                   }}
                   className={`px-4 py-2 rounded-xl font-medium transition-colors flex items-center ${
                     activeTab === "management"
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      ? "bg-green-600 !text-white"
+                      : "bg-gray-200 !text-gray-700 hover:bg-gray-300"
                   }`}
                 >
                   <Users size={18} className="mr-2" />
@@ -582,7 +582,7 @@ const Grammar = () => {
               </h2>
               <button
                 onClick={() => setShowAddGrammar(true)}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl flex items-center transition-all duration-200 hover:shadow-md font-medium"
+                className="bg-green-600 hover:bg-green-700 !text-white px-4 py-3 rounded-xl flex items-center transition-all duration-200 hover:shadow-md font-medium"
               >
                 <Plus size={20} className="mr-2" />
                 Thêm Ngữ Pháp Mới
@@ -768,7 +768,7 @@ const Grammar = () => {
                   </h2>
                   <button
                     onClick={() => setShowAddCategory(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-xl transition-all duration-200 hover:shadow-md"
+                    className="bg-indigo-600 hover:bg-indigo-700 !text-white p-2 rounded-xl transition-all duration-200 hover:shadow-md"
                     title="Thêm chủ đề mới"
                   >
                     <Plus size={20} />
@@ -855,7 +855,7 @@ const Grammar = () => {
                         </p>
                         <button
                           onClick={() => setShowAddCategory(true)}
-                          className="text-indigo-600 hover:text-indigo-700 text-sm font-medium mt-2"
+                          className="!text-indigo-600 hover:text-indigo-700 text-sm font-medium mt-2"
                         >
                           Thêm chủ đề đầu tiên
                         </button>
@@ -903,7 +903,7 @@ const Grammar = () => {
                       </div>
                       <button
                         onClick={() => setShowAddGrammarToCategory(true)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl flex items-center justify-center transition-all duration-200 hover:shadow-md font-medium"
+                        className="bg-indigo-600 hover:bg-indigo-700 !text-white px-4 py-3 rounded-xl flex items-center justify-center transition-all duration-200 hover:shadow-md font-medium"
                       >
                         <Plus size={20} className="mr-2" />
                         Thêm ngữ pháp
@@ -1058,7 +1058,7 @@ const Grammar = () => {
                   </p>
                   <button
                     onClick={() => setShowAddCategory(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-medium transition-colors inline-flex items-center"
+                    className="bg-indigo-600 hover:bg-indigo-700 !text-white px-6 py-3 rounded-xl font-medium transition-colors inline-flex items-center"
                   >
                     <Plus size={20} className="mr-2" />
                     Tạo chủ đề mới
@@ -1127,7 +1127,7 @@ const Grammar = () => {
                 </button>
                 <button
                   onClick={handleAddCategory}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium transition-colors"
+                  className="px-6 py-3 bg-indigo-600 !text-white rounded-xl hover:bg-indigo-700 font-medium transition-colors"
                 >
                   Thêm chủ đề
                 </button>
@@ -1380,7 +1380,7 @@ const Grammar = () => {
                     </div>
                     <button
                       onClick={addMistake}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      className="bg-gray-600 hover:bg-gray-700 !text-white px-4 py-2 rounded-lg font-medium transition-colors"
                     >
                       Thêm lỗi
                     </button>
@@ -1444,7 +1444,7 @@ const Grammar = () => {
                     </div>
                     <button
                       onClick={addExample}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      className="bg-gray-600 hover:bg-gray-700 !text-white px-4 py-2 rounded-lg font-medium transition-colors"
                     >
                       Thêm ví dụ
                     </button>
@@ -1604,7 +1604,7 @@ const Grammar = () => {
                     </div>
                     <button
                       onClick={addMistake}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      className="bg-gray-600 hover:bg-gray-700 !text-white px-4 py-2 rounded-lg font-medium transition-colors"
                     >
                       Thêm lỗi
                     </button>
@@ -1668,7 +1668,7 @@ const Grammar = () => {
                     </div>
                     <button
                       onClick={addExample}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      className="bg-gray-600 hover:bg-gray-700 !text-white px-4 py-2 rounded-lg font-medium transition-colors"
                     >
                       Thêm ví dụ
                     </button>

@@ -67,7 +67,7 @@ const Navbar = () => {
           >
             <Button
               ghost
-              className="text-white border-slate-600"
+              className="text-white border-slate-600 !mr-4"
               onClick={() => navigate("/login")}
             >
               Login
