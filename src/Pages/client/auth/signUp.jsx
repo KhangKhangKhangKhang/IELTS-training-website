@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { signupAPI } from "@/services/apiAuth";
 import { useNavigate } from "react-router";
 
