@@ -51,13 +51,11 @@ const forgetPassword = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Nhập email của bạn"
                 required
-              >
-                {" "}
-              </Input>
+              ></Input>
 
               <Button
                 onClick={handleForgetPassword}
-                className="mt-7  h-10 w-full"
+                className="mt-7 bg-slate-900 hover:cursor-pointer text-white rounded-2xl h-10 w-full"
               >
                 Gửi
               </Button>

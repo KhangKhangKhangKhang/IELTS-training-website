@@ -3,12 +3,12 @@ import React, { use, useEffect } from "react";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import API from "@/services/axios.custom";
 import { loginAPI } from "@/services/apiAuth";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/context/authContext";
 import Cookies from "js-cookie";
+import { Button } from "@/components/ui/button";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -133,7 +133,10 @@ const Login = () => {
                 </p>
               </div>
               <div>
-                <Button type="submit" className=" !text-white   w-full h-10">
+                <Button
+                  type="submit"
+                  className=" border-2 bg-slate-900 rounded-2xl hover:cursor-pointer w-full h-10 !text-white"
+                >
                   Đăng nhập
                 </Button>
               </div>

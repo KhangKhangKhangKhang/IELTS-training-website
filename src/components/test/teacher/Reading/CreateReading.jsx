@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { InputNumber, Select, Button, message } from "antd";
-import "antd/dist/reset.css"; // đảm bảo import đúng phiên bản antd
 import {
   createPartAPI,
   createPassageAPI,
