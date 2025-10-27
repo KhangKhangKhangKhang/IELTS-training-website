@@ -8,6 +8,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { verifyOtpAPI } from "@/services/apiAuth";
+import { Button } from "@/components/ui/button";
 import { resendOtpAPI } from "@/services/apiAuth";
 import { useNavigate } from "react-router-dom";
 import { resetPasswordOTP } from "@/services/apiAuth";
@@ -85,7 +86,10 @@ const OTP = () => {
                   </InputOTPGroup>
                 </InputOTP>
               </div>
-              <Button onClick={handleVerifyOtp} className="mt-7  h-10 w-5/6">
+              <Button
+                onClick={handleVerifyOtp}
+                className="mt-7 bg-slate-900 text-white rounded-2xl h-10 w-5/6"
+              >
                 Xác nhận
               </Button>
             </div>

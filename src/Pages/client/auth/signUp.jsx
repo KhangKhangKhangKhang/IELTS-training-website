@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { signupAPI } from "@/services/apiAuth";
 import { useNavigate } from "react-router";
-
+import { Button } from "@/components/ui/button";
 const SignUp = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -117,7 +117,10 @@ const SignUp = () => {
                 {
                   // button đăng ký
                 }
-                <Button type="submit" className="w-full h-10">
+                <Button
+                  type="submit"
+                  className=" bg-slate-900 text-white rounded-2xl w-full h-10"
+                >
                   Đăng ký
                 </Button>
               </div>

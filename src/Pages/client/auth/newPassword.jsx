@@ -4,7 +4,9 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
-
+import { resetPasswordAPI } from "@/services/apiAuth";
+import { useNavigate, useLocation } from "react-router";
+import { Button } from "@/components/ui/button";
 const newPassword = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

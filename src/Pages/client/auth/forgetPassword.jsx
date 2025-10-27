@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { forgetPasswordAPI } from "@/services/apiAuth";
 import { useLocation, useNavigate } from "react-router";
 const forgetPassword = () => {
@@ -50,13 +51,11 @@ const forgetPassword = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Nhập email của bạn"
                 required
-              >
-                {" "}
-              </Input>
+              ></Input>
 
               <Button
                 onClick={handleForgetPassword}
-                className="mt-7  h-10 w-full"
+                className="mt-7 bg-slate-900 hover:cursor-pointer text-white rounded-2xl h-10 w-full"
               >
                 Gửi
               </Button>
