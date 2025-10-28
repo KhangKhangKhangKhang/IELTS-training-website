@@ -41,7 +41,7 @@ export const createTestAPI = async (formData) => {
   return res.data;
 };
 
-// Get test by ID
+// Create by ID
 export const createPartAPI = async (data) => {
   const res = await API.post("/part/create-part", data);
   return res.data;
@@ -103,5 +103,11 @@ export const getAllPartByIdAPI = async (idTest) => {
 
 export const getPartByIdAPI = async (idPart) => {
   const res = await API.get(`/part/get-one/${idPart}`);
+  return res.data;
+};
+
+//patch
+export const updatePartAPI = async (idPart, data) => {
+  const res = await API.patch(`/part/update/${idPart}`, data);
   return res.data;
 };
