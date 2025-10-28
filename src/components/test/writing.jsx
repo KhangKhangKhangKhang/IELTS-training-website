@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Textarea } from "../ui/textarea";
+import { Button } from "../ui/button";
 
 const Writing = () => {
   const [currentTask, setCurrentTask] = useState("task1");
@@ -120,7 +121,7 @@ const Writing = () => {
         <div className="flex justify-end items-end">
           <Button
             onClick={handleSubmit}
-            className="mr-8 mb-5 bg-blue-600 hover:bg-blue-700"
+            className="mr-8 mb-5 text-white bg-blue-600 hover:bg-blue-700"
           >
             Submit
           </Button>
