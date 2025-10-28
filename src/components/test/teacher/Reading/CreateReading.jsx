@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Button, message, Spin } from "antd";
-import { createPartAPI, getAllPartByIdAPI } from "@/services/apiTest";
-import PartListSidebar from "./PartListSidebar";
+import {
+  createPartAPI,
+  getAllPartByIdAPI,
+  updatePartAPI,
+  deletePartAPI,
+} from "@/services/apiTest";
+import PartListSidebar from "./PartListSideBar";
 import ReadingPartPanel from "./ReadingPartPanel";
 
 const CreateReading = ({ idDe, exam }) => {
@@ -10,7 +15,7 @@ const CreateReading = ({ idDe, exam }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [creatingPart, setCreatingPart] = useState(false);
 
-  // Lấy danh sách part theo idDe
+  // Lấy danh sách part
   useEffect(() => {
     if (!idDe) {
       setIsLoading(false);
@@ -32,7 +37,7 @@ const CreateReading = ({ idDe, exam }) => {
     fetchParts();
   }, [idDe]);
 
-  // Tạo part mới
+  // Tạo part
   const handleCreatePart = async () => {
     try {
       setCreatingPart(true);
@@ -51,10 +56,42 @@ const CreateReading = ({ idDe, exam }) => {
     }
   };
 
-  if (isLoading)
-    return (
-      <Spin className="block w-full h-full flex items-center justify-center mx-auto mt-10" />
-    );
+  // Sửa tên part
+  const handleRenamePart = async (idPart, newName) => {
+    try {
+      const res = await updatePartAPI(idPart, {
+        idDe: idDe,
+        namePart: newName,
+      });
+      if (res?.success || res?.message || res?.idPart) {
+        setAllParts((prev) =>
+          prev.map((p) =>
+            p.idPart === idPart ? { ...p, namePart: newName } : p
+          )
+        );
+        if (selectedPart?.idPart === idPart)
+          setSelectedPart({ ...selectedPart, namePart: newName });
+        message.success("Đã cập nhật tên part");
+      }
+    } catch (err) {
+      console.error(err);
+      message.error("Sửa tên thất bại");
+    }
+  };
+
+  // Xóa part
+  const handleDeletePart = async (idPart) => {
+    try {
+      const res = await deletePartAPI(idPart);
+      setAllParts((prev) => prev.filter((p) => p.idPart !== idPart));
+      if (selectedPart?.idPart === idPart) setSelectedPart(null);
+      message.success("Xóa part thành công");
+    } catch (err) {
+      console.error(err);
+      message.error("Xóa part thất bại");
+    }
+  };
+  if (isLoading) return <Spin className="block mx-auto mt-10" />;
 
   return (
     <div className="flex h-[85vh] bg-gray-50 rounded-lg shadow">
@@ -64,6 +101,8 @@ const CreateReading = ({ idDe, exam }) => {
         selectedPart={selectedPart}
         onSelect={setSelectedPart}
         onCreate={handleCreatePart}
+        onRename={handleRenamePart}
+        onDelete={handleDeletePart}
         creating={creatingPart}
       />
 
