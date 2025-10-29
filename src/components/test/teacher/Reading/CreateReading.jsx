@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import { Button, message, Spin } from "antd";
 import {
   createPartAPI,
   getAllPartByIdAPI,
   updatePartAPI,
   deletePartAPI,
+  getPartByIdAPI,
 } from "@/services/apiTest";
 import PartListSidebar from "./PartListSideBar";
 import ReadingPartPanel from "./ReadingPartPanel";
@@ -14,6 +15,7 @@ const CreateReading = ({ idDe, exam }) => {
   const [selectedPart, setSelectedPart] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [creatingPart, setCreatingPart] = useState(false);
+  const [passage, setPassage] = useState("");
 
   // Lấy danh sách part
   useEffect(() => {
@@ -26,7 +28,23 @@ const CreateReading = ({ idDe, exam }) => {
       try {
         setIsLoading(true);
         const res = await getAllPartByIdAPI(idDe);
-        setAllParts(res?.data || []);
+        console.log("Fetched parts:", res);
+
+        const parts = res?.data || [];
+        setAllParts(parts);
+
+        if (parts.length > 0) {
+          const firstPartId = parts[0]?.idPart;
+          const resDetail = await getPartByIdAPI(firstPartId);
+          console.log("Part detail:", resDetail);
+
+          // vì data là mảng nên phải lấy phần tử đầu tiên
+          const firstPart = resDetail?.data?.[0];
+
+          const passageContent = firstPart?.doanVans?.content || "";
+          setPassage(passageContent);
+          console.log("Passage content:", passage);
+        }
       } catch (err) {
         console.error(err);
         message.error("Không thể tải danh sách part");
@@ -36,7 +54,9 @@ const CreateReading = ({ idDe, exam }) => {
     };
     fetchParts();
   }, [idDe]);
-
+  useEffect(() => {
+    console.log("Updated passage state:", passage);
+  }, [passage]);
   // Tạo part
   const handleCreatePart = async () => {
     try {
@@ -115,7 +135,7 @@ const CreateReading = ({ idDe, exam }) => {
               : "Chọn một Part để bắt đầu chỉnh sửa."}
           </div>
         ) : (
-          <ReadingPartPanel idDe={idDe} part={selectedPart} />
+          <ReadingPartPanel idDe={idDe} part={selectedPart} passage={passage} />
         )}
       </div>
     </div>
