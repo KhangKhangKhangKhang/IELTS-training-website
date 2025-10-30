@@ -1,4 +1,4 @@
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, message, Spin } from "antd";
 import {
   createPartAPI,
@@ -13,9 +13,9 @@ import ReadingPartPanel from "./ReadingPartPanel";
 const CreateReading = ({ idDe, exam }) => {
   const [allParts, setAllParts] = useState([]);
   const [selectedPart, setSelectedPart] = useState(null);
+  const [selectedPartDetail, setSelectedPartDetail] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [creatingPart, setCreatingPart] = useState(false);
-  const [passage, setPassage] = useState("");
 
   // Lấy danh sách part
   useEffect(() => {
@@ -34,16 +34,8 @@ const CreateReading = ({ idDe, exam }) => {
         setAllParts(parts);
 
         if (parts.length > 0) {
-          const firstPartId = parts[0]?.idPart;
-          const resDetail = await getPartByIdAPI(firstPartId);
-          console.log("Part detail:", resDetail);
-
-          // vì data là mảng nên phải lấy phần tử đầu tiên
-          const firstPart = resDetail?.data?.[0];
-
-          const passageContent = firstPart?.doanVans?.content || "";
-          setPassage(passageContent);
-          console.log("Passage content:", passage);
+          // Tự động chọn part đầu tiên và lấy chi tiết
+          await handleSelectPart(parts[0]);
         }
       } catch (err) {
         console.error(err);
@@ -54,19 +46,38 @@ const CreateReading = ({ idDe, exam }) => {
     };
     fetchParts();
   }, [idDe]);
-  useEffect(() => {
-    console.log("Updated passage state:", passage);
-  }, [passage]);
+
+  // Xử lý chọn part và lấy chi tiết
+  const handleSelectPart = async (part) => {
+    try {
+      setSelectedPart(part);
+
+      // Gọi API lấy chi tiết part
+      const resDetail = await getPartByIdAPI(part.idPart);
+      console.log("Part detail:", resDetail);
+
+      const partDetail = resDetail?.data?.[0];
+      setSelectedPartDetail(partDetail);
+    } catch (err) {
+      console.error("Lỗi khi lấy chi tiết part:", err);
+      message.error("Không thể tải chi tiết part");
+    }
+  };
+
   // Tạo part
   const handleCreatePart = async () => {
     try {
       setCreatingPart(true);
-      const payload = { idDe, namePart: `Part ${allParts.length + 1}` };
+      const payload = {
+        idDe,
+        namePart: `Part ${allParts.length + 1}`,
+      };
       const res = await createPartAPI(payload);
       const newPart = res?.data;
       if (!newPart?.idPart) throw new Error("API không trả về idPart");
+
       setAllParts((prev) => [...prev, newPart]);
-      setSelectedPart(newPart);
+      await handleSelectPart(newPart); // Chọn part mới tạo
       message.success("Tạo part thành công");
     } catch (err) {
       message.error("Tạo part thất bại");
@@ -89,8 +100,16 @@ const CreateReading = ({ idDe, exam }) => {
             p.idPart === idPart ? { ...p, namePart: newName } : p
           )
         );
-        if (selectedPart?.idPart === idPart)
+        if (selectedPart?.idPart === idPart) {
           setSelectedPart({ ...selectedPart, namePart: newName });
+          // Cập nhật lại selectedPartDetail nếu đang chọn
+          if (selectedPartDetail) {
+            setSelectedPartDetail({
+              ...selectedPartDetail,
+              namePart: newName,
+            });
+          }
+        }
         message.success("Đã cập nhật tên part");
       }
     } catch (err) {
@@ -104,13 +123,17 @@ const CreateReading = ({ idDe, exam }) => {
     try {
       const res = await deletePartAPI(idPart);
       setAllParts((prev) => prev.filter((p) => p.idPart !== idPart));
-      if (selectedPart?.idPart === idPart) setSelectedPart(null);
+      if (selectedPart?.idPart === idPart) {
+        setSelectedPart(null);
+        setSelectedPartDetail(null);
+      }
       message.success("Xóa part thành công");
     } catch (err) {
       console.error(err);
       message.error("Xóa part thất bại");
     }
   };
+
   if (isLoading) return <Spin className="block mx-auto mt-10" />;
 
   return (
@@ -119,7 +142,7 @@ const CreateReading = ({ idDe, exam }) => {
       <PartListSidebar
         parts={allParts}
         selectedPart={selectedPart}
-        onSelect={setSelectedPart}
+        onSelect={handleSelectPart}
         onCreate={handleCreatePart}
         onRename={handleRenamePart}
         onDelete={handleDeletePart}
@@ -135,7 +158,12 @@ const CreateReading = ({ idDe, exam }) => {
               : "Chọn một Part để bắt đầu chỉnh sửa."}
           </div>
         ) : (
-          <ReadingPartPanel idDe={idDe} part={selectedPart} passage={passage} />
+          <ReadingPartPanel
+            idDe={idDe}
+            part={selectedPart}
+            partDetail={selectedPartDetail}
+            onPartUpdate={handleSelectPart} // Truyền callback để refresh data
+          />
         )}
       </div>
     </div>
