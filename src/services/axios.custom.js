@@ -10,48 +10,41 @@ const API = axios.create({
   },
 });
 
-// Gắn token vào mỗi request
 API.interceptors.request.use(
   (config) => {
-    const token = Cookies.get("accessToken");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    const token = Cookies.get("accessToken"); // 🚀 đồng bộ key
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => Promise.reject(error)
 );
-
-// ✅ FIXED: gắn interceptor response vào đúng instance
-API.interceptors.response.use(
-  (res) => res,
+axios.interceptors.response.use(
+  (res) => {
+    return res;
+  },
   async (err) => {
     const originalConfig = err.config;
-
     if (err.response?.status === 401 && !originalConfig._retry) {
       originalConfig._retry = true;
-      const refreshTokenValue = Cookies.get("refreshToken");
-      if (!refreshTokenValue) return Promise.reject(err);
-
+      const refreshToken = Cookies.get("refreshToken");
+      if (!refreshToken) {
+        return Promise.reject(err);
+      }
       try {
-        // ✅ gọi API refresh token đúng cách
-        const refreshRes = await refreshTokenAPI({
-          refreshToken: refreshTokenValue,
-        });
-
-        const newToken = refreshRes?.Token || refreshRes?.data?.Token;
-        if (!newToken) throw new Error("Không lấy được access token mới");
-
-        // ✅ lưu và gọi lại request cũ
-        Cookies.set("accessToken", newToken);
-        originalConfig.headers.Authorization = `Bearer ${newToken}`;
+        const refreshToken = await refreshTokenAPI();
+        const { Token } = refreshToken?.data || {};
+        Cookies.set("accessToken", Token);
+        originalConfig.headers.Authorization = `Bearer ${Token}`;
         return API(originalConfig);
       } catch (error) {
         Cookies.remove("accessToken");
-        Cookies.remove("refreshToken");
         Cookies.remove("user");
+        Cookies.remove("refreshToken");
         return Promise.reject(err);
       }
     }
-
     return Promise.reject(err);
   }
 );

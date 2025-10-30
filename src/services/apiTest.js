@@ -57,7 +57,7 @@ export const createPassageAPI = async (formData) => {
 };
 
 export const createGroupOfQuestionsAPI = async (data) => {
-  const res = await API.post("/group-question/create-group-question", data);
+  const res = await API.post("/group-of-questions/create-group-question", data);
   return res.data;
 };
 
@@ -95,6 +95,13 @@ export const deletePartAPI = async (idPart) => {
   return res.data;
 };
 
+export const deleteGroupOfQuestionsAPI = async (idGroupOfQuestions) => {
+  const res = await API.delete(
+    `/group-of-questions/delete-group-of-questions/${idGroupOfQuestions}`
+  );
+  return res.data;
+};
+
 //get
 export const getAllPartByIdAPI = async (idTest) => {
   const res = await API.get(`/part/get-all-part-by-idTest/${idTest}`);
@@ -109,5 +116,18 @@ export const getPartByIdAPI = async (idPart) => {
 //patch
 export const updatePartAPI = async (idPart, data) => {
   const res = await API.patch(`/part/update/${idPart}`, data);
+  return res.data;
+};
+
+export const updatePassageAPI = async (idPassage, data) => {
+  const res = await API.patch(`/passage/update-passage/${idPassage}`, data);
+  return res.data;
+};
+
+export const updateGroupOfQuestionsAPI = async (idGroupOfQuestions, data) => {
+  const res = await API.patch(
+    `/group-of-questions/update-group-of-questions/${idGroupOfQuestions}`,
+    data
+  );
   return res.data;
 };
