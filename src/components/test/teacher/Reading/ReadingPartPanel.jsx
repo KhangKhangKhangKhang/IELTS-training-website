@@ -18,8 +18,8 @@ const loaiCauHoiOptions = [
   { value: "OTHER", label: "Other" },
 ];
 
-const ReadingPartPanel = ({ idDe, part }) => {
-  const [passageContent, setPassageContent] = useState("");
+const ReadingPartPanel = ({ idDe, part, passage }) => {
+  const [passageContent, setPassageContent] = useState(passage || "");
   const [passageSavedId, setPassageSavedId] = useState(null);
   const [groupType, setGroupType] = useState(null);
   const [groupQuantity, setGroupQuantity] = useState(3);
