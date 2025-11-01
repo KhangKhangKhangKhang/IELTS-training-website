@@ -243,12 +243,6 @@ const ReadingPartPanel = ({ idDe, part, partDetail, onPartUpdate }) => {
                 >
                   <div className="flex justify-between items-center mb-3">
                     <h4 className="font-medium text-blue-600">{nhom.title}</h4>
-                    <span className="text-sm text-gray-500">
-                      Loại:{" "}
-                      {loaiCauHoiOptions.find(
-                        (opt) => opt.value === nhom.typeQuestion
-                      )?.label || nhom.typeQuestion}
-                    </span>
                   </div>
                   <QuestionTypeRenderer
                     type={nhom.typeQuestion}
