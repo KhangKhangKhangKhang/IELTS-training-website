@@ -112,6 +112,17 @@ export const getPartByIdAPI = async (idPart) => {
   const res = await API.get(`/part/get-one/${idPart}`);
   return res.data;
 };
+export const getQuestionsByIdGroupAPI = async (idGroupOfQuestions) => {
+  const res = await API.get(
+    `/group-of-questions/get-by-id/${idGroupOfQuestions}`
+  );
+  return res.data;
+};
+
+export const getAnswersByIdQuestionAPI = async (idQuestion) => {
+  const res = await API.get(`/answer/get-by-id-question/${idQuestion}`);
+  return res.data;
+};
 
 //patch
 export const updatePartAPI = async (idPart, data) => {

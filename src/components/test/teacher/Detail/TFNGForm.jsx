@@ -1,54 +1,55 @@
 import React, { useState, useEffect } from "react";
-import { Button, Input, Select, message, List } from "antd";
-// import {
-//   createQuestionAPI,
-//   createAnswerAPI,
-//   getQuestionsByGroupAPI,
-//   updateQuestionAPI,
-// } from "@/services/apiTest";
+import { Button, Input, Select, message, Spin } from "antd";
+import {
+  getQuestionsByIdGroupAPI,
+  getAnswersByIdQuestionAPI,
+  // updateAnswerAPI, // nếu bạn có sẵn, sẽ dùng khi bấm Lưu
+} from "@/services/apiTest";
 
 const { Option } = Select;
 
-const TFNGForm = ({ idGroup, groupData }) => {
+const TFNGForm = ({ idGroup }) => {
   const [questions, setQuestions] = useState([]);
-  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Load questions khi component mount hoặc idGroup thay đổi
+  // Gọi API khi mount hoặc idGroup thay đổi
   useEffect(() => {
     if (idGroup) {
       loadQuestions();
     }
   }, [idGroup]);
 
+  // ======== LOAD QUESTIONS + ANSWERS ========
   const loadQuestions = async () => {
     try {
       setLoading(true);
-      // TODO: Gọi API lấy danh sách câu hỏi theo idGroup
-      // const res = await getQuestionsByGroupAPI(idGroup);
-      // const questionsData = res.data || [];
+      const res = await getQuestionsByIdGroupAPI(idGroup);
+      const group = res?.data?.[0];
 
-      // Tạm thời sử dụng dữ liệu từ groupData nếu có
-      if (groupData && groupData.questions) {
-        setQuestions(groupData.questions);
-      } else {
-        // Mock data tạm thời dựa trên API response
-        const mockQuestions = [
-          {
-            idCauHoi: "1",
-            content: "The kākāpō is a diurnal bird.",
-            correctAnswer: "FALSE",
-            answers: [{ answerText: "FALSE" }],
-          },
-          {
-            idCauHoi: "2",
-            content: "Này là mockdata tỉnh lại đi.",
-            correctAnswer: "FALSE",
-            answers: [{ answerText: "FALSE" }],
-          },
-        ];
-        setQuestions(mockQuestions);
+      if (!group || !group.cauHois) {
+        message.info("Không có câu hỏi nào trong nhóm này");
+        setQuestions([]);
+        return;
       }
+
+      const cauHois = group.cauHois;
+
+      // Lấy đáp án cho từng câu hỏi (song song)
+      const withAnswers = await Promise.all(
+        cauHois.map(async (q) => {
+          try {
+            const ansRes = await getAnswersByIdQuestionAPI(q.idCauHoi);
+            const ansText = ansRes?.data?.[0]?.answer_text || "";
+            return { ...q, answer_text: ansText };
+          } catch (err) {
+            console.error("Lỗi load answer cho", q.idCauHoi, err);
+            return { ...q, answer_text: "" };
+          }
+        })
+      );
+
+      setQuestions(withAnswers);
     } catch (err) {
       console.error("Lỗi khi tải câu hỏi:", err);
       message.error("Không thể tải câu hỏi");
@@ -57,72 +58,41 @@ const TFNGForm = ({ idGroup, groupData }) => {
     }
   };
 
-  const handleAddQuestion = () => {
-    setQuestions([
-      ...questions,
-      {
-        idCauHoi: `temp-${Date.now()}`,
-        content: "",
-        correctAnswer: null,
-        isNew: true,
-      },
-    ]);
-  };
-
-  const handleChange = (index, field, value) => {
+  // ======== HANDLE CHANGE ========
+  const handleChangeAnswer = (index, value) => {
     const updated = [...questions];
-    updated[index][field] = value;
+    updated[index].answer_text = value;
     setQuestions(updated);
   };
 
-  const handleRemoveQuestion = (index) => {
-    const updated = questions.filter((_, i) => i !== index);
-    setQuestions(updated);
-  };
-
+  // ======== SAVE ALL ========
   const handleSaveAll = async () => {
     try {
       setSaving(true);
       for (const [index, q] of questions.entries()) {
-        if (!q.content.trim()) {
-          message.warning(`Câu ${index + 1} chưa có nội dung`);
-          continue;
-        }
-        if (!q.correctAnswer) {
-          message.warning(`Câu ${index + 1} chưa chọn đáp án`);
+        if (!q.answer_text) {
+          message.warning(`Câu ${q.numberQuestion} chưa chọn đáp án`);
           continue;
         }
 
-        // TODO: Gọi API lưu câu hỏi
-        if (q.isNew) {
-          // Tạo mới
-          // const res = await createQuestionAPI({
-          //   idGroup,
-          //   content: q.content,
-          //   type: "TFNG"
-          // });
-          // const questionId = res.idCauHoi;
-          // await createAnswerAPI(questionId, { answerText: q.correctAnswer });
-        } else {
-          // Cập nhật
-          // await updateQuestionAPI(q.idCauHoi, { content: q.content });
-          // await updateAnswerAPI(...); // Cần API update answer
-        }
+        // TODO: Gọi API lưu lại (updateAnswerAPI)
+        // await updateAnswerAPI(q.idCauHoi, { answer_text: q.answer_text });
       }
-      message.success("Đã lưu câu hỏi TFNG!");
-
-      // Reload questions để cập nhật trạng thái
-      await loadQuestions();
+      message.success("Đã lưu thay đổi TFNG!");
     } catch (err) {
       console.error(err);
-      message.error("Lưu câu hỏi thất bại");
+      message.error("Lưu thất bại");
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div className="text-center py-4">Đang tải câu hỏi...</div>;
+    return (
+      <div className="flex justify-center py-6">
+        <Spin tip="Đang tải câu hỏi..." />
+      </div>
+    );
   }
 
   return (
@@ -135,48 +105,45 @@ const TFNGForm = ({ idGroup, groupData }) => {
         questions.map((q, index) => (
           <div key={q.idCauHoi} className="border p-4 rounded bg-white">
             <div className="flex justify-between items-center mb-2">
-              <div className="font-semibold">Câu {index + 1}</div>
-              <Button
-                size="small"
-                danger
-                onClick={() => handleRemoveQuestion(index)}
-              >
-                Xóa
-              </Button>
+              <div className="font-semibold">Câu {q.numberQuestion}</div>
             </div>
+
             <Input.TextArea
               rows={2}
-              placeholder="Nhập nội dung câu hỏi..."
               value={q.content}
-              onChange={(e) => handleChange(index, "content", e.target.value)}
+              readOnly
+              style={{ backgroundColor: "#fafafa" }}
             />
-            <div className="mt-3">
+
+            <div className="mt-3 flex items-center gap-3">
+              <span className="text-sm text-gray-600">Đáp án hiện tại:</span>
               <Select
-                style={{ width: 200 }}
-                placeholder="Chọn đáp án đúng"
-                value={q.correctAnswer}
-                onChange={(v) => handleChange(index, "correctAnswer", v)}
+                style={{ width: 160 }}
+                placeholder="Chọn đáp án"
+                value={q.answer_text || undefined}
+                onChange={(v) => handleChangeAnswer(index, v)}
               >
-                <Option value="TRUE">True</Option>
-                <Option value="FALSE">False</Option>
-                <Option value="NOT GIVEN">Not Given</Option>
+                <Option value="TRUE">TRUE</Option>
+                <Option value="FALSE">FALSE</Option>
+                <Option value="NOT GIVEN">NOT GIVEN</Option>
               </Select>
             </div>
-            {q.isNew && (
-              <div className="mt-2 text-xs text-blue-600">
-                * Câu hỏi mới - chưa lưu
-              </div>
-            )}
           </div>
         ))
       )}
 
-      <div className="flex gap-3">
-        <Button onClick={handleAddQuestion}>+ Thêm câu hỏi</Button>
-        <Button type="primary" onClick={handleSaveAll} loading={saving}>
-          Lưu tất cả
-        </Button>
-      </div>
+      {questions.length > 0 && (
+        <div className="flex justify-end">
+          <Button
+            type="primary"
+            onClick={handleSaveAll}
+            loading={saving}
+            className="mt-4"
+          >
+            Lưu tất cả đáp án
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
