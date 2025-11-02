@@ -33,7 +33,7 @@ const Vocabulary = () => {
   const [error, setError] = useState(null);
   const [newVocabulary, setNewVocabulary] = useState({
     word: "",
-    loaiTuVung: "",
+    VocabType: "",
     phonetic: "",
     meaning: "",
     example: "",
@@ -111,7 +111,7 @@ const Vocabulary = () => {
     if (suggestion) {
       setNewVocabulary((prev) => ({
         ...prev,
-        loaiTuVung: suggestion.loaiTuVung || prev.loaiTuVung,
+        VocabType: suggestion.VocabType || prev.VocabType,
         phonetic: suggestion.phonetic || prev.phonetic,
         meaning: suggestion.meaning || prev.meaning,
         example: suggestion.example || prev.example,
@@ -236,7 +236,7 @@ const Vocabulary = () => {
         phonetic: newVocabulary.phonetic,
         meaning: newVocabulary.meaning,
         example: newVocabulary.example,
-        loaiTuVung: newVocabulary.loaiTuVung,
+        VocabType: newVocabulary.VocabType,
         level: newVocabulary.level,
       });
       setVocabularies((prev) => [...prev, res.data]);
@@ -244,7 +244,7 @@ const Vocabulary = () => {
       setSearchTerm("");
       setNewVocabulary({
         word: "",
-        loaiTuVung: "",
+        VocabType: "",
         phonetic: "",
         meaning: "",
         example: "",
@@ -261,12 +261,12 @@ const Vocabulary = () => {
     }
   };
 
-  const handleDeleteVocabulary = async (id) => {
+  const handleDeleteVocabulary = async (idVocab) => {
     if (!window.confirm("Bạn có chắc muốn xóa từ vựng này?")) return;
 
     try {
-      await deleteVocabAPI(id, user.idUser);
-      setVocabularies((prev) => prev.filter((v) => v.idTuVung !== id));
+      await deleteVocabAPI(idVocab, user.idUser);
+      setVocabularies((prev) => prev.filter((v) => v.idVocab !== idVocab));
     } catch (err) {
       console.error("Failed to delete vocabulary:", err);
       setError("Không thể xóa từ vựng");
@@ -283,20 +283,20 @@ const Vocabulary = () => {
     }
 
     try {
-      const res = await updateVocabAPI(vocabToEdit.idTuVung, {
+      const res = await updateVocabAPI(vocabToEdit.idVocab, {
         idUser: user.idUser,
         idTopic: selectedTopic.idTopic,
         word: vocabToEdit.word,
         phonetic: vocabToEdit.phonetic,
         meaning: vocabToEdit.meaning,
         example: vocabToEdit.example,
-        loaiTuVung: vocabToEdit.loaiTuVung,
+        VocabType: vocabToEdit.VocabType,
         level: vocabToEdit.level,
       });
 
       setVocabularies((prev) =>
         prev.map((v) =>
-          v.idTuVung === vocabToEdit.idTuVung ? { ...v, ...vocabToEdit } : v
+          v.idVocab === vocabToEdit.idVocab ? { ...v, ...vocabToEdit } : v
         )
       );
       setShowEditVocabulary(false);
@@ -312,7 +312,7 @@ const Vocabulary = () => {
     const errors = [];
     if (!vocab.word.trim()) errors.push("từ vựng");
     if (!vocab.meaning.trim()) errors.push("nghĩa");
-    if (!vocab.loaiTuVung.trim()) errors.push("loại từ");
+    if (!vocab.VocabType.trim()) errors.push("loại từ");
 
     if (errors.length > 0) {
       return `Vui lòng nhập ${errors.join(", ")}`;
@@ -571,12 +571,12 @@ const Vocabulary = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
                     {filteredVocabularies.map((vocab, index) => (
-                      <tr key={vocab.idTuVung || `temp-${index}`}>
+                      <tr key={vocab.idVocab || `temp-${index}`}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                           {vocab.word}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
-                          {vocab.loaiTuVung}
+                          {vocab.VocabType}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
                           {vocab.level}
@@ -604,7 +604,7 @@ const Vocabulary = () => {
                             </button>
                             <button
                               onClick={() =>
-                                handleDeleteVocabulary(vocab.idTuVung)
+                                handleDeleteVocabulary(vocab.idVocab)
                               }
                               className="text-red-600 hover:text-red-900 p-1"
                               title="Xóa"
@@ -721,12 +721,12 @@ const Vocabulary = () => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      {suggestion.loaiTuVung && (
+                      {suggestion.VocabType && (
                         <div>
                           <span className="text-xs text-blue-600 font-medium">
                             Loại từ:{" "}
                           </span>
-                          <span>{suggestion.loaiTuVung}</span>
+                          <span>{suggestion.VocabType}</span>
                         </div>
                       )}
                       {suggestion.level && (
@@ -797,11 +797,11 @@ const Vocabulary = () => {
                     Loại từ *
                   </label>
                   <select
-                    value={newVocabulary.loaiTuVung}
+                    value={newVocabulary.VocabType}
                     onChange={(e) => {
                       setNewVocabulary({
                         ...newVocabulary,
-                        loaiTuVung: e.target.value,
+                        VocabType: e.target.value,
                       });
                       if (validationErrors.vocabulary) {
                         setValidationErrors({
@@ -812,7 +812,7 @@ const Vocabulary = () => {
                     }}
                     className={`w-full p-2 border rounded-md ${
                       validationErrors.vocabulary &&
-                      !newVocabulary.loaiTuVung.trim()
+                      !newVocabulary.VocabType.trim()
                         ? "border-red-500"
                         : "border-slate-300"
                     }`}
@@ -933,12 +933,12 @@ const Vocabulary = () => {
                   disabled={
                     !newVocabulary.word.trim() ||
                     !newVocabulary.meaning.trim() ||
-                    !newVocabulary.loaiTuVung.trim()
+                    !newVocabulary.VocabType.trim()
                   }
                   className={`px-4 py-2 rounded-md ${
                     !newVocabulary.word.trim() ||
                     !newVocabulary.meaning.trim() ||
-                    !newVocabulary.loaiTuVung.trim()
+                    !newVocabulary.VocabType.trim()
                       ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                       : "bg-slate-800 text-white hover:bg-slate-700"
                   }`}
@@ -987,11 +987,11 @@ const Vocabulary = () => {
                     Loại từ *
                   </label>
                   <select
-                    value={vocabToEdit.loaiTuVung}
+                    value={vocabToEdit.VocabType}
                     onChange={(e) => {
                       setVocabToEdit({
                         ...vocabToEdit,
-                        loaiTuVung: e.target.value,
+                        VocabType: e.target.value,
                       });
                       if (validationErrors.vocabulary) {
                         setValidationErrors({
@@ -1002,7 +1002,7 @@ const Vocabulary = () => {
                     }}
                     className={`w-full p-2 border rounded-md ${
                       validationErrors.vocabulary &&
-                      !vocabToEdit.loaiTuVung.trim()
+                      !vocabToEdit.VocabType.trim()
                         ? "border-red-500"
                         : "border-slate-300"
                     }`}
@@ -1123,12 +1123,12 @@ const Vocabulary = () => {
                   disabled={
                     !vocabToEdit.word.trim() ||
                     !vocabToEdit.meaning.trim() ||
-                    !vocabToEdit.loaiTuVung.trim()
+                    !vocabToEdit.VocabType.trim()
                   }
                   className={`px-4 py-2 rounded-md ${
                     !vocabToEdit.word.trim() ||
                     !vocabToEdit.meaning.trim() ||
-                    !vocabToEdit.loaiTuVung.trim()
+                    !vocabToEdit.VocabType.trim()
                       ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                       : "bg-blue-600 text-white hover:bg-blue-500"
                   }`}
