@@ -10,7 +10,7 @@ import {
 import PartListSidebar from "./PartListSideBar";
 import ReadingPartPanel from "./ReadingPartPanel";
 
-const CreateReading = ({ idDe, exam }) => {
+const CreateReading = ({ idTest, exam }) => {
   const [allParts, setAllParts] = useState([]);
   const [selectedPart, setSelectedPart] = useState(null);
   const [selectedPartDetail, setSelectedPartDetail] = useState(null);
@@ -19,7 +19,7 @@ const CreateReading = ({ idDe, exam }) => {
 
   // Lấy danh sách part
   useEffect(() => {
-    if (!idDe) {
+    if (!idTest) {
       setIsLoading(false);
       return;
     }
@@ -27,7 +27,7 @@ const CreateReading = ({ idDe, exam }) => {
     const fetchParts = async () => {
       try {
         setIsLoading(true);
-        const res = await getAllPartByIdAPI(idDe);
+        const res = await getAllPartByIdAPI(idTest);
         console.log("Fetched parts:", res);
 
         const parts = res?.data || [];
@@ -45,7 +45,7 @@ const CreateReading = ({ idDe, exam }) => {
       }
     };
     fetchParts();
-  }, [idDe]);
+  }, [idTest]);
 
   // Xử lý chọn part và lấy chi tiết
   const handleSelectPart = async (part) => {
@@ -69,7 +69,7 @@ const CreateReading = ({ idDe, exam }) => {
     try {
       setCreatingPart(true);
       const payload = {
-        idDe,
+        idTest,
         namePart: `Part ${allParts.length + 1}`,
       };
       const res = await createPartAPI(payload);
@@ -91,7 +91,7 @@ const CreateReading = ({ idDe, exam }) => {
   const handleRenamePart = async (idPart, newName) => {
     try {
       const res = await updatePartAPI(idPart, {
-        idDe: idDe,
+        idTest: idTest,
         namePart: newName,
       });
       if (res?.success || res?.message || res?.idPart) {
@@ -159,7 +159,7 @@ const CreateReading = ({ idDe, exam }) => {
           </div>
         ) : (
           <ReadingPartPanel
-            idDe={idDe}
+            idTest={idTest}
             part={selectedPart}
             partDetail={selectedPartDetail}
             onPartUpdate={handleSelectPart} // Truyền callback để refresh data

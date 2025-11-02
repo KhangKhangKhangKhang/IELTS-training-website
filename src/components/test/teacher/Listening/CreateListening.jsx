@@ -1,11 +1,11 @@
 import CreatePartForm from "../Detail/CreatePartForm";
 
-const CreateListening = ({ idDe, exam }) => {
+const CreateListening = ({ idTest, exam }) => {
   return (
     <>
       <CreatePartForm
-        idDe={idDe}
-        loaiDe="Nghe"
+        idTest={idTest}
+        testType="Nghe"
         onSuccess={(data) => console.log(data)}
       />
       <div>

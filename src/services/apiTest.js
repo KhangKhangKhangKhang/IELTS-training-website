@@ -119,8 +119,8 @@ export const getQuestionsByIdGroupAPI = async (idGroupOfQuestions) => {
   return res.data;
 };
 
-export const getAnswersByIdQuestionAPI = async (idCauHoi) => {
-  const res = await API.get(`/answer/get-by-id-question/${idCauHoi}`);
+export const getAnswersByIdQuestionAPI = async (idQuestion) => {
+  const res = await API.get(`/answer/get-by-id-question/${idQuestion}`);
   return res.data;
 };
 

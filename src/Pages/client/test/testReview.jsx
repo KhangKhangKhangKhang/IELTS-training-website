@@ -9,7 +9,7 @@ import { useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/context/authContext";
 
 const TestPage = () => {
-  const [loaiDe, setLoaiDe] = useState("Tất cả");
+  const [testType, setTestType] = useState("Tất cả");
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -34,16 +34,17 @@ const TestPage = () => {
     };
 
     fetchExams();
-  }, [loaiDe]);
+  }, [testType]);
 
   const filteredExams = Array.isArray(exams)
     ? exams
         .filter((exam) => {
-          const matchLoaiDe = loaiDe === "Tất cả" || exam.loaiDe === loaiDe;
+          const matchTestType =
+            testType === "Tất cả" || exam.testType === testType;
           const matchSearch =
             exam.title.toLowerCase().includes(searchText.toLowerCase()) ||
             exam.description.toLowerCase().includes(searchText.toLowerCase());
-          return matchLoaiDe && matchSearch;
+          return matchTestType && matchSearch;
         })
         .sort((a, b) => {
           if (sortBy === "newest")
@@ -58,7 +59,7 @@ const TestPage = () => {
       navigate("/login");
     } else
       navigate("/doTest", {
-        state: { idDe: exam.idDe, loaiDe: exam.loaiDe },
+        state: { idTest: exam.idTest, testType: exam.testType },
       });
   };
 
@@ -72,7 +73,7 @@ const TestPage = () => {
               <label className="block text-sm font-medium mb-2">
                 Loại đề thi
               </label>
-              <ExamSelector currentType={loaiDe} onTypeChange={setLoaiDe} />
+              <ExamSelector currentType={testType} onTypeChange={setTestType} />
             </Col>
 
             <Col xs={24} md={10}>
@@ -110,7 +111,7 @@ const TestPage = () => {
         ) : (
           <Row gutter={[24, 24]}>
             {filteredExams.map((exam) => (
-              <Col key={exam.idDe} xs={24} sm={12} lg={8} xl={6}>
+              <Col key={exam.idTest} xs={24} sm={12} lg={8} xl={6}>
                 <ExamCard
                   exam={exam}
                   onExamClick={() => {

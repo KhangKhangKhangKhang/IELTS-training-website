@@ -14,21 +14,21 @@ const testComponents = {
 const TestDetail = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { idDe, loaiDe } = location.state || {};
+  const { idTest, testType } = location.state || {};
   const [timedOut, setTimedOut] = useState(false);
 
-  const Comp = testComponents[loaiDe?.toUpperCase()];
+  const Comp = testComponents[testType?.toUpperCase()];
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (!idDe || !loaiDe) {
+      if (!idTest || !testType) {
         setTimedOut(true);
         navigate("/test", { replace: true }); // hoặc "/teacher/test" nếu đang ở role teacher
       }
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [idDe, loaiDe, navigate]);
+  }, [idTest, testType, navigate]);
 
   if (timedOut) {
     return (
@@ -38,7 +38,7 @@ const TestDetail = () => {
     );
   }
 
-  if (!idDe || !loaiDe) {
+  if (!idTest || !testType) {
     return (
       <div className="text-center py-12">
         <Spin size="large" />
@@ -49,12 +49,12 @@ const TestDetail = () => {
   if (!Comp) {
     return (
       <div className="text-center py-12 text-gray-500">
-        Không tìm thấy loại đề: {loaiDe}
+        Không tìm thấy loại đề: {testType}
       </div>
     );
   }
 
-  return <Comp idDe={idDe} />;
+  return <Comp idTest={idTest} />;
 };
 
 export default TestDetail;

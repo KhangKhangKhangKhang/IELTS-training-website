@@ -1,4 +1,4 @@
-const CreateWriting = ({ idDe, exam }) => {
+const CreateWriting = ({ idTest, exam }) => {
   return (
     <div>
       <h2>Chỉnh sửa đề thi Viết</h2>

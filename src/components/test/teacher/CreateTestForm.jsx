@@ -13,7 +13,7 @@ const CreateTestForm = ({ onSuccess }) => {
 
   const [formData, setFormData] = useState({
     idUser: user?.idUser || "",
-    loaiDe: " Loại đề",
+    testType: " Loại đề",
     title: "",
     description: "",
     duration: "",
@@ -57,8 +57,8 @@ const CreateTestForm = ({ onSuccess }) => {
       <div className="flex flex-col gap-4">
         <Select
           placeholder="Chọn loại đề"
-          onChange={(value) => handleChange("loaiDe", value)}
-          value={formData.loaiDe}
+          onChange={(value) => handleChange("testType", value)}
+          value={formData.testType}
         >
           <Option value="LISTENING">Listening</Option>
           <Option value="READING">Reading</Option>
@@ -109,7 +109,7 @@ const CreateTestForm = ({ onSuccess }) => {
           <Button icon={<UploadOutlined />}>Tải ảnh minh hoạ</Button>
         </Upload>
 
-        {formData.loaiDe === "LISTENING" && (
+        {formData.testType === "LISTENING" && (
           <Upload
             beforeUpload={(file) => {
               handleFileChange("audio", file);

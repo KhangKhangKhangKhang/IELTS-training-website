@@ -23,7 +23,7 @@ import { useNavigate } from "react-router";
 import { useAuth } from "@/context/authContext";
 
 const TestManager = () => {
-  const [loaiDe, setLoaiDe] = useState("ALL");
+  const [testType, setTestType] = useState("ALL");
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -37,7 +37,7 @@ const TestManager = () => {
   // Fetch exams từ API
   useEffect(() => {
     fetchExams();
-  }, [loaiDe]);
+  }, [testType]);
 
   const fetchExams = async () => {
     setLoading(true);
@@ -56,11 +56,12 @@ const TestManager = () => {
   const filteredExams = Array.isArray(exams)
     ? exams
         .filter((exam) => {
-          const matchLoaiDe = loaiDe === "ALL" || exam.loaiDe === loaiDe;
+          const matchTestType =
+            testType === "ALL" || exam.testType === testType;
           const matchSearch =
             exam.title.toLowerCase().includes(searchText.toLowerCase()) ||
             exam.description.toLowerCase().includes(searchText.toLowerCase());
-          return matchLoaiDe && matchSearch;
+          return matchTestType && matchSearch;
         })
         .sort((a, b) => {
           const levelValue = { Low: 1, Mid: 2, High: 3 };
@@ -76,11 +77,11 @@ const TestManager = () => {
 
   // Xử lý các action
   const handleViewExam = (exam) => {
-    navigate(`./testEdit/${exam.idDe}`, { state: { exam } });
+    navigate(`./testEdit/${exam.idTest}`, { state: { exam } });
   };
 
   const handleEditExam = (exam) => {
-    navigate(`./testEdit/${exam.idDe}`, { state: { exam } });
+    navigate(`./testEdit/${exam.idTest}`, { state: { exam } });
   };
 
   const handleCreateExam = () => {
@@ -94,7 +95,7 @@ const TestManager = () => {
 
   const handleConfirmDelete = async () => {
     try {
-      await deleteAPITest(selectedExam.idDe);
+      await deleteAPITest(selectedExam.idTest);
       message.success("Xóa đề thi thành công");
       fetchExams(); // Refresh list
     } catch (error) {
@@ -142,8 +143,8 @@ const TestManager = () => {
               <Select
                 size="large"
                 className="w-full"
-                value={loaiDe}
-                onChange={setLoaiDe}
+                value={testType}
+                onChange={setTestType}
                 options={[
                   { value: "ALL", label: "Tất cả loại đề" },
                   { value: "LISTENING", label: "Listening" },
@@ -188,13 +189,13 @@ const TestManager = () => {
         ) : (
           <Row gutter={[24, 24]}>
             {filteredExams.map((exam) => (
-              <Col key={exam.idDe} xs={24} sm={12} lg={8} xl={6}>
+              <Col key={exam.idTest} xs={24} sm={12} lg={8} xl={6}>
                 <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
                   {/* Header với badge loại đề */}
                   <div className="p-4 border-b">
                     <div className="flex justify-between items-start mb-2">
-                      <Tag color={getTypeColor(exam.loaiDe)} className="mb-2">
-                        {exam.loaiDe}
+                      <Tag color={getTypeColor(exam.testType)} className="mb-2">
+                        {exam.testType}
                       </Tag>
                       <span className="text-sm text-gray-500">
                         Độ khó: <b>{exam.level || "N/A"}</b>

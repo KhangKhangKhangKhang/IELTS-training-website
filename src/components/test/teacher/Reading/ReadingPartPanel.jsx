@@ -19,7 +19,7 @@ const loaiCauHoiOptions = [
   { value: "OTHER", label: "Other" },
 ];
 
-const ReadingPartPanel = ({ idDe, part, partDetail, onPartUpdate }) => {
+const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
   const [passageData, setPassageData] = useState({
     content: "",
     title: "",
@@ -36,15 +36,15 @@ const ReadingPartPanel = ({ idDe, part, partDetail, onPartUpdate }) => {
 
   // Khởi tạo dữ liệu từ partDetail
   useEffect(() => {
-    if (partDetail?.doanVans) {
-      const doanVan = partDetail.doanVans;
-      setExistingPassage(doanVan);
+    if (partDetail?.passage) {
+      const passage = partDetail.passage;
+      setExistingPassage(passage);
       setPassageData({
-        content: doanVan.content || "",
-        title: doanVan.title || `Passage - ${part.namePart}`,
-        description: doanVan.description || "",
-        numberParagraph: doanVan.numberParagraph || 0,
-        image: doanVan.image || null,
+        content: passage.content || "",
+        title: passage.title || `Passage - ${part.namePart}`,
+        description: passage.description || "",
+        numberParagraph: passage.numberParagraph || 0,
+        image: passage.image || null,
       });
     } else {
       setExistingPassage(null);
@@ -82,7 +82,7 @@ const ReadingPartPanel = ({ idDe, part, partDetail, onPartUpdate }) => {
       let res;
       if (existingPassage) {
         // Update passage đã tồn tại
-        res = await updatePassageAPI(existingPassage.idDoanVan, formData);
+        res = await updatePassageAPI(existingPassage.idPassage, formData);
         message.success("Cập nhật passage thành công");
       } else {
         // Tạo passage mới
@@ -110,7 +110,7 @@ const ReadingPartPanel = ({ idDe, part, partDetail, onPartUpdate }) => {
     try {
       setCreatingGroup(true);
       const payload = {
-        idDe,
+        idTest,
         idPart: part.idPart,
         typeQuestion: groupType,
         title: `Group ${groupType}`,
@@ -118,8 +118,8 @@ const ReadingPartPanel = ({ idDe, part, partDetail, onPartUpdate }) => {
         endingOrder: groupQuantity,
       };
       const res = await createGroupOfQuestionsAPI(payload);
-      const idNhom = res?.data.idNhomCauHoi || res?.idGroup || res?.id;
-      if (!idNhom) throw new Error("API không trả về idNhomCauHoi");
+      const idNhom = res?.data.idGroupOfQuestions || res?.idGroup || res?.id;
+      if (!idNhom) throw new Error("API không trả về idGroupOfQuestions");
       message.success("Tạo nhóm câu hỏi thành công");
 
       // Refresh part detail
@@ -233,12 +233,13 @@ const ReadingPartPanel = ({ idDe, part, partDetail, onPartUpdate }) => {
           </div>
 
           {/* Hiển thị các nhóm câu hỏi đã có */}
-          {partDetail?.nhomCauHois && partDetail.nhomCauHois.length > 0 ? (
+          {partDetail?.groupOfQuestions &&
+          partDetail.groupOfQuestions.length > 0 ? (
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Các nhóm câu hỏi đã tạo</h3>
-              {partDetail.nhomCauHois.map((nhom) => (
+              {partDetail.groupOfQuestions.map((nhom) => (
                 <div
-                  key={nhom.idNhomCauHoi}
+                  key={nhom.idGroupOfQuestions}
                   className="border rounded-lg p-4 bg-white shadow-sm"
                 >
                   <div className="flex justify-between items-center mb-3">
@@ -246,7 +247,7 @@ const ReadingPartPanel = ({ idDe, part, partDetail, onPartUpdate }) => {
                   </div>
                   <QuestionTypeRenderer
                     type={nhom.typeQuestion}
-                    idGroup={nhom.idNhomCauHoi}
+                    idGroup={nhom.idGroupOfQuestions}
                     groupData={nhom} // Truyền cả data của nhóm
                   />
                 </div>
