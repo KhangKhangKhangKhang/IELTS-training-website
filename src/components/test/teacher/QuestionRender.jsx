@@ -16,6 +16,19 @@ const QuestionTypeRenderer = ({ type, idGroup, groupData }) => {
       return <MCQForm idGroup={idGroup} groupData={groupData} />;
     case "TFNG":
       return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+    case "YES_NO_NOTGIVEN":
+      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+    case "MATCHING":
+      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+    case "FILL_BLANK":
+      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+    case "LABELING":
+      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+    case "SHORT_ANSWER":
+      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+    case "OTHER":
+      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+
     default:
       return (
         <div className="p-4 bg-gray-50 border rounded">
