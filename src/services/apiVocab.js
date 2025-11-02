@@ -33,8 +33,11 @@ export const createVocabAPI = async (data) => {
   return res.data; // => { message, data }
 };
 
-export const updateVocabAPI = async (idTuVung, payload) => {
-  const res = await API.patch(`/vocabulary/${idTuVung}`, payload);
+export const updateVocabAPI = async (idVocab, payload) => {
+  const res = await API.patch(
+    `/vocabulary/update-vocabulary/${idVocab}`,
+    payload
+  );
   return res.data;
 };
 
@@ -43,8 +46,10 @@ export const addVocabToTopic = async (data) => {
   return res.data;
 };
 
-export const deleteVocabAPI = async (id, idUser) => {
-  const res = await API.delete(`/vocabulary/${id}/${idUser}`);
+export const deleteVocabAPI = async (idVocab, idUser) => {
+  const res = await API.delete(
+    `/vocabulary/delete-vocabulary-by-id-user/${idVocab}/${idUser}`
+  );
   return res.data;
 };
 
