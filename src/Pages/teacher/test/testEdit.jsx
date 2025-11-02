@@ -5,20 +5,20 @@ import CreateListening from "@/components/test/teacher/Listening/CreateListening
 import CreateWriting from "@/components/test/teacher/Writing/CreateWriting";
 
 const TestEdit = () => {
-  const { idDe } = useParams();
+  const { idTest } = useParams();
   const exam = useLocation().state?.exam;
 
   if (!exam) return <p>Không tìm thấy đề thi</p>;
 
-  switch (exam.loaiDe) {
+  switch (exam.testType) {
     case "READING":
-      return <CreateReading idDe={exam.idDe} exam={exam} />;
+      return <CreateReading idTest={exam.idTest} exam={exam} />;
     case "LISTENING":
-      return <CreateListening idDe={exam.idDe} exam={exam} />;
+      return <CreateListening idTest={exam.idTest} exam={exam} />;
     case "WRITING":
-      return <CreateWriting idDe={exam.idDe} exam={exam} />;
+      return <CreateWriting idTest={exam.idTest} exam={exam} />;
     default:
-      return <p>Loại đề không hợp lệ: {exam.loaiDe}</p>;
+      return <p>Loại đề không hợp lệ: {exam.testType}</p>;
   }
 };
 

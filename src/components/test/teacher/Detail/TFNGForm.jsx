@@ -26,19 +26,19 @@ const TFNGForm = ({ idGroup }) => {
       const res = await getQuestionsByIdGroupAPI(idGroup);
       const group = res?.data?.[0];
 
-      if (!group || !group.cauHois) {
+      if (!group || !group.question) {
         message.info("Không có câu hỏi nào trong nhóm này");
         setQuestions([]);
         return;
       }
 
-      const cauHois = group.cauHois;
+      const question = group.question;
 
       // Lấy đáp án cho từng câu hỏi
       const withAnswers = await Promise.all(
-        cauHois.map(async (q) => {
+        question.map(async (q) => {
           try {
-            const ansRes = await getAnswersByIdQuestionAPI(q.idCauHoi);
+            const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
             const ansData = ansRes?.data?.[0];
 
             return {
@@ -47,7 +47,7 @@ const TFNGForm = ({ idGroup }) => {
               answer_text: ansData?.answer_text || "",
             };
           } catch (err) {
-            console.error("Lỗi load answer cho", q.idCauHoi, err);
+            console.error("Lỗi load answer cho", q.idQuestion, err);
             return { ...q, idAnswer: null, answer_text: "" };
           }
         })
@@ -90,7 +90,7 @@ const TFNGForm = ({ idGroup }) => {
 
         // Gọi API PATCH để cập nhật câu trả lời
         await updateAnswerAPI(q.idAnswer, {
-          idCauHoi: q.idCauHoi,
+          idQuestion: q.idQuestion,
           idOption: null,
           answer_text: q.answer_text,
           matching_key: null,
@@ -126,7 +126,7 @@ const TFNGForm = ({ idGroup }) => {
         </div>
       ) : (
         questions.map((q, index) => (
-          <div key={q.idCauHoi} className="border p-4 rounded bg-white">
+          <div key={q.idQuestion} className="border p-4 rounded bg-white">
             <div className="flex justify-between items-center mb-2">
               <div className="font-semibold">Câu {q.numberQuestion}</div>
             </div>

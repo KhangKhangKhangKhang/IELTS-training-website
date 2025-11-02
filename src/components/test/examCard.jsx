@@ -22,19 +22,19 @@ const ExamCard = ({ exam, onExamClick }) => {
           <FileTextOutlined /> {exam.numberQuestion} câu hỏi
         </div>,
       ]}
-      onClick={() => onExamClick(exam.idDe)}
+      onClick={() => onExamClick(exam.idTest)}
     >
       <div className="flex justify-between items-start mb-2">
         <Badge
           color={
-            exam.loaiDe === "Listening"
+            exam.testType === "Listening"
               ? "blue"
-              : exam.loaiDe === "Writing"
+              : exam.testType === "Writing"
               ? "green"
               : "orange"
           }
         >
-          {exam.loaiDe}
+          {exam.testType}
         </Badge>
       </div>
       <Card.Meta

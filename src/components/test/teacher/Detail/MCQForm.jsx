@@ -40,12 +40,12 @@ const MCQForm = ({ idGroup }) => {
       for (const q of questions) {
         if (!q.content.trim()) continue;
         // const res = await createQuestionAPI({ idGroup, content: q.content });
-        const res = { idCauHoi: Math.random().toString(36).substring(2, 8) }; // mock
-        const idCauHoi = res.idCauHoi;
+        const res = { idQuestion: Math.random().toString(36).substring(2, 8) }; // mock
+        const idQuestion = res.idQuestion;
 
         for (const opt of q.options) {
           if (!opt.text.trim()) continue;
-          // await createOptionsAPI(idCauHoi, { content: opt.text, correct: opt.correct });
+          // await createOptionsAPI(idQuestion, { content: opt.text, correct: opt.correct });
         }
       }
       message.success("Đã lưu tất cả câu hỏi MCQ!");

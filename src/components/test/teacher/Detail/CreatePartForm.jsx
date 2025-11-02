@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { Input, Button, message } from "antd";
 // import { createPartAPI } from "@/services/apiPart";
 
-const CreatePartForm = ({ idDe, loaiDe, onSuccess }) => {
+const CreatePartForm = ({ idTest, testType, onSuccess }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
   const handleSubmit = async () => {
     try {
-      const data = { idDe, title, description, loaiDe };
+      const data = { idTest, title, description, testType };
       const res = await createPartAPI(data);
       message.success("Tạo Part thành công!");
       onSuccess(res.data);
@@ -20,7 +20,7 @@ const CreatePartForm = ({ idDe, loaiDe, onSuccess }) => {
   return (
     <div className="max-w-3xl mx-auto p-6 bg-white shadow rounded-lg">
       <h2 className="text-2xl font-semibold mb-4 text-center">
-        Tạo Part mới ({loaiDe})
+        Tạo Part mới ({testType})
       </h2>
       <Input
         className="mb-3"
