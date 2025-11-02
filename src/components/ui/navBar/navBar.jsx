@@ -42,7 +42,7 @@ const Navbar = () => {
       icon: BookOpen,
     },
     {
-      name: "Thống Kê",
+      name: "Diễn đàn",
       href: "/statistic",
       current: location.pathname === "/statistic",
       icon: BarChart3,

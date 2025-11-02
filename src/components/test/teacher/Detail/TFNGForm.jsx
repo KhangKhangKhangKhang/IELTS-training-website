@@ -3,7 +3,7 @@ import { Button, Input, Select, message, Spin } from "antd";
 import {
   getQuestionsByIdGroupAPI,
   getAnswersByIdQuestionAPI,
-  // updateAnswerAPI, // nếu bạn có sẵn, sẽ dùng khi bấm Lưu
+  updateAnswerAPI,
 } from "@/services/apiTest";
 
 const { Option } = Select;
@@ -13,7 +13,6 @@ const TFNGForm = ({ idGroup }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Gọi API khi mount hoặc idGroup thay đổi
   useEffect(() => {
     if (idGroup) {
       loadQuestions();
@@ -35,17 +34,21 @@ const TFNGForm = ({ idGroup }) => {
 
       const cauHois = group.cauHois;
 
-      // Lấy đáp án cho từng câu hỏi (song song)
+      // Lấy đáp án cho từng câu hỏi
       const withAnswers = await Promise.all(
         cauHois.map(async (q) => {
           try {
             const ansRes = await getAnswersByIdQuestionAPI(q.idCauHoi);
-            console.log("Đáp án tải về cho", q.idCauHoi, ansRes);
-            const ansText = ansRes?.data?.[0]?.answer_text || "";
-            return { ...q, answer_text: ansText };
+            const ansData = ansRes?.data?.[0];
+
+            return {
+              ...q,
+              idAnswer: ansData?.idAnswer || null,
+              answer_text: ansData?.answer_text || "",
+            };
           } catch (err) {
             console.error("Lỗi load answer cho", q.idCauHoi, err);
-            return { ...q, answer_text: "" };
+            return { ...q, idAnswer: null, answer_text: "" };
           }
         })
       );
@@ -68,18 +71,36 @@ const TFNGForm = ({ idGroup }) => {
 
   // ======== SAVE ALL ========
   const handleSaveAll = async () => {
+    console.log("Saving all answers:", questions);
     try {
       setSaving(true);
+
       for (const [index, q] of questions.entries()) {
         if (!q.answer_text) {
           message.warning(`Câu ${q.numberQuestion} chưa chọn đáp án`);
           continue;
         }
 
-        // TODO: Gọi API lưu lại (updateAnswerAPI)
-        // await updateAnswerAPI(q.idCauHoi, { answer_text: q.answer_text });
+        if (!q.idAnswer) {
+          message.error(
+            `Câu ${q.numberQuestion} chưa có idAnswer, không thể lưu.`
+          );
+          continue;
+        }
+
+        // Gọi API PATCH để cập nhật câu trả lời
+        await updateAnswerAPI(q.idAnswer, {
+          idCauHoi: q.idCauHoi,
+          idOption: null,
+          answer_text: q.answer_text,
+          matching_key: null,
+          matching_value: null,
+        });
+        console.log(`Đã cập nhật câu ${q.numberQuestion}:`, q.answer_text);
       }
+
       message.success("Đã lưu thay đổi TFNG!");
+      await loadQuestions(); // reload lại dữ liệu mới nhất
     } catch (err) {
       console.error(err);
       message.error("Lưu thất bại");
@@ -88,6 +109,7 @@ const TFNGForm = ({ idGroup }) => {
     }
   };
 
+  // ======== RENDER ========
   if (loading) {
     return (
       <div className="flex justify-center py-6">

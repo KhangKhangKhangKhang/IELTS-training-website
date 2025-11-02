@@ -37,7 +37,7 @@ const NavbarTeacher = () => {
       icon: BookOpen,
     },
     {
-      name: "Thống Kê",
+      name: "Diễn đàn",
       href: "/teacher/statistic",
       current: location.pathname === "/teacher/statistic",
       icon: BarChart3,

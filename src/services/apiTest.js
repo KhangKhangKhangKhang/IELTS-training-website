@@ -89,7 +89,7 @@ export const createUserTestResult = async (idUser, idTest, data) => {
   return res.data;
 };
 
-//delete part
+//delete
 export const deletePartAPI = async (idPart) => {
   const res = await API.delete(`/part/delete/${idPart}`);
   return res.data;
@@ -119,8 +119,8 @@ export const getQuestionsByIdGroupAPI = async (idGroupOfQuestions) => {
   return res.data;
 };
 
-export const getAnswersByIdQuestionAPI = async (idQuestion) => {
-  const res = await API.get(`/answer/get-by-id-question/${idQuestion}`);
+export const getAnswersByIdQuestionAPI = async (idCauHoi) => {
+  const res = await API.get(`/answer/get-by-id-question/${idCauHoi}`);
   return res.data;
 };
 
@@ -143,6 +143,10 @@ export const updateGroupOfQuestionsAPI = async (idGroupOfQuestions, data) => {
   return res.data;
 };
 
+export const updateAnswerAPI = async (idAnswer, data) => {
+  const res = await API.patch(`/answer/update-answer/${idAnswer}`, data);
+  return res.data;
+};
 export const updateQuestionAPI = async (idQuestion, data) => {
   const res = await API.patch(`/question/update-question/${idQuestion}`, data);
   return res.data;
