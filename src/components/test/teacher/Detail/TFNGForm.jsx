@@ -40,6 +40,7 @@ const TFNGForm = ({ idGroup }) => {
         cauHois.map(async (q) => {
           try {
             const ansRes = await getAnswersByIdQuestionAPI(q.idCauHoi);
+            console.log("Đáp án tải về cho", q.idCauHoi, ansRes);
             const ansText = ansRes?.data?.[0]?.answer_text || "";
             return { ...q, answer_text: ansText };
           } catch (err) {

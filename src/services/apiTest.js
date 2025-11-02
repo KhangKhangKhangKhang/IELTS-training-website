@@ -142,3 +142,8 @@ export const updateGroupOfQuestionsAPI = async (idGroupOfQuestions, data) => {
   );
   return res.data;
 };
+
+export const updateQuestionAPI = async (idQuestion, data) => {
+  const res = await API.patch(`/question/update-question/${idQuestion}`, data);
+  return res.data;
+};
