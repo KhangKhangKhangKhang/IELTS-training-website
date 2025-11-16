@@ -149,7 +149,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
               <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                 {formData.avatar ? (
                   <img
-                    src={formData.avatar}
+                    src={formData.avatar || null}
                     alt="Avatar"
                     className="w-full h-full object-cover"
                   />

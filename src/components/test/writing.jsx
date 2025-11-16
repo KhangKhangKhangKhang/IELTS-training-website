@@ -90,7 +90,7 @@ const Writing = () => {
             {currentTask === "task1" && task1Data.imageUrl && (
               <div className="mt-4">
                 <img
-                  src={task1Data.imageUrl}
+                  src={task1Data.imageUrl || null}
                   width={1000}
                   height={500}
                   alt="Chart for task 1"

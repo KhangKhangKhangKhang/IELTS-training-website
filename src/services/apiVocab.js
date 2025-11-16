@@ -11,8 +11,7 @@ export const getTopicsByUserAPI = async (idUser) => {
   return res.data;
 };
 
-// export const updateTopicAPI = (idTopic, payload) =>
-//   API.patch(`/topic/update/${idTopic}`, payload).then((res) => res.data);
+//topic
 
 export const updateTopicAPI = async (idTopic, payload) => {
   const res = await API.patch(`/topic/update/${idTopic}`, payload);

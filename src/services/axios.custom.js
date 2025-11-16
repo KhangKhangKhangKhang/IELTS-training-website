@@ -20,7 +20,7 @@ API.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
-axios.interceptors.response.use(
+API.interceptors.response.use(
   (res) => {
     return res;
   },
@@ -33,8 +33,9 @@ axios.interceptors.response.use(
         return Promise.reject(err);
       }
       try {
-        const refreshToken = await refreshTokenAPI();
-        const { Token } = refreshToken?.data || {};
+        const refreshToken = Cookies.get("refreshToken");
+        const res = await refreshTokenAPI(refreshToken);
+        const { Token } = res?.data.access_token || {};
         Cookies.set("accessToken", Token);
         originalConfig.headers.Authorization = `Bearer ${Token}`;
         return API(originalConfig);
