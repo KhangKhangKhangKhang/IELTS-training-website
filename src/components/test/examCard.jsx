@@ -10,7 +10,7 @@ const ExamCard = ({ exam, onExamClick }) => {
       cover={
         <img
           alt={exam.title}
-          src={exam.img ? exam.img : "ảnh đẹp"}
+          src={exam.img ? exam.img : null}
           className="h-48 object-cover"
         />
       }

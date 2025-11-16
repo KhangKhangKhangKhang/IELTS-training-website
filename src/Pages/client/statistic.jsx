@@ -1,32 +1,54 @@
-import React from "react";
+import React, { useState } from "react";
+import ThreadSidebar from "@/components/Forum/ThreadSidebar/ThreadSidebar";
+import ForumBoard from "@/components/Forum/Forum/ForumBoard";
+import { Button } from "antd";
+import CreateThread from "@/components/Forum/Forum/CreateThread";
+import { useAuth } from "@/context/authContext";
 
 const Statistic = () => {
+  const [selectedThread, setSelectedThread] = useState(null);
+
+  // ✅ thêm state để chứa danh sách thread
+  const [threads, setThreads] = useState([]);
+
+  const [openCreateThread, setOpenCreateThread] = useState(false);
+  const { user } = useAuth();
+
   return (
-    <>
-      <div className="flex bg-gray-100 justify-around  items-start m-3">
-        <div className="flex-col bg-white w-1/5 h-fit shadow-2xl rounded-3xl text-white p-5 ">
-          <ol className="flex flex-col  items-center mt-1  text-xl ">
-            <li className="hover:bg-purple-700 p-2 rounded-lg font-bold w-full text-center cursor-pointer">
-              Tổng quan
-            </li>
-            <li className="hover:bg-purple-700 p-2 rounded-lg w-full text-center cursor-pointer">
-              Bài làm của học viên
-            </li>
-            <li className="hover:bg-purple-700 p-2 rounded-lg w-full text-center cursor-pointer">
-              Phân tích câu hỏi
-            </li>
-            <li className="hover:bg-purple-700 p-2 rounded-lg w-full text-center cursor-pointer">
-              So sánh kết quả
-            </li>
-          </ol>
+    <div className="w-full flex gap-4 p-4">
+      {/* ✅ truyền threads và setThreads xuống Sidebar */}
+      <ThreadSidebar
+        onSelect={(thread) => setSelectedThread(thread)}
+        threads={threads}
+        setThreads={setThreads}
+      />
+
+      <div className="flex-1">
+        <div className="flex justify-between mb-4">
+          <h1 className="text-2xl font-bold">IELTS Forum</h1>
+
+          {(user?.role === "ADMIN" || user?.role === "TEACHER") && (
+            <Button type="primary" onClick={() => setOpenCreateThread(true)}>
+              + Tạo chủ đề
+            </Button>
+          )}
         </div>
-        <div className="flex-col mr-3 ml-3 bg-purple-700 text-green-500 w-full  ">
-          <h1 className="text-2xl t font-bold">Thống kê</h1>
-          <h1 className="text-2xl font-bold">Thống kê</h1>
-          <h1 className="text-2xl font-bold">Thống kê</h1>
-        </div>
+
+        {selectedThread ? (
+          <ForumBoard idForumThreads={selectedThread.idForumThreads} />
+        ) : (
+          <div className="text-center text-gray-500 p-10">
+            Chọn 1 chủ đề bên trái để xem bài viết
+          </div>
+        )}
+
+        <CreateThread
+          open={openCreateThread}
+          onClose={() => setOpenCreateThread(false)}
+          setThreads={setThreads} // ✅ giờ mới có đủ
+        />
       </div>
-    </>
+    </div>
   );
 };
 

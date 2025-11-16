@@ -1,17 +1,14 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { introspectAPI } from "@/services/apiAuth";
 import Cookies from "js-cookie";
-
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const u = Cookies.get("user");
-    return u ? JSON.parse(u) : null;
-  });
+  const [user, setUser] = useState(
+    Cookies.get("user") ? JSON.parse(Cookies.get("user")) : ""
+  );
   const [isAuth, setIsAuth] = useState(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     const checkAuth = async () => {
       const token = Cookies.get("accessToken");
@@ -25,13 +22,20 @@ export const AuthProvider = ({ children }) => {
       try {
         const res = await introspectAPI(token);
         if (res?.data?.active) {
+          const storedUser = Cookies.get("user");
           setIsAuth(true);
+          setUser(storedUser ? JSON.parse(storedUser) : null);
         } else {
           setIsAuth(false);
+          setUser(null);
+          Cookies.remove("accessToken");
+          Cookies.remove("user");
         }
-      } catch {
-        // Không xóa token ở đây, để axios tự xử lý
+      } catch (error) {
         setIsAuth(false);
+        setUser(null);
+        Cookies.remove("accessToken");
+        Cookies.remove("user");
       } finally {
         setLoading(false);
       }
