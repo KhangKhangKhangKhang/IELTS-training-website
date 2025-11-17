@@ -1,7 +1,8 @@
+// CreatePost - Updated
 import { useState } from "react";
 import { createPostAPI } from "@/services/apiForum";
 import { Input, Button, message, Upload } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { UploadOutlined, PaperClipOutlined } from "@ant-design/icons";
 import { useAuth } from "@/context/authContext";
 
 const { TextArea } = Input;
@@ -24,39 +25,61 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
     if (file) form.append("file", file);
 
     setLoading(true);
-    const res = await createPostAPI(form);
-    setLoading(false);
-    console.log(res.data);
-
-    message.success("Đăng bài thành công!");
-    setContent("");
-    setFile(null);
-    onSuccess(res.data);
+    try {
+      const res = await createPostAPI(form);
+      message.success("Đăng bài thành công!");
+      setContent("");
+      setFile(null);
+      onSuccess(res.data);
+    } catch (error) {
+      message.error("Đăng bài thất bại!");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="p-3 bg-white rounded shadow">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
       <TextArea
-        rows={3}
-        placeholder="Bạn đang nghĩ gì?"
+        rows={4}
+        placeholder="Bạn đang nghĩ gì? Chia sẻ với mọi người..."
         value={content}
         onChange={(e) => setContent(e.target.value)}
+        className="rounded-lg border-slate-300 text-slate-900 mb-4"
+        style={{ resize: "none" }}
       />
 
-      <div className="flex justify-between mt-2">
+      <div className="flex justify-between items-center">
         <Upload
           beforeUpload={(f) => {
             setFile(f);
             return false;
           }}
+          showUploadList={false}
         >
-          <Button icon={<UploadOutlined />}>Ảnh/Video</Button>
+          <Button
+            icon={<PaperClipOutlined />}
+            className="text-slate-600 hover:text-slate-900 border-slate-300 rounded-lg"
+          >
+            Đính kèm file
+          </Button>
         </Upload>
 
-        <Button type="primary" loading={loading} onClick={handlePost}>
-          Đăng
+        <Button
+          type="primary"
+          loading={loading}
+          onClick={handlePost}
+          className="bg-slate-900 hover:bg-slate-800 border-slate-900 hover:border-slate-800 rounded-lg px-6"
+        >
+          Đăng bài
         </Button>
       </div>
+
+      {file && (
+        <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+          <span className="text-sm text-slate-600">{file.name}</span>
+        </div>
+      )}
     </div>
   );
 };

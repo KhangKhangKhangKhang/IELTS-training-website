@@ -1,9 +1,10 @@
-import { Button, Popconfirm } from "antd";
+// ThreadItem - Updated
+import { Button, Popconfirm, message } from "antd";
 import { useAuth } from "@/context/authContext";
 import { deleteThreadAPI } from "@/services/apiForum";
-import { message } from "antd";
 import { useState } from "react";
 import EditThreadModal from "@/components/Forum/Forum/Modal/EditThreadModal";
+import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 
 const ThreadItem = ({ thread, onClick, setThreads }) => {
   const { user } = useAuth();
@@ -22,16 +23,22 @@ const ThreadItem = ({ thread, onClick, setThreads }) => {
   };
 
   return (
-    <div className="p-2 bg-gray-100 hover:bg-gray-200 rounded transition">
-      <div onClick={onClick} className="cursor-pointer">
-        <div className="font-medium">{thread.title}</div>
-        <div className="text-xs text-gray-500">{thread.content}</div>
+    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-slate-300 transition-all duration-200 group">
+      <div onClick={onClick} className="cursor-pointer mb-2">
+        <div className="font-semibold text-slate-900 mb-1">{thread.title}</div>
+        <div className="text-sm text-slate-600 line-clamp-2">
+          {thread.content}
+        </div>
       </div>
 
-      {/* ✅ Chỉ hiện khi user là người tạo */}
       {user?.role === "ADMIN" && (
-        <div className="flex gap-2 mt-2">
-          <Button size="small" onClick={() => setOpenEdit(true)}>
+        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => setOpenEdit(true)}
+            className="text-slate-600 hover:text-slate-900 border-slate-300 rounded-lg"
+          >
             Sửa
           </Button>
 
@@ -40,15 +47,22 @@ const ThreadItem = ({ thread, onClick, setThreads }) => {
             onConfirm={handleDelete}
             okText="Xóa"
             cancelText="Hủy"
+            okButtonProps={{
+              className: "bg-red-600 border-red-600 rounded-lg",
+            }}
           >
-            <Button size="small" danger>
+            <Button
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              className="rounded-lg"
+            >
               Xóa
             </Button>
           </Popconfirm>
         </div>
       )}
 
-      {/* ✅ Modal chỉnh sửa */}
       <EditThreadModal
         open={openEdit}
         onClose={() => setOpenEdit(false)}
