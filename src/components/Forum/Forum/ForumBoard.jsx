@@ -1,3 +1,4 @@
+// ForumBoard - Updated
 import { useEffect, useState } from "react";
 import ForumHeader from "./ForumHeader";
 import CreatePost from "./CreatePost";
@@ -14,31 +15,38 @@ const ForumBoard = ({ idForumThreads }) => {
 
   const loadData = async () => {
     setLoading(true);
-    const threadRes = await getThreadByIdAPI(idForumThreads);
-    console.log(threadRes);
-    setThread(threadRes.data);
+    try {
+      const threadRes = await getThreadByIdAPI(idForumThreads);
+      setThread(threadRes.data);
 
-    const postRes = await getPostByThreadAPI(idForumThreads, user?.idUser);
-    console.log("data của post", postRes);
-    setPosts(postRes.data);
-    setLoading(false);
+      const postRes = await getPostByThreadAPI(idForumThreads, user?.idUser);
+      setPosts(postRes.data);
+    } catch (error) {
+      console.error("Error loading forum board:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, [idForumThreads]);
 
-  if (loading) return <Spin />;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <ForumHeader thread={thread} />
-
       <CreatePost
         idForumThreads={idForumThreads}
         onSuccess={(newPost) => setPosts([newPost, ...posts])}
       />
-
       <PostList
         posts={posts}
         onPostUpdated={(updatedPost) =>

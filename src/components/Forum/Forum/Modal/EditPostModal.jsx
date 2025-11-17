@@ -1,3 +1,4 @@
+// EditPostModal - Updated
 import { Modal, Input, Upload, Button, message } from "antd";
 import { useState } from "react";
 import { updatePostAPI } from "@/services/apiForum";
@@ -6,7 +7,6 @@ import { useAuth } from "@/context/authContext";
 
 const EditPostModal = ({ post, open, onClose, onUpdated }) => {
   const { user } = useAuth();
-
   const [content, setContent] = useState(post.content);
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -18,23 +18,17 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
 
     try {
       setLoading(true);
-
       const form = new FormData();
       form.append("idUser", post.idUser);
       form.append("idForumThreads", post.idForumThreads);
       form.append("content", content);
-
-      if (file) {
-        form.append("file", file);
-      }
+      if (file) form.append("file", file);
 
       const res = await updatePostAPI(post.idForumPost, form);
-
       message.success("Cập nhật thành công");
-      onUpdated(res.data); // ✅ update realtime UI
+      onUpdated(res.data);
       onClose();
     } catch (err) {
-      console.log(err);
       message.error("Cập nhật thất bại");
     } finally {
       setLoading(false);
@@ -44,37 +38,52 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
   return (
     <Modal
       open={open}
-      title="Chỉnh sửa bài viết"
+      title={
+        <span className="text-slate-900 font-semibold">Chỉnh sửa bài viết</span>
+      }
       onCancel={onClose}
-      okText="Lưu"
+      okText="Lưu thay đổi"
+      cancelText="Hủy"
       confirmLoading={loading}
       onOk={handleSave}
+      className="rounded-lg"
     >
-      <Input.TextArea
-        rows={4}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="Nhập nội dung mới..."
-      />
-
-      <Upload
-        beforeUpload={(file) => {
-          setFile(file);
-          return false;
-        }}
-        maxCount={1}
-        className="mt-3"
-      >
-        <Button icon={<UploadOutlined />}>Chọn ảnh/video mới</Button>
-      </Upload>
-
-      {post.file && (
-        <img
-          src={post.file}
-          alt="current"
-          className="rounded-md mt-3 max-h-48 object-cover"
+      <div className="space-y-4">
+        <Input.TextArea
+          rows={6}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Nhập nội dung mới..."
+          className="rounded-lg border-slate-300 hover:border-slate-400"
         />
-      )}
+
+        <Upload
+          beforeUpload={(file) => {
+            setFile(file);
+            return false;
+          }}
+          maxCount={1}
+          className="w-full"
+        >
+          <Button
+            icon={<UploadOutlined />}
+            className="w-full border-slate-300 text-slate-700 rounded-lg"
+          >
+            Chọn ảnh/video mới
+          </Button>
+        </Upload>
+
+        {post.file && (
+          <div className="border border-slate-200 rounded-lg p-3">
+            <p className="text-sm text-slate-600 mb-2">Ảnh hiện tại:</p>
+            <img
+              src={post.file}
+              alt="current"
+              className="rounded-lg max-h-48 object-cover w-full"
+            />
+          </div>
+        )}
+      </div>
     </Modal>
   );
 };
