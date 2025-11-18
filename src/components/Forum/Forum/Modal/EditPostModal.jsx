@@ -48,7 +48,7 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
       onOk={handleSave}
       className="rounded-lg"
     >
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         <Input.TextArea
           rows={6}
           value={content}
@@ -73,7 +73,20 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
           </Button>
         </Upload>
 
-        {post.file && (
+        {/* Nếu đã chọn file mới → hiện preview */}
+        {file && (
+          <div className="border border-slate-200 rounded-lg p-3">
+            <p className="text-sm text-slate-600 mb-2">Ảnh mới:</p>
+            <img
+              src={URL.createObjectURL(file)}
+              alt="new"
+              className="rounded-lg max-h-48 object-cover w-full"
+            />
+          </div>
+        )}
+
+        {/* Nếu chưa chọn file → hiện ảnh cũ */}
+        {!file && post.file && (
           <div className="border border-slate-200 rounded-lg p-3">
             <p className="text-sm text-slate-600 mb-2">Ảnh hiện tại:</p>
             <img
