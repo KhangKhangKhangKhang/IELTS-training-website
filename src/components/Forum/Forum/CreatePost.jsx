@@ -49,7 +49,7 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
         style={{ resize: "none" }}
       />
 
-      <div className="flex justify-between items-center">
+      <div className="flex mt-2 justify-between items-center">
         <Upload
           beforeUpload={(f) => {
             setFile(f);
