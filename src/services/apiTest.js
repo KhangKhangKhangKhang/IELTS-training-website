@@ -11,13 +11,13 @@ export const createNewTest = async (data) => {
   return res.data;
 };
 
-export const deleteAPITest = async (id) => {
-  const res = await API.delete(`/test/delete-test/${id}`);
+export const deleteAPITest = async (idTest) => {
+  const res = await API.delete(`/test/delete-test/${idTest}`);
   return res.data;
 };
 
-export const updateAPITest = async (id, data) => {
-  const res = await API.put(`/test/update-test/${id}`, data);
+export const updateAPITest = async (idTest, data) => {
+  const res = await API.put(`/test/update-test/${idTest}`, data);
   return res.data;
 };
 //===============================================================================================

@@ -31,12 +31,6 @@ const NavbarTeacher = () => {
       icon: Home,
     },
     {
-      name: "Giải Đề",
-      href: "/teacher/test",
-      current: location.pathname === "/teacher/test",
-      icon: BookOpen,
-    },
-    {
       name: "Diễn đàn",
       href: "/teacher/statistic",
       current: location.pathname === "/teacher/statistic",
@@ -53,6 +47,12 @@ const NavbarTeacher = () => {
       href: "/teacher/testManager",
       current: location.pathname === "/teacher/testManager",
       icon: FilePlus2,
+    },
+    {
+      name: "Ngữ pháp",
+      href: "/teacher/grammar",
+      current: location.pathname === "/teacher/grammar",
+      icon: Cookie,
     },
     {
       name: "Danh sách",
