@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ProfileModal from "./profileModal"; // Component riêng cho modal profile
 import ChatBotWidget from "./chatBotWidget";
+import Cookies from "js-cookie";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -62,8 +63,9 @@ const Navbar = () => {
   ];
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
+     Cookies.remove("accessToken");
+        Cookies.remove("user");
+        Cookies.remove("refreshToken");
     navigate("/landingPage");
   };
 
