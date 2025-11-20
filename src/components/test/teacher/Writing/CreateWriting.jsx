@@ -14,10 +14,22 @@ import {
 const CreateWriting = ({ idTest }) => {
   const [currentTask, setCurrentTask] = useState("TASK1");
 
-  // TASK1 & TASK2 đều nằm chung 1 object
+  // Khởi tạo luôn object mặc định để tránh null
   const [tasks, setTasks] = useState({
-    TASK1: null,
-    TASK2: null,
+    TASK1: {
+      id: null,
+      title: "",
+      time_limit: "",
+      imageUrl: null,
+      image: null, // file object
+      task_type: "TASK1",
+    },
+    TASK2: {
+      id: null,
+      title: "",
+      time_limit: "",
+      task_type: "TASK2",
+    },
   });
 
   // Load tasks từ API
@@ -26,107 +38,134 @@ const CreateWriting = ({ idTest }) => {
       try {
         const res = await getAllWritingTasksAPI(idTest);
 
-        let t1 = null;
-        let t2 = null;
+        const newTasks = {
+          TASK1: { ...tasks.TASK1 },
+          TASK2: { ...tasks.TASK2 },
+        };
 
         res.data.forEach((t) => {
+          const base = {
+            id: t.idWritingTask,
+            title: t.title,
+            time_limit: t.time_limit,
+            task_type: t.task_type,
+          };
+
           if (t.task_type === "TASK1") {
-            t1 = {
-              id: t.idWritingTask,
-              title: t.title,
-              time_limit: t.time_limit,
-              imageUrl: t.image,
-              image: null,
-              task_type: "TASK1",
+            newTasks.TASK1 = {
+              ...newTasks.TASK1,
+              ...base,
+              imageUrl: t.image || null,
+              image: null, // không giữ file cũ
             };
-          }
-          if (t.task_type === "TASK2") {
-            t2 = {
-              id: t.idWritingTask,
-              title: t.title,
-              time_limit: t.time_limit,
-              task_type: "TASK2",
-            };
+          } else if (t.task_type === "TASK2") {
+            newTasks.TASK2 = { ...newTasks.TASK2, ...base };
           }
         });
 
-        setTasks({ TASK1: t1, TASK2: t2 });
+        setTasks(newTasks);
 
-        if (t1) setCurrentTask("TASK1");
-        else if (t2) setCurrentTask("TASK2");
+        // Tự động chọn tab có dữ liệu trước
+        if (newTasks.TASK1.id) setCurrentTask("TASK1");
+        else if (newTasks.TASK2.id) setCurrentTask("TASK2");
       } catch (err) {
-        console.error("Error:", err);
+        console.error("Error fetching tasks:", err);
       }
     };
 
-    fetchTasks();
+    if (idTest) fetchTasks();
   }, [idTest]);
 
-  const data = tasks[currentTask] || {
-    id: null,
-    title: "",
-    time_limit: "",
-    task_type: currentTask,
-    imageUrl: null,
-    image: null,
-  };
+  // Lấy task hiện tại (luôn có object đầy đủ)
+  const current = tasks[currentTask];
 
-  // Update form fields
+  // Cập nhật field
   const updateField = (field, value) => {
     setTasks((prev) => ({
       ...prev,
       [currentTask]: {
-        ...data,
+        ...prev[currentTask],
         [field]: value,
       },
     }));
   };
 
-  // Image (chỉ TASK1)
+  // Xử lý ảnh
   const handleFileChange = (file) => {
+    if (!file) return;
     updateField("image", file);
     updateField("imageUrl", URL.createObjectURL(file));
   };
 
-  // Create hoặc Update
+  // Submit
   const handleSubmit = async () => {
     const form = new FormData();
     form.append("idTest", idTest);
-    form.append("task_type", data.task_type);
-    form.append("title", data.title);
-    form.append("time_limit", Number(data.time_limit));
+    form.append("task_type", current.task_type);
+    form.append("title", current.title);
+    form.append("time_limit", Number(current.time_limit) || 0);
 
-    if (currentTask === "TASK1" && data.image instanceof File) {
-      form.append("image", data.image);
+    // Chỉ append ảnh nếu là TASK1 và có chọn file mới
+    if (currentTask === "TASK1" && current.image instanceof File) {
+      form.append("image", current.image);
     }
 
     try {
-      if (data.id) {
-        await updateWritingTaskAPI(data.id, form);
+      if (current.id) {
+        await updateWritingTaskAPI(current.id, form);
         alert("Cập nhật thành công!");
       } else {
-        await createWritingTaskAPI(form);
+        const res = await createWritingTaskAPI(form);
+        // Cập nhật lại state với id mới thay vì reload
+        setTasks((prev) => ({
+          ...prev,
+          [currentTask]: {
+            ...prev[currentTask],
+            id: res.data.idWritingTask, // giả sử API trả về id
+          },
+        }));
         alert("Tạo task thành công!");
       }
-      window.location.reload();
     } catch (error) {
       console.error(error);
-      alert("Lỗi khi lưu task!");
+      alert(
+        "Lỗi khi lưu task: " + (error.response?.data?.message || error.message)
+      );
     }
   };
 
-  // Delete
+  // Xoá
   const handleDelete = async () => {
-    if (!data.id) return alert("Task chưa có để xoá!");
+    if (!current.id) return alert("Không có task để xoá!");
     if (!confirm("Bạn chắc chắn muốn xoá task này?")) return;
 
     try {
-      await deleteWritingTaskAPI(data.id);
+      await deleteWritingTaskAPI(current.id);
+      // Reset task về trạng thái mặc định thay vì reload
+      setTasks((prev) => ({
+        ...prev,
+        [currentTask]: {
+          ...(currentTask === "TASK1"
+            ? {
+                id: null,
+                title: "",
+                time_limit: "",
+                imageUrl: null,
+                image: null,
+                task_type: "TASK1",
+              }
+            : {
+                id: null,
+                title: "",
+                time_limit: "",
+                task_type: "TASK2",
+              }),
+        },
+      }));
       alert("Xoá thành công!");
-      window.location.reload();
     } catch (err) {
       console.error(err);
-      alert("Lỗi khi xoá task!");
+      alert("Lỗi khi xoá!");
     }
   };
 
@@ -135,95 +174,171 @@ const CreateWriting = ({ idTest }) => {
       <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg">
         {/* Tabs */}
         <div className="flex border-b">
-          <Button
-            onClick={() => setCurrentTask("TASK1")}
-            className={`px-6 py-3 ${
-              currentTask === "TASK1"
-                ? "border-b-2 bg-blue-700 text-white"
-                : "text-black"
-            }`}
-          >
-            Task 1
-          </Button>
-          <Button
-            onClick={() => setCurrentTask("TASK2")}
-            className={`px-6 py-3 ${
-              currentTask === "TASK2"
-                ? "border-b-2 bg-blue-700 text-white"
-                : "text-black"
-            }`}
-          >
-            Task 2
-          </Button>
+          {["TASK1", "TASK2"].map((task) => (
+            <Button
+              key={task}
+              onClick={() => setCurrentTask(task)}
+              className={`px-6 py-3 font-medium transition-all ${
+                currentTask === task
+                  ? "border-b-4 border-blue-600 bg-blue-50 text-blue-700"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {task.replace("TASK", "Task ")}
+            </Button>
+          ))}
         </div>
 
         {/* Main */}
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* FORM */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">
-              {data.id ? "Cập nhật " + currentTask : "Tạo " + currentTask}
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Form */}
+          <div className="space-y-5">
+            <h2 className="text-2xl font-bold text-gray-800">
+              {current.id ? `Chỉnh sửa ${currentTask}` : `Tạo ${currentTask}`}
             </h2>
 
-            <div className="mb-4">
-              <Label>Title</Label>
+            <div>
+              <Label className="text-base">Tiêu đề</Label>
               <Input
-                value={data.title}
+                value={current.title}
                 onChange={(e) => updateField("title", e.target.value)}
-                placeholder="Enter title..."
+                placeholder="Nhập tiêu đề đề bài..."
+                className="mt-1"
               />
             </div>
 
-            <div className="mb-4">
-              <Label>Time Limit</Label>
+            <div>
+              <Label className="text-base">Thời gian làm bài (phút)</Label>
               <Input
                 type="number"
-                value={data.time_limit}
+                value={current.time_limit}
                 onChange={(e) => updateField("time_limit", e.target.value)}
+                placeholder="60"
+                className="mt-1"
               />
             </div>
-
             {currentTask === "TASK1" && (
-              <div className="mb-4">
-                <Label>Image</Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileChange(e.target.files[0])}
-                />
+              <div className="space-y-3">
+                <Label className="text-base">Hình ảnh</Label>
+
+                {/* Nếu đã có ảnh (từ server hoặc mới chọn) */}
+                {current.imageUrl ? (
+                  <div className="flex items-center gap-4 p-4 border rounded-lg bg-gray-50">
+                    <img
+                      src={current.imageUrl}
+                      alt="Current"
+                      className="w-24 h-24 object-cover rounded-md border shadow-sm"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700">
+                        {current.image instanceof File
+                          ? current.image.name
+                          : "Ảnh hiện tại"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {current.image instanceof File
+                          ? `${(current.image.size / 1024).toFixed(1)} KB`
+                          : "Đã tải lên từ server"}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-50"
+                      onClick={() => {
+                        updateField("image", null);
+                        updateField("imageUrl", null);
+                        // Reset input file (quan trọng!)
+                        const input = document.getElementById("image-input");
+                        if (input) input.value = "";
+                      }}
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </Button>
+                  </div>
+                ) : (
+                  /* Nếu chưa có ảnh → hiện input chọn file */
+                  <Input
+                    id="image-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      e.target.files?.[0] && handleFileChange(e.target.files[0])
+                    }
+                    className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                )}
+
+                {/* Nút thay đổi ảnh (khi đã có ảnh) */}
+                {current.imageUrl && (
+                  <label htmlFor="image-input" className="cursor-pointer">
+                    <Input
+                      id="image-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) =>
+                        e.target.files?.[0] &&
+                        handleFileChange(e.target.files[0])
+                      }
+                    />
+                    <span className="text-sm text-blue-600 hover:text-blue-800 underline">
+                      Thay đổi ảnh
+                    </span>
+                  </label>
+                )}
               </div>
             )}
           </div>
 
-          {/* PREVIEW */}
-          <div>
-            <h2 className="font-semibold text-gray-700 mb-3">Preview</h2>
-            <p className="text-lg">{data.title || "(No title)"}</p>
-
-            {currentTask === "TASK1" && data.imageUrl && (
-              <img src={data.imageUrl} className="mt-4 rounded-lg border" />
-            )}
+          {/* Preview */}
+          <div className="bg-gray-50 p-6 rounded-lg">
+            <h3 className="font-semibold text-lg mb-4 text-gray-700">
+              Xem trước
+            </h3>
+            <div className="bg-white p-5 rounded border min-h-48">
+              <p className="text-xl font-medium mb-4">
+                {current.title || "<Chưa có tiêu đề>"}
+              </p>
+              {currentTask === "TASK1" && current.imageUrl && (
+                <img
+                  src={current.imageUrl}
+                  alt="Preview"
+                  className="mt-4 max-w-full h-auto rounded-lg shadow-md border"
+                />
+              )}
+            </div>
           </div>
         </div>
 
-        {/* FOOTER */}
-        <div className="flex justify-between p-6">
-          {data.id ? (
-            <Button
-              className="bg-red-600 hover:bg-red-700 text-white"
-              onClick={handleDelete}
-            >
-              Delete
-            </Button>
-          ) : (
-            <div />
-          )}
+        {/* Footer */}
+        <div className="flex justify-between items-center p-6 border-t bg-gray-50">
+          <div>
+            {current.id && (
+              <Button variant="destructive" onClick={handleDelete}>
+                Xoá Task
+              </Button>
+            )}
+          </div>
 
           <Button
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            size="lg"
+            className="bg-slate-900 text-white hover:bg-slate-800, hover:cursor-pointer"
             onClick={handleSubmit}
           >
-            {data.id ? "Cập nhật" : "Tạo mới"}
+            {current.id ? "Cập nhật" : "Tạo mới"}
           </Button>
         </div>
       </div>
