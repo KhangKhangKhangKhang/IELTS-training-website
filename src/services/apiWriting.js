@@ -11,7 +11,10 @@ export const createWritingTaskAPI = async (formdata) => {
 };
 
 export const createWritingSubmissionAPI = async (data) => {
-  const res = await API.post("/writing-submissions", data);
+  const res = await API.post(
+    "/user-writing-submission/create-writing-submission",
+    data
+  );
   return res.data; // { id, taskId, userId, content, ... }
 };
 

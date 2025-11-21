@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Input, Select, Row, Col, Space, Spin } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
-import { mockExamsAPI } from "@/lib/mockExamsAPI";
 import ExamSelector from "@/components/test/examSelector";
 import ExamCard from "@/components/test/examCard";
 import { getAPITest } from "@/services/apiTest";
@@ -59,7 +58,11 @@ const TestPage = () => {
       navigate("/login");
     } else
       navigate("/doTest", {
-        state: { idTest: exam.idTest, testType: exam.testType },
+        state: {
+          idTest: exam.idTest,
+          testType: exam.testType,
+          duration: exam.duration,
+        },
       });
   };
 
