@@ -37,6 +37,12 @@ const NavbarTeacher = () => {
       icon: BarChart3,
     },
     {
+      name: "Làm đề",
+      href: "/teacher/doTest",
+      current: location.pathname === "/teacher/test",
+      icon: BookOpen,
+    },
+    {
       name: "Từ Vựng",
       href: "/teacher/vocabulary",
       current: location.pathname === "/teacher/vocabulary",

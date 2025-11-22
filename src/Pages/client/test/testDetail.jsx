@@ -14,7 +14,7 @@ const testComponents = {
 const TestDetail = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { idTest, testType } = location.state || {};
+  const { idTest, testType, duration } = location.state || {};
   const [timedOut, setTimedOut] = useState(false);
 
   const Comp = testComponents[testType?.toUpperCase()];
@@ -54,7 +54,7 @@ const TestDetail = () => {
     );
   }
 
-  return <Comp idTest={idTest} />;
+  return <Comp idTest={idTest} duration={duration} />;
 };
 
 export default TestDetail;
