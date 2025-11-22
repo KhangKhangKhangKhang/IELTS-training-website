@@ -12,7 +12,7 @@ import { useAuth } from "@/context/authContext";
 
 const Writing = ({ idTest, duration }) => {
   // duration: số phút, nếu API có thì thay vào
-
+  console.log("duration nhận từ TestDetail:", duration);
   const { user } = useAuth();
 
   const [tasks, setTasks] = useState([]);
@@ -157,7 +157,7 @@ const Writing = ({ idTest, duration }) => {
 
             {activeTask?.task_type === "TASK1" && activeTask?.image && (
               <img
-                src={activeTask.image}
+                src={activeTask.img}
                 alt="Task 1"
                 className="w-full h-auto rounded-lg border mt-3"
               />
