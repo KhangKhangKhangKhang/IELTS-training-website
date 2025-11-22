@@ -5,7 +5,6 @@ import "./index.css";
 import { AuthProvider } from "./context/authContext";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import ProtectedRoute from "./context/auth/protectedRoute";
-import path from "path";
 import Navbar from "./components/ui/navBar/navBar";
 import HomePage from "./Pages/client/homePage";
 import Statistic from "./Pages/client/statistic";
