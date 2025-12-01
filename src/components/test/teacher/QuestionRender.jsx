@@ -2,6 +2,12 @@
 import React from "react";
 import MCQForm from "@/components/test/teacher/Detail/MCQForm";
 import TFNGForm from "@/components/test/teacher/Detail/TFNGForm";
+import YesNoNotGivenForm from "@/components/test/teacher/Detail/YesNoNotGivenForm";
+import FillBlankForm from "@/components/test/teacher/Detail/FillBlankForm";
+import ShortAnswerForm from "@/components/test/teacher/Detail/ShortAnswerForm";
+import LabelingForm from "@/components/test/teacher/Detail/LabelingForm";
+import MatchingForm from "@/components/test/teacher/Detail/MatchingForm";
+import OtherForm from "@/components/test/teacher/Detail/OtherForm";
 
 const QuestionTypeRenderer = ({ type, idGroup, groupData }) => {
   if (!type || !idGroup)
@@ -16,18 +22,18 @@ const QuestionTypeRenderer = ({ type, idGroup, groupData }) => {
       return <MCQForm idGroup={idGroup} groupData={groupData} />;
     case "TFNG":
       return <TFNGForm idGroup={idGroup} groupData={groupData} />;
-    case "YES_NO_NOTGIVEN":
-      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+    case "YES_NO_NOT_GIVEN":
+      return <YesNoNotGivenForm idGroup={idGroup} groupData={groupData} />;
     case "MATCHING":
-      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+      return <MatchingForm idGroup={idGroup} groupData={groupData} />;
     case "FILL_BLANK":
-      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+      return <FillBlankForm idGroup={idGroup} groupData={groupData} />;
     case "LABELING":
-      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+      return <LabelingForm idGroup={idGroup} groupData={groupData} />;
     case "SHORT_ANSWER":
-      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+      return <ShortAnswerForm idGroup={idGroup} groupData={groupData} />;
     case "OTHER":
-      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+      return <OtherForm idGroup={idGroup} groupData={groupData} />;
 
     default:
       return (

@@ -38,7 +38,7 @@ const NavbarTeacher = () => {
     },
     {
       name: "Làm đề",
-      href: "/teacher/doTest",
+      href: "/teacher/test",
       current: location.pathname === "/teacher/test",
       icon: BookOpen,
     },

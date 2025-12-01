@@ -89,6 +89,11 @@ export const createUserTestResult = async (idUser, idTest, data) => {
   return res.data;
 };
 
+export const createManyQuestion = async (data) => {
+  const res = await API.post(`/question/create-question`, data);
+  return res.data;
+};
+
 //delete
 export const deletePartAPI = async (idPart) => {
   const res = await API.delete(`/part/delete/${idPart}`);
