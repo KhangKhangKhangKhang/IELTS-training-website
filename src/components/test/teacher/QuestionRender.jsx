@@ -9,7 +9,12 @@ import LabelingForm from "@/components/test/teacher/Detail/LabelingForm";
 import MatchingForm from "@/components/test/teacher/Detail/MatchingForm";
 import OtherForm from "@/components/test/teacher/Detail/OtherForm";
 
-const QuestionTypeRenderer = ({ type, idGroup, groupData }) => {
+const QuestionTypeRenderer = ({
+  type,
+  idGroup,
+  groupData,
+  questionNumberOffset,
+}) => {
   if (!type || !idGroup)
     return (
       <>
@@ -17,24 +22,29 @@ const QuestionTypeRenderer = ({ type, idGroup, groupData }) => {
       </>
     );
 
+  const passProps = {
+    idGroup,
+    groupData,
+    questionNumberOffset,
+  };
+
   switch (type) {
     case "MCQ":
-      return <MCQForm idGroup={idGroup} groupData={groupData} />;
+      return <MCQForm {...passProps} />;
     case "TFNG":
-      return <TFNGForm idGroup={idGroup} groupData={groupData} />;
+      return <TFNGForm {...passProps} />;
     case "YES_NO_NOT_GIVEN":
-      return <YesNoNotGivenForm idGroup={idGroup} groupData={groupData} />;
+      return <YesNoNotGivenForm {...passProps} />;
     case "MATCHING":
-      return <MatchingForm idGroup={idGroup} groupData={groupData} />;
+      return <MatchingForm {...passProps} />;
     case "FILL_BLANK":
-      return <FillBlankForm idGroup={idGroup} groupData={groupData} />;
+      return <FillBlankForm {...passProps} />;
     case "LABELING":
-      return <LabelingForm idGroup={idGroup} groupData={groupData} />;
+      return <LabelingForm {...passProps} />;
     case "SHORT_ANSWER":
-      return <ShortAnswerForm idGroup={idGroup} groupData={groupData} />;
+      return <ShortAnswerForm {...passProps} />;
     case "OTHER":
-      return <OtherForm idGroup={idGroup} groupData={groupData} />;
-
+      return <OtherForm {...passProps} />;
     default:
       return (
         <div className="p-4 bg-gray-50 border rounded">

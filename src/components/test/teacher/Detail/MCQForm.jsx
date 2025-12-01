@@ -3,17 +3,25 @@ import React, { useState } from "react";
 import { Button, Input, Checkbox, message } from "antd";
 // import { createQuestionAPI, createOptionsAPI } from "@/services/apiTest";
 
-const MCQForm = ({ idGroup }) => {
+const MCQForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   const [questions, setQuestions] = useState([
     { content: "", options: [{ text: "", correct: false }] },
   ]);
   const [saving, setSaving] = useState(false);
 
+  const canAddQuestion = questions.length < groupData.quantity;
+
   const handleAddQuestion = () => {
-    setQuestions([
-      ...questions,
-      { content: "", options: [{ text: "", correct: false }] },
-    ]);
+    if (canAddQuestion) {
+      setQuestions([
+        ...questions,
+        { content: "", options: [{ text: "", correct: false }] },
+      ]);
+    } else {
+      message.warning(
+        `You can only add ${groupData.quantity} questions to this group.`
+      );
+    }
   };
 
   const handleAddOption = (qIndex) => {
@@ -57,12 +65,26 @@ const MCQForm = ({ idGroup }) => {
     }
   };
 
+  const startQuestionNumber = questionNumberOffset + 1;
+  const endQuestionNumber = questionNumberOffset + groupData.quantity;
+
   return (
     <div className="space-y-6">
+      <div className="p-2 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+        <p className="font-semibold text-blue-800">
+          Questions {startQuestionNumber} - {endQuestionNumber}
+        </p>
+        <p className="text-sm text-blue-700">
+          This group should have {groupData.quantity} questions. You have added{" "}
+          {questions.length}.
+        </p>
+      </div>
       {questions.map((q, qIndex) => (
         <div key={qIndex} className="border p-4 rounded bg-white shadow-sm">
           <div className="flex justify-between items-center mb-2">
-            <span className="font-semibold">Câu {qIndex + 1}</span>
+            <span className="font-semibold">
+              Câu {questionNumberOffset + qIndex + 1}
+            </span>
             <Button size="small" onClick={() => handleAddOption(qIndex)}>
               + Thêm lựa chọn
             </Button>
@@ -103,7 +125,9 @@ const MCQForm = ({ idGroup }) => {
       ))}
 
       <div className="flex gap-3">
-        <Button onClick={handleAddQuestion}>+ Thêm câu hỏi</Button>
+        <Button onClick={handleAddQuestion} disabled={!canAddQuestion}>
+          + Thêm câu hỏi
+        </Button>
         <Button type="primary" onClick={handleSaveAll} loading={saving}>
           Lưu tất cả
         </Button>

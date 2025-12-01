@@ -114,8 +114,7 @@ const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
         idPart: part.idPart,
         typeQuestion: groupType,
         title: `Group ${groupType}`,
-        startingOrder: 1,
-        endingOrder: groupQuantity,
+        quantity: groupQuantity,
       };
       const res = await createGroupOfQuestionsAPI(payload);
       const idNhom = res?.data.idGroupOfQuestions || res?.idGroup || res?.id;
@@ -146,6 +145,7 @@ const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
     }));
   };
 
+  let questionNumberOffset = 0;
   const items = [
     {
       key: "passage",
@@ -237,21 +237,28 @@ const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
           partDetail.groupOfQuestions.length > 0 ? (
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Các nhóm câu hỏi đã tạo</h3>
-              {partDetail.groupOfQuestions.map((nhom) => (
-                <div
-                  key={nhom.idGroupOfQuestions}
-                  className="border rounded-lg p-4 bg-white shadow-sm"
-                >
-                  <div className="flex justify-between items-center mb-3">
-                    <h4 className="font-medium text-blue-600">{nhom.title}</h4>
+              {partDetail.groupOfQuestions.map((nhom) => {
+                const currentOffset = questionNumberOffset;
+                questionNumberOffset += nhom.quantity;
+                return (
+                  <div
+                    key={nhom.idGroupOfQuestions}
+                    className="border rounded-lg p-4 bg-white shadow-sm"
+                  >
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="font-medium text-blue-600">
+                        {nhom.title}
+                      </h4>
+                    </div>
+                    <QuestionTypeRenderer
+                      type={nhom.typeQuestion}
+                      idGroup={nhom.idGroupOfQuestions}
+                      groupData={nhom} // Truyền cả data của nhóm
+                      questionNumberOffset={currentOffset}
+                    />
                   </div>
-                  <QuestionTypeRenderer
-                    type={nhom.typeQuestion}
-                    idGroup={nhom.idGroupOfQuestions}
-                    groupData={nhom} // Truyền cả data của nhóm
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center text-gray-500 py-8 border rounded-lg bg-gray-50">
