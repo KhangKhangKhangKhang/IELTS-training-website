@@ -90,7 +90,7 @@ export const createUserTestResult = async (idUser, idTest, data) => {
 };
 
 export const createManyQuestion = async (data) => {
-  const res = await API.post(`/question/create-question`, data);
+  const res = await API.post(`/question/create-many-questions`, data);
   return res.data;
 };
 

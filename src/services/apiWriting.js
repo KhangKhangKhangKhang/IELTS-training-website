@@ -35,6 +35,13 @@ export const getWritingSubmissionsByTaskAPI = async (idUser) => {
   );
   return res.data;
 };
+
+export const getWritingSubmissionAPI = async (idWritingSubmission) => {
+  const res = await API.get(
+    `/user-writing-submission/get-writing-submission/${idWritingSubmission}`
+  );
+  return res.data;
+};
 //patch
 export const updateWritingTaskAPI = async (idWritingTask, formdata) => {
   const res = await API.patch(

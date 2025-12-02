@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { Button, Input, Select, message, Spin } from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
 import {
   getQuestionsByIdGroupAPI,
   getAnswersByIdQuestionAPI,
   updateAnswerAPI,
+  createManyQuestion,
 } from "@/services/apiTest";
 
 const { Option } = Select;
 
-const TFNGForm = ({ idGroup }) => {
-  const [questions, setQuestions] = useState([]);
+const TFNGForm = ({ idGroup, groupData }) => {
+  const [loadedQuestions, setLoadedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [hasQuestionsLoaded, setHasQuestionsLoaded] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [formQuestions, setFormQuestions] = useState([
+    { content: "", answer_text: "" },
+  ]);
 
   useEffect(() => {
     if (idGroup) {
@@ -19,97 +26,187 @@ const TFNGForm = ({ idGroup }) => {
     }
   }, [idGroup]);
 
-  // ======== LOAD QUESTIONS + ANSWERS ========
+  // ======== LOAD EXISTING QUESTIONS ========
   const loadQuestions = async () => {
     try {
       setLoading(true);
       const res = await getQuestionsByIdGroupAPI(idGroup);
       const group = res?.data?.[0];
 
-      if (!group || !group.question) {
-        message.info("Không có câu hỏi nào trong nhóm này");
-        setQuestions([]);
-        return;
+      if (!group || !group.question || group.question.length === 0) {
+        setLoadedQuestions([]);
+        setHasQuestionsLoaded(false);
+      } else {
+        // Load each question with its answers
+        const withAnswers = await Promise.all(
+          group.question.map(async (q) => {
+            try {
+              const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
+              const ansData = ansRes?.data?.[0];
+              return {
+                ...q,
+                idAnswer: ansData?.idAnswer || null,
+                answer_text: ansData?.answer_text || "",
+              };
+            } catch (err) {
+              return { ...q, idAnswer: null, answer_text: "" };
+            }
+          })
+        );
+        setLoadedQuestions(withAnswers);
+        setHasQuestionsLoaded(true);
       }
-
-      const question = group.question;
-
-      // Lấy đáp án cho từng câu hỏi
-      const withAnswers = await Promise.all(
-        question.map(async (q) => {
-          try {
-            const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
-            const ansData = ansRes?.data?.[0];
-
-            return {
-              ...q,
-              idAnswer: ansData?.idAnswer || null,
-              answer_text: ansData?.answer_text || "",
-            };
-          } catch (err) {
-            console.error("Lỗi load answer cho", q.idQuestion, err);
-            return { ...q, idAnswer: null, answer_text: "" };
-          }
-        })
-      );
-
-      setQuestions(withAnswers);
     } catch (err) {
-      console.error("Lỗi khi tải câu hỏi:", err);
-      message.error("Không thể tải câu hỏi");
+      console.error("Error loading questions:", err);
+      setLoadedQuestions([]);
+      setHasQuestionsLoaded(false);
     } finally {
       setLoading(false);
     }
   };
 
-  // ======== HANDLE CHANGE ========
-  const handleChangeAnswer = (index, value) => {
-    const updated = [...questions];
-    updated[index].answer_text = value;
-    setQuestions(updated);
+  // ======== FORM HANDLERS ========
+  const handleAddQuestion = () => {
+    setFormQuestions([...formQuestions, { content: "", answer_text: "" }]);
   };
 
-  // ======== SAVE ALL ========
+  const handleChangeQuestion = (qIndex, value) => {
+    const updated = [...formQuestions];
+    updated[qIndex].content = value;
+    setFormQuestions(updated);
+  };
+
+  const handleChangeAnswer = (qIndex, value) => {
+    const updated = [...formQuestions];
+    updated[qIndex].answer_text = value;
+    setFormQuestions(updated);
+  };
+
+  // ======== CREATE QUESTIONS ========
   const handleSaveAll = async () => {
-    console.log("Saving all answers:", questions);
     try {
       setSaving(true);
 
-      for (const [index, q] of questions.entries()) {
+      const questionsPayload = [];
+
+      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
+        const q = formQuestions[qIdx];
+        if (!q.content || !q.content.trim()) {
+          message.warning(`Câu ${qIdx + 1} không có nội dung`);
+          continue;
+        }
+
         if (!q.answer_text) {
-          message.warning(`Câu ${q.numberQuestion} chưa chọn đáp án`);
+          message.warning(`Câu ${qIdx + 1} không có đáp án`);
           continue;
         }
 
-        if (!q.idAnswer) {
-          message.error(
-            `Câu ${q.numberQuestion} chưa có idAnswer, không thể lưu.`
-          );
-          continue;
-        }
-
-        // Gọi API PATCH để cập nhật câu trả lời
-        await updateAnswerAPI(q.idAnswer, {
-          idQuestion: q.idQuestion,
-          idOption: null,
-          answer_text: q.answer_text,
-          matching_key: null,
-          matching_value: null,
+        questionsPayload.push({
+          idGroupOfQuestions: idGroup,
+          idPart: groupData?.idPart || null,
+          numberQuestion: loadedQuestions.length + qIdx + 1,
+          content: q.content,
+          answers: [
+            {
+              answer_text: q.answer_text,
+              matching_key: null,
+              matching_value: null,
+            },
+          ],
         });
-        console.log(`Đã cập nhật câu ${q.numberQuestion}:`, q.answer_text);
       }
 
-      message.success("Đã lưu thay đổi TFNG!");
-      await loadQuestions(); // reload lại dữ liệu mới nhất
+      if (questionsPayload.length === 0) {
+        message.error("Không có câu hỏi hợp lệ để lưu");
+        return;
+      }
+
+      await createManyQuestion({ questions: questionsPayload });
+      message.success("Đã lưu tất cả câu hỏi TFNG!");
+
+      setFormQuestions([{ content: "", answer_text: "" }]);
+      await loadQuestions();
     } catch (err) {
       console.error(err);
-      message.error("Lưu thất bại");
+      message.error("Lưu câu hỏi thất bại");
     } finally {
       setSaving(false);
     }
   };
 
-  // ======== RENDER ========
+  // ======== DELETE QUESTION ========
+  const handleDeleteQuestion = async (idQuestion, index) => {
+    try {
+      const updated = loadedQuestions.filter((_, idx) => idx !== index);
+      setLoadedQuestions(updated);
+      message.success("Đã xóa câu hỏi");
+    } catch (err) {
+      console.error(err);
+      message.error("Xóa câu hỏi thất bại");
+    }
+  };
+
+  const handleEditGroup = () => {
+    const editForm = loadedQuestions.map((q) => ({
+      idQuestion: q.idQuestion,
+      content: q.content,
+      answer_text: q.answer_text,
+    }));
+    setFormQuestions(editForm);
+    setIsEditMode(true);
+    setHasQuestionsLoaded(false);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      setSaving(true);
+      const questionsPayload = [];
+
+      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
+        const q = formQuestions[qIdx];
+        if (!q.content || !q.content.trim()) {
+          message.warning(`Câu ${qIdx + 1} không có nội dung`);
+          continue;
+        }
+        if (!q.answer_text) {
+          message.warning(`Câu ${qIdx + 1} không có đáp án`);
+          continue;
+        }
+
+        questionsPayload.push({
+          idGroupOfQuestions: idGroup,
+          idPart: groupData?.idPart || null,
+          numberQuestion: qIdx + 1,
+          content: q.content,
+          answers: [
+            {
+              answer_text: q.answer_text,
+              matching_key: "TFNG",
+              matching_value: q.answer_text,
+            },
+          ],
+        });
+      }
+
+      if (questionsPayload.length === 0) {
+        message.error("Không có câu hỏi hợp lệ để lưu");
+        return;
+      }
+
+      await createManyQuestion({ questions: questionsPayload });
+      message.success("Đã cập nhật câu hỏi TFNG!");
+
+      setIsEditMode(false);
+      setFormQuestions([{ content: "", answer_text: "" }]);
+      await loadQuestions();
+    } catch (err) {
+      console.error(err);
+      message.error("Cập nhật câu hỏi thất bại");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-6">
@@ -118,55 +215,108 @@ const TFNGForm = ({ idGroup }) => {
     );
   }
 
-  return (
-    <div className="space-y-4">
-      {questions.length === 0 ? (
-        <div className="text-center text-gray-500 py-4">
-          Chưa có câu hỏi nào trong nhóm này.
-        </div>
-      ) : (
-        questions.map((q, index) => (
-          <div key={q.idQuestion} className="border p-4 rounded bg-white">
-            <div className="flex justify-between items-center mb-2">
-              <div className="font-semibold">Câu {q.numberQuestion}</div>
-            </div>
-
-            <Input.TextArea
-              rows={2}
-              value={q.content}
-              readOnly
-              style={{ backgroundColor: "#fafafa" }}
-            />
-
-            <div className="mt-3 flex items-center gap-3">
-              <span className="text-sm text-gray-600">Đáp án hiện tại:</span>
-              <Select
-                style={{ width: 160 }}
-                placeholder="Chọn đáp án"
-                value={q.answer_text || undefined}
-                onChange={(v) => handleChangeAnswer(index, v)}
-              >
-                <Option value="TRUE">TRUE</Option>
-                <Option value="FALSE">FALSE</Option>
-                <Option value="NOT GIVEN">NOT GIVEN</Option>
-              </Select>
-            </div>
-          </div>
-        ))
-      )}
-
-      {questions.length > 0 && (
-        <div className="flex justify-end">
-          <Button
-            type="primary"
-            onClick={handleSaveAll}
-            loading={saving}
-            className="mt-4"
-          >
-            Lưu tất cả đáp án
+  // ======== SHOW EXISTING QUESTIONS ========
+  if (hasQuestionsLoaded && loadedQuestions.length > 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">Câu hỏi đã có</h3>
+          <Button type="primary" onClick={handleEditGroup}>
+            ✎ Chỉnh sửa
           </Button>
         </div>
-      )}
+        {loadedQuestions.map((q, index) => (
+          <div
+            key={q.idQuestion}
+            className="border p-4 rounded bg-white shadow-sm"
+          >
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <span className="font-semibold">
+                  Câu {q.numberQuestion}: {q.content}
+                </span>
+                <div className="text-sm text-gray-600 mt-1">
+                  Đáp án: <span className="font-medium">{q.answer_text}</span>
+                </div>
+              </div>
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={() => handleDeleteQuestion(q.idQuestion, index)}
+              />
+            </div>
+          </div>
+        ))}
+
+        <div className="flex gap-2 pt-4 border-t">
+          <Button type="primary" onClick={() => setHasQuestionsLoaded(false)}>
+            + Thêm câu hỏi
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ======== SHOW FORM TO CREATE/EDIT QUESTIONS ========
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">
+          {isEditMode ? "Chỉnh sửa câu hỏi TFNG" : "Tạo câu hỏi TFNG"}
+        </h3>
+        {isEditMode && (
+          <Button
+            onClick={() => {
+              setIsEditMode(false);
+              setFormQuestions([{ content: "", answer_text: "" }]);
+              setHasQuestionsLoaded(true);
+            }}
+          >
+            Hủy
+          </Button>
+        )}
+      </div>
+      {formQuestions.map((q, qIndex) => (
+        <div key={qIndex} className="border p-4 rounded bg-white shadow-sm">
+          <div className="font-semibold mb-2">
+            Câu {isEditMode ? qIndex + 1 : loadedQuestions.length + qIndex + 1}
+          </div>
+
+          <Input.TextArea
+            rows={2}
+            placeholder="Nhập nội dung câu hỏi..."
+            value={q.content}
+            onChange={(e) => handleChangeQuestion(qIndex, e.target.value)}
+          />
+
+          <div className="mt-3 flex items-center gap-3">
+            <span className="text-sm text-gray-600">Đáp án:</span>
+            <Select
+              style={{ width: 160 }}
+              placeholder="Chọn đáp án"
+              value={q.answer_text || undefined}
+              onChange={(v) => handleChangeAnswer(qIndex, v)}
+            >
+              <Option value="TRUE">TRUE</Option>
+              <Option value="FALSE">FALSE</Option>
+              <Option value="NOT GIVEN">NOT GIVEN</Option>
+            </Select>
+          </div>
+        </div>
+      ))}
+
+      <div className="flex gap-3">
+        <Button onClick={handleAddQuestion}>+ Thêm câu hỏi</Button>
+        <Button
+          type="primary"
+          onClick={isEditMode ? handleSaveEdit : handleSaveAll}
+          loading={saving}
+        >
+          {isEditMode ? "Cập nhật" : "Lưu"}
+        </Button>
+      </div>
     </div>
   );
 };

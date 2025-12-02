@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Button, Select, InputNumber, message, Tabs } from "antd";
+import { Button, Select, InputNumber, message, Tabs, Popconfirm } from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createPassageAPI,
   updatePassageAPI,
   createGroupOfQuestionsAPI,
+  deleteGroupOfQuestionsAPI,
 } from "@/services/apiTest";
 import QuestionTypeRenderer from "@/components/test/teacher/QuestionRender";
 
@@ -136,6 +138,22 @@ const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
     }
   };
 
+  // Xóa nhóm câu hỏi
+  const handleDeleteGroup = async (idGroupOfQuestions, quantityDeleted) => {
+    try {
+      await deleteGroupOfQuestionsAPI(idGroupOfQuestions);
+      message.success("Đã xóa nhóm câu hỏi");
+
+      // Refresh part detail để cập nhật numbering
+      if (onPartUpdate) {
+        onPartUpdate(part);
+      }
+    } catch (err) {
+      console.error(err);
+      message.error("Xóa nhóm thất bại");
+    }
+  };
+
   // Xử lý thay đổi passage content
   const handleContentChange = (content) => {
     setPassageData((prev) => ({
@@ -249,12 +267,30 @@ const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
                       <h4 className="font-medium text-blue-600">
                         {nhom.title}
                       </h4>
+                      <Popconfirm
+                        title="Xóa nhóm câu hỏi"
+                        description={`Bạn chắc chắn muốn xóa nhóm này? Sẽ xóa ${nhom.quantity} câu hỏi.`}
+                        onConfirm={() =>
+                          handleDeleteGroup(
+                            nhom.idGroupOfQuestions,
+                            nhom.quantity
+                          )
+                        }
+                        okText="Xóa"
+                        cancelText="Hủy"
+                      >
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          icon={<DeleteOutlined />}
+                        />
+                      </Popconfirm>
                     </div>
                     <QuestionTypeRenderer
                       type={nhom.typeQuestion}
                       idGroup={nhom.idGroupOfQuestions}
-                      groupData={nhom} // Truyền cả data của nhóm
-                      questionNumberOffset={currentOffset}
+                      groupData={nhom}
                     />
                   </div>
                 );
