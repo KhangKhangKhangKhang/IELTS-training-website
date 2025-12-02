@@ -99,33 +99,64 @@ const CreateWriting = ({ idTest }) => {
 
   // Submit
   const handleSubmit = async () => {
-    const form = new FormData();
-    form.append("idTest", idTest);
-    form.append("task_type", current.task_type);
-    form.append("title", current.title);
-    form.append("time_limit", Number(current.time_limit) || 0);
-
-    // Chỉ append ảnh nếu là TASK1 và có chọn file mới
-    if (currentTask === "TASK1" && current.image instanceof File) {
-      form.append("image", current.image);
-    }
-
     try {
-      if (current.id) {
-        await updateWritingTaskAPI(current.id, form);
-        alert("Cập nhật thành công!");
-      } else {
-        const res = await createWritingTaskAPI(form);
-        // Cập nhật lại state với id mới thay vì reload
-        setTasks((prev) => ({
-          ...prev,
-          [currentTask]: {
-            ...prev[currentTask],
-            id: res.data.idWritingTask, // giả sử API trả về id
-          },
-        }));
-        alert("Tạo task thành công!");
+      const tasksToSubmit = [];
+
+      // Kiểm tra TASK1
+      if (tasks.TASK1.title.trim()) {
+        tasksToSubmit.push({
+          type: "TASK1",
+          data: tasks.TASK1,
+        });
       }
+
+      // Kiểm tra TASK2
+      if (tasks.TASK2.title.trim()) {
+        tasksToSubmit.push({
+          type: "TASK2",
+          data: tasks.TASK2,
+        });
+      }
+
+      if (tasksToSubmit.length === 0) {
+        alert("Vui lòng nhập tiêu đề cho ít nhất 1 task!");
+        return;
+      }
+
+      // Submit từng task
+      for (const taskToSubmit of tasksToSubmit) {
+        const form = new FormData();
+        form.append("idTest", idTest);
+        form.append("task_type", taskToSubmit.data.task_type);
+        form.append("title", taskToSubmit.data.title);
+        form.append("time_limit", Number(taskToSubmit.data.time_limit) || 0);
+
+        // Chỉ append ảnh nếu là TASK1 và có chọn file mới
+        if (
+          taskToSubmit.type === "TASK1" &&
+          taskToSubmit.data.image instanceof File
+        ) {
+          form.append("image", taskToSubmit.data.image);
+        }
+
+        if (taskToSubmit.data.id) {
+          // Update task
+          await updateWritingTaskAPI(taskToSubmit.data.id, form);
+        } else {
+          // Create task
+          const res = await createWritingTaskAPI(form);
+          // Cập nhật lại state với id mới
+          setTasks((prev) => ({
+            ...prev,
+            [taskToSubmit.type]: {
+              ...prev[taskToSubmit.type],
+              id: res.data.idWritingTask,
+            },
+          }));
+        }
+      }
+
+      alert(`Lưu ${tasksToSubmit.length} task thành công!`);
     } catch (error) {
       console.error(error);
       alert(
@@ -333,13 +364,22 @@ const CreateWriting = ({ idTest }) => {
             )}
           </div>
 
-          <Button
-            size="lg"
-            className="bg-slate-900 text-white hover:bg-slate-800, hover:cursor-pointer"
-            onClick={handleSubmit}
-          >
-            {current.id ? "Cập nhật" : "Tạo mới"}
-          </Button>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-600">
+              {tasks.TASK1.title.trim() && tasks.TASK2.title.trim()
+                ? "Sẽ lưu cả 2 tasks"
+                : tasks.TASK1.title.trim() || tasks.TASK2.title.trim()
+                ? "Sẽ lưu 1 task"
+                : "Nhập dữ liệu để lưu"}
+            </span>
+            <Button
+              size="lg"
+              className="bg-slate-900 text-white hover:bg-slate-800, hover:cursor-pointer"
+              onClick={handleSubmit}
+            >
+              {current.id ? "Cập nhật" : "Lưu"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
