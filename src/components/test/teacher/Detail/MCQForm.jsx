@@ -4,6 +4,7 @@ import { Button, Input, Checkbox, message, Spin } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import {
   createManyQuestion,
+  updateManyQuestionAPI,
   getQuestionsByIdGroupAPI,
   getAnswersByIdQuestionAPI,
 } from "@/services/apiTest";
@@ -218,6 +219,7 @@ const MCQForm = ({ idGroup, groupData }) => {
           numberQuestion: qIdx + 1,
           content: q.content,
           answers: answers,
+          idQuestion: q.idQuestion,
         });
       }
 
@@ -226,7 +228,7 @@ const MCQForm = ({ idGroup, groupData }) => {
         return;
       }
 
-      await createManyQuestion({ questions: questionsPayload });
+      await updateManyQuestionAPI({ questions: questionsPayload });
       message.success("Đã cập nhật câu hỏi MCQ!");
 
       setIsEditMode(false);

@@ -6,6 +6,7 @@ import {
   getAnswersByIdQuestionAPI,
   updateAnswerAPI,
   createManyQuestion,
+  updateManyQuestionAPI,
 } from "@/services/apiTest";
 
 const FillBlankForm = ({ idGroup, groupData }) => {
@@ -179,6 +180,7 @@ const FillBlankForm = ({ idGroup, groupData }) => {
               matching_value: null,
             },
           ],
+          idQuestion: q.idQuestion,
         });
       }
 
@@ -187,7 +189,7 @@ const FillBlankForm = ({ idGroup, groupData }) => {
         return;
       }
 
-      await createManyQuestion({ questions: questionsPayload });
+      await updateManyQuestionAPI({ questions: questionsPayload });
       message.success("Đã cập nhật câu hỏi!");
 
       setIsEditMode(false);

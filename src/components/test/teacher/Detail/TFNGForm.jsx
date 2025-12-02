@@ -6,6 +6,7 @@ import {
   getAnswersByIdQuestionAPI,
   updateAnswerAPI,
   createManyQuestion,
+  updateManyQuestionAPI,
 } from "@/services/apiTest";
 
 const { Option } = Select;
@@ -185,6 +186,7 @@ const TFNGForm = ({ idGroup, groupData }) => {
               matching_value: q.answer_text,
             },
           ],
+          idQuestion: q.idQuestion,
         });
       }
 
@@ -193,7 +195,7 @@ const TFNGForm = ({ idGroup, groupData }) => {
         return;
       }
 
-      await createManyQuestion({ questions: questionsPayload });
+      await updateManyQuestionAPI({ questions: questionsPayload });
       message.success("Đã cập nhật câu hỏi TFNG!");
 
       setIsEditMode(false);

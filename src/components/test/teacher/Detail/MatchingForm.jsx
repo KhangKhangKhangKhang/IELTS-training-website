@@ -6,6 +6,7 @@ import {
   getAnswersByIdQuestionAPI,
   updateAnswerAPI,
   createManyQuestion,
+  updateManyQuestionAPI,
 } from "@/services/apiTest";
 
 const { Option } = Select;
@@ -195,6 +196,7 @@ const MatchingForm = ({ idGroup, groupData }) => {
               matching_value: null,
             },
           ],
+          idQuestion: q.idQuestion,
         });
       }
 
@@ -203,7 +205,7 @@ const MatchingForm = ({ idGroup, groupData }) => {
         return;
       }
 
-      await createManyQuestion({ questions: questionsPayload });
+      await updateManyQuestionAPI({ questions: questionsPayload });
       message.success("Đã cập nhật câu hỏi matching!");
 
       setIsEditMode(false);

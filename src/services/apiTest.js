@@ -156,3 +156,8 @@ export const updateQuestionAPI = async (idQuestion, data) => {
   const res = await API.patch(`/question/update-question/${idQuestion}`, data);
   return res.data;
 };
+
+export const updateManyQuestionAPI = async (data) => {
+  const res = await API.patch(`/question/update-many-questions`, data);
+  return res.data;
+};
