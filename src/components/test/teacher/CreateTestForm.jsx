@@ -20,7 +20,7 @@ const CreateTestForm = ({ onSuccess }) => {
     numberQuestion: "",
     level: "Độ khó",
     img: null,
-    audio: null,
+    audioUrl: null,
   });
 
   const handleChange = (key, value) => {
@@ -112,7 +112,7 @@ const CreateTestForm = ({ onSuccess }) => {
         {formData.testType === "LISTENING" && (
           <Upload
             beforeUpload={(file) => {
-              handleFileChange("audio", file);
+              handleFileChange("audioUrl", file);
               return false;
             }}
           >
