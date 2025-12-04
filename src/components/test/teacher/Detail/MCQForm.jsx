@@ -9,7 +9,7 @@ import {
   getAnswersByIdQuestionAPI,
 } from "@/services/apiTest";
 
-const MCQForm = ({ idGroup, groupData }) => {
+const MCQForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   const [loadedQuestions, setLoadedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -21,6 +21,23 @@ const MCQForm = ({ idGroup, groupData }) => {
   const [formQuestions, setFormQuestions] = useState([
     { content: "", options: [{ text: "", correct: false }] },
   ]);
+
+  // Initialize form questions based on quantity when group is first created
+  useEffect(() => {
+    if (
+      groupData?.quantity &&
+      !hasQuestionsLoaded &&
+      loadedQuestions.length === 0
+    ) {
+      const initialQuestions = Array(groupData.quantity)
+        .fill(null)
+        .map(() => ({
+          content: "",
+          options: [{ text: "", correct: false }],
+        }));
+      setFormQuestions(initialQuestions);
+    }
+  }, [groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
 
   useEffect(() => {
     if (idGroup) {
@@ -130,7 +147,8 @@ const MCQForm = ({ idGroup, groupData }) => {
         questionsPayload.push({
           idGroupOfQuestions: idGroup,
           idPart: groupData?.idPart || null,
-          numberQuestion: loadedQuestions.length + qIdx + 1,
+          numberQuestion:
+            questionNumberOffset + loadedQuestions.length + qIdx + 1,
           content: q.content,
           answers: answers,
         });
@@ -339,7 +357,9 @@ const MCQForm = ({ idGroup, groupData }) => {
           <div className="flex justify-between items-center mb-2">
             <span className="font-semibold">
               Câu{" "}
-              {isEditMode ? qIndex + 1 : loadedQuestions.length + qIndex + 1}
+              {isEditMode
+                ? qIndex + 1
+                : questionNumberOffset + loadedQuestions.length + qIndex + 1}
             </span>
           </div>
 

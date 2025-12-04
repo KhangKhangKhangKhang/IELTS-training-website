@@ -11,7 +11,7 @@ import {
 
 const { Option } = Select;
 
-const TFNGForm = ({ idGroup, groupData }) => {
+const TFNGForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   const [loadedQuestions, setLoadedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -20,6 +20,23 @@ const TFNGForm = ({ idGroup, groupData }) => {
   const [formQuestions, setFormQuestions] = useState([
     { content: "", answer_text: "" },
   ]);
+
+  // Initialize form questions based on quantity when group is first created
+  useEffect(() => {
+    if (
+      groupData?.quantity &&
+      !hasQuestionsLoaded &&
+      loadedQuestions.length === 0
+    ) {
+      const initialQuestions = Array(groupData.quantity)
+        .fill(null)
+        .map(() => ({
+          content: "",
+          answer_text: "",
+        }));
+      setFormQuestions(initialQuestions);
+    }
+  }, [groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
 
   useEffect(() => {
     if (idGroup) {
@@ -105,7 +122,8 @@ const TFNGForm = ({ idGroup, groupData }) => {
         questionsPayload.push({
           idGroupOfQuestions: idGroup,
           idPart: groupData?.idPart || null,
-          numberQuestion: loadedQuestions.length + qIdx + 1,
+          numberQuestion:
+            questionNumberOffset + loadedQuestions.length + qIdx + 1,
           content: q.content,
           answers: [
             {
@@ -283,7 +301,10 @@ const TFNGForm = ({ idGroup, groupData }) => {
       {formQuestions.map((q, qIndex) => (
         <div key={qIndex} className="border p-4 rounded bg-white shadow-sm">
           <div className="font-semibold mb-2">
-            Câu {isEditMode ? qIndex + 1 : loadedQuestions.length + qIndex + 1}
+            Câu{" "}
+            {isEditMode
+              ? qIndex + 1
+              : questionNumberOffset + loadedQuestions.length + qIndex + 1}
           </div>
 
           <Input.TextArea

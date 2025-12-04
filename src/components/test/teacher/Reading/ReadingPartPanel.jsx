@@ -291,6 +291,7 @@ const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
                       type={nhom.typeQuestion}
                       idGroup={nhom.idGroupOfQuestions}
                       groupData={nhom}
+                      questionNumberOffset={currentOffset}
                     />
                   </div>
                 );
