@@ -14,7 +14,7 @@ const loaiCauHoiOptions = [
   { value: "MCQ", label: "Multiple choice" },
   { value: "TFNG", label: "True / False / Not Given" },
   { value: "FILL_BLANK", label: "Fill in the blanks" },
-  { value: "YES_NO_NOT_GIVEN", label: "Yes / No / Not Given" },
+  { value: "YES_NO_NOTGIVEN", label: "Yes / No / Not Given" },
   { value: "SHORT_ANSWER", label: "Short answer" },
   { value: "LABELING", label: "Labeling" },
   { value: "MATCHING", label: "Matching" },

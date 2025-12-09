@@ -33,7 +33,7 @@ const QuestionTypeRenderer = ({
       return <MCQForm {...passProps} />;
     case "TFNG":
       return <TFNGForm {...passProps} />;
-    case "YES_NO_NOT_GIVEN":
+    case "YES_NO_NOT  GIVEN":
       return <YesNoNotGivenForm {...passProps} />;
     case "MATCHING":
       return <MatchingForm {...passProps} />;
