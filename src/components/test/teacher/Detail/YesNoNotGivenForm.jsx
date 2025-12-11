@@ -21,9 +21,7 @@ const YesNoNotGivenForm = ({
   const [saving, setSaving] = useState(false);
   const [hasQuestionsLoaded, setHasQuestionsLoaded] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [formQuestions, setFormQuestions] = useState([
-    { content: "", answer_text: "" },
-  ]);
+  const [formQuestions, setFormQuestions] = useState([]);
 
   // Initialize form questions based on quantity when group is first created
   useEffect(() => {
@@ -142,9 +140,9 @@ const YesNoNotGivenForm = ({
       }
 
       await createManyQuestion({ questions: questionsPayload });
-      message.success("Đã lưu tất cả câu hỏi Yes/No/Not Given!");
+      message.success("Đã lưu tất cả câu hỏi YES/NO/NOT GIVEN!");
 
-      setFormQuestions([{ content: "", answer_text: "" }]);
+      setFormQuestions([]);
       await loadQuestions();
     } catch (err) {
       console.error(err);
@@ -217,7 +215,7 @@ const YesNoNotGivenForm = ({
       message.success("Đã cập nhật câu hỏi!");
 
       setIsEditMode(false);
-      setFormQuestions([{ content: "", answer_text: "" }]);
+      setFormQuestions([]);
       await loadQuestions();
     } catch (err) {
       console.error(err);
@@ -290,7 +288,7 @@ const YesNoNotGivenForm = ({
           <Button
             onClick={() => {
               setIsEditMode(false);
-              setFormQuestions([{ content: "", answer_text: "" }]);
+              setFormQuestions([]);
               setHasQuestionsLoaded(true);
             }}
           >

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Button, Input, message, Spin } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
+import { Button, Input, message, Spin, Card, Empty } from "antd";
+import { DeleteOutlined, PlusOutlined, EditOutlined } from "@ant-design/icons";
 import {
   getQuestionsByIdGroupAPI,
   getAnswersByIdQuestionAPI,
-  updateAnswerAPI,
   createManyQuestion,
   updateManyQuestionAPI,
 } from "@/services/apiTest";
+import { getMaxNumberQuestion } from "@/lib/utils";
 
 const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   const [loadedQuestions, setLoadedQuestions] = useState([]);
@@ -15,26 +15,27 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   const [saving, setSaving] = useState(false);
   const [hasQuestionsLoaded, setHasQuestionsLoaded] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [formQuestions, setFormQuestions] = useState([
-    { content: "", answer_text: "" },
-  ]);
+  const [initialized, setInitialized] = useState(false);
+  const [formQuestions, setFormQuestions] = useState([]);
 
-  // Initialize form questions based on quantity when group is first created
   useEffect(() => {
-    if (
-      groupData?.quantity &&
-      !hasQuestionsLoaded &&
-      loadedQuestions.length === 0
-    ) {
+    if (!initialized && groupData?.quantity && loadedQuestions.length === 0) {
       const initialQuestions = Array(groupData.quantity)
         .fill(null)
-        .map(() => ({
+        .map((_, idx) => ({
+          numberQuestion: questionNumberOffset + idx + 1,
           content: "",
-          answer_text: "",
+          labels: ["", "", ""],
         }));
       setFormQuestions(initialQuestions);
+      setInitialized(true);
     }
-  }, [groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
+  }, [
+    groupData?.quantity,
+    initialized,
+    loadedQuestions.length,
+    questionNumberOffset,
+  ]);
 
   useEffect(() => {
     if (idGroup) {
@@ -56,14 +57,14 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
           group.question.map(async (q) => {
             try {
               const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
-              const ansData = ansRes?.data?.[0];
+              const ansData = ansRes?.data || [];
+              const labels = ansData.map((a) => a.answer_text || "");
               return {
                 ...q,
-                idAnswer: ansData?.idAnswer || null,
-                answer_text: ansData?.answer_text || "",
+                labels: labels.length > 0 ? labels : [],
               };
             } catch (err) {
-              return { ...q, idAnswer: null, answer_text: "" };
+              return { ...q, labels: [] };
             }
           })
         );
@@ -81,7 +82,11 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   };
 
   const handleAddQuestion = () => {
-    setFormQuestions([...formQuestions, { content: "", answer_text: "" }]);
+    const nextNum = questionNumberOffset + formQuestions.length + 1;
+    setFormQuestions([
+      ...formQuestions,
+      { numberQuestion: nextNum, content: "", labels: ["", "", ""] },
+    ]);
   };
 
   const handleChangeQuestion = (qIndex, value) => {
@@ -90,43 +95,53 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
     setFormQuestions(updated);
   };
 
-  const handleChangeAnswer = (qIndex, value) => {
+  const handleChangeLabel = (qIndex, labelIndex, value) => {
     const updated = [...formQuestions];
-    updated[qIndex].answer_text = value;
+    updated[qIndex].labels[labelIndex] = value;
+    setFormQuestions(updated);
+  };
+
+  const handleAddLabel = (qIndex) => {
+    const updated = [...formQuestions];
+    updated[qIndex].labels.push("");
+    setFormQuestions(updated);
+  };
+
+  const handleRemoveLabel = (qIndex, labelIndex) => {
+    const updated = [...formQuestions];
+    updated[qIndex].labels.splice(labelIndex, 1);
     setFormQuestions(updated);
   };
 
   const handleSaveAll = async () => {
     try {
       setSaving(true);
-
       const questionsPayload = [];
 
       for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
         const q = formQuestions[qIdx];
         if (!q.content || !q.content.trim()) {
-          message.warning(`Câu ${qIdx + 1} không có nội dung`);
+          message.warning(`Câu ${q.numberQuestion} không có nội dung`);
           continue;
         }
 
-        if (!q.answer_text) {
-          message.warning(`Câu ${qIdx + 1} không có nhãn`);
+        if (!q.labels || q.labels.filter((l) => l.trim()).length === 0) {
+          message.warning(`Câu ${q.numberQuestion} không có nhãn nào`);
           continue;
         }
+
+        const labels = q.labels.filter((l) => l.trim());
 
         questionsPayload.push({
           idGroupOfQuestions: idGroup,
           idPart: groupData?.idPart || null,
-          numberQuestion:
-            questionNumberOffset + loadedQuestions.length + qIdx + 1,
+          numberQuestion: q.numberQuestion,
           content: q.content,
-          answers: [
-            {
-              answer_text: q.answer_text,
-              matching_key: null,
-              matching_value: null,
-            },
-          ],
+          answers: labels.map((label) => ({
+            answer_text: label,
+            matching_key: null,
+            matching_value: null,
+          })),
         });
       }
 
@@ -138,7 +153,8 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
       await createManyQuestion({ questions: questionsPayload });
       message.success("Đã lưu tất cả câu hỏi gán nhãn!");
 
-      setFormQuestions([{ content: "", answer_text: "" }]);
+      setFormQuestions([]);
+      setInitialized(false);
       await loadQuestions();
     } catch (err) {
       console.error(err);
@@ -162,8 +178,9 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   const handleEditGroup = () => {
     const editForm = loadedQuestions.map((q) => ({
       idQuestion: q.idQuestion,
+      numberQuestion: q.numberQuestion,
       content: q.content,
-      answer_text: q.answer_text,
+      labels: q.labels || [],
     }));
     setFormQuestions(editForm);
     setIsEditMode(true);
@@ -178,26 +195,28 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
       for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
         const q = formQuestions[qIdx];
         if (!q.content || !q.content.trim()) {
-          message.warning(`Câu ${qIdx + 1} không có nội dung`);
+          message.warning(
+            `Câu ${q.numberQuestion || qIdx + 1} không có nội dung`
+          );
           continue;
         }
-        if (!q.answer_text) {
-          message.warning(`Câu ${qIdx + 1} không có đáp án`);
+        if (!q.labels || q.labels.filter((l) => l.trim()).length === 0) {
+          message.warning(`Câu ${q.numberQuestion || qIdx + 1} không có nhãn`);
           continue;
         }
+
+        const labels = q.labels.filter((l) => l.trim());
 
         questionsPayload.push({
           idGroupOfQuestions: idGroup,
           idPart: groupData?.idPart || null,
-          numberQuestion: qIdx + 1,
+          numberQuestion: q.numberQuestion || qIdx + 1,
           content: q.content,
-          answers: [
-            {
-              answer_text: q.answer_text,
-              matching_key: null,
-              matching_value: null,
-            },
-          ],
+          answers: labels.map((label) => ({
+            answer_text: label,
+            matching_key: null,
+            matching_value: null,
+          })),
           idQuestion: q.idQuestion,
         });
       }
@@ -211,7 +230,8 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
       message.success("Đã cập nhật câu hỏi!");
 
       setIsEditMode(false);
-      setFormQuestions([{ content: "", answer_text: "" }]);
+      setFormQuestions([]);
+      setInitialized(false);
       await loadQuestions();
     } catch (err) {
       console.error(err);
@@ -231,24 +251,51 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
 
   if (hasQuestionsLoaded && loadedQuestions.length > 0) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Câu hỏi đã có</h3>
-          <Button type="primary" onClick={handleEditGroup}>
-            ✎ Chỉnh sửa
+          <h3 className="text-base font-semibold">
+            Câu hỏi đã tạo ({loadedQuestions.length})
+          </h3>
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={handleEditGroup}
+          >
+            Chỉnh sửa
           </Button>
         </div>
+
         {loadedQuestions.map((q, index) => (
-          <div
-            key={q.idQuestion}
-            className="border p-4 rounded bg-white shadow-sm"
-          >
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <span className="font-semibold">Câu {q.numberQuestion}</span>
-                <div className="text-sm text-gray-600 mt-1">{q.content}</div>
-                <div className="text-sm text-gray-600">
-                  Nhãn: <span className="font-medium">{q.answer_text}</span>
+          <Card key={q.idQuestion} className="shadow-sm" size="small">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <div className="font-semibold text-base mb-1">
+                  Câu {q.numberQuestion}
+                </div>
+                {q.content && (
+                  <div className="text-sm text-gray-700 mb-2">
+                    <span className="text-gray-600">Mô tả: </span>
+                    {q.content}
+                  </div>
+                )}
+                <div className="text-sm">
+                  <span className="text-gray-600">Nhãn lựa chọn:</span>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {q.labels && q.labels.length > 0 ? (
+                      q.labels.map((label, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-block bg-blue-50 border border-blue-300 text-blue-700 px-3 py-1 rounded text-xs font-medium"
+                        >
+                          {label}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-gray-400 italic">
+                        Không có nhãn
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <Button
@@ -259,12 +306,16 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
                 onClick={() => handleDeleteQuestion(q.idQuestion, index)}
               />
             </div>
-          </div>
+          </Card>
         ))}
 
         <div className="flex gap-2 pt-4 border-t">
-          <Button type="primary" onClick={() => setHasQuestionsLoaded(false)}>
-            + Thêm câu hỏi
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setHasQuestionsLoaded(false)}
+          >
+            Thêm câu hỏi
           </Button>
         </div>
       </div>
@@ -272,16 +323,17 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 p-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">
+        <h3 className="text-base font-semibold">
           {isEditMode ? "Chỉnh sửa câu hỏi" : "Tạo câu hỏi gán nhãn"}
         </h3>
         {isEditMode && (
           <Button
             onClick={() => {
               setIsEditMode(false);
-              setFormQuestions([{ content: "", answer_text: "" }]);
+              setFormQuestions([]);
+              setInitialized(false);
               setHasQuestionsLoaded(true);
             }}
           >
@@ -289,36 +341,80 @@ const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
           </Button>
         )}
       </div>
+
+      {formQuestions.length === 0 && (
+        <Empty
+          description="Chưa có câu hỏi nào"
+          style={{ marginTop: "40px" }}
+        />
+      )}
+
       {formQuestions.map((q, qIndex) => (
-        <div key={qIndex} className="border p-4 rounded bg-white shadow-sm">
-          <div className="font-semibold mb-2">
-            Câu{" "}
-            {isEditMode
-              ? qIndex + 1
-              : questionNumberOffset + loadedQuestions.length + qIndex + 1}
+        <Card key={qIndex} className="shadow-sm" size="small">
+          <div className="font-semibold text-base mb-3">
+            Câu {q.numberQuestion}
           </div>
 
           <Input.TextArea
             rows={1}
-            placeholder="Mô tả câu hỏi (tùy chọn)"
+            placeholder="Mô tả câu hỏi hoặc yêu cầu"
             value={q.content}
             onChange={(e) => handleChangeQuestion(qIndex, e.target.value)}
             style={{ resize: "none" }}
+            className="mb-4"
           />
 
-          <div className="mt-3 flex items-center gap-3">
-            <span className="text-sm text-gray-600">Nhãn:</span>
-            <Input
-              placeholder="Nhập nội dung nhãn"
-              value={q.answer_text}
-              onChange={(e) => handleChangeAnswer(qIndex, e.target.value)}
-            />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">
+                Nhãn lựa chọn:
+              </label>
+              <span className="text-xs text-gray-500">
+                {q.labels ? q.labels.filter((l) => l.trim()).length : 0} nhãn
+              </span>
+            </div>
+
+            {q.labels &&
+              q.labels.map((label, labelIdx) => (
+                <div key={labelIdx} className="flex gap-2 items-center">
+                  <Input
+                    placeholder={`Nhãn ${labelIdx + 1}`}
+                    value={label}
+                    onChange={(e) =>
+                      handleChangeLabel(qIndex, labelIdx, e.target.value)
+                    }
+                    size="small"
+                  />
+                  {q.labels.length > 1 && (
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleRemoveLabel(qIndex, labelIdx)}
+                    />
+                  )}
+                </div>
+              ))}
+
+            <Button
+              type="dashed"
+              block
+              size="small"
+              icon={<PlusOutlined />}
+              onClick={() => handleAddLabel(qIndex)}
+              className="mt-2"
+            >
+              Thêm nhãn
+            </Button>
           </div>
-        </div>
+        </Card>
       ))}
 
       <div className="flex gap-3">
-        <Button onClick={handleAddQuestion}>+ Thêm câu hỏi</Button>
+        <Button onClick={handleAddQuestion} icon={<PlusOutlined />}>
+          Thêm câu hỏi
+        </Button>
         <Button
           type="primary"
           onClick={isEditMode ? handleSaveEdit : handleSaveAll}

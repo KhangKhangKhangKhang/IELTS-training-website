@@ -14,6 +14,7 @@ const CreateReading = ({ idTest, exam }) => {
   const [allParts, setAllParts] = useState([]);
   const [selectedPart, setSelectedPart] = useState(null);
   const [selectedPartDetail, setSelectedPartDetail] = useState(null);
+  const [partDetailsMap, setPartDetailsMap] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [creatingPart, setCreatingPart] = useState(false);
 
@@ -34,8 +35,26 @@ const CreateReading = ({ idTest, exam }) => {
         setAllParts(parts);
 
         if (parts.length > 0) {
-          // Tự động chọn part đầu tiên và lấy chi tiết
-          await handleSelectPart(parts[0]);
+          // Lấy chi tiết cho tất cả các part để tính offset số câu
+          const details = await Promise.all(
+            parts.map(async (p) => {
+              try {
+                const r = await getPartByIdAPI(p.idPart);
+                return { idPart: p.idPart, detail: r?.data?.[0] || null };
+              } catch (e) {
+                return { idPart: p.idPart, detail: null };
+              }
+            })
+          );
+          const map = {};
+          details.forEach((d) => {
+            if (d && d.idPart) map[d.idPart] = d.detail;
+          });
+          setPartDetailsMap(map);
+
+          // Tự động chọn part đầu tiên và lấy chi tiết (from map)
+          setSelectedPart(parts[0]);
+          setSelectedPartDetail(map[parts[0].idPart] || null);
         }
       } catch (err) {
         console.error(err);
@@ -52,12 +71,19 @@ const CreateReading = ({ idTest, exam }) => {
     try {
       setSelectedPart(part);
 
+      // If we already fetched details map use it, otherwise request
+      if (partDetailsMap[part.idPart]) {
+        setSelectedPartDetail(partDetailsMap[part.idPart]);
+        return;
+      }
+
       // Gọi API lấy chi tiết part
       const resDetail = await getPartByIdAPI(part.idPart);
       console.log("Part detail:", resDetail);
 
       const partDetail = resDetail?.data?.[0];
       setSelectedPartDetail(partDetail);
+      setPartDetailsMap((prev) => ({ ...prev, [part.idPart]: partDetail }));
     } catch (err) {
       console.error("Lỗi khi lấy chi tiết part:", err);
       message.error("Không thể tải chi tiết part");
@@ -163,6 +189,27 @@ const CreateReading = ({ idTest, exam }) => {
             part={selectedPart}
             partDetail={selectedPartDetail}
             onPartUpdate={handleSelectPart} // Truyền callback để refresh data
+            // compute questionNumberOffset by summing quantities of previous parts
+            questionNumberOffset={(() => {
+              try {
+                if (!allParts || allParts.length === 0 || !selectedPart)
+                  return 0;
+                let offset = 0;
+                for (const p of allParts) {
+                  if (p.idPart === selectedPart.idPart) break;
+                  const d = partDetailsMap[p.idPart];
+                  if (d && d.groupOfQuestions && d.groupOfQuestions.length) {
+                    offset += d.groupOfQuestions.reduce(
+                      (s, g) => s + (g.quantity || 0),
+                      0
+                    );
+                  }
+                }
+                return offset;
+              } catch (e) {
+                return 0;
+              }
+            })()}
           />
         )}
       </div>

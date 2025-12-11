@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Button, Input, message, Spin } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
+import { Button, Input, message, Spin, Modal, Space } from "antd";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   getQuestionsByIdGroupAPI,
   getAnswersByIdQuestionAPI,
@@ -18,6 +18,8 @@ const FillBlankForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   const [formQuestions, setFormQuestions] = useState([
     { content: "", answer_text: "" },
   ]);
+  const [blankModalVisible, setBlankModalVisible] = useState(false);
+  const [blankModalIndex, setBlankModalIndex] = useState(null);
 
   // Initialize form questions based on quantity when group is first created
   useEffect(() => {
@@ -94,6 +96,19 @@ const FillBlankForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
     const updated = [...formQuestions];
     updated[qIndex].answer_text = value;
     setFormQuestions(updated);
+  };
+
+  const handleInsertBlank = (qIndex) => {
+    const updated = [...formQuestions];
+    updated[qIndex].content += " _____ ";
+    setFormQuestions(updated);
+    setBlankModalVisible(false);
+    setBlankModalIndex(null);
+  };
+
+  const openBlankModal = (qIndex) => {
+    setBlankModalIndex(qIndex);
+    setBlankModalVisible(true);
   };
 
   const handleSaveAll = async () => {
@@ -292,24 +307,42 @@ const FillBlankForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
       </div>
       {formQuestions.map((q, qIndex) => (
         <div key={qIndex} className="border p-4 rounded bg-white shadow-sm">
-          <div className="font-semibold mb-2">
+          <div className="font-semibold mb-3">
             Câu{" "}
             {isEditMode
               ? qIndex + 1
               : questionNumberOffset + loadedQuestions.length + qIndex + 1}
           </div>
 
-          <Input.TextArea
-            rows={2}
-            placeholder="Nhập nội dung câu hỏi..."
-            value={q.content}
-            onChange={(e) => handleChangeQuestion(qIndex, e.target.value)}
-          />
+          <div className="mb-3">
+            <label className="block text-sm font-medium mb-1">
+              Nội dung câu hỏi
+            </label>
+            <Input.TextArea
+              rows={3}
+              placeholder="Nhập nội dung câu hỏi... (bấm nút để thêm chỗ trống)"
+              value={q.content}
+              onChange={(e) => handleChangeQuestion(qIndex, e.target.value)}
+            />
+            <div className="mt-2 flex gap-2">
+              <Button
+                type="dashed"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => openBlankModal(qIndex)}
+              >
+                Thêm chỗ trống (_____)
+              </Button>
+              <span className="text-xs text-gray-500 flex items-center">
+                Click để insert blank vào câu hỏi
+              </span>
+            </div>
+          </div>
 
-          <div className="mt-3 flex items-center gap-3">
-            <span className="text-sm text-gray-600">Đáp án:</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium min-w-fit">Đáp án:</span>
             <Input
-              placeholder="Nhập đáp án"
+              placeholder="Nhập đáp án cho chỗ trống"
               value={q.answer_text}
               onChange={(e) => handleChangeAnswer(qIndex, e.target.value)}
             />
@@ -327,6 +360,47 @@ const FillBlankForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
           {isEditMode ? "Cập nhật" : "Lưu"}
         </Button>
       </div>
+
+      {/* Modal thêm chỗ trống */}
+      <Modal
+        title="Thêm chỗ trống"
+        open={blankModalVisible}
+        onCancel={() => {
+          setBlankModalVisible(false);
+          setBlankModalIndex(null);
+        }}
+        footer={null}
+        width={400}
+      >
+        <div className="space-y-3">
+          <div className="bg-blue-50 p-3 rounded border border-blue-200">
+            <p className="text-sm text-gray-700 mb-2">
+              <strong>Câu hỏi hiện tại:</strong>
+            </p>
+            <p className="text-sm p-2 bg-white rounded border">
+              {formQuestions[blankModalIndex]?.content || "(trống)"}
+            </p>
+          </div>
+          <p className="text-sm text-gray-600">
+            Bấm nút dưới để thêm chỗ trống{" "}
+            <code className="bg-gray-100 px-2 py-1 rounded">_____</code> vào
+            cuối câu hỏi
+          </p>
+          <Space className="w-full justify-center">
+            <Button
+              onClick={() => {
+                if (blankModalIndex !== null) {
+                  handleInsertBlank(blankModalIndex);
+                }
+              }}
+              type="primary"
+              size="large"
+            >
+              Thêm _____ vào câu hỏi
+            </Button>
+          </Space>
+        </div>
+      </Modal>
     </div>
   );
 };

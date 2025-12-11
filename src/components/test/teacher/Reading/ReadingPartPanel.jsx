@@ -21,7 +21,13 @@ const loaiCauHoiOptions = [
   { value: "OTHER", label: "Other" },
 ];
 
-const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
+const ReadingPartPanel = ({
+  idTest,
+  part,
+  partDetail,
+  onPartUpdate,
+  questionNumberOffset: initialQuestionNumberOffset = 0,
+}) => {
   const [passageData, setPassageData] = useState({
     content: "",
     title: "",
@@ -31,6 +37,7 @@ const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
   });
   const [existingPassage, setExistingPassage] = useState(null);
   const [groupType, setGroupType] = useState(null);
+  const [groupTitle, setGroupTitle] = useState("");
   const [groupQuantity, setGroupQuantity] = useState(3);
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [activeTab, setActiveTab] = useState("passage");
@@ -109,19 +116,25 @@ const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
   // Tạo nhóm câu hỏi
   const handleCreateGroup = async () => {
     if (!groupType) return message.warning("Chọn loại câu hỏi trước");
+    if (!groupTitle.trim()) return message.warning("Nhập tiêu đề nhóm câu hỏi");
     try {
       setCreatingGroup(true);
       const payload = {
         idTest,
         idPart: part.idPart,
         typeQuestion: groupType,
-        title: `Group ${groupType}`,
+        title: groupTitle,
         quantity: groupQuantity,
       };
       const res = await createGroupOfQuestionsAPI(payload);
       const idNhom = res?.data.idGroupOfQuestions || res?.idGroup || res?.id;
       if (!idNhom) throw new Error("API không trả về idGroupOfQuestions");
       message.success("Tạo nhóm câu hỏi thành công");
+
+      // Reset form
+      setGroupType(null);
+      setGroupTitle("");
+      setGroupQuantity(3);
 
       // Refresh part detail
       if (onPartUpdate) {
@@ -156,14 +169,27 @@ const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
 
   // Xử lý thay đổi passage content
   const handleContentChange = (content) => {
+    // Tính toán số đoạn văn
+    // Bước 1: Kiểm tra nếu nội dung rỗng thì là 0
+    // Bước 2: Split theo ký tự xuống dòng đơn (\n) thay vì (\n\n)
+    let count = 0;
+    if (content.trim()) {
+      // Cách 1: Tính tất cả các dòng (kể cả dòng trống cũng tính là 1 đoạn)
+      // count = content.split("\n").length;
+
+      // Cách 2: Chỉ tính các dòng CÓ NỘI DUNG (khuyên dùng)
+      // Dòng này nghĩa là: Tách theo xuống dòng -> Lọc bỏ các dòng trắng -> Đếm
+      count = content.split("\n").filter((p) => p.trim() !== "").length;
+    }
+
     setPassageData((prev) => ({
       ...prev,
       content,
-      numberParagraph: content.split("\n\n").filter((p) => p.trim()).length,
+      numberParagraph: count,
     }));
   };
 
-  let questionNumberOffset = 0;
+  let questionNumberOffset = initialQuestionNumberOffset || 0;
   const items = [
     {
       key: "passage",
@@ -224,29 +250,52 @@ const ReadingPartPanel = ({ idTest, part, partDetail, onPartUpdate }) => {
         <div className="space-y-6">
           {/* Phần tạo mới nhóm câu hỏi */}
           <div className="border rounded-lg p-4 bg-white shadow-sm">
-            <h3 className="text-lg font-medium mb-2">Tạo nhóm câu hỏi mới</h3>
-            <div className="flex items-center gap-3 mb-3">
-              <Select
-                style={{ width: 220 }}
-                placeholder="Chọn loại câu hỏi"
-                value={groupType}
-                onChange={(val) => setGroupType(val)}
-                options={loaiCauHoiOptions}
-              />
-              <span>Số lượng</span>
-              <InputNumber
-                min={1}
-                max={100}
-                value={groupQuantity}
-                onChange={(v) => setGroupQuantity(v)}
-              />
-              <Button
-                type="primary"
-                onClick={handleCreateGroup}
-                loading={creatingGroup}
-              >
-                Tạo nhóm
-              </Button>
+            <h3 className="text-lg font-medium mb-4">Tạo nhóm câu hỏi mới</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Tiêu đề nhóm
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Questions 1-5, Reading Part 1..."
+                  value={groupTitle}
+                  onChange={(e) => setGroupTitle(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1">
+                    Loại câu hỏi
+                  </label>
+                  <Select
+                    placeholder="Chọn loại câu hỏi"
+                    value={groupType}
+                    onChange={(val) => setGroupType(val)}
+                    options={loaiCauHoiOptions}
+                  />
+                </div>
+                <div className="w-24">
+                  <label className="block text-sm font-medium mb-1">
+                    Số lượng
+                  </label>
+                  <InputNumber
+                    min={1}
+                    max={100}
+                    value={groupQuantity}
+                    onChange={(v) => setGroupQuantity(v)}
+                    className="w-full"
+                  />
+                </div>
+                <Button
+                  type="primary"
+                  onClick={handleCreateGroup}
+                  loading={creatingGroup}
+                >
+                  Tạo nhóm
+                </Button>
+              </div>
             </div>
           </div>
 
