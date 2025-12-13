@@ -27,3 +27,13 @@ export const deleteUserAPI = async (id) => {
   const res = await API.delete(`/users/${id}`);
   return res.data;
 };
+
+export const getStreakAPI = async (idUser) => {
+  const res = await API.get(`/review-streak/get-streak-by-id-user/${idUser}`);
+  return res.data;
+};
+
+export const postVocabStreakAPI = async (data) => {
+  const res = await API.post(`/review-streak/vocabulary/submit`, data);
+  return res.data;
+};

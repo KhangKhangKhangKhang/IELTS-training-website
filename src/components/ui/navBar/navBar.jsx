@@ -10,11 +10,11 @@ import {
   User,
   LogOut,
   Album,
-  Flame,
 } from "lucide-react";
 import ProfileModal from "./profileModal";
 import ChatBotWidget from "./chatBotWidget";
 import Cookies from "js-cookie";
+import StreakWidget from "./StreakWidget"; // Import Component mới
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -79,13 +79,17 @@ const Navbar = () => {
 
             {/* Desktop Right Section */}
             <div className="hidden sm:flex items-center gap-3">
+              {/* STREAK WIDGET */}
+              <StreakWidget onClick={() => setIsProfileModalOpen(true)} />
+
               <button
                 onClick={() => setIsProfileModalOpen(true)}
-                className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-700 hover:bg-slate-600 transition text-slate-200 hover:text-white"
+                className="flex items-center justify-center p-2 rounded-md bg-slate-800 hover:bg-slate-700 transition text-slate-200 hover:text-white border border-slate-700"
+                title="Hồ sơ cá nhân"
               >
-                <Flame className="h-5 w-5 text-orange-400" />
                 <User className="h-5 w-5" />
               </button>
+
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 px-3 py-2 rounded-md bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition"
@@ -111,7 +115,7 @@ const Navbar = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="sm:hidden border-t border-slate-700">
+          <div className="sm:hidden border-t border-slate-700 bg-slate-900">
             <div className="px-2 pt-2 pb-3 space-y-1">
               {navLinks.map((item) => {
                 const Icon = item.icon;
@@ -133,7 +137,16 @@ const Navbar = () => {
                 );
               })}
             </div>
-            <div className="px-4 pt-2 pb-4 border-t border-slate-700 space-y-2">
+
+            <div className="px-4 pt-2 pb-4 border-t border-slate-700 space-y-3">
+              {/* Mobile Streak Display */}
+              <div className="flex items-center justify-between bg-slate-800 p-2 rounded-lg border border-slate-700">
+                <span className="text-slate-300 text-sm font-medium pl-1">
+                  Streak:
+                </span>
+                <StreakWidget onClick={() => {}} />
+              </div>
+
               <button
                 onClick={() => {
                   setIsProfileModalOpen(true);
@@ -141,7 +154,6 @@ const Navbar = () => {
                 }}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-200 transition text-sm font-medium"
               >
-                <Flame className="h-4 w-4 text-orange-400" />
                 <User className="h-4 w-4" />
                 Hồ sơ
               </button>

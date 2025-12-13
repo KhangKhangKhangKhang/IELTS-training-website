@@ -41,6 +41,6 @@ export const resetPasswordOTP = async (data) => {
 };
 
 export const refreshTokenAPI = async (token) => {
-  const res = await API.post("/auth/reset-token", { token});
+  const res = await API.post("/auth/reset-token", { token });
   return res.data;
 };

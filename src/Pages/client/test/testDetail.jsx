@@ -14,16 +14,20 @@ const testComponents = {
 const TestDetail = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { idTest, testType, duration } = location.state || {};
+  // Lấy thêm initialTestResult
+  const { idTest, testType, duration, initialTestResult } =
+    location.state || {};
   const [timedOut, setTimedOut] = useState(false);
 
   const Comp = testComponents[testType?.toUpperCase()];
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      // Nếu không có idTest hoặc không có kết quả khởi tạo (người dùng cố tình paste link)
+      // thì đá về trang chủ
       if (!idTest || !testType) {
         setTimedOut(true);
-        navigate("/test", { replace: true }); // hoặc "/teacher/test" nếu đang ở role teacher
+        navigate("/test", { replace: true });
       }
     }, 5000);
 
@@ -54,7 +58,14 @@ const TestDetail = () => {
     );
   }
 
-  return <Comp idTest={idTest} duration={duration} />;
+  // Truyền initialTestResult xuống
+  return (
+    <Comp
+      idTest={idTest}
+      duration={duration}
+      initialTestResult={initialTestResult}
+    />
+  );
 };
 
 export default TestDetail;
