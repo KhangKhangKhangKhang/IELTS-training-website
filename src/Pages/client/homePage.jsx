@@ -33,6 +33,7 @@ import {
   X,
   Filter,
 } from "lucide-react";
+import { useAuth } from "@/context/authContext";
 
 // --- Components Con (SkillCard, TestDetailModal) ---
 // (Giữ nguyên code UI nhỏ này như cũ cho gọn)
@@ -123,8 +124,8 @@ const TestDetailModal = ({ result, onClose }) => {
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const idUser = "e46f0456-0c1e-4de8-ae3e-a903c6cc38a6"; // Giả sử ID User
-
+  const { user } = useAuth();
+  const idUser = user?.idUser;
   // --- Data States ---
   const [overall, setOverall] = useState(null);
   const [chartData, setChartData] = useState([]);
