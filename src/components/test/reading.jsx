@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Button, Spin, message, Divider, Result, Card } from "antd"; // Import Result, Card
-import { SmileOutlined } from "@ant-design/icons"; // Icon trang trí nếu cần
-import { useNavigate } from "react-router-dom"; // Import navigate
+import { Button, Spin, message, Divider, Result, Card } from "antd";
+import { SmileOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import QuestionRenderer from "./reading/render/QuestionRenderer";
 import {
   getDetailInTestAPI,
@@ -15,9 +15,8 @@ import {
 } from "@/services/apiTest";
 import { useAuth } from "@/context/authContext";
 
-// ... (Giữ nguyên hàm mapGroup ở đây) ...
+// Hàm mapGroup giữ nguyên như cũ
 function mapGroup(apiGroup) {
-  // ... code cũ ...
   const typeMap = {
     YES_NO_NOTGIVEN: "YES_NO_NOT_GIVEN",
     YES_NO_NOT_GIVEN: "YES_NO_NOT_GIVEN",
@@ -55,7 +54,7 @@ function mapGroup(apiGroup) {
 
 const Reading = ({ idTest, initialTestResult }) => {
   const { user } = useAuth();
-  const navigate = useNavigate(); // Hook điều hướng
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [test, setTest] = useState(null);
 
@@ -67,7 +66,7 @@ const Reading = ({ idTest, initialTestResult }) => {
   const [inProgress, setInProgress] = useState(!!initialTestResult);
   const [bandScore, setBandScore] = useState(null);
 
-  // ... (Giữ nguyên useEffect load test và loadPartDetail cũ) ...
+  // Load Test Data
   useEffect(() => {
     if (!idTest) return;
     const load = async () => {
@@ -85,6 +84,7 @@ const Reading = ({ idTest, initialTestResult }) => {
     load();
   }, [idTest]);
 
+  // Load Part Detail
   useEffect(() => {
     const loadPartDetail = async () => {
       try {
@@ -137,7 +137,7 @@ const Reading = ({ idTest, initialTestResult }) => {
     if (test) loadPartDetail();
   }, [test, activePartIndex]);
 
-  // ... (Giữ nguyên handleAnswerChange) ...
+  // Handle Answer Change
   const handleAnswerChange = async (questionId, value) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
     if (!user?.idUser || !testResult?.idTestResult) return;
@@ -159,6 +159,7 @@ const Reading = ({ idTest, initialTestResult }) => {
     }
   };
 
+  // --- HÀM NỘP BÀI QUAN TRỌNG ---
   const handleFinish = async () => {
     if (!user?.idUser || !testResult?.idTestResult) {
       message.error("Lỗi dữ liệu bài làm");
@@ -169,15 +170,18 @@ const Reading = ({ idTest, initialTestResult }) => {
       const score = res?.band_score ?? res?.data?.band_score ?? 0;
 
       setBandScore(score);
-      setInProgress(false); // Đánh dấu đã xong -> UI sẽ chuyển sang màn hình kết quả
+      setInProgress(false);
       message.success("Nộp bài thành công!");
+
+      // ----------------------------------------------------
+      // 🔥 BẮN SỰ KIỆN ĐỂ NAVBAR CẬP NHẬT STREAK NGAY LẬP TỨC
+      // ----------------------------------------------------
+      window.dispatchEvent(new Event("streak-update"));
     } catch (err) {
       console.error(err);
       message.error("Nộp bài thất bại");
     }
   };
-
-  // --- RENDERING LOGIC ---
 
   if (loading)
     return (
@@ -190,7 +194,7 @@ const Reading = ({ idTest, initialTestResult }) => {
       <div className="py-10 text-center text-gray-500">Không tìm thấy đề</div>
     );
 
-  // MÀN HÌNH KẾT QUẢ (Render khi đã nộp bài)
+  // Render Kết quả
   if (!inProgress && bandScore !== null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -237,7 +241,7 @@ const Reading = ({ idTest, initialTestResult }) => {
     );
   }
 
-  // MÀN HÌNH LÀM BÀI (Render khi đang inProgress)
+  // Render Giao diện làm bài
   return (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
@@ -247,14 +251,12 @@ const Reading = ({ idTest, initialTestResult }) => {
             <p className="text-sm text-gray-500">{test.description}</p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Chỉ hiện nút Nộp bài khi đang làm */}
             <Button danger type="primary" size="large" onClick={handleFinish}>
               Nộp bài
             </Button>
           </div>
         </div>
 
-        {/* Parts navigation */}
         <div className="flex gap-2 overflow-x-auto mb-6">
           {test.parts.map((p, idx) => (
             <button
@@ -271,14 +273,12 @@ const Reading = ({ idTest, initialTestResult }) => {
           ))}
         </div>
 
-        {/* Main layout */}
         {test.parts[activePartIndex] &&
           (() => {
             const part = test.parts[activePartIndex];
             const renderPart = partDetail || part;
             return (
               <div className="grid grid-cols-12 gap-6">
-                {/* Passage Column */}
                 <div className="col-span-8 bg-white p-6 rounded shadow-sm overflow-auto max-h-[85vh]">
                   <h3 className="font-semibold mb-3">Passage</h3>
                   {renderPart?.passage?.content ? (
@@ -294,8 +294,6 @@ const Reading = ({ idTest, initialTestResult }) => {
                     </div>
                   )}
                 </div>
-
-                {/* Question Column */}
                 <div className="col-span-4 bg-white p-4 rounded shadow-sm overflow-auto max-h-[85vh]">
                   <h3 className="font-semibold mb-3">Questions</h3>
                   {(

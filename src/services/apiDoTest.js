@@ -55,3 +55,8 @@ export const getTestResultByIdAPI = async (idTestResult) => {
   );
   return res.data;
 };
+
+export const getTestAnswerAPI = async (idTest) => {
+  const res = await API.get(`/test/get-answers-in-test/${idTest}`);
+  return res.data;
+};

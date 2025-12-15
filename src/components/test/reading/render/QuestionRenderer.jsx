@@ -7,63 +7,85 @@ import RenderYesNoNotGiven from "./RenderYesNoNotGiven";
 import RenderShortAnswer from "./RenderShortAnswer";
 import RenderLabeling from "./RenderLabeling";
 
-const QuestionRenderer = ({ group, onAnswerChange }) => {
+const QuestionRenderer = ({
+  group,
+  onAnswerChange,
+  userAnswers = {},
+  isReviewMode = false,
+}) => {
+  const getUserAnswer = (qId) => userAnswers[qId];
+
+  const commonProps = {
+    onAnswerChange,
+    isReviewMode,
+  };
+
   switch (group.type_question) {
     case "MCQ":
-      return group.questions.map((question) => (
+      return group.questions.map((q) => (
         <RenderMCQ
-          key={question.question_id}
-          question={question}
-          onAnswerChange={onAnswerChange}
+          key={q.question_id}
+          question={q}
+          userAnswer={getUserAnswer(q.question_id)}
+          {...commonProps}
         />
       ));
     case "FILL_BLANK":
-      return group.questions.map((question) => (
+      return group.questions.map((q) => (
         <RenderFillBlank
-          key={question.question_id}
-          question={question}
-          onAnswerChange={onAnswerChange}
+          key={q.question_id}
+          question={q}
+          userAnswer={getUserAnswer(q.question_id)}
+          {...commonProps}
         />
       ));
     case "MATCHING":
-      return <RenderMatching group={group} onAnswerChange={onAnswerChange} />;
+      return (
+        <RenderMatching
+          group={group}
+          userAnswers={userAnswers}
+          {...commonProps}
+        />
+      );
     case "TFNG":
-      return group.questions.map((question) => (
+      return group.questions.map((q) => (
         <RenderTFNG
-          key={question.question_id}
-          question={question}
-          onAnswerChange={onAnswerChange}
+          key={q.question_id}
+          question={q}
+          userAnswer={getUserAnswer(q.question_id)}
+          {...commonProps}
         />
       ));
     case "YES_NO_NOT_GIVEN":
-      return group.questions.map((question) => (
+      return group.questions.map((q) => (
         <RenderYesNoNotGiven
-          key={question.question_id}
-          question={question}
-          onAnswerChange={onAnswerChange}
+          key={q.question_id}
+          question={q}
+          userAnswer={getUserAnswer(q.question_id)}
+          {...commonProps}
         />
       ));
     case "SHORT_ANSWER":
-      return group.questions.map((question) => (
+      return group.questions.map((q) => (
         <RenderShortAnswer
-          key={question.question_id}
-          question={question}
-          onAnswerChange={onAnswerChange}
+          key={q.question_id}
+          question={q}
+          userAnswer={getUserAnswer(q.question_id)}
+          {...commonProps}
         />
       ));
     case "LABELING":
-      return group.questions.map((question) => (
+      return group.questions.map((q) => (
         <RenderLabeling
-          key={question.question_id}
-          question={question}
-          onAnswerChange={onAnswerChange}
+          key={q.question_id}
+          question={q}
+          userAnswer={getUserAnswer(q.question_id)}
+          {...commonProps}
         />
       ));
     default:
       return (
-        <div className="mb-4 p-4 border rounded-md bg-slate-50">
-          <p>Unknown question type: {group.type_question}</p>
-        </div>
+        <div className="text-red-500">Unknown type: {group.type_question}</div>
       );
   }
 };

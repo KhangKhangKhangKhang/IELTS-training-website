@@ -6,15 +6,15 @@ import { useAuth } from "@/context/authContext";
 const StreakWidget = () => {
   const [streakData, setStreakData] = useState({
     currentStreak: 0,
-    longestStreak: 0, // Thêm trường này
-    isActive: false,
+    longestStreak: 0,
+    isActive: false, // True nếu đã học hôm nay
     loading: true,
   });
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const { user } = useAuth();
 
-  // Xử lý click ra ngoài để đóng dropdown
+  // Xử lý click ra ngoài để đóng popup
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -25,54 +25,76 @@ const StreakWidget = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Hàm gọi API lấy dữ liệu Streak
+  const fetchStreak = async () => {
+    if (!user || !user.idUser) {
+      setStreakData((prev) => ({ ...prev, loading: false }));
+      return;
+    }
+
+    try {
+      const res = await getStreakAPI(user.idUser);
+
+      if (res && res.data) {
+        const { lastStudiedAt, currentStreak, longestStreak } = res.data;
+
+        // Logic so sánh ngày (bỏ qua giờ phút)
+        const lastStudyDate = lastStudiedAt
+          ? new Date(lastStudiedAt).toDateString()
+          : "";
+        const today = new Date().toDateString();
+        const isStudiedToday = lastStudyDate === today;
+
+        setStreakData({
+          currentStreak: currentStreak || 0,
+          longestStreak: longestStreak || 0,
+          isActive: isStudiedToday,
+          loading: false,
+        });
+      } else {
+        setStreakData((prev) => ({ ...prev, loading: false }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch streak:", error);
+      setStreakData((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  // Effect chính: Gọi API lần đầu & Lắng nghe sự kiện update từ Reading.jsx
   useEffect(() => {
-    const fetchStreak = async () => {
-      if (!user || !user.idUser) {
-        setStreakData((prev) => ({ ...prev, loading: false }));
-        return;
-      }
+    // 1. Gọi ngay khi mount
+    fetchStreak();
 
-      try {
-        const res = await getStreakAPI(user.idUser);
-
-        if (res && res.data) {
-          const { lastStudiedAt, currentStreak, longestStreak } = res.data;
-
-          const lastStudyDate = lastStudiedAt
-            ? new Date(lastStudiedAt).toDateString()
-            : "";
-          const today = new Date().toDateString();
-          const isStudiedToday = lastStudyDate === today;
-
-          setStreakData({
-            currentStreak: currentStreak || 0,
-            longestStreak: longestStreak || 0,
-            isActive: isStudiedToday,
-            loading: false,
-          });
-        } else {
-          setStreakData((prev) => ({ ...prev, loading: false }));
-        }
-      } catch (error) {
-        console.error("Failed to fetch streak:", error);
-        setStreakData((prev) => ({ ...prev, loading: false }));
-      }
+    // 2. Hàm xử lý khi bắt được sự kiện "streak-update"
+    const handleStreakUpdate = () => {
+      console.log(
+        "🔥 StreakWidget: Nhận tín hiệu nộp bài xong, đang cập nhật..."
+      );
+      fetchStreak();
     };
 
-    fetchStreak();
-  }, [user]);
+    // 3. Đăng ký lắng nghe
+    window.addEventListener("streak-update", handleStreakUpdate);
 
+    // 4. Dọn dẹp
+    return () => {
+      window.removeEventListener("streak-update", handleStreakUpdate);
+    };
+  }, [user]); // Chạy lại nếu user thay đổi
+
+  // Render Skeleton khi đang tải
   if (streakData.loading) {
     return (
       <div className="animate-pulse bg-slate-800 h-9 w-16 rounded-full border border-slate-700 mx-2" />
     );
   }
 
+  // Nếu chưa login thì ẩn
   if (!user) return null;
 
   return (
     <div className="relative mx-2" ref={dropdownRef}>
-      {/* --- BUTTON CHÍNH --- */}
+      {/* --- BUTTON CHÍNH (LỬA) --- */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-full border transition-all duration-300 relative z-50 ${
@@ -105,10 +127,10 @@ const StreakWidget = () => {
         </span>
       </button>
 
-      {/* --- DROPDOWN CHI TIẾT (POPUP) --- */}
+      {/* --- POPUP CHI TIẾT --- */}
       {isOpen && (
         <div className="absolute right-0 top-full mt-3 w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-0 overflow-hidden z-[60] animate-in fade-in zoom-in-95 duration-200 origin-top-right ring-1 ring-white/10">
-          {/* Header với background gradient nhẹ */}
+          {/* Header */}
           <div className="bg-slate-800/50 p-3 border-b border-slate-700 flex justify-between items-center">
             <h3 className="text-slate-200 font-semibold text-sm flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-blue-400" />
@@ -171,7 +193,7 @@ const StreakWidget = () => {
               </div>
             </div>
 
-            {/* Thông điệp động viên */}
+            {/* Thông điệp */}
             <div
               className={`text-center text-xs py-2 px-3 rounded-md ${
                 streakData.isActive
@@ -185,7 +207,7 @@ const StreakWidget = () => {
             </div>
           </div>
 
-          {/* Mũi tên trỏ lên (Optional decoration) */}
+          {/* Mũi tên trang trí */}
           <div className="absolute -top-1.5 right-4 w-3 h-3 bg-slate-800 border-t border-l border-slate-700 rotate-45 z-0"></div>
         </div>
       )}
