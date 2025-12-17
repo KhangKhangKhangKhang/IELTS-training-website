@@ -158,19 +158,18 @@ const UserList = () => {
       align: "center",
       width: 100,
       render: (gender) => {
-        if (gender === "MALE")
+        if (gender === "Male")
           return (
             <Tag color="blue" icon={<ManOutlined />}>
               Nam
             </Tag>
           );
-        if (gender === "FEMALE")
+        if (gender === "Female")
           return (
             <Tag color="magenta" icon={<WomanOutlined />}>
               Nữ
             </Tag>
           );
-        return <Tag>Khác</Tag>;
       },
     },
     {
