@@ -17,6 +17,8 @@ import {
   DeleteOutlined,
   PlusOutlined,
   UserOutlined,
+  ManOutlined,
+  WomanOutlined,
 } from "@ant-design/icons";
 import {
   getAllUserAPI,
@@ -63,7 +65,9 @@ const UserList = () => {
 
   const handleSubmit = async () => {
     try {
+      // values sẽ tự động bao gồm: nameUser, email, gender, ... từ Form
       const values = await form.validateFields();
+
       if (editingUser) {
         await updateUserAPI(editingUser.idUser, values);
         message.success("Cập nhật người dùng thành công");
@@ -146,6 +150,28 @@ const UserList = () => {
       title: "Email",
       dataIndex: "email",
       key: "email",
+    },
+    {
+      title: "Giới tính",
+      dataIndex: "gender",
+      key: "gender",
+      align: "center",
+      width: 100,
+      render: (gender) => {
+        if (gender === "MALE")
+          return (
+            <Tag color="blue" icon={<ManOutlined />}>
+              Nam
+            </Tag>
+          );
+        if (gender === "FEMALE")
+          return (
+            <Tag color="magenta" icon={<WomanOutlined />}>
+              Nữ
+            </Tag>
+          );
+        return <Tag>Khác</Tag>;
+      },
     },
     {
       title: "Vai trò",
@@ -257,7 +283,7 @@ const UserList = () => {
             columns={columns}
             dataSource={dataSource}
             className="rounded-lg overflow-hidden"
-            scroll={{ x: 1000 }}
+            scroll={{ x: 1200 }}
           />
         </div>
       </Card>
@@ -274,7 +300,7 @@ const UserList = () => {
         onOk={handleSubmit}
         okText={editingUser ? "Cập nhật" : "Tạo mới"}
         cancelText="Hủy"
-        width={600}
+        width={700}
         styles={{
           body: { padding: "24px 0" },
         }}
@@ -282,9 +308,10 @@ const UserList = () => {
         <Form
           form={form}
           layout="vertical"
-          className="px-1"
+          className="px-4" // Tăng padding ngang để form thoáng hơn
           requiredMark="optional"
         >
+          {/* Hàng 1: Tên và Email */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Form.Item
               label="Tên người dùng"
@@ -311,6 +338,7 @@ const UserList = () => {
             </Form.Item>
           </div>
 
+          {/* Hàng 2: Password (chỉ hiện khi tạo mới) */}
           {!editingUser && (
             <Form.Item
               label="Mật khẩu"
@@ -321,16 +349,30 @@ const UserList = () => {
             </Form.Item>
           )}
 
+          {/* Hàng 3: SĐT và Giới tính (MỚI) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Form.Item label="Số điện thoại" name="phoneNumber">
               <Input size="large" placeholder="Nhập số điện thoại" />
             </Form.Item>
 
-            <Form.Item label="Địa chỉ" name="address">
-              <Input size="large" placeholder="Nhập địa chỉ" />
+            <Form.Item
+              label="Giới tính"
+              name="gender"
+              rules={[{ required: true, message: "Vui lòng chọn giới tính" }]} // Giá trị mặc định
+            >
+              <Select size="large" placeholder="Chọn giới tính">
+                <Option value="Male">Nam</Option>
+                <Option value="Female">Nữ</Option>
+              </Select>
             </Form.Item>
           </div>
 
+          {/* Hàng 4: Địa chỉ (Full width để nhập cho thoải mái) */}
+          <Form.Item label="Địa chỉ" name="address">
+            <Input size="large" placeholder="Nhập địa chỉ thường trú" />
+          </Form.Item>
+
+          {/* Hàng 5: Vai trò và Loại tài khoản */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Form.Item label="Vai trò" name="role" initialValue="USER">
               <Select size="large">
@@ -352,6 +394,19 @@ const UserList = () => {
             </Form.Item>
           </div>
 
+          <Form.Item
+            label="Level"
+            name="level"
+            rules={[{ required: true, message: "Vui lòng chọn level" }]}
+          >
+            <Select size="large">
+              <Option value="Low">Low</Option>
+              <Option value="Mid">Mid</Option>
+              <Option value="High">High</Option>
+            </Select>
+          </Form.Item>
+
+          {/* Hàng 7: Avatar */}
           <Form.Item label="Avatar URL" name="avatar">
             <Input size="large" placeholder="https://example.com/avatar.jpg" />
           </Form.Item>
