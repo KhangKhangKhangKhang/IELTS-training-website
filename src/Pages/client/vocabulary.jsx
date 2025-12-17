@@ -20,9 +20,11 @@ import {
 } from "../../services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import { getTopicsByUserAPI } from "@/services/apiVocab";
+import FlashcardModal from "@/components/Vocab/FlashcardModal";
 
 const Vocabulary = () => {
   const { user } = useAuth();
+  const [showFlashcard, setShowFlashcard] = useState(false);
   const [topics, setTopics] = useState([]);
   const [vocabularies, setVocabularies] = useState([]);
   const [loadingTopics, setLoadingTopics] = useState(false);
@@ -346,7 +348,6 @@ const Vocabulary = () => {
         <h1 className="text-3xl font-bold text-slate-800 mb-6 flex items-center">
           <BookOpen className="mr-3" /> Từ Vựng IELTS
         </h1>
-
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
             {error}
@@ -358,7 +359,6 @@ const Vocabulary = () => {
             </button>
           </div>
         )}
-
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-slate-700">Chủ đề</h2>
@@ -420,7 +420,6 @@ const Vocabulary = () => {
             )}
           </div>
         </div>
-
         {showAddTopic && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-96">
@@ -466,7 +465,6 @@ const Vocabulary = () => {
             </div>
           </div>
         )}
-
         {showEditTopic && topicToEdit && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-96">
@@ -511,7 +509,6 @@ const Vocabulary = () => {
             </div>
           </div>
         )}
-
         {selectedTopic && (
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex justify-between items-center mb-6">
@@ -537,6 +534,18 @@ const Vocabulary = () => {
                   className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md flex items-center transition-colors"
                 >
                   <Plus size={18} className="mr-1" /> Thêm từ
+                </button>
+                <button
+                  onClick={() => {
+                    if (vocabularies.length === 0) {
+                      alert("Chủ đề này chưa có từ vựng để ôn tập!");
+                      return;
+                    }
+                    setShowFlashcard(true);
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center transition-colors ml-2"
+                >
+                  <Sparkles size={18} className="mr-1" /> Ôn tập ngay
                 </button>
               </div>
             </div>
@@ -631,7 +640,6 @@ const Vocabulary = () => {
             )}
           </div>
         )}
-
         {!selectedTopic && topics.length > 0 && (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
             <p className="text-slate-600">
@@ -639,7 +647,6 @@ const Vocabulary = () => {
             </p>
           </div>
         )}
-
         {/* Modal Add Vocabulary - ĐÃ CẬP NHẬT VỚI GỢI Ý ĐẦY ĐỦ */}
         {showAddVocabulary && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -949,8 +956,13 @@ const Vocabulary = () => {
             </div>
           </div>
         )}
-
-        {/* Modal Edit Vocabulary - GIỮ NGUYÊN */}
+        <FlashcardModal
+          isOpen={showFlashcard}
+          onClose={() => setShowFlashcard(false)}
+          vocabularies={vocabularies} // Danh sách từ vựng hiện tại (đã filter theo topic)
+          user={user}
+        />
+        ;{/* Modal Edit Vocabulary - GIỮ NGUYÊN */}
         {showEditVocabulary && vocabToEdit && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
