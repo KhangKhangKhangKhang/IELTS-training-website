@@ -1,16 +1,29 @@
-// CommentItem - Updated
 import { useState } from "react";
 import { Avatar, Button, Modal, Input, message } from "antd";
-import { LikeOutlined, LikeFilled, EditOutlined } from "@ant-design/icons";
-import { toggleCommentLikeAPI, updateCommentAPI } from "@/services/apiForum";
+// Thêm DeleteOutlined vào đây
+import {
+  LikeOutlined,
+  LikeFilled,
+  EditOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
+import {
+  toggleCommentLikeAPI,
+  updateCommentAPI,
+  deleteCommentAPI,
+} from "@/services/apiForum";
 import { useAuth } from "@/context/authContext";
 
-const CommentItem = ({ comment, onUpdated }) => {
+const CommentItem = ({ comment, onUpdated, onDeleted }) => {
   const { user } = useAuth();
   const [liked, setLiked] = useState(comment.isCommentLikedByCurrentUser);
   const [count, setCount] = useState(comment.commentLikeCount);
   const [openEdit, setOpenEdit] = useState(false);
   const [newContent, setNewContent] = useState(comment.content);
+
+  // Kiểm tra quyền: ADMIN hoặc chính chủ comment
+  const canAction =
+    user?.role === "ADMIN" || (user && user.idUser === comment.idUser);
 
   const handleLike = async () => {
     setLiked(!liked);
@@ -35,6 +48,26 @@ const CommentItem = ({ comment, onUpdated }) => {
     } catch {
       message.error("Cập nhật thất bại!");
     }
+  };
+
+  const handleDelete = () => {
+    Modal.confirm({
+      title: "Xóa bình luận",
+      content: "Bạn có chắc chắn muốn xóa bình luận này không?",
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          await deleteCommentAPI(comment.idForumComment);
+          message.success("Đã xóa bình luận!");
+          // Gọi callback để cha xóa khỏi state
+          onDeleted && onDeleted(comment.idForumComment);
+        } catch (error) {
+          message.error("Xóa thất bại!");
+        }
+      },
+    });
   };
 
   return (
@@ -66,17 +99,26 @@ const CommentItem = ({ comment, onUpdated }) => {
               } hover:text-blue-600 hover:cursor-pointer transition-colors`}
             >
               {liked ? <LikeFilled /> : <LikeOutlined />}
-              <span>Thích </span>
+              <span>Thích</span>
             </button>
 
-            {(user?.idUser === comment.idUser || user?.role === "ADMIN") && (
-              <button
-                onClick={() => setOpenEdit(true)}
-                className="flex hover:cursor-pointer items-center gap-1 text-sm text-slate-600 hover:text-slate-900 transition-colors"
-              >
-                <EditOutlined />
-                <span>Sửa</span>
-              </button>
+            {canAction && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setOpenEdit(true)}
+                  className="flex hover:cursor-pointer items-center gap-1 text-sm text-slate-600 hover:text-blue-600 transition-colors"
+                >
+                  <EditOutlined />
+                  <span>Sửa</span>
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="flex hover:cursor-pointer items-center gap-1 text-sm text-slate-600 hover:text-red-600 transition-colors"
+                >
+                  <DeleteOutlined />
+                  <span>Xóa</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -89,7 +131,6 @@ const CommentItem = ({ comment, onUpdated }) => {
         onOk={handleUpdate}
         okText="Lưu"
         cancelText="Hủy"
-        className="rounded-lg hover:cursor-pointer"
       >
         <Input.TextArea
           rows={4}

@@ -55,6 +55,11 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
       },
     });
   };
+  const handleCommentDeleted = (idForumComment) => {
+    setComments((prev) =>
+      prev.filter((c) => c.idForumComment !== idForumComment)
+    );
+  };
 
   const menuItems = [
     {
@@ -162,7 +167,10 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
         {/* Comments Section */}
         {showComments && (
           <div className="mt-4 space-y-4">
-            <CommentList comments={comments} />
+            <CommentList
+              comments={comments}
+              onCommentDeleted={handleCommentDeleted}
+            />
             <CreateComment
               idForumPost={post.idForumPost}
               onCommentCreated={(newCmt) =>
