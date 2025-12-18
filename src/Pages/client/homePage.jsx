@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
-import { Modal, message, Spin } from "antd"; // Import UI từ Antd
+import { useNavigate } from "react-router-dom";
+import { Modal, message, Spin } from "antd";
 import {
   getOverallScroreAPI,
   getAvgScoreByDayAPI,
@@ -9,7 +9,7 @@ import {
   getTargetScoresAPI,
   updateTargetScoresAPI,
 } from "@/services/apiStatistics";
-import { StartTestAPI } from "@/services/apiDoTest"; // Import API bắt đầu làm bài
+import { StartTestAPI } from "@/services/apiDoTest";
 import {
   LineChart,
   Line,
@@ -36,7 +36,7 @@ import {
 import { useAuth } from "@/context/authContext";
 
 // --- Components Con (SkillCard, TestDetailModal) ---
-// (Giữ nguyên code UI nhỏ này như cũ cho gọn)
+
 const SkillCard = ({ type, score, icon: Icon, color }) => (
   <div className="p-6 rounded-2xl bg-white shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
     <div>
@@ -126,6 +126,7 @@ const HomePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const idUser = user?.idUser;
+
   // --- Data States ---
   const [overall, setOverall] = useState(null);
   const [chartData, setChartData] = useState([]);
@@ -138,21 +139,21 @@ const HomePage = () => {
 
   // --- UI States ---
   const [loading, setLoading] = useState(true);
-  const [selectedTestDetail, setSelectedTestDetail] = useState(null); // Modal xem lịch sử
+  const [selectedTestDetail, setSelectedTestDetail] = useState(null);
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [tempTarget, setTempTarget] = useState({});
 
-  // --- START TEST STATES (Mới thêm) ---
+  // --- START TEST STATES ---
   const [confirmStartOpen, setConfirmStartOpen] = useState(false);
   const [selectedExamToStart, setSelectedExamToStart] = useState(null);
   const [startingTest, setStartingTest] = useState(false);
 
   // --- FILTER STATES ---
-  const [filterYear, setFilterYear] = useState(new Date().getFullYear()); // Mặc định năm nay
-  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1); // Mặc định tháng này
+  const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [selectedSkillType, setSelectedSkillType] = useState("ALL");
 
-  // Call API ban đầu
+  // --- API CALLS ---
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -183,7 +184,43 @@ const HomePage = () => {
     fetchData();
   }, [idUser]);
 
-  // --- LOGIC 1: Xử lý Start Test (Copy từ TestPage) ---
+  // --- LOGIC 1: Xử lý Target & Countdown (MỚI) ---
+  const targetInfo = useMemo(() => {
+    if (!target.targetExamDate) return null;
+
+    const now = new Date();
+    const examDate = new Date(target.targetExamDate);
+
+    // Format ngày hiển thị (VD: 27/03/2026)
+    const formattedDate = examDate.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    // Tính số ngày còn lại (Countdown)
+    const diffTime = examDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    return {
+      formattedDate,
+      daysLeft: diffDays > 0 ? diffDays : 0,
+      isPassed: diffDays < 0,
+    };
+  }, [target.targetExamDate]);
+
+  const handleUpdateTarget = async () => {
+    try {
+      await updateTargetScoresAPI(idUser, tempTarget);
+      setTarget(tempTarget);
+      setIsEditingTarget(false);
+    } catch (e) {
+      console.error(e);
+      message.error("Cập nhật mục tiêu thất bại");
+    }
+  };
+
+  // --- LOGIC 2: Xử lý Start Test ---
   const handleRecommendClick = (test) => {
     setSelectedExamToStart(test);
     setConfirmStartOpen(true);
@@ -200,8 +237,6 @@ const HomePage = () => {
       if (testResultData?.idTestResult) {
         message.success("Bắt đầu làm bài!");
         setConfirmStartOpen(false);
-
-        // Navigate sang trang làm bài
         navigate("/doTest", {
           state: {
             idTest: selectedExamToStart.idTest,
@@ -221,33 +256,15 @@ const HomePage = () => {
     }
   };
 
-  // --- LOGIC 2: Xử lý Target ---
-  const handleUpdateTarget = async () => {
-    try {
-      await updateTargetScoresAPI(idUser, tempTarget);
-      setTarget(tempTarget);
-      setIsEditingTarget(false);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // --- LOGIC 3: Xử lý Filter Biểu Đồ (Nâng cấp) ---
+  // --- LOGIC 3: Xử lý Filter Chart ---
   const filteredChartData = useMemo(() => {
     if (!chartData) return [];
-
-    // Nếu chọn "ALL" ở filterYear -> Lấy hết (Toàn thời gian)
     if (filterYear === "ALL") return chartData;
 
     return chartData.filter((item) => {
       const d = new Date(item.date);
       const matchYear = d.getFullYear() === parseInt(filterYear);
-
-      // Nếu chọn "ALL" ở filterMonth -> Lấy cả năm đó
-      if (filterMonth === "ALL") {
-        return matchYear;
-      }
-      // Nếu chọn tháng cụ thể -> Lấy đúng tháng năm
+      if (filterMonth === "ALL") return matchYear;
       return matchYear && d.getMonth() + 1 === parseInt(filterMonth);
     });
   }, [chartData, filterMonth, filterYear]);
@@ -264,36 +281,94 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 font-sans text-gray-800">
-      {/* Header & Target Box */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      {/* --- HEADER & TARGET INFO BAR (ĐÃ CẬP NHẬT UI) --- */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-6">
+        {/* Title Section */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
             Dashboard Tổng quan
           </h1>
-          <p className="text-gray-500">
-            Chào mừng trở lại! Cùng xem tiến độ học tập của bạn.
+          <p className="text-gray-500 mt-1">
+            Chào mừng trở lại! Cùng theo dõi tiến độ và đếm ngược tới ngày thi.
           </p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-purple-100 flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-purple-100 p-2 rounded-lg">
-              <Target className="text-purple-600" size={20} />
+
+        {/* Target Info Box */}
+        <div className="bg-white p-1 rounded-2xl shadow-sm border border-purple-100 flex flex-col sm:flex-row items-stretch sm:items-center">
+          {/* Block 1: Target Band */}
+          <div className="flex items-center gap-4 px-6 py-4 border-b sm:border-b-0 sm:border-r border-gray-100 min-w-[160px]">
+            <div className="bg-purple-100 p-3 rounded-xl">
+              <Target className="text-purple-600" size={24} />
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase font-semibold">
-                Mục tiêu
+              <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">
+                Target
               </p>
-              <p className="text-xl font-bold text-purple-700">
+              <p className="text-2xl font-extrabold text-purple-700">
                 {target.targetBandScore || "N/A"}
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setIsEditingTarget(true)}
-            className="text-purple-600 text-xs underline font-bold"
-          >
-            Sửa
-          </button>
+
+          {/* Block 2: Exam Date */}
+          <div className="flex items-center gap-4 px-6 py-4 border-b sm:border-b-0 sm:border-r border-gray-100 min-w-[180px]">
+            <div className="bg-blue-100 p-3 rounded-xl">
+              <Calendar className="text-blue-600" size={24} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">
+                Ngày thi
+              </p>
+              <p className="text-lg font-bold text-gray-800">
+                {targetInfo?.formattedDate || "--/--/----"}
+              </p>
+            </div>
+          </div>
+
+          {/* Block 3: Countdown */}
+          <div className="flex items-center gap-4 px-6 py-4 min-w-[180px]">
+            <div
+              className={`${
+                targetInfo?.daysLeft <= 30 ? "bg-red-100" : "bg-green-100"
+              } p-3 rounded-xl transition-colors`}
+            >
+              <Clock
+                className={`${
+                  targetInfo?.daysLeft <= 30 ? "text-red-600" : "text-green-600"
+                }`}
+                size={24}
+              />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">
+                Còn lại
+              </p>
+              <div className="flex items-baseline gap-1">
+                <p
+                  className={`text-2xl font-extrabold ${
+                    targetInfo?.daysLeft <= 30
+                      ? "text-red-600"
+                      : "text-green-600"
+                  }`}
+                >
+                  {targetInfo ? targetInfo.daysLeft : "--"}
+                </p>
+                <span className="text-xs font-semibold text-gray-500">
+                  ngày
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Edit Button */}
+          <div className="px-4 py-4 sm:pl-0">
+            <button
+              onClick={() => setIsEditingTarget(true)}
+              className="w-full sm:w-auto h-full px-4 py-2 text-sm font-bold text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all border border-transparent hover:border-purple-200"
+            >
+              Sửa
+            </button>
+          </div>
         </div>
       </div>
 
@@ -335,7 +410,7 @@ const HomePage = () => {
             </h3>
 
             <div className="flex gap-2 items-center flex-wrap">
-              {/* 1. Chọn Kỹ Năng */}
+              {/* Filter Skill */}
               <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 rounded-lg border border-purple-100 mr-2">
                 <Filter size={16} className="text-purple-600" />
                 <select
@@ -352,12 +427,12 @@ const HomePage = () => {
                 </select>
               </div>
 
-              {/* 2. Chọn Tháng (Thêm option ALL) */}
+              {/* Filter Month */}
               <select
                 className="bg-gray-50 border border-gray-200 text-sm rounded-lg p-2 focus:outline-none disabled:opacity-50"
                 value={filterMonth}
                 onChange={(e) => setFilterMonth(e.target.value)}
-                disabled={filterYear === "ALL"} // Nếu chọn Toàn thời gian thì disable tháng
+                disabled={filterYear === "ALL"}
               >
                 <option value="ALL">Cả năm</option>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
@@ -367,19 +442,19 @@ const HomePage = () => {
                 ))}
               </select>
 
-              {/* 3. Chọn Năm (Thêm option ALL) */}
+              {/* Filter Year */}
               <select
                 className="bg-gray-50 border border-gray-200 text-sm rounded-lg p-2 focus:outline-none"
                 value={filterYear}
                 onChange={(e) => {
                   setFilterYear(e.target.value);
-                  // Nếu chọn All Time thì reset tháng về All
                   if (e.target.value === "ALL") setFilterMonth("ALL");
                 }}
               >
                 <option value="ALL">Toàn thời gian</option>
                 <option value="2024">2024</option>
                 <option value="2025">2025</option>
+                <option value="2026">2026</option>
               </select>
             </div>
           </div>
@@ -398,7 +473,6 @@ const HomePage = () => {
                     tick={{ fontSize: 12 }}
                     tickFormatter={(str) => {
                       const d = new Date(str);
-                      // Nếu xem toàn thời gian thì hiện Tháng/Năm cho dễ nhìn
                       return filterYear === "ALL" || filterMonth === "ALL"
                         ? `${d.getDate()}/${d.getMonth() + 1}`
                         : d.getDate();
@@ -413,8 +487,6 @@ const HomePage = () => {
                     }}
                   />
                   <Legend />
-
-                  {/* Render Lines based on selection */}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "OVERALL") && (
                     <Line
@@ -480,7 +552,7 @@ const HomePage = () => {
           </div>
         </div>
 
-        {/* Cột Phải: Recommended Tests (ĐÃ CÓ ONCLICK) */}
+        {/* Cột Phải: Recommended Tests */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
           <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
             <Award className="text-yellow-500" /> Đề xuất cho bạn
@@ -489,7 +561,7 @@ const HomePage = () => {
             {recommended.map((test) => (
               <div
                 key={test.idTest}
-                onClick={() => handleRecommendClick(test)} // <--- BẮT SỰ KIỆN CLICK Ở ĐÂY
+                onClick={() => handleRecommendClick(test)}
                 className="flex gap-4 p-3 border border-gray-100 rounded-xl hover:bg-purple-50 hover:border-purple-200 transition-all cursor-pointer group"
               >
                 <img
@@ -546,7 +618,7 @@ const HomePage = () => {
                       {item.test?.testType}
                     </span>
                   </td>
-                  <td className="p-3 font-bold">{item.score}</td>
+                  <td className="p-3 font-bold">{item.band_score}</td>
                   <td className="p-3 text-gray-500">
                     {new Date(item.createdAt).toLocaleDateString("vi-VN")}
                   </td>
@@ -573,35 +645,45 @@ const HomePage = () => {
           <div className="bg-white p-6 rounded-2xl w-96 shadow-lg">
             <h3 className="font-bold text-lg mb-4">Cập nhật mục tiêu</h3>
             <div className="space-y-4">
-              <input
-                className="w-full border p-2 rounded focus:ring-2 focus:ring-purple-200 outline-none"
-                type="number"
-                step="0.5"
-                max="9"
-                placeholder="Band Score"
-                value={tempTarget.targetBandScore}
-                onChange={(e) =>
-                  setTempTarget({
-                    ...tempTarget,
-                    targetBandScore: e.target.value,
-                  })
-                }
-              />
-              <input
-                className="w-full border p-2 rounded focus:ring-2 focus:ring-purple-200 outline-none"
-                type="date"
-                value={
-                  tempTarget.targetExamDate
-                    ? tempTarget.targetExamDate.split("T")[0]
-                    : ""
-                }
-                onChange={(e) =>
-                  setTempTarget({
-                    ...tempTarget,
-                    targetExamDate: e.target.value,
-                  })
-                }
-              />
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">
+                  Target Band Score
+                </label>
+                <input
+                  className="w-full border p-2 rounded focus:ring-2 focus:ring-purple-200 outline-none"
+                  type="number"
+                  step="0.5"
+                  max="9"
+                  placeholder="Band Score (e.g. 7.5)"
+                  value={tempTarget.targetBandScore}
+                  onChange={(e) =>
+                    setTempTarget({
+                      ...tempTarget,
+                      targetBandScore: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">
+                  Ngày thi dự kiến
+                </label>
+                <input
+                  className="w-full border p-2 rounded focus:ring-2 focus:ring-purple-200 outline-none"
+                  type="date"
+                  value={
+                    tempTarget.targetExamDate
+                      ? tempTarget.targetExamDate.split("T")[0]
+                      : ""
+                  }
+                  onChange={(e) =>
+                    setTempTarget({
+                      ...tempTarget,
+                      targetExamDate: e.target.value,
+                    })
+                  }
+                />
+              </div>
               <div className="flex justify-end gap-2 mt-4">
                 <button
                   onClick={() => setIsEditingTarget(false)}
@@ -627,7 +709,7 @@ const HomePage = () => {
         onClose={() => setSelectedTestDetail(null)}
       />
 
-      {/* 3. Modal Xác nhận làm bài (Recommended) - MỚI */}
+      {/* 3. Modal Xác nhận làm bài (Recommended) */}
       <Modal
         title="Xác nhận làm bài"
         open={confirmStartOpen}
