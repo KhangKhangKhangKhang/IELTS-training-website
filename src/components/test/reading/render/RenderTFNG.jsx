@@ -8,7 +8,13 @@ import {
 } from "@/components/ui/select";
 import { CheckCircle2, XCircle } from "lucide-react";
 
-const RenderTFNG = ({ question, onAnswerChange, userAnswer, isReviewMode }) => {
+const RenderTFNG = ({
+  question,
+  onAnswerChange,
+  userAnswer,
+  isReviewMode,
+  resultIsCorrect, // <--- THÊM PROP NÀY
+}) => {
   const [localAnswer, setLocalAnswer] = useState(userAnswer);
 
   useEffect(() => {
@@ -23,9 +29,9 @@ const RenderTFNG = ({ question, onAnswerChange, userAnswer, isReviewMode }) => {
 
   const options = ["TRUE", "FALSE", "NOT GIVEN"];
   const correctAnswerText = question.correct_answers?.[0]?.answer_text;
-  const isCorrect =
-    isReviewMode &&
-    localAnswer?.toUpperCase() === correctAnswerText?.toUpperCase();
+
+  // --- LOGIC MỚI: Dùng kết quả chính xác từ API ---
+  const isCorrect = isReviewMode && resultIsCorrect === true;
 
   // Container Class
   const containerClass = `mb-6 p-5 border rounded-xl transition-all duration-200 shadow-sm ${
@@ -47,21 +53,16 @@ const RenderTFNG = ({ question, onAnswerChange, userAnswer, isReviewMode }) => {
       "bg-slate-50 border-slate-200 focus:ring-2 focus:ring-blue-500 focus:bg-white";
   }
 
+  // Badge hiển thị số câu hỏi
+  const badgeClass = `flex items-center justify-center w-7 h-7 shrink-0 rounded-lg text-xs font-bold text-white shadow-sm ${
+    isReviewMode ? (isCorrect ? "bg-green-500" : "bg-red-500") : "bg-blue-600"
+  }`;
+
   return (
     <div className={containerClass}>
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-3">
-          <span
-            className={`flex items-center justify-center w-7 h-7 shrink-0 rounded-lg text-xs font-bold text-white shadow-sm ${
-              isReviewMode
-                ? isCorrect
-                  ? "bg-green-500"
-                  : "bg-red-500"
-                : "bg-blue-600"
-            }`}
-          >
-            {question.question_number}
-          </span>
+          <span className={badgeClass}>{question.question_number}</span>
           <div
             className="font-semibold text-slate-800 pt-0.5 leading-relaxed"
             dangerouslySetInnerHTML={{ __html: question.question_text }}

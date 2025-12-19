@@ -12,6 +12,7 @@ import {
   getDetailInTestAPI,
   createManyAnswersAPI,
   FinistTestAPI,
+  getTestResultAndAnswersAPI, // <--- IMPORT API NÀY
 } from "@/services/apiDoTest";
 import {
   getPartByIdAPI,
@@ -49,6 +50,7 @@ function mapGroup(apiGroup) {
       matching_value: a.matching_value,
     }));
 
+    // Logic lấy đáp án đúng để hiển thị (cho mode Review)
     const correct_answers = answers.filter((a) => {
       const val = a.matching_value?.toUpperCase();
       return val === "CORRECT" || val === "TRUE" || val === "YES";
@@ -80,11 +82,9 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const [activePartIndex, setActivePartIndex] = useState(0);
   const [partDetail, setPartDetail] = useState(null);
 
+  // State
   const [testResult, setTestResult] = useState(initialTestResult || null);
-
-  // State lưu: { questionId: { value: "A", text: "Apple", type: "MATCHING" } }
   const [answers, setAnswers] = useState({});
-
   const [inProgress, setInProgress] = useState(!initialTestResult?.finishedAt);
   const [isReviewMode, setIsReviewMode] = useState(
     !!initialTestResult?.finishedAt
@@ -96,47 +96,93 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const [timeLeft, setTimeLeft] = useState((duration || 60) * 60);
   const isSubmittingRef = useRef(false);
 
-  // Review map: Dùng để hiển thị lại đáp án đã chọn khi xem lại
-  // Logic: Với Matching/MCQ thì API trả về Key (A,B), Render component sẽ tự map Key -> Text nếu cần
-  const reviewAnswersMap = useMemo(() => {
-    if (!testResult?.userAnswer) return {};
-    return testResult.userAnswer.reduce((acc, item) => {
-      // Lưu ý: item.answerText từ API trả về lúc này là KEY (với MCQ/Matching) do lần trước lưu sai
-      // Nhưng nếu lưu đúng theo logic mới thì item.answerText sẽ là Content, item.matching_key là Key.
-      // Để an toàn cho Render, ta ưu tiên lấy Matching Key nếu có, nếu không thì lấy AnswerText
-      const val =
-        item.userAnswerType === "MCQ" || item.userAnswerType === "MATCHING"
-          ? item.matching_key || item.answerText
-          : item.answerText;
-
-      acc[item.idQuestion] = val;
-      return acc;
-    }, {});
-  }, [testResult]);
-
+  // --- 1. LOAD DATA: Xử lý 2 trường hợp (Làm bài & Xem lại) ---
   useEffect(() => {
-    if (!idTest) return;
-    const load = async () => {
+    const fetchData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        const res = await getDetailInTestAPI(idTest);
-        setTest(res?.data || null);
+        // CASE A: Chế độ Review (Đã có kết quả thi và đã kết thúc)
+        // Chúng ta gọi API lấy full kết quả + đáp án
+        if (initialTestResult?.idTestResult && initialTestResult?.finishedAt) {
+          const res = await getTestResultAndAnswersAPI(
+            initialTestResult.idTestResult
+          );
+
+          if (res && res.data) {
+            // 1. Set thông tin kết quả (bao gồm userAnswer có isCorrect)
+            setTestResult(res.data);
+            setBandScore(res.data.band_score);
+
+            // 2. Set nội dung đề thi (API trả về luôn trong res.data.test)
+            // Lưu ý: Nếu API trả về cấu trúc test lồng nhau, hãy check kỹ console log
+            setTest(res.data.test);
+
+            setIsReviewMode(true);
+            setInProgress(false);
+          }
+        }
+        // CASE B: Chế độ làm bài (Chưa có kết quả hoặc mới bắt đầu)
+        else if (idTest) {
+          const res = await getDetailInTestAPI(idTest);
+          setTest(res?.data || null);
+        }
       } catch (err) {
-        console.error(err);
-        message.error("Không thể tải nội dung đề");
+        console.error("Lỗi tải dữ liệu:", err);
+        message.error("Không thể tải nội dung.");
       } finally {
         setLoading(false);
       }
     };
-    load();
-  }, [idTest]);
 
+    fetchData();
+  }, [idTest, initialTestResult]);
+
+  // --- 2. REVIEW MAP (Quan trọng: Map user answer từ API) ---
+  const reviewAnswersMap = useMemo(() => {
+    // Chỉ chạy khi có testResult và userAnswer từ API getTestResultAndAnswersAPI
+    if (!testResult?.userAnswer) return {};
+
+    return testResult.userAnswer.reduce((acc, item) => {
+      // Logic xác định giá trị hiển thị (Value)
+      let val = item.answerText; // Mặc định là text
+
+      // Nếu là MCQ/Matching -> Lấy Matching Key (A, B, C...)
+      if (item.userAnswerType === "MCQ" || item.userAnswerType === "MATCHING") {
+        // Ưu tiên matching_key, nếu null thì fallback về answerText (phòng hờ)
+        val = item.matching_key || item.answerText;
+      }
+
+      // Nếu là TFNG/YesNo -> Lấy Matching Value (YES, TRUE...)
+      if (
+        item.userAnswerType === "YES_NO_NOTGIVEN" ||
+        item.userAnswerType === "TFNG"
+      ) {
+        val = item.matching_value || item.answerText;
+      }
+
+      // Map vào object: Key là QuestionID -> Value là { value, isCorrect }
+      acc[item.idQuestion] = {
+        value: val,
+        isCorrect: item.isCorrect, // Lấy trực tiếp từ API (true/false)
+      };
+
+      return acc;
+    }, {});
+  }, [testResult]);
+
+  // --- 3. LOAD PART DETAIL (Khi chuyển Part) ---
+  // (Giữ nguyên logic cũ vì nó xử lý việc load chi tiết câu hỏi cho từng Part)
   useEffect(() => {
+    if (!test) return; // Chỉ chạy khi đã có test (dù load từ nguồn nào)
+
     const loadPartDetail = async () => {
       try {
         setPartDetail(null);
         const part = test?.parts?.[activePartIndex];
         if (!part || !part.idPart) return;
+
+        // Nếu API Review đã trả về đủ chi tiết trong groupOfQuestions rồi thì có thể không cần gọi lại
+        // Nhưng để an toàn và đồng nhất, ta vẫn gọi logic cũ để enrich data
         const res = await getPartByIdAPI(part.idPart);
         let detail = res?.data?.[0] || null;
 
@@ -177,11 +223,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
         setPartDetail(null);
       }
     };
-    if (test) loadPartDetail();
+    loadPartDetail();
   }, [test, activePartIndex]);
 
-  // --- HÀM XỬ LÝ NHẬP LIỆU (CẬP NHẬT) ---
-  // textContent: Là nội dung hiển thị (VD: "Quả táo"), value: Là Key (VD: "A")
+  // --- 4. HANDLE INPUT CHANGE ---
   const handleAnswerChange = (
     questionId,
     value,
@@ -189,10 +234,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     textContent = null
   ) => {
     if (!inProgress) return;
-
-    // Nếu không truyền textContent thì mặc định nó giống value (cho dạng điền từ)
     const finalContent = textContent !== null ? textContent : value;
-
     setAnswers((prev) => ({
       ...prev,
       [questionId]: {
@@ -203,7 +245,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     }));
   };
 
-  // --- HÀM NỘP BÀI (ĐÃ SỬA PAYLOAD CHUẨN) ---
+  // --- 5. HANDLE FINISH ---
   const handleFinish = async (isAutoSubmit = false) => {
     if (isSubmittingRef.current || !inProgress) return;
     isSubmittingRef.current = true;
@@ -223,19 +265,15 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           let matchingKey = null;
           let matchingValue = null;
 
-          // Với MCQ/Matching: Value đang lưu Key (A, B) -> Gán vào matching_key
           if (data.type === "MCQ" || data.type === "MATCHING") {
             matchingKey = data.value;
           }
-
-          // Với YesNo/TFNG: Value đang lưu YES/TRUE -> Gán vào matching_value
           if (data.type === "YES_NO_NOTGIVEN" || data.type === "TFNG") {
             matchingValue = data.value;
           }
 
           return {
             idQuestion: qId,
-            // answerText: Lưu nội dung text (để hiển thị lịch sử đúng)
             answerText: data.text,
             userAnswerType: data.type,
             matching_key: matchingKey,
@@ -252,12 +290,13 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
         );
       }
 
+      // Nộp bài xong -> Lấy điểm
       const res = await FinistTestAPI(testResult.idTestResult, user.idUser, {});
       const score = res?.band_score ?? res?.data?.band_score ?? 0;
 
       setBandScore(score);
       setInProgress(false);
-      setTestResult(res?.data || res);
+      setTestResult(res?.data || res); // Lúc này testResult mới chỉ có điểm, chưa chắc có full userAnswer chi tiết
 
       message.success({ content: "Nộp bài thành công!", key: "submitting" });
       window.dispatchEvent(new Event("streak-update"));
@@ -268,6 +307,25 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     }
   };
 
+  // --- 6. SWITCH TO REVIEW MODE (Sau khi nộp bài) ---
+  const handleSwitchToReview = async () => {
+    if (!testResult?.idTestResult) return;
+    setLoading(true);
+    try {
+      // Gọi lại API chi tiết để lấy isCorrect cho từng câu
+      const res = await getTestResultAndAnswersAPI(testResult.idTestResult);
+      if (res && res.data) {
+        setTestResult(res.data);
+        setIsReviewMode(true);
+      }
+    } catch (error) {
+      message.error("Không thể tải kết quả chi tiết");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Timer
   useEffect(() => {
     if (loading || !inProgress || !test) return;
     if (timeLeft <= 0) {
@@ -278,6 +336,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     return () => clearInterval(timerId);
   }, [timeLeft, loading, inProgress, test]);
 
+  // Loading View
   if (loading)
     return (
       <div className="py-10 text-center">
@@ -289,6 +348,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
       <div className="py-10 text-center text-gray-500">Không tìm thấy đề</div>
     );
 
+  // Result View (Màn hình chúc mừng)
   if (!inProgress && !isReviewMode && bandScore !== null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -323,7 +383,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                 key="review"
                 size="large"
                 icon={<EyeOutlined />}
-                onClick={() => setIsReviewMode(true)}
+                onClick={handleSwitchToReview} // Gọi hàm load lại data chi tiết
               >
                 Xem lại bài làm
               </Button>,
@@ -334,8 +394,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     );
   }
 
+  // --- RENDER MAIN UI ---
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md h-[72px] px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div
@@ -404,6 +466,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
       </div>
 
       <div className="pt-[90px] p-6 max-w-[1400px] mx-auto h-screen flex flex-col">
+        {/* Parts Tabs */}
         <div className="flex gap-2 overflow-x-auto mb-4 pb-1 shrink-0">
           {test.parts.map((p, idx) => (
             <button
@@ -427,6 +490,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
             return (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
+                {/* Passage Content */}
                 <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
                   <div className="p-4 bg-gray-50 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center sticky top-0">
                     <span>📖 Passage Content</span>
@@ -434,10 +498,9 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                   <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
                     {renderPart?.passage?.content ? (
                       <div className="prose max-w-none text-gray-800 leading-relaxed font-serif text-lg">
-                        {/* Tách passage thành các đoạn dựa trên \r\n\r\n hoặc \n\n */}
                         {renderPart.passage.content
                           .split(/\r?\n\r?\n/)
-                          .filter(paragraph => paragraph.trim())
+                          .filter((paragraph) => paragraph.trim())
                           .map((paragraph, index) => (
                             <p
                               key={index}
@@ -455,6 +518,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                   </div>
                 </div>
 
+                {/* Questions Panel */}
                 <div className="lg:col-span-5 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
                   <div
                     className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${
@@ -490,18 +554,14 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
                           <QuestionRenderer
                             group={mapGroup(group)}
-                            // THAY ĐỔI: Truyền cả textContent lên
                             onAnswerChange={(qId, val, text) =>
                               !isReviewMode &&
                               handleAnswerChange(qId, val, finalType, text)
                             }
                             userAnswers={
                               isReviewMode
-                                ? reviewAnswersMap
-                                : Object.keys(answers).reduce((acc, k) => {
-                                    acc[k] = answers[k].value;
-                                    return acc;
-                                  }, {})
+                                ? reviewAnswersMap // { value, isCorrect }
+                                : answers // { value, text, type }
                             }
                             isReviewMode={isReviewMode}
                           />

@@ -60,3 +60,10 @@ export const getTestAnswerAPI = async (idTest) => {
   const res = await API.get(`/test/get-answers-in-test/${idTest}`);
   return res.data;
 };
+
+export const getTestResultAndAnswersAPI = async (idTestResult) => {
+  const res = await API.get(
+    `/user-test-result/get-test-result-and-answers/${idTestResult}`
+  );
+  return res.data;
+};

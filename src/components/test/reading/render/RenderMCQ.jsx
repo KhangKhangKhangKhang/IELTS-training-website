@@ -3,11 +3,21 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, XCircle } from "lucide-react";
 
-const RenderMCQ = ({ question, onAnswerChange, userAnswer, isReviewMode }) => {
+const RenderMCQ = ({
+  question,
+  onAnswerChange,
+  userAnswer,
+  isReviewMode,
+  resultIsCorrect,
+}) => {
   const correctAnswerObj = question.correct_answers?.[0];
   const correctAnswerKey = correctAnswerObj?.matching_key;
-  const isCorrect = isReviewMode && userAnswer === correctAnswerKey;
 
+  // Logic cũ: const isCorrect = isReviewMode && userAnswer === correctAnswerKey;
+  // Logic mới:
+  const isCorrect = isReviewMode && resultIsCorrect === true;
+
+  // ... (Phần UI giữ nguyên) ...
   let containerClass = "mb-4 p-4 border rounded-lg transition-colors ";
   if (isReviewMode) {
     containerClass += isCorrect
@@ -19,6 +29,7 @@ const RenderMCQ = ({ question, onAnswerChange, userAnswer, isReviewMode }) => {
 
   return (
     <div className={containerClass}>
+      {/* ... Header question ... */}
       <div className="flex justify-between items-start mb-3">
         <div className="flex gap-2">
           <span
@@ -49,7 +60,6 @@ const RenderMCQ = ({ question, onAnswerChange, userAnswer, isReviewMode }) => {
         disabled={isReviewMode}
         value={userAnswer}
         onValueChange={(val) => {
-          // LOGIC MỚI: Tìm text tương ứng
           const selectedAns = question.answers.find(
             (a) => a.matching_key === val
           );
@@ -66,13 +76,14 @@ const RenderMCQ = ({ question, onAnswerChange, userAnswer, isReviewMode }) => {
                 " bg-green-100 border-green-300 ring-1 ring-green-400 font-medium";
             } else if (
               answer.matching_key === userAnswer &&
-              userAnswer !== correctAnswerKey
+              !isCorrect // Nếu chọn sai thì tô đỏ
             ) {
               itemClass += " bg-red-100 border-red-300 opacity-80";
             } else {
               itemClass += " opacity-50";
             }
           } else {
+            // ...
             itemClass += " hover:bg-white hover:shadow-sm cursor-pointer";
             if (userAnswer === answer.matching_key)
               itemClass += " bg-blue-50 border-blue-200";

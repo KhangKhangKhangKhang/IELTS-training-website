@@ -13,28 +13,48 @@ const QuestionRenderer = ({
   userAnswers = {},
   isReviewMode = false,
 }) => {
-  const getUserAnswer = (qId) => userAnswers[qId];
+  // Helper để lấy data an toàn
+  // Nếu là Review Mode, data có dạng { value: "A", isCorrect: true/false }
+  // Nếu là Doing Mode, data có dạng { value: "A", ... }
+  const getUserData = (qId) => {
+    const data = userAnswers[qId];
+    if (!data) return { value: "", resultIsCorrect: false };
+
+    // Check nếu data là object có property value
+    if (typeof data === "object" && data !== null) {
+      return {
+        value: data.value,
+        resultIsCorrect: data.isCorrect, // Lấy trạng thái đúng sai từ API
+      };
+    }
+    // Fallback cho trường hợp cũ (nếu có)
+    return { value: data, resultIsCorrect: false };
+  };
 
   const commonProps = {
-    onAnswerChange, // Component con sẽ gọi onAnswerChange(id, val, text)
+    onAnswerChange,
     isReviewMode,
   };
 
   switch (group.type_question) {
     case "MCQ":
-      return group.questions.map((q) => (
-        <RenderMCQ
-          key={q.question_id}
-          question={q}
-          userAnswer={getUserAnswer(q.question_id)}
-          {...commonProps}
-        />
-      ));
+      return group.questions.map((q) => {
+        const { value, resultIsCorrect } = getUserData(q.question_id);
+        return (
+          <RenderMCQ
+            key={q.question_id}
+            question={q}
+            userAnswer={value}
+            resultIsCorrect={resultIsCorrect} // Truyền xuống
+            {...commonProps}
+          />
+        );
+      });
     case "FILL_BLANK":
       return (
         <RenderFillBlank
           questions={group.questions}
-          userAnswers={userAnswers}
+          userAnswers={userAnswers} // Component này xử lý hơi khác, xem bên dưới
           {...commonProps}
         />
       );
@@ -46,44 +66,58 @@ const QuestionRenderer = ({
           {...commonProps}
         />
       );
-    // ... Các case khác tương tự, chỉ cần truyền onAnswerChange xuống là được
-    // Vì RenderTFNG, RenderShortAnswer mặc định trả về text = val nên không cần sửa
     case "TFNG":
-      return group.questions.map((q) => (
-        <RenderTFNG
-          key={q.question_id}
-          question={q}
-          userAnswer={getUserAnswer(q.question_id)}
-          {...commonProps}
-        />
-      ));
+      return group.questions.map((q) => {
+        const { value, resultIsCorrect } = getUserData(q.question_id);
+        return (
+          <RenderTFNG
+            key={q.question_id}
+            question={q}
+            userAnswer={value}
+            resultIsCorrect={resultIsCorrect}
+            {...commonProps}
+          />
+        );
+      });
     case "YES_NO_NOTGIVEN":
-      return group.questions.map((q) => (
-        <RenderYesNoNotGiven
-          key={q.question_id}
-          question={q}
-          userAnswer={getUserAnswer(q.question_id)}
-          {...commonProps}
-        />
-      ));
+      return group.questions.map((q) => {
+        const { value, resultIsCorrect } = getUserData(q.question_id);
+        return (
+          <RenderYesNoNotGiven
+            key={q.question_id}
+            question={q}
+            userAnswer={value}
+            resultIsCorrect={resultIsCorrect}
+            {...commonProps}
+          />
+        );
+      });
     case "SHORT_ANSWER":
-      return group.questions.map((q) => (
-        <RenderShortAnswer
-          key={q.question_id}
-          question={q}
-          userAnswer={getUserAnswer(q.question_id)}
-          {...commonProps}
-        />
-      ));
+      return group.questions.map((q) => {
+        const { value, resultIsCorrect } = getUserData(q.question_id);
+        return (
+          <RenderShortAnswer
+            key={q.question_id}
+            question={q}
+            userAnswer={value}
+            resultIsCorrect={resultIsCorrect}
+            {...commonProps}
+          />
+        );
+      });
     case "LABELING":
-      return group.questions.map((q) => (
-        <RenderLabeling
-          key={q.question_id}
-          question={q}
-          userAnswer={getUserAnswer(q.question_id)}
-          {...commonProps}
-        />
-      ));
+      return group.questions.map((q) => {
+        const { value, resultIsCorrect } = getUserData(q.question_id);
+        return (
+          <RenderLabeling
+            key={q.question_id}
+            question={q}
+            userAnswer={value}
+            resultIsCorrect={resultIsCorrect}
+            {...commonProps}
+          />
+        );
+      });
     default:
       return (
         <div className="text-red-500">Unknown type: {group.type_question}</div>
