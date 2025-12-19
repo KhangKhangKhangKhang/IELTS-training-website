@@ -1,13 +1,18 @@
-// CreateComment - Updated
-import { useState } from "react";
+// CreateComment - Updated with emoji picker
+import { useState, useRef, useEffect } from "react";
 import { createCommentAPI } from "@/services/apiForum";
-import { Input, Button, message } from "antd";
+import { Input, Button, message, Avatar, Popover } from "antd";
+import { SendOutlined, SmileOutlined } from "@ant-design/icons";
 import { useAuth } from "@/context/authContext";
+import EmojiPicker from "emoji-picker-react";
 
 const CreateComment = ({ idForumPost, onCommentCreated }) => {
   const { user } = useAuth();
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const inputRef = useRef(null);
 
   const handleComment = async () => {
     if (!content.trim()) return;
@@ -29,22 +34,89 @@ const CreateComment = ({ idForumPost, onCommentCreated }) => {
     }
   };
 
-  return (
-    <div className="flex gap-3 p-4 bg-white rounded-xl border border-slate-200">
-      <Input
-        placeholder="Viết bình luận của bạn..."
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        className="rounded-lg border-slate-300"
-        onPressEnter={handleComment}
+  const onEmojiClick = (emojiData) => {
+    setContent((prev) => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+  };
+
+  const emojiPickerContent = (
+    <div className="emoji-picker-container">
+      <EmojiPicker
+        onEmojiClick={onEmojiClick}
+        width={320}
+        height={400}
+        searchPlaceHolder="Tìm emoji..."
+        previewConfig={{ showPreview: false }}
+        skinTonesDisabled
+        lazyLoadEmojis
+        categories={[
+          { name: "Hay dùng", category: "suggested" },
+          { name: "Mặt cười", category: "smileys_people" },
+          { name: "Động vật", category: "animals_nature" },
+          { name: "Đồ ăn", category: "food_drink" },
+          { name: "Hoạt động", category: "activities" },
+          { name: "Du lịch", category: "travel_places" },
+          { name: "Vật thể", category: "objects" },
+          { name: "Biểu tượng", category: "symbols" },
+        ]}
       />
-      <Button
-        onClick={handleComment}
-        loading={loading}
-        className="bg-slate-900 hover:bg-slate-800 border-slate-900 hover:border-slate-800 text-white rounded-lg"
+    </div>
+  );
+
+  return (
+    <div
+      className={`flex gap-3 p-4 rounded-2xl transition-all duration-300 ${isFocused
+          ? "bg-gradient-to-r from-blue-50 to-blue-50 border-2 border-blue-100"
+          : "bg-white border-2 border-slate-100"
+        }`}
+    >
+      <Avatar
+        size={40}
+        src={user?.avatar || null}
+        className="border-2 border-white shadow-sm flex-shrink-0"
       >
-        Gửi
-      </Button>
+        {user?.nameUser?.charAt(0)?.toUpperCase()}
+      </Avatar>
+
+      <div className="flex-1 flex gap-2">
+        <div className="flex-1 relative">
+          <Input
+            ref={inputRef}
+            placeholder="Viết bình luận của bạn..."
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            className="rounded-full border-0 bg-slate-100 hover:bg-slate-50 focus:bg-white pl-4 pr-10 h-10 text-sm"
+            onPressEnter={handleComment}
+          />
+          <Popover
+            content={emojiPickerContent}
+            trigger="click"
+            open={showEmojiPicker}
+            onOpenChange={setShowEmojiPicker}
+            placement="topRight"
+            arrow={false}
+            overlayClassName="emoji-popover"
+          >
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500 transition-colors cursor-pointer"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            >
+              <SmileOutlined className="text-lg" />
+            </button>
+          </Popover>
+        </div>
+
+        <Button
+          onClick={handleComment}
+          loading={loading}
+          disabled={!content.trim()}
+          icon={<SendOutlined />}
+          className="bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 border-0 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md shadow-blue-200 disabled:opacity-50 disabled:shadow-none"
+        />
+      </div>
     </div>
   );
 };

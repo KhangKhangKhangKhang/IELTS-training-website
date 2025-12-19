@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Table,
   Button,
@@ -7,10 +7,9 @@ import {
   Input,
   Select,
   message,
-  Card,
-  Tag,
-  Space,
   Avatar,
+  Tooltip,
+  Dropdown,
 } from "antd";
 import {
   EditOutlined,
@@ -19,6 +18,18 @@ import {
   UserOutlined,
   ManOutlined,
   WomanOutlined,
+  SearchOutlined,
+  TeamOutlined,
+  CrownOutlined,
+  BookOutlined,
+  MoreOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  HomeOutlined,
+  LockOutlined,
+  GoogleOutlined,
+  FilterOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import {
   getAllUserAPI,
@@ -36,7 +47,37 @@ const UserList = () => {
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm();
   const [editingUser, setEditingUser] = useState(null);
+  const [searchText, setSearchText] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
   const { user } = useAuth();
+
+  // Stats computed from data
+  const stats = useMemo(() => {
+    return {
+      total: dataSource.length,
+      admin: dataSource.filter((u) => u.role === "ADMIN").length,
+      teacher: dataSource.filter((u) => u.role === "GIAOVIEN").length,
+      user: dataSource.filter((u) => u.role === "USER").length,
+    };
+  }, [dataSource]);
+
+  // Filtered data
+  const filteredData = useMemo(() => {
+    let filtered = dataSource;
+    if (searchText) {
+      const lower = searchText.toLowerCase();
+      filtered = filtered.filter(
+        (u) =>
+          u.nameUser?.toLowerCase().includes(lower) ||
+          u.email?.toLowerCase().includes(lower) ||
+          u.phoneNumber?.includes(searchText)
+      );
+    }
+    if (roleFilter !== "all") {
+      filtered = filtered.filter((u) => u.role === roleFilter);
+    }
+    return filtered;
+  }, [dataSource, searchText, roleFilter]);
 
   const fetchUser = async () => {
     setLoading(true);
@@ -65,7 +106,6 @@ const UserList = () => {
 
   const handleSubmit = async () => {
     try {
-      // values sẽ tự động bao gồm: nameUser, email, gender, ... từ Form
       const values = await form.validateFields();
 
       if (editingUser) {
@@ -91,11 +131,30 @@ const UserList = () => {
 
   const handleDelete = async (record) => {
     Modal.confirm({
-      title: "Xác nhận xóa",
-      content: `Bạn có chắc chắn muốn xóa người dùng "${record.nameUser}"?`,
+      title: "Xác nhận xóa người dùng",
+      content: (
+        <div className="py-3">
+          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+            <Avatar
+              size={40}
+              src={record.avatar}
+              icon={<UserOutlined />}
+              className="border border-slate-200"
+            />
+            <div>
+              <p className="font-medium text-slate-800">{record.nameUser}</p>
+              <p className="text-sm text-slate-500">{record.email}</p>
+            </div>
+          </div>
+          <p className="mt-3 text-slate-600 text-sm">
+            Hành động này không thể hoàn tác.
+          </p>
+        </div>
+      ),
       okText: "Xóa",
       okType: "danger",
       cancelText: "Hủy",
+      centered: true,
       onOk: async () => {
         try {
           await deleteUserAPI(record.idUser);
@@ -109,67 +168,76 @@ const UserList = () => {
     });
   };
 
-  const getRoleColor = (role) => {
+  const getRoleTag = (role) => {
     switch (role) {
       case "ADMIN":
-        return "red";
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-medium">
+            <CrownOutlined />
+            Admin
+          </span>
+        );
       case "GIAOVIEN":
-        return "blue";
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium">
+            <BookOutlined />
+            Giáo viên
+          </span>
+        );
       default:
-        return "green";
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-medium">
+            <UserOutlined />
+            Học viên
+          </span>
+        );
     }
-  };
-
-  const getAccountTypeColor = (type) => {
-    return type === "GOOGLE" ? "orange" : "gray";
   };
 
   const columns = [
     {
-      title: "Avatar",
-      dataIndex: "avatar",
-      key: "avatar",
-      align: "center",
-      width: 80,
-      render: (avatar) => (
-        <Avatar
-          size="large"
-          src={avatar}
-          icon={<UserOutlined />}
-          className="border border-gray-300"
-        />
+      title: "Người dùng",
+      key: "user",
+      width: 280,
+      render: (_, record) => (
+        <div className="flex items-center gap-3 py-1">
+          <Avatar
+            size={42}
+            src={record.avatar}
+            icon={<UserOutlined />}
+            className="border border-slate-200"
+          />
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-slate-800 truncate">
+              {record.nameUser}
+            </p>
+            <p className="text-sm text-slate-500 truncate">{record.email}</p>
+          </div>
+        </div>
       ),
-    },
-    {
-      title: "Tên người dùng",
-      dataIndex: "nameUser",
-      key: "nameUser",
-      sorter: (a, b) => a.nameUser.localeCompare(b.nameUser),
-    },
-    {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",
     },
     {
       title: "Giới tính",
       dataIndex: "gender",
       key: "gender",
       align: "center",
-      width: 100,
+      width: 90,
       render: (gender) => {
         if (gender === "Male")
           return (
-            <Tag color="blue" icon={<ManOutlined />}>
+            <span className="inline-flex items-center gap-1 text-blue-600 text-sm">
+              <ManOutlined />
               Nam
-            </Tag>
+            </span>
           );
         if (gender === "Female")
           return (
-            <Tag color="magenta" icon={<WomanOutlined />}>
+            <span className="inline-flex items-center gap-1 text-pink-600 text-sm">
+              <WomanOutlined />
               Nữ
-            </Tag>
+            </span>
           );
+        return <span className="text-slate-400">—</span>;
       },
     },
     {
@@ -177,140 +245,279 @@ const UserList = () => {
       dataIndex: "role",
       key: "role",
       align: "center",
-      render: (role) => (
-        <Tag color={getRoleColor(role)} className="font-semibold">
-          {role}
-        </Tag>
-      ),
-      filters: [
-        { text: "ADMIN", value: "ADMIN" },
-        { text: "USER", value: "USER" },
-        { text: "GIAOVIEN", value: "GIAOVIEN" },
-      ],
-      onFilter: (value, record) => record.role === value,
+      width: 120,
+      render: (role) => getRoleTag(role),
     },
     {
-      title: "Loại tài khoản",
+      title: "Loại TK",
       dataIndex: "accountType",
       key: "accountType",
       align: "center",
-      render: (type) => <Tag color={getAccountTypeColor(type)}>{type}</Tag>,
+      width: 100,
+      render: (type) => (
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${type === "GOOGLE"
+              ? "bg-orange-50 text-orange-600"
+              : "bg-slate-100 text-slate-600"
+            }`}
+        >
+          {type === "GOOGLE" ? <GoogleOutlined /> : <LockOutlined />}
+          {type}
+        </span>
+      ),
     },
     {
       title: "Số điện thoại",
       dataIndex: "phoneNumber",
       key: "phoneNumber",
-      render: (phone) => phone || "Chưa có",
+      width: 140,
+      render: (phone) => (
+        <span className="text-slate-600">
+          {phone || <span className="text-slate-400 italic">Chưa có</span>}
+        </span>
+      ),
     },
     {
-      title: "Địa chỉ",
-      dataIndex: "address",
-      key: "address",
-      ellipsis: true,
-      render: (address) => address || "Chưa có",
+      title: "Level",
+      dataIndex: "level",
+      key: "level",
+      align: "center",
+      width: 80,
+      render: (level) => {
+        const colors = {
+          Low: "bg-yellow-100 text-yellow-700",
+          Mid: "bg-blue-100 text-blue-700",
+          High: "bg-purple-100 text-purple-700",
+        };
+        return (
+          <span
+            className={`px-2 py-1 rounded-lg text-xs font-medium ${colors[level] || "bg-slate-100 text-slate-600"
+              }`}
+          >
+            {level || "—"}
+          </span>
+        );
+      },
     },
     ...(user.role === "ADMIN"
       ? [
-          {
-            title: "Thao tác",
-            key: "actions",
-            align: "center",
-            width: 120,
-            render: (_, record) => (
-              <Space size="middle">
-                <Button
-                  type="link"
-                  icon={<EditOutlined />}
-                  onClick={() => handleEdit(record)}
-                  className="text-blue-500"
-                />
-                <Button
-                  type="link"
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={() => handleDelete(record)}
-                />
-              </Space>
-            ),
-          },
-        ]
+        {
+          title: "",
+          key: "actions",
+          align: "center",
+          width: 50,
+          render: (_, record) => (
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: "edit",
+                    icon: <EditOutlined />,
+                    label: "Chỉnh sửa",
+                    onClick: () => handleEdit(record),
+                  },
+                  { type: "divider" },
+                  {
+                    key: "delete",
+                    icon: <DeleteOutlined />,
+                    label: "Xóa",
+                    danger: true,
+                    onClick: () => handleDelete(record),
+                  },
+                ],
+              }}
+              trigger={["click"]}
+              placement="bottomRight"
+            >
+              <Button
+                type="text"
+                icon={<MoreOutlined />}
+                className="hover:bg-slate-100 rounded-lg"
+              />
+            </Dropdown>
+          ),
+        },
+      ]
       : []),
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <Card
-        className="shadow-lg rounded-xl border-0"
-        bodyStyle={{ padding: 0 }}
-      >
-        <div className="bg-white rounded-xl p-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-2">
-                Quản lý người dùng
-              </h1>
-              <p className="text-gray-600">
-                Tổng số người dùng: {dataSource.length}
-              </p>
-            </div>
-            {user.role === "ADMIN" && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleAdd}
-                size="large"
-                className="bg-blue-600 hover:bg-blue-700 border-0 shadow-md"
-              >
-                Thêm người dùng
-              </Button>
-            )}
-          </div>
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header - giống Forum */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 rounded-2xl shadow-lg p-8 border border-slate-700">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400/10 rounded-full translate-y-1/2 -translate-x-1/2" />
 
-          {/* Table */}
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-500/20 backdrop-blur-sm flex items-center justify-center">
+                  <TeamOutlined className="text-2xl text-blue-400" />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-white">
+                    Quản lý người dùng
+                  </h1>
+                  <p className="text-slate-400 text-sm mt-1">
+                    Tổng số:{" "}
+                    <span className="text-blue-400 font-semibold">
+                      {stats.total}
+                    </span>{" "}
+                    người dùng
+                  </p>
+                </div>
+              </div>
+
+              {user.role === "ADMIN" && (
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleAdd}
+                  size="large"
+                  className="bg-blue-600 hover:bg-blue-500 border-0 shadow-lg shadow-blue-600/30 rounded-xl h-11 px-6"
+                >
+                  Thêm người dùng
+                </Button>
+              )}
+            </div>
+
+            {/* Stats inline */}
+            <div className="flex flex-wrap items-center gap-6 mt-6 pt-5 border-t border-slate-700">
+              <div className="flex items-center gap-2 text-slate-400 text-sm">
+                <CrownOutlined className="text-red-400" />
+                <span>
+                  Admin:{" "}
+                  <span className="text-white font-medium">{stats.admin}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-400 text-sm">
+                <BookOutlined className="text-blue-400" />
+                <span>
+                  Giáo viên:{" "}
+                  <span className="text-white font-medium">{stats.teacher}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-400 text-sm">
+                <UserOutlined className="text-emerald-400" />
+                <span>
+                  Học viên:{" "}
+                  <span className="text-white font-medium">{stats.user}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search & Filter */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row gap-3 items-center">
+            <div className="flex-1 w-full">
+              <Input
+                placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
+                prefix={<SearchOutlined className="text-slate-400" />}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                size="large"
+                className="rounded-lg"
+                allowClear
+              />
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Select
+                value={roleFilter}
+                onChange={setRoleFilter}
+                size="large"
+                className="w-full sm:w-40"
+                suffixIcon={<FilterOutlined />}
+              >
+                <Option value="all">Tất cả</Option>
+                <Option value="ADMIN">Admin</Option>
+                <Option value="GIAOVIEN">Giáo viên</Option>
+                <Option value="USER">Học viên</Option>
+              </Select>
+              <Tooltip title="Làm mới">
+                <Button
+                  icon={<ReloadOutlined />}
+                  size="large"
+                  onClick={fetchUser}
+                  loading={loading}
+                  className="rounded-lg"
+                />
+              </Tooltip>
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <Table
-            bordered
             loading={loading}
             rowKey={"idUser"}
             pagination={{
-              pageSize: 8,
+              pageSize: 10,
               showSizeChanger: true,
-              showQuickJumper: true,
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} của ${total} người dùng`,
+              className: "px-4 py-3",
             }}
             columns={columns}
-            dataSource={dataSource}
-            className="rounded-lg overflow-hidden"
-            scroll={{ x: 1200 }}
+            dataSource={filteredData}
+            scroll={{ x: 900 }}
+            rowClassName="hover:bg-slate-50 transition-colors"
           />
         </div>
-      </Card>
+      </div>
 
       {/* Modal form */}
       <Modal
         title={
-          <div className="text-xl font-semibold">
-            {editingUser ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
+          <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+              {editingUser ? (
+                <EditOutlined className="text-lg text-blue-600" />
+              ) : (
+                <PlusOutlined className="text-lg text-blue-600" />
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800">
+                {editingUser ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
+              </h3>
+              <p className="text-sm text-slate-500">
+                {editingUser
+                  ? "Cập nhật thông tin người dùng"
+                  : "Điền thông tin để tạo tài khoản"}
+              </p>
+            </div>
           </div>
         }
         open={open}
         onCancel={() => setOpen(false)}
-        onOk={handleSubmit}
-        okText={editingUser ? "Cập nhật" : "Tạo mới"}
-        cancelText="Hủy"
-        width={700}
-        styles={{
-          body: { padding: "24px 0" },
-        }}
+        footer={
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            <Button size="large" onClick={() => setOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              onClick={handleSubmit}
+              className="bg-blue-600 hover:bg-blue-500"
+            >
+              {editingUser ? "Cập nhật" : "Tạo mới"}
+            </Button>
+          </div>
+        }
+        width={650}
+        centered
       >
         <Form
           form={form}
           layout="vertical"
-          className="px-4" // Tăng padding ngang để form thoáng hơn
+          className="pt-4"
           requiredMark="optional"
         >
-          {/* Hàng 1: Tên và Email */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Form.Item
               label="Tên người dùng"
@@ -319,45 +526,55 @@ const UserList = () => {
                 { required: true, message: "Vui lòng nhập tên người dùng" },
               ]}
             >
-              <Input size="large" placeholder="Nhập tên người dùng" />
+              <Input
+                size="large"
+                placeholder="Nhập tên người dùng"
+                prefix={<UserOutlined className="text-slate-400" />}
+              />
             </Form.Item>
 
             <Form.Item
               label="Email"
               name="email"
               rules={[
-                {
-                  required: true,
-                  type: "email",
-                  message: "Email không hợp lệ",
-                },
+                { required: true, type: "email", message: "Email không hợp lệ" },
               ]}
             >
-              <Input size="large" placeholder="Nhập địa chỉ email" />
+              <Input
+                size="large"
+                placeholder="Nhập email"
+                prefix={<MailOutlined className="text-slate-400" />}
+              />
             </Form.Item>
           </div>
 
-          {/* Hàng 2: Password (chỉ hiện khi tạo mới) */}
           {!editingUser && (
             <Form.Item
               label="Mật khẩu"
               name="password"
               rules={[{ required: true, message: "Vui lòng nhập mật khẩu" }]}
             >
-              <Input.Password size="large" placeholder="Nhập mật khẩu" />
+              <Input.Password
+                size="large"
+                placeholder="Nhập mật khẩu"
+                prefix={<LockOutlined className="text-slate-400" />}
+              />
             </Form.Item>
           )}
 
-          {/* Hàng 3: SĐT và Giới tính (MỚI) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Form.Item label="Số điện thoại" name="phoneNumber">
-              <Input size="large" placeholder="Nhập số điện thoại" />
+              <Input
+                size="large"
+                placeholder="Nhập số điện thoại"
+                prefix={<PhoneOutlined className="text-slate-400" />}
+              />
             </Form.Item>
 
             <Form.Item
               label="Giới tính"
               name="gender"
-              rules={[{ required: true, message: "Vui lòng chọn giới tính" }]} // Giá trị mặc định
+              rules={[{ required: true, message: "Vui lòng chọn giới tính" }]}
             >
               <Select size="large" placeholder="Chọn giới tính">
                 <Option value="Male">Nam</Option>
@@ -366,18 +583,20 @@ const UserList = () => {
             </Form.Item>
           </div>
 
-          {/* Hàng 4: Địa chỉ (Full width để nhập cho thoải mái) */}
           <Form.Item label="Địa chỉ" name="address">
-            <Input size="large" placeholder="Nhập địa chỉ thường trú" />
+            <Input
+              size="large"
+              placeholder="Nhập địa chỉ"
+              prefix={<HomeOutlined className="text-slate-400" />}
+            />
           </Form.Item>
 
-          {/* Hàng 5: Vai trò và Loại tài khoản */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Form.Item label="Vai trò" name="role" initialValue="USER">
               <Select size="large">
-                <Option value="USER">USER</Option>
-                <Option value="ADMIN">ADMIN</Option>
-                <Option value="GIAOVIEN">GIÁO VIÊN</Option>
+                <Option value="USER">Học viên</Option>
+                <Option value="ADMIN">Admin</Option>
+                <Option value="GIAOVIEN">Giáo viên</Option>
               </Select>
             </Form.Item>
 
@@ -387,25 +606,24 @@ const UserList = () => {
               initialValue="LOCAL"
             >
               <Select size="large">
-                <Option value="LOCAL">LOCAL</Option>
-                <Option value="GOOGLE">GOOGLE</Option>
+                <Option value="LOCAL">Local</Option>
+                <Option value="GOOGLE">Google</Option>
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              label="Level"
+              name="level"
+              rules={[{ required: true, message: "Vui lòng chọn level" }]}
+            >
+              <Select size="large" placeholder="Chọn level">
+                <Option value="Low">Low</Option>
+                <Option value="Mid">Mid</Option>
+                <Option value="High">High</Option>
               </Select>
             </Form.Item>
           </div>
 
-          <Form.Item
-            label="Level"
-            name="level"
-            rules={[{ required: true, message: "Vui lòng chọn level" }]}
-          >
-            <Select size="large">
-              <Option value="Low">Low</Option>
-              <Option value="Mid">Mid</Option>
-              <Option value="High">High</Option>
-            </Select>
-          </Form.Item>
-
-          {/* Hàng 7: Avatar */}
           <Form.Item label="Avatar URL" name="avatar">
             <Input size="large" placeholder="https://example.com/avatar.jpg" />
           </Form.Item>

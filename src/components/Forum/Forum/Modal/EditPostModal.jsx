@@ -1,8 +1,8 @@
-// EditPostModal - Updated
+// EditPostModal - Updated with enhanced UI
 import { Modal, Input, Upload, Button, message } from "antd";
 import { useState } from "react";
 import { updatePostAPI } from "@/services/apiForum";
-import { UploadOutlined } from "@ant-design/icons";
+import { UploadOutlined, EditOutlined, PictureOutlined } from "@ant-design/icons";
 import { useAuth } from "@/context/authContext";
 
 const EditPostModal = ({ post, open, onClose, onUpdated }) => {
@@ -39,22 +39,49 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
     <Modal
       open={open}
       title={
-        <span className="text-slate-900 font-semibold">Chỉnh sửa bài viết</span>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-blue-500 flex items-center justify-center">
+            <EditOutlined className="text-white text-lg" />
+          </div>
+          <div>
+            <span className="text-slate-900 font-semibold text-lg">
+              Chỉnh sửa bài viết
+            </span>
+            <p className="text-slate-500 text-xs font-normal">
+              Cập nhật nội dung bài viết của bạn
+            </p>
+          </div>
+        </div>
       }
       onCancel={onClose}
-      okText="Lưu thay đổi"
-      cancelText="Hủy"
-      confirmLoading={loading}
-      onOk={handleSave}
-      className="rounded-lg"
+      footer={
+        <div className="flex gap-3 justify-end pt-2">
+          <Button
+            onClick={onClose}
+            className="border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 rounded-xl px-6 h-10"
+          >
+            Hủy
+          </Button>
+          <Button
+            type="primary"
+            loading={loading}
+            onClick={handleSave}
+            className="bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-xl px-6 h-10 font-medium shadow-md shadow-blue-200"
+          >
+            Lưu thay đổi
+          </Button>
+        </div>
+      }
+      className="rounded-2xl"
+      width={560}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-5 pt-4">
         <Input.TextArea
           rows={6}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Nhập nội dung mới..."
-          className="rounded-lg border-slate-300 hover:border-slate-400"
+          className="rounded-xl border-slate-200 hover:border-blue-300 focus:border-blue-400"
         />
 
         <Upload
@@ -66,8 +93,8 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
           className="w-full"
         >
           <Button
-            icon={<UploadOutlined />}
-            className="w-full border-slate-300 text-slate-700 rounded-lg"
+            icon={<PictureOutlined />}
+            className="w-full border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-xl h-10"
           >
             Chọn ảnh/video mới
           </Button>
@@ -75,24 +102,30 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
 
         {/* Nếu đã chọn file mới → hiện preview */}
         {file && (
-          <div className="border border-slate-200 rounded-lg p-3">
-            <p className="text-sm text-slate-600 mb-2">Ảnh mới:</p>
+          <div className="border-2 border-blue-100 rounded-xl p-4 bg-gradient-to-r from-blue-50 to-blue-50">
+            <p className="text-sm font-medium text-blue-600 mb-3 flex items-center gap-2">
+              <PictureOutlined />
+              Ảnh mới:
+            </p>
             <img
               src={URL.createObjectURL(file)}
               alt="new"
-              className="rounded-lg max-h-48 object-cover w-full"
+              className="rounded-xl max-h-48 object-cover w-full"
             />
           </div>
         )}
 
         {/* Nếu chưa chọn file → hiện ảnh cũ */}
         {!file && post.file && (
-          <div className="border border-slate-200 rounded-lg p-3">
-            <p className="text-sm text-slate-600 mb-2">Ảnh hiện tại:</p>
+          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+            <p className="text-sm font-medium text-slate-600 mb-3 flex items-center gap-2">
+              <PictureOutlined />
+              Ảnh hiện tại:
+            </p>
             <img
               src={post.file}
               alt="current"
-              className="rounded-lg max-h-48 object-cover w-full"
+              className="rounded-xl max-h-48 object-cover w-full"
             />
           </div>
         )}

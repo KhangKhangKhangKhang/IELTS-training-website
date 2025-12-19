@@ -336,36 +336,50 @@ const Vocabulary = () => {
   const selectedTopic = topics.find((topic) => topic.isSelected);
   const filteredVocabularies = selectedTopic
     ? vocabularies.filter(
-        (vocab) =>
-          vocab.idTopic === selectedTopic.idTopic &&
-          vocab.word.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      (vocab) =>
+        vocab.idTopic === selectedTopic.idTopic &&
+        vocab.word.toLowerCase().includes(searchTerm.toLowerCase())
+    )
     : [];
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-slate-800 mb-6 flex items-center">
-          <BookOpen className="mr-3" /> Từ Vựng IELTS
-        </h1>
+        {/* Header */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 rounded-2xl shadow-lg p-8 mb-6 border border-slate-700">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+          <div className="relative z-10 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center">
+              <BookOpen className="w-7 h-7 text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">Từ Vựng IELTS</h1>
+              <p className="text-slate-400 text-sm mt-1">Học từ vựng thông minh với hệ thống flashcard</p>
+            </div>
+          </div>
+        </div>
+
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+          <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-xl mb-6">
             {error}
             <button
               onClick={() => setError(null)}
-              className="float-right text-red-800 font-bold"
+              className="float-right text-red-700 hover:text-red-900 font-bold"
             >
               ×
             </button>
           </div>
         )}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+
+        {/* Topics Section */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 border border-slate-200">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-slate-700">Chủ đề</h2>
+            <h2 className="text-xl font-semibold text-slate-800">Chủ đề</h2>
             <div className="flex space-x-2">
               <button
                 onClick={() => setShowAddTopic(true)}
-                className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-full transition-colors"
+                className="bg-blue-600 hover:bg-blue-500 text-white p-2.5 rounded-xl transition-colors shadow-lg shadow-blue-600/20"
                 title="Thêm chủ đề mới"
               >
                 <Plus size={18} />
@@ -378,11 +392,10 @@ const Vocabulary = () => {
               <div key={topic.idTopic} className="relative group">
                 <button
                   onClick={() => handleSelectTopic(topic.idTopic)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    topic.isSelected
-                      ? "bg-slate-800 text-white"
-                      : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${topic.isSelected
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                    }`}
                 >
                   {topic.nameTopic}
                 </button>
@@ -421,9 +434,9 @@ const Vocabulary = () => {
           </div>
         </div>
         {showAddTopic && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96">
-              <h3 className="text-lg font-semibold mb-4">Thêm chủ đề mới</h3>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 w-96 shadow-2xl">
+              <h3 className="text-lg font-semibold mb-4 text-slate-900">Thêm chủ đề mới</h3>
               <input
                 type="text"
                 value={newTopic}
@@ -433,9 +446,8 @@ const Vocabulary = () => {
                     setValidationErrors({ ...validationErrors, topic: "" });
                   }
                 }}
-                className={`w-full p-2 border rounded-md mb-1 ${
-                  validationErrors.topic ? "border-red-500" : "border-slate-300"
-                }`}
+                className={`w-full p-3 border rounded-xl mb-1 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${validationErrors.topic ? "border-red-500" : "border-slate-200"
+                  }`}
                 placeholder="Tên chủ đề mới"
                 autoFocus
                 onKeyPress={(e) => e.key === "Enter" && handleAddTopic()}
@@ -451,13 +463,13 @@ const Vocabulary = () => {
                     setShowAddTopic(false);
                     resetValidationErrors();
                   }}
-                  className="px-4 py-2 text-slate-600 hover:text-slate-800"
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors"
                 >
                   Hủy
                 </button>
                 <button
                   onClick={handleAddTopic}
-                  className="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700"
+                  className="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20"
                 >
                   Thêm
                 </button>
@@ -466,9 +478,9 @@ const Vocabulary = () => {
           </div>
         )}
         {showEditTopic && topicToEdit && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96">
-              <h3 className="text-lg font-semibold mb-4">Sửa chủ đề</h3>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 w-96 shadow-2xl">
+              <h3 className="text-lg font-semibold mb-4 text-slate-900">Sửa chủ đề</h3>
               <input
                 type="text"
                 value={topicToEdit.nameTopic}
@@ -478,9 +490,8 @@ const Vocabulary = () => {
                     setValidationErrors({ ...validationErrors, topic: "" });
                   }
                 }}
-                className={`w-full p-2 border rounded-md mb-1 ${
-                  validationErrors.topic ? "border-red-500" : "border-slate-300"
-                }`}
+                className={`w-full p-3 border rounded-xl mb-1 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${validationErrors.topic ? "border-red-500" : "border-slate-200"
+                  }`}
                 autoFocus
                 onKeyPress={(e) => e.key === "Enter" && handleEditTopic()}
               />
@@ -495,13 +506,13 @@ const Vocabulary = () => {
                     setShowEditTopic(false);
                     resetValidationErrors();
                   }}
-                  className="px-4 py-2 text-slate-600 hover:text-slate-800"
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors"
                 >
                   Hủy
                 </button>
                 <button
                   onClick={handleEditTopic}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-500"
+                  className="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20"
                 >
                   Lưu
                 </button>
@@ -510,9 +521,9 @@ const Vocabulary = () => {
           </div>
         )}
         {selectedTopic && (
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-slate-700">
+              <h2 className="text-xl font-semibold text-slate-800">
                 Từ vựng: {selectedTopic.nameTopic}
               </h2>
               <div className="flex space-x-4">
@@ -526,12 +537,12 @@ const Vocabulary = () => {
                     placeholder="Tìm kiếm từ vựng..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500"
+                    className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <button
                   onClick={() => setShowAddVocabulary(true)}
-                  className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md flex items-center transition-colors"
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl flex items-center transition-colors shadow-lg shadow-blue-600/20"
                 >
                   <Plus size={18} className="mr-1" /> Thêm từ
                 </button>
@@ -543,7 +554,7 @@ const Vocabulary = () => {
                     }
                     setShowFlashcard(true);
                   }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center transition-colors ml-2"
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-4 py-2 rounded-xl flex items-center transition-all ml-2 shadow-lg shadow-orange-500/20"
                 >
                   <Sparkles size={18} className="mr-1" /> Ôn tập ngay
                 </button>
@@ -551,52 +562,55 @@ const Vocabulary = () => {
             </div>
 
             {vocabularies.length > 0 ? (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
                 <table className="min-w-full divide-y divide-slate-200">
                   <thead className="bg-slate-100">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                         Từ vựng
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                         Loại từ
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                         Level
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                         Phonetic
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                         Nghĩa
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                         Ví dụ
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                         Thao tác
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
                     {filteredVocabularies.map((vocab, index) => (
-                      <tr key={vocab.idVocab || `temp-${index}`}>
+                      <tr key={vocab.idVocab || `temp-${index}`} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                           {vocab.word}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
-                          {vocab.VocabType}
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs">{vocab.VocabType}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
-                          {vocab.level}
+                          <span className={`px-2 py-1 rounded-lg text-xs ${vocab.level === 'High' ? 'bg-red-100 text-red-700' :
+                            vocab.level === 'Mid' ? 'bg-amber-100 text-amber-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>{vocab.level}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 italic">
                           {vocab.phonetic}
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-700">
                           {vocab.meaning}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-700">
+                        <td className="px-6 py-4 text-sm text-slate-500 italic">
                           {vocab.example}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -606,7 +620,7 @@ const Vocabulary = () => {
                                 setVocabToEdit(vocab);
                                 setShowEditVocabulary(true);
                               }}
-                              className="text-blue-600 hover:text-blue-900 p-1"
+                              className="text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
                               title="Chỉnh sửa"
                             >
                               <Edit size={16} />
@@ -615,7 +629,7 @@ const Vocabulary = () => {
                               onClick={() =>
                                 handleDeleteVocabulary(vocab.idVocab)
                               }
-                              className="text-red-600 hover:text-red-900 p-1"
+                              className="text-red-600 hover:text-red-800 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
                               title="Xóa"
                             >
                               <Trash2 size={16} />
@@ -628,11 +642,14 @@ const Vocabulary = () => {
                 </table>
               </div>
             ) : (
-              <div className="text-center py-12 text-slate-500">
-                <p>Chưa có từ vựng nào trong chủ đề này.</p>
+              <div className="text-center py-16 text-slate-500">
+                <div className="w-20 h-20 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-4">
+                  <BookOpen className="w-10 h-10 text-slate-400" />
+                </div>
+                <p className="text-lg mb-2">Chưa có từ vựng nào trong chủ đề này.</p>
                 <button
                   onClick={() => setShowAddVocabulary(true)}
-                  className="mt-4 text-slate-800 hover:text-slate-600 underline"
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-colors"
                 >
                   Thêm từ vựng đầu tiên
                 </button>
@@ -641,18 +658,21 @@ const Vocabulary = () => {
           </div>
         )}
         {!selectedTopic && topics.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <p className="text-slate-600">
+          <div className="bg-white rounded-2xl shadow-sm p-12 text-center border border-slate-200">
+            <div className="w-20 h-20 mx-auto rounded-full bg-blue-50 flex items-center justify-center mb-4">
+              <BookOpen className="w-10 h-10 text-blue-400" />
+            </div>
+            <p className="text-slate-600 text-lg">
               Vui lòng chọn một chủ đề để xem từ vựng.
             </p>
           </div>
         )}
         {/* Modal Add Vocabulary - ĐÃ CẬP NHẬT VỚI GỢI Ý ĐẦY ĐỦ */}
         {showAddVocabulary && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <Sparkles className="mr-2 text-yellow-500" size={20} />
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+              <h3 className="text-lg font-semibold mb-4 flex items-center text-slate-900">
+                <Sparkles className="mr-2 text-amber-500" size={20} />
                 Thêm từ vựng mới
               </h3>
 
@@ -677,12 +697,11 @@ const Vocabulary = () => {
                           });
                         }
                       }}
-                      className={`w-full p-2 border rounded-md pr-10 ${
-                        validationErrors.vocabulary &&
+                      className={`w-full p-3 border rounded-xl pr-10 bg-slate-50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${validationErrors.vocabulary &&
                         !newVocabulary.word.trim()
-                          ? "border-red-500"
-                          : "border-slate-300"
-                      }`}
+                        ? "border-red-500"
+                        : "border-slate-200"
+                        }`}
                       placeholder="Nhập từ vựng..."
                       autoFocus
                     />
@@ -703,7 +722,7 @@ const Vocabulary = () => {
                 {/* Hiển thị gợi ý */}
 
                 {suggestion && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                     <div className="flex items-start mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
                       <AlertTriangle
                         className="text-yellow-500 mr-2 mt-0.5 flex-shrink-0"
@@ -817,12 +836,11 @@ const Vocabulary = () => {
                         });
                       }
                     }}
-                    className={`w-full p-2 border rounded-md ${
-                      validationErrors.vocabulary &&
+                    className={`w-full p-2 border rounded-md ${validationErrors.vocabulary &&
                       !newVocabulary.VocabType.trim()
-                        ? "border-red-500"
-                        : "border-slate-300"
-                    }`}
+                      ? "border-red-500"
+                      : "border-slate-300"
+                      }`}
                   >
                     <option value="">Chọn loại từ</option>
                     <option value="NOUN">Noun</option>
@@ -894,12 +912,11 @@ const Vocabulary = () => {
                         });
                       }
                     }}
-                    className={`w-full p-2 border rounded-md ${
-                      validationErrors.vocabulary &&
+                    className={`w-full p-2 border rounded-md ${validationErrors.vocabulary &&
                       !newVocabulary.meaning.trim()
-                        ? "border-red-500"
-                        : "border-slate-300"
-                    }`}
+                      ? "border-red-500"
+                      : "border-slate-300"
+                      }`}
                   />
                 </div>
 
@@ -942,13 +959,12 @@ const Vocabulary = () => {
                     !newVocabulary.meaning.trim() ||
                     !newVocabulary.VocabType.trim()
                   }
-                  className={`px-4 py-2 rounded-md ${
-                    !newVocabulary.word.trim() ||
+                  className={`px-4 py-2 rounded-md ${!newVocabulary.word.trim() ||
                     !newVocabulary.meaning.trim() ||
                     !newVocabulary.VocabType.trim()
-                      ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-                      : "bg-slate-800 text-white hover:bg-slate-700"
-                  }`}
+                    ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                    : "bg-slate-800 text-white hover:bg-slate-700"
+                    }`}
                 >
                   Thêm
                 </button>
@@ -985,11 +1001,10 @@ const Vocabulary = () => {
                         });
                       }
                     }}
-                    className={`w-full p-2 border rounded-md ${
-                      validationErrors.vocabulary && !vocabToEdit.word.trim()
-                        ? "border-red-500"
-                        : "border-slate-300"
-                    }`}
+                    className={`w-full p-2 border rounded-md ${validationErrors.vocabulary && !vocabToEdit.word.trim()
+                      ? "border-red-500"
+                      : "border-slate-300"
+                      }`}
                     autoFocus
                   />
                 </div>
@@ -1012,12 +1027,11 @@ const Vocabulary = () => {
                         });
                       }
                     }}
-                    className={`w-full p-2 border rounded-md ${
-                      validationErrors.vocabulary &&
+                    className={`w-full p-2 border rounded-md ${validationErrors.vocabulary &&
                       !vocabToEdit.VocabType.trim()
-                        ? "border-red-500"
-                        : "border-slate-300"
-                    }`}
+                      ? "border-red-500"
+                      : "border-slate-300"
+                      }`}
                   >
                     <option value="">-- Chọn loại từ --</option>
                     <option value="NOUN">Noun</option>
@@ -1088,11 +1102,10 @@ const Vocabulary = () => {
                         });
                       }
                     }}
-                    className={`w-full p-2 border rounded-md ${
-                      validationErrors.vocabulary && !vocabToEdit.meaning.trim()
-                        ? "border-red-500"
-                        : "border-slate-300"
-                    }`}
+                    className={`w-full p-2 border rounded-md ${validationErrors.vocabulary && !vocabToEdit.meaning.trim()
+                      ? "border-red-500"
+                      : "border-slate-300"
+                      }`}
                   />
                 </div>
 
@@ -1137,13 +1150,12 @@ const Vocabulary = () => {
                     !vocabToEdit.meaning.trim() ||
                     !vocabToEdit.VocabType.trim()
                   }
-                  className={`px-4 py-2 rounded-md ${
-                    !vocabToEdit.word.trim() ||
+                  className={`px-4 py-2 rounded-md ${!vocabToEdit.word.trim() ||
                     !vocabToEdit.meaning.trim() ||
                     !vocabToEdit.VocabType.trim()
-                      ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-                      : "bg-blue-600 text-white hover:bg-blue-500"
-                  }`}
+                    ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                    : "bg-blue-600 text-white hover:bg-blue-500"
+                    }`}
                 >
                   Lưu
                 </button>

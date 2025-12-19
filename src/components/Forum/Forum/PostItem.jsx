@@ -1,6 +1,6 @@
-// PostItem - Updated
+// PostItem - Updated with enhanced UI
 import React, { useState } from "react";
-import { Avatar, Card, Button, Dropdown, Modal, message } from "antd";
+import { Avatar, Card, Button, Dropdown, Modal, message, Tooltip } from "antd";
 import {
   LikeOutlined,
   LikeFilled,
@@ -8,6 +8,8 @@ import {
   MoreOutlined,
   EditOutlined,
   DeleteOutlined,
+  HeartOutlined,
+  HeartFilled,
 } from "@ant-design/icons";
 import { togglePostLikeAPI, deletePostAPI } from "@/services/apiForum";
 import CreateComment from "./CreateComment";
@@ -27,6 +29,7 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState(post.forumComment || []);
   const [openEdit, setOpenEdit] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleLike = async () => {
     setLiked(!liked);
@@ -77,24 +80,54 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
     },
   ];
 
+  // Format time ago
+  const getTimeAgo = (date) => {
+    const now = new Date();
+    const past = new Date(date);
+    const diffMs = now - past;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return "Vừa xong";
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return past.toLocaleDateString("vi-VN");
+  };
+
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+      <div
+        className={`bg-white rounded-2xl border-2 transition-all duration-300 p-6 mb-5 ${isHovered
+          ? "border-blue-200 shadow-lg shadow-blue-50"
+          : "border-slate-100 shadow-sm"
+          }`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         {/* Header */}
         <div className="flex justify-between items-start mb-4">
           <div className="flex items-center gap-3">
-            <Avatar
-              size={48}
-              src={post.user?.avatar || null}
-              className="border border-slate-300"
-            />
+            <div className="relative">
+              <Avatar
+                size={52}
+                src={post.user?.avatar || null}
+                className="border-2 border-blue-100 ring-2 ring-offset-2 ring-blue-50"
+              >
+                {post.user?.nameUser?.charAt(0)?.toUpperCase()}
+              </Avatar>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white" />
+            </div>
             <div>
-              <h4 className="font-semibold text-slate-900">
+              <h4 className="font-semibold text-slate-900 text-base hover:text-blue-600 cursor-pointer transition-colors">
                 {post.user?.nameUser}
               </h4>
-              <p className="text-sm text-slate-500">
-                {new Date(post.created_at).toLocaleString()}
-              </p>
+              <Tooltip title={new Date(post.created_at).toLocaleString("vi-VN")}>
+                <p className="text-sm text-slate-500 cursor-help">
+                  {getTimeAgo(post.created_at)}
+                </p>
+              </Tooltip>
             </div>
           </div>
 
@@ -106,8 +139,8 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
             >
               <Button
                 type="text"
-                icon={<MoreOutlined className="text-slate-400" />}
-                className="hover:bg-slate-100 rounded-lg"
+                icon={<MoreOutlined className="text-slate-400 text-lg" />}
+                className="hover:bg-slate-100 rounded-xl w-10 h-10"
               />
             </Dropdown>
           )}
@@ -115,58 +148,78 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
 
         {/* Content */}
         <div className="mb-4">
-          <p className="text-slate-700 leading-relaxed whitespace-pre-line">
+          <p className="text-slate-700 text-base leading-relaxed whitespace-pre-line">
             {post.content}
           </p>
         </div>
 
         {/* Media */}
         {post.file && (
-          <div className="mb-4 rounded-xl overflow-hidden">
+          <div className="mb-4 rounded-2xl overflow-hidden group relative">
             <img
               src={post.file}
               alt="post"
-              className="w-full max-h-96 object-cover rounded-xl"
+              className="w-full max-h-[500px] object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
         )}
 
         {/* Stats */}
-        <div className="flex items-center gap-6 text-sm text-slate-500 mb-4">
-          <span>{likeCount} lượt thích</span>
-          <span>{comments.length} bình luận</span>
+        <div className="flex items-center gap-6 text-sm text-slate-500 mb-4 py-2">
+          <div className="flex items-center gap-2">
+            <div className="flex -space-x-2">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-400 to-rose-500 flex items-center justify-center">
+                <HeartFilled className="text-white text-xs" />
+              </div>
+              <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-500 to-blue-500 flex items-center justify-center">
+                <LikeFilled className="text-white text-xs" />
+              </div>
+            </div>
+            <span className="font-medium text-slate-600">
+              {likeCount} lượt thích
+            </span>
+          </div>
+          <span
+            className="hover:text-blue-600 cursor-pointer transition-colors"
+            onClick={() => setShowComments(!showComments)}
+          >
+            {comments.length} bình luận
+          </span>
         </div>
 
         {/* Actions */}
-        <div className="flex border-t border-b border-slate-200 py-2">
+        <div className="flex border-t border-b border-slate-100 py-1">
           <button
             onClick={handleLike}
-            className={`flex-1 flex items-center justify-center gap-2 hover:cursor-pointer py-2 rounded-lg transition-colors ${
-              liked
-                ? "text-blue-600 bg-blue-50"
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
+            className={`flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl transition-all duration-200 font-medium ${liked
+              ? "text-blue-600 bg-blue-50"
+              : "text-slate-600 hover:bg-slate-50 hover:text-blue-600"
+              }`}
           >
-            {liked ? <LikeFilled /> : <LikeOutlined />}
+            {liked ? (
+              <LikeFilled className="text-lg" />
+            ) : (
+              <LikeOutlined className="text-lg" />
+            )}
             <span>Thích</span>
           </button>
 
           <button
             onClick={() => setShowComments(!showComments)}
-            className={`flex-1 flex items-center justify-center hover:cursor-pointer gap-2 py-2 rounded-lg transition-colors ${
-              showComments
-                ? "text-slate-900 bg-slate-50"
-                : "text-slate-600 hover:bg-slate-50"
-            }`}
+            className={`flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl transition-all duration-200 font-medium ${showComments
+              ? "text-blue-600 bg-blue-50"
+              : "text-slate-600 hover:bg-slate-50 hover:text-blue-600"
+              }`}
           >
-            <MessageOutlined />
+            <MessageOutlined className="text-lg" />
             <span>Bình luận</span>
           </button>
         </div>
 
         {/* Comments Section */}
         {showComments && (
-          <div className="mt-4 space-y-4">
+          <div className="mt-5 space-y-4 animate-fadeIn">
             <CommentList
               comments={comments}
               onCommentDeleted={handleCommentDeleted}
