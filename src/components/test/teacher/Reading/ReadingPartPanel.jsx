@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Button, Select, InputNumber, message, Tabs, Popconfirm } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
+import { Button, Select, InputNumber, message, Tabs, Popconfirm, Upload } from "antd";
+import { DeleteOutlined, UploadOutlined, PictureOutlined } from "@ant-design/icons";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createPassageAPI,
@@ -39,6 +39,8 @@ const ReadingPartPanel = ({
   const [groupType, setGroupType] = useState(null);
   const [groupTitle, setGroupTitle] = useState("");
   const [groupQuantity, setGroupQuantity] = useState(3);
+  const [groupImage, setGroupImage] = useState(null); // Thêm state cho hình ảnh nhóm
+  const [groupImagePreview, setGroupImagePreview] = useState(null); // Preview URL
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [activeTab, setActiveTab] = useState("passage");
   const [savingPassage, setSavingPassage] = useState(false);
@@ -126,6 +128,12 @@ const ReadingPartPanel = ({
         title: groupTitle,
         quantity: groupQuantity,
       };
+      
+      // Thêm file ảnh nếu có
+      if (groupImage) {
+        payload.avatar = groupImage;
+      }
+      
       const res = await createGroupOfQuestionsAPI(payload);
       const idNhom = res?.data.idGroupOfQuestions || res?.idGroup || res?.id;
       if (!idNhom) throw new Error("API không trả về idGroupOfQuestions");
@@ -135,6 +143,8 @@ const ReadingPartPanel = ({
       setGroupType(null);
       setGroupTitle("");
       setGroupQuantity(3);
+      setGroupImage(null);
+      setGroupImagePreview(null);
 
       // Refresh part detail
       if (onPartUpdate) {
@@ -149,6 +159,19 @@ const ReadingPartPanel = ({
     } finally {
       setCreatingGroup(false);
     }
+  };
+
+  // Xử lý chọn ảnh cho nhóm câu hỏi
+  const handleGroupImageChange = (file) => {
+    setGroupImage(file);
+    setGroupImagePreview(URL.createObjectURL(file));
+    return false; // Ngăn chặn auto upload
+  };
+
+  // Xóa ảnh nhóm câu hỏi
+  const handleRemoveGroupImage = () => {
+    setGroupImage(null);
+    setGroupImagePreview(null);
   };
 
   // Xóa nhóm câu hỏi
@@ -251,19 +274,56 @@ const ReadingPartPanel = ({
           {/* Phần tạo mới nhóm câu hỏi */}
           <div className="border rounded-lg p-4 bg-white shadow-sm">
             <h3 className="text-lg font-medium mb-4">Tạo nhóm câu hỏi mới</h3>
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* Tiêu đề nhóm - Textarea nhiều dòng */}
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Tiêu đề nhóm
+                  Tiêu đề nhóm <span className="text-gray-400">(hỗ trợ nhiều dòng)</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Questions 1-5, Reading Part 1..."
+                <Textarea
+                  placeholder="Ví dụ:&#10;Questions 1-5&#10;Do the following statements agree with the information given in the Reading Passage?&#10;Write YES / NO / NOT GIVEN"
                   value={groupTitle}
                   onChange={(e) => setGroupTitle(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full min-h-[100px] resize-y"
                 />
               </div>
+
+              {/* Hình ảnh nhóm câu hỏi */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Hình ảnh (tùy chọn)
+                </label>
+                <div className="flex items-center gap-4">
+                  <Upload
+                    accept="image/*"
+                    showUploadList={false}
+                    beforeUpload={handleGroupImageChange}
+                  >
+                    <Button icon={<UploadOutlined />}>
+                      {groupImage ? "Đổi ảnh" : "Chọn ảnh"}
+                    </Button>
+                  </Upload>
+                  
+                  {groupImagePreview && (
+                    <div className="relative">
+                      <img
+                        src={groupImagePreview}
+                        alt="Preview"
+                        className="w-20 h-20 object-cover rounded border"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveGroupImage}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Loại câu hỏi và số lượng */}
               <div className="flex items-end gap-3">
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-1">
@@ -274,6 +334,7 @@ const ReadingPartPanel = ({
                     value={groupType}
                     onChange={(val) => setGroupType(val)}
                     options={loaiCauHoiOptions}
+                    className="w-full"
                   />
                 </div>
                 <div className="w-24">

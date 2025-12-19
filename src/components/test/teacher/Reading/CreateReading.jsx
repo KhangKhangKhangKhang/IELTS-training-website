@@ -9,8 +9,9 @@ import {
 } from "@/services/apiTest";
 import PartListSidebar from "./PartListSideBar";
 import ReadingPartPanel from "./ReadingPartPanel";
+import TestInfoEditor from "../TestInfoEditor";
 
-const CreateReading = ({ idTest, exam }) => {
+const CreateReading = ({ idTest, exam, onExamUpdate }) => {
   const [allParts, setAllParts] = useState([]);
   const [selectedPart, setSelectedPart] = useState(null);
   const [selectedPartDetail, setSelectedPartDetail] = useState(null);
@@ -163,17 +164,21 @@ const CreateReading = ({ idTest, exam }) => {
   if (isLoading) return <Spin className="block mx-auto mt-10" />;
 
   return (
-    <div className="flex h-[85vh] bg-gray-50 rounded-lg shadow">
-      {/* Sidebar hiển thị danh sách part */}
-      <PartListSidebar
-        parts={allParts}
-        selectedPart={selectedPart}
-        onSelect={handleSelectPart}
-        onCreate={handleCreatePart}
-        onRename={handleRenamePart}
-        onDelete={handleDeletePart}
-        creating={creatingPart}
-      />
+    <div className="flex flex-col h-[90vh] bg-gray-50 rounded-lg shadow">
+      {/* Panel thông tin đề thi */}
+      <TestInfoEditor exam={exam} onUpdate={onExamUpdate} />
+      
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar hiển thị danh sách part */}
+        <PartListSidebar
+          parts={allParts}
+          selectedPart={selectedPart}
+          onSelect={handleSelectPart}
+          onCreate={handleCreatePart}
+          onRename={handleRenamePart}
+          onDelete={handleDeletePart}
+          creating={creatingPart}
+        />
 
       {/* Nội dung bên phải */}
       <div className="flex-1 p-6 overflow-y-auto">
@@ -212,6 +217,7 @@ const CreateReading = ({ idTest, exam }) => {
             })()}
           />
         )}
+      </div>
       </div>
     </div>
   );

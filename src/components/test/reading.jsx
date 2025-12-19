@@ -365,12 +365,20 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                   </div>
                   <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
                     {renderPart?.passage?.content ? (
-                      <div
-                        className="prose max-w-none text-gray-800 leading-relaxed font-serif text-lg"
-                        dangerouslySetInnerHTML={{
-                          __html: renderPart.passage.content,
-                        }}
-                      />
+                      <div className="prose max-w-none text-gray-800 leading-relaxed font-serif text-lg">
+                        {/* Tách passage thành các đoạn dựa trên \r\n\r\n hoặc \n\n */}
+                        {renderPart.passage.content
+                          .split(/\r?\n\r?\n/)
+                          .filter(paragraph => paragraph.trim())
+                          .map((paragraph, index) => (
+                            <p
+                              key={index}
+                              className="mb-4 text-justify indent-8 first-letter:text-2xl first-letter:font-bold first-letter:text-blue-600"
+                            >
+                              {paragraph.trim()}
+                            </p>
+                          ))}
+                      </div>
                     ) : (
                       <div className="text-center py-10 text-gray-400">
                         Không có dữ liệu bài đọc

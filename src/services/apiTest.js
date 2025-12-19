@@ -17,7 +17,22 @@ export const deleteAPITest = async (idTest) => {
 };
 
 export const updateAPITest = async (idTest, data) => {
-  const res = await API.put(`/test/update-test/${idTest}`, data);
+  const res = await API.patch(`/test/update-test/${idTest}`, data);
+  return res.data;
+};
+
+// Cập nhật thông tin cơ bản của test (duration, numberQuestion, etc.)
+export const updateTestInfoAPI = async (idTest, data) => {
+  const bodyFormData = new FormData();
+  for (const key in data) {
+    if (data[key] != null) bodyFormData.append(key, data[key]);
+  }
+
+  const res = await API.patch(`/test/update-test/${idTest}`, bodyFormData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
   return res.data;
 };
 //===============================================================================================
@@ -57,7 +72,20 @@ export const createPassageAPI = async (formData) => {
 };
 
 export const createGroupOfQuestionsAPI = async (data) => {
-  const res = await API.post("/group-of-questions/create-group-question", data);
+  const formData = new FormData();
+  
+  // Thêm các fields vào FormData
+  for (const key in data) {
+    if (data[key] != null) {
+      formData.append(key, data[key]);
+    }
+  }
+
+  const res = await API.post("/group-of-questions/create-group-question", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
   return res.data;
 };
 

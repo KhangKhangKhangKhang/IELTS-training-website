@@ -17,11 +17,12 @@ import {
   EditOutlined,
 } from "@ant-design/icons";
 import CreatePartForm from "../Detail/CreatePartForm"; // Component bạn đã có
+import TestInfoEditor from "../TestInfoEditor";
 
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
 
-const CreateListening = ({ idTest, exam }) => {
+const CreateListening = ({ idTest, exam, onExamUpdate }) => {
   const [parts, setParts] = useState([]); // State lưu danh sách các Part
   const [isCreatingPart, setIsCreatingPart] = useState(false);
 
@@ -39,6 +40,9 @@ const CreateListening = ({ idTest, exam }) => {
 
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-6">
+      {/* Panel chỉnh sửa thông tin đề thi */}
+      <TestInfoEditor exam={exam} onUpdate={onExamUpdate} />
+      
       {/* --- SECTION 1: THÔNG TIN CHUNG & AUDIO PLAYER --- */}
       <Card className="shadow-md border-t-4 border-blue-500">
         <div className="flex flex-col md:flex-row gap-6">

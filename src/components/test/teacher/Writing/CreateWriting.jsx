@@ -10,8 +10,9 @@ import {
   deleteWritingTaskAPI,
   getAllWritingTasksAPI,
 } from "@/services/apiWriting";
+import TestInfoEditor from "../TestInfoEditor";
 
-const CreateWriting = ({ idTest }) => {
+const CreateWriting = ({ idTest, exam, onExamUpdate }) => {
   const [currentTask, setCurrentTask] = useState("TASK1");
 
   // Khởi tạo luôn object mặc định để tránh null
@@ -202,6 +203,11 @@ const CreateWriting = ({ idTest }) => {
 
   return (
     <div className="min-h-screen p-6 bg-gray-50">
+      {/* Panel chỉnh sửa thông tin đề thi */}
+      <div className="max-w-6xl mx-auto mb-4">
+        <TestInfoEditor exam={exam} onUpdate={onExamUpdate} />
+      </div>
+      
       <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg">
         {/* Tabs */}
         <div className="flex border-b">
