@@ -56,7 +56,7 @@ const QuestionRenderer = ({
           {...commonProps}
         />
       ));
-    case "YES_NO_NOT_GIVEN":
+    case "YES_NO_NOTGIVEN":
       return group.questions.map((q) => (
         <RenderYesNoNotGiven
           key={q.question_id}

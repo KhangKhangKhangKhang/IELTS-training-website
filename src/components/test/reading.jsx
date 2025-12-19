@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Button, Spin, message, Divider, Result, Card } from "antd";
+import { Button, Spin, message, Result, Card } from "antd";
 import {
   SmileOutlined,
   ClockCircleOutlined,
@@ -19,28 +19,28 @@ import {
 } from "@/services/apiTest";
 import { useAuth } from "@/context/authContext";
 
-// Hàm format thời gian (MM:SS)
+// --- CONSTANTS ---
+const TYPE_MAPPING = {
+  YES_NO_NOTGIVEN: "YES_NO_NOTGIVEN",
+  TFNG: "TFNG",
+  MCQ: "MCQ",
+  FILL_BLANK: "FILL_BLANK",
+  LABELING: "LABELING",
+  MATCHING: "MATCHING",
+  SHORT_ANSWER: "SHORT_ANSWER",
+  OTHER: "OTHER",
+};
+
+// --- HELPERS ---
 const formatTime = (seconds) => {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m < 10 ? "0" + m : m}:${s < 10 ? "0" + s : s}`;
 };
 
-// ... (Giữ nguyên hàm mapGroup) ...
 function mapGroup(apiGroup) {
-  const typeMap = {
-    YES_NO_NOTGIVEN: "YES_NO_NOT_GIVEN",
-    YES_NO_NOT_GIVEN: "YES_NO_NOT_GIVEN",
-    TFNG: "TFNG",
-    MCQ: "MCQ",
-    FILL_BLANK: "FILL_BLANK",
-    LABELING: "LABELING",
-    MATCHING: "MATCHING",
-    SHORT_ANSWER: "SHORT_ANSWER",
-    OTHER: "OTHER",
-  };
-
-  const type_question = typeMap[apiGroup.typeQuestion] || apiGroup.typeQuestion;
+  const type_question =
+    TYPE_MAPPING[apiGroup.typeQuestion] || apiGroup.typeQuestion;
 
   const questions = (apiGroup.question || []).map((q) => ({
     question_id: q.idQuestion,
@@ -81,7 +81,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const [timeLeft, setTimeLeft] = useState((duration || 60) * 60);
   const isSubmittingRef = useRef(false);
 
-  // Load Test Data (Giữ nguyên)
+  // Load Test Data
   useEffect(() => {
     if (!idTest) return;
     const load = async () => {
@@ -99,7 +99,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     load();
   }, [idTest]);
 
-  // Load Part Detail (Giữ nguyên)
+  // Load Part Detail
   useEffect(() => {
     const loadPartDetail = async () => {
       try {
@@ -149,7 +149,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     if (test) loadPartDetail();
   }, [test, activePartIndex]);
 
-  // Handle Finish (Giữ nguyên)
+  // Handle Finish
   const handleFinish = async (isAutoSubmit = false) => {
     if (isSubmittingRef.current || !inProgress) return;
     isSubmittingRef.current = true;
@@ -186,7 +186,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     }
   };
 
-  // Timer Effect (Giữ nguyên)
+  // Timer Effect
   useEffect(() => {
     if (loading || !inProgress || !test) return;
     if (timeLeft <= 0) {
@@ -199,18 +199,21 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     return () => clearInterval(timerId);
   }, [timeLeft, loading, inProgress, test]);
 
-  // Handle Answer Change (Giữ nguyên)
-  const handleAnswerChange = async (questionId, value) => {
+  // Handle Answer Change (UPDATED)
+  const handleAnswerChange = async (questionId, value, questionType) => {
     if (!inProgress) return;
+
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
+
     if (!user?.idUser || !testResult?.idTestResult) return;
+
     try {
       const payload = {
         answers: [
           {
             idQuestion: questionId,
             answerText: value,
-            userAnswerType: typeof value === "string" ? "SHORT_ANSWER" : "MCQ",
+            userAnswerType: questionType, // Sử dụng Type được truyền vào
             matching_key: null,
             matching_value: null,
           },
@@ -233,7 +236,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
       <div className="py-10 text-center text-gray-500">Không tìm thấy đề</div>
     );
 
-  // Render Result (Giữ nguyên)
+  // Render Result
   if (!inProgress && bandScore !== null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -280,10 +283,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     );
   }
 
-  // --- RENDER CHÍNH (GIAO DIỆN LÀM BÀI) ---
+  // --- RENDER CHÍNH ---
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* --- HEADER CỐ ĐỊNH --- */}
+      {/* --- HEADER --- */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md h-[72px] px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-blue-100 p-2 rounded-full text-blue-600">
@@ -303,7 +306,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Đồng hồ */}
+          {/* Timer */}
           <div
             className={`flex items-center gap-2 text-xl font-mono font-bold px-4 py-1.5 rounded-lg border shadow-sm transition-all ${
               timeLeft < 300
@@ -315,7 +318,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
             {formatTime(timeLeft)}
           </div>
 
-          {/* Nút nộp bài */}
+          {/* Submit Button */}
           <Button
             type="primary"
             danger
@@ -328,8 +331,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
         </div>
       </div>
 
-      {/* --- PHẦN NỘI DUNG --- */}
-      {/* pt-[90px] để đẩy nội dung xuống dưới Header, tránh bị che */}
+      {/* --- CONTENT --- */}
       <div className="pt-[90px] p-6 max-w-[1400px] mx-auto h-screen flex flex-col">
         {/* Navigation Parts */}
         <div className="flex gap-2 overflow-x-auto mb-4 pb-1 shrink-0">
@@ -348,7 +350,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           ))}
         </div>
 
-        {/* Nội dung bài đọc và câu hỏi (Chia 2 cột) */}
+        {/* Passage & Questions Columns */}
         {test.parts[activePartIndex] &&
           (() => {
             const part = test.parts[activePartIndex];
@@ -356,7 +358,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
             return (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
-                {/* Cột Bài Đọc (Scroll riêng) */}
+                {/* Passage Column */}
                 <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
                   <div className="p-4 bg-gray-50 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center sticky top-0">
                     <span>📖 Passage Content</span>
@@ -377,7 +379,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                   </div>
                 </div>
 
-                {/* Cột Câu Hỏi (Scroll riêng) */}
+                {/* Questions Column */}
                 <div className="lg:col-span-5 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
                   <div className="p-4 bg-gray-50 border-b border-gray-100 font-semibold text-gray-700 sticky top-0 z-10">
                     <span>✍️ Questions</span>
@@ -387,25 +389,35 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                       renderPart.groupOfQuestions ||
                       part.groupOfQuestions ||
                       []
-                    ).map((group) => (
-                      <div
-                        key={group.idGroupOfQuestions}
-                        className="mb-8 bg-white p-4 rounded-lg shadow-sm border border-gray-100"
-                      >
-                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
-                          <h4 className="font-bold text-gray-800 text-base">
-                            {group.title || "Group"}
-                          </h4>
-                          <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                            {group.quantity} Questions
-                          </span>
+                    ).map((group) => {
+                      // Xác định Type Question từ dữ liệu có sẵn
+                      const rawType = group.typeQuestion;
+                      const finalType = TYPE_MAPPING[rawType] || "SHORT_ANSWER";
+
+                      return (
+                        <div
+                          key={group.idGroupOfQuestions}
+                          className="mb-8 bg-white p-4 rounded-lg shadow-sm border border-gray-100"
+                        >
+                          <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+                            <h4 className="font-bold text-gray-800 text-base">
+                              {group.title || "Group"}
+                            </h4>
+                            <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                              {group.quantity} Questions
+                            </span>
+                          </div>
+
+                          {/* Truyền finalType vào handler thông qua Arrow Function */}
+                          <QuestionRenderer
+                            group={mapGroup(group)}
+                            onAnswerChange={(qId, val) =>
+                              handleAnswerChange(qId, val, finalType)
+                            }
+                          />
                         </div>
-                        <QuestionRenderer
-                          group={mapGroup(group)}
-                          onAnswerChange={handleAnswerChange}
-                        />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
