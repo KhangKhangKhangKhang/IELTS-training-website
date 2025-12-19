@@ -63,6 +63,7 @@ const CreateTestForm = ({ onSuccess }) => {
           <Option value="LISTENING">Listening</Option>
           <Option value="READING">Reading</Option>
           <Option value="WRITING">Writing</Option>
+          <Option value="SPEAKING">Speaking</Option>
         </Select>
 
         <Input
