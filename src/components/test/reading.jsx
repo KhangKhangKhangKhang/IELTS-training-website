@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { Button, Spin, message, Result, Card } from "antd";
 import {
   SmileOutlined,
   ClockCircleOutlined,
   FormOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import QuestionRenderer from "./reading/render/QuestionRenderer";
@@ -19,7 +20,6 @@ import {
 } from "@/services/apiTest";
 import { useAuth } from "@/context/authContext";
 
-// --- CONSTANTS ---
 const TYPE_MAPPING = {
   YES_NO_NOTGIVEN: "YES_NO_NOTGIVEN",
   TFNG: "TFNG",
@@ -31,7 +31,6 @@ const TYPE_MAPPING = {
   OTHER: "OTHER",
 };
 
-// --- HELPERS ---
 const formatTime = (seconds) => {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -42,17 +41,27 @@ function mapGroup(apiGroup) {
   const type_question =
     TYPE_MAPPING[apiGroup.typeQuestion] || apiGroup.typeQuestion;
 
-  const questions = (apiGroup.question || []).map((q) => ({
-    question_id: q.idQuestion,
-    question_number: q.numberQuestion,
-    question_text: q.content,
-    answers: (q.answers || []).map((a) => ({
+  const questions = (apiGroup.question || []).map((q) => {
+    const answers = (q.answers || []).map((a) => ({
       answer_id: a.idAnswer,
       answer_text: a.answer_text,
       matching_key: a.matching_key,
       matching_value: a.matching_value,
-    })),
-  }));
+    }));
+
+    const correct_answers = answers.filter((a) => {
+      const val = a.matching_value?.toUpperCase();
+      return val === "CORRECT" || val === "TRUE" || val === "YES";
+    });
+
+    return {
+      question_id: q.idQuestion,
+      question_number: q.numberQuestion,
+      question_text: q.content,
+      answers,
+      correct_answers,
+    };
+  });
 
   return {
     title: apiGroup.title,
@@ -68,20 +77,43 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [test, setTest] = useState(null);
-
   const [activePartIndex, setActivePartIndex] = useState(0);
   const [partDetail, setPartDetail] = useState(null);
 
   const [testResult, setTestResult] = useState(initialTestResult || null);
-  const [answers, setAnswers] = useState({});
-  const [inProgress, setInProgress] = useState(!!initialTestResult);
-  const [bandScore, setBandScore] = useState(null);
 
-  // Timer state
+  // State lưu: { questionId: { value: "A", text: "Apple", type: "MATCHING" } }
+  const [answers, setAnswers] = useState({});
+
+  const [inProgress, setInProgress] = useState(!initialTestResult?.finishedAt);
+  const [isReviewMode, setIsReviewMode] = useState(
+    !!initialTestResult?.finishedAt
+  );
+  const [bandScore, setBandScore] = useState(
+    initialTestResult?.band_score || null
+  );
+
   const [timeLeft, setTimeLeft] = useState((duration || 60) * 60);
   const isSubmittingRef = useRef(false);
 
-  // Load Test Data
+  // Review map: Dùng để hiển thị lại đáp án đã chọn khi xem lại
+  // Logic: Với Matching/MCQ thì API trả về Key (A,B), Render component sẽ tự map Key -> Text nếu cần
+  const reviewAnswersMap = useMemo(() => {
+    if (!testResult?.userAnswer) return {};
+    return testResult.userAnswer.reduce((acc, item) => {
+      // Lưu ý: item.answerText từ API trả về lúc này là KEY (với MCQ/Matching) do lần trước lưu sai
+      // Nhưng nếu lưu đúng theo logic mới thì item.answerText sẽ là Content, item.matching_key là Key.
+      // Để an toàn cho Render, ta ưu tiên lấy Matching Key nếu có, nếu không thì lấy AnswerText
+      const val =
+        item.userAnswerType === "MCQ" || item.userAnswerType === "MATCHING"
+          ? item.matching_key || item.answerText
+          : item.answerText;
+
+      acc[item.idQuestion] = val;
+      return acc;
+    }, {});
+  }, [testResult]);
+
   useEffect(() => {
     if (!idTest) return;
     const load = async () => {
@@ -99,7 +131,6 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     load();
   }, [idTest]);
 
-  // Load Part Detail
   useEffect(() => {
     const loadPartDetail = async () => {
       try {
@@ -149,7 +180,30 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     if (test) loadPartDetail();
   }, [test, activePartIndex]);
 
-  // Handle Finish
+  // --- HÀM XỬ LÝ NHẬP LIỆU (CẬP NHẬT) ---
+  // textContent: Là nội dung hiển thị (VD: "Quả táo"), value: Là Key (VD: "A")
+  const handleAnswerChange = (
+    questionId,
+    value,
+    questionType,
+    textContent = null
+  ) => {
+    if (!inProgress) return;
+
+    // Nếu không truyền textContent thì mặc định nó giống value (cho dạng điền từ)
+    const finalContent = textContent !== null ? textContent : value;
+
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: {
+        value: value,
+        text: finalContent,
+        type: questionType,
+      },
+    }));
+  };
+
+  // --- HÀM NỘP BÀI (ĐÃ SỬA PAYLOAD CHUẨN) ---
   const handleFinish = async (isAutoSubmit = false) => {
     if (isSubmittingRef.current || !inProgress) return;
     isSubmittingRef.current = true;
@@ -161,10 +215,41 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     }
 
     try {
-      if (isAutoSubmit) {
-        message.warning("Hết giờ làm bài! Hệ thống đang tự động nộp...");
-      } else {
+      if (!isAutoSubmit)
         message.loading({ content: "Đang nộp bài...", key: "submitting" });
+
+      const answersPayload = {
+        answers: Object.entries(answers).map(([qId, data]) => {
+          let matchingKey = null;
+          let matchingValue = null;
+
+          // Với MCQ/Matching: Value đang lưu Key (A, B) -> Gán vào matching_key
+          if (data.type === "MCQ" || data.type === "MATCHING") {
+            matchingKey = data.value;
+          }
+
+          // Với YesNo/TFNG: Value đang lưu YES/TRUE -> Gán vào matching_value
+          if (data.type === "YES_NO_NOTGIVEN" || data.type === "TFNG") {
+            matchingValue = data.value;
+          }
+
+          return {
+            idQuestion: qId,
+            // answerText: Lưu nội dung text (để hiển thị lịch sử đúng)
+            answerText: data.text,
+            userAnswerType: data.type,
+            matching_key: matchingKey,
+            matching_value: matchingValue,
+          };
+        }),
+      };
+
+      if (answersPayload.answers.length > 0) {
+        await createManyAnswersAPI(
+          user.idUser,
+          testResult.idTestResult,
+          answersPayload
+        );
       }
 
       const res = await FinistTestAPI(testResult.idTestResult, user.idUser, {});
@@ -172,58 +257,26 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
       setBandScore(score);
       setInProgress(false);
+      setTestResult(res?.data || res);
 
-      if (!isAutoSubmit) {
-        message.success({ content: "Nộp bài thành công!", key: "submitting" });
-      } else {
-        message.success("Đã nộp bài tự động.");
-      }
+      message.success({ content: "Nộp bài thành công!", key: "submitting" });
       window.dispatchEvent(new Event("streak-update"));
     } catch (err) {
       console.error(err);
-      message.error("Nộp bài thất bại");
+      message.error({ content: "Nộp bài thất bại", key: "submitting" });
       isSubmittingRef.current = false;
     }
   };
 
-  // Timer Effect
   useEffect(() => {
     if (loading || !inProgress || !test) return;
     if (timeLeft <= 0) {
       handleFinish(true);
       return;
     }
-    const timerId = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
-    }, 1000);
+    const timerId = setInterval(() => setTimeLeft((p) => p - 1), 1000);
     return () => clearInterval(timerId);
   }, [timeLeft, loading, inProgress, test]);
-
-  // Handle Answer Change (UPDATED)
-  const handleAnswerChange = async (questionId, value, questionType) => {
-    if (!inProgress) return;
-
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
-
-    if (!user?.idUser || !testResult?.idTestResult) return;
-
-    try {
-      const payload = {
-        answers: [
-          {
-            idQuestion: questionId,
-            answerText: value,
-            userAnswerType: questionType, // Sử dụng Type được truyền vào
-            matching_key: null,
-            matching_value: null,
-          },
-        ],
-      };
-      await createManyAnswersAPI(user.idUser, testResult.idTestResult, payload);
-    } catch (err) {
-      console.error("Save answer failed", err);
-    }
-  };
 
   if (loading)
     return (
@@ -236,8 +289,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
       <div className="py-10 text-center text-gray-500">Không tìm thấy đề</div>
     );
 
-  // Render Result
-  if (!inProgress && bandScore !== null) {
+  if (!inProgress && !isReviewMode && bandScore !== null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card
@@ -270,9 +322,8 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
               <Button
                 key="review"
                 size="large"
-                onClick={() =>
-                  message.info("Tính năng xem lại bài làm đang phát triển")
-                }
+                icon={<EyeOutlined />}
+                onClick={() => setIsReviewMode(true)}
               >
                 Xem lại bài làm
               </Button>,
@@ -283,21 +334,32 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     );
   }
 
-  // --- RENDER CHÍNH ---
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* --- HEADER --- */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md h-[72px] px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-100 p-2 rounded-full text-blue-600">
-            <FormOutlined style={{ fontSize: "20px" }} />
+          <div
+            className={`p-2 rounded-full ${
+              isReviewMode
+                ? "bg-green-100 text-green-600"
+                : "bg-blue-100 text-blue-600"
+            }`}
+          >
+            {isReviewMode ? (
+              <EyeOutlined style={{ fontSize: "20px" }} />
+            ) : (
+              <FormOutlined style={{ fontSize: "20px" }} />
+            )}
           </div>
           <div>
             <h1
               className="text-lg font-bold truncate max-w-[300px] md:max-w-md m-0 leading-tight"
               title={test.title}
             >
-              {test.title}
+              {test.title}{" "}
+              {isReviewMode && (
+                <span className="text-green-600">(Xem lại)</span>
+              )}
             </h1>
             <p className="text-xs text-gray-500 m-0 hidden md:block">
               Reading Test
@@ -306,34 +368,42 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Timer */}
-          <div
-            className={`flex items-center gap-2 text-xl font-mono font-bold px-4 py-1.5 rounded-lg border shadow-sm transition-all ${
-              timeLeft < 300
-                ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
-                : "bg-gray-50 text-gray-700 border-gray-200"
-            }`}
-          >
-            <ClockCircleOutlined />
-            {formatTime(timeLeft)}
-          </div>
-
-          {/* Submit Button */}
-          <Button
-            type="primary"
-            danger
-            size="large"
-            onClick={() => handleFinish(false)}
-            className="font-semibold shadow-md hover:scale-105 transition-transform"
-          >
-            NỘP BÀI
-          </Button>
+          {!isReviewMode ? (
+            <>
+              <div
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-4 py-1.5 rounded-lg border shadow-sm ${
+                  timeLeft < 300
+                    ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
+                    : "bg-gray-50 text-gray-700 border-gray-200"
+                }`}
+              >
+                <ClockCircleOutlined />
+                {formatTime(timeLeft)}
+              </div>
+              <Button
+                type="primary"
+                danger
+                size="large"
+                onClick={() => handleFinish(false)}
+                className="font-semibold shadow-md hover:scale-105 transition-transform"
+              >
+                NỘP BÀI
+              </Button>
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="font-bold text-xl text-blue-600 mr-2">
+                Score: {bandScore}
+              </span>
+              <Button onClick={() => setIsReviewMode(false)}>
+                Quay lại kết quả
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* --- CONTENT --- */}
       <div className="pt-[90px] p-6 max-w-[1400px] mx-auto h-screen flex flex-col">
-        {/* Navigation Parts */}
         <div className="flex gap-2 overflow-x-auto mb-4 pb-1 shrink-0">
           {test.parts.map((p, idx) => (
             <button
@@ -350,7 +420,6 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           ))}
         </div>
 
-        {/* Passage & Questions Columns */}
         {test.parts[activePartIndex] &&
           (() => {
             const part = test.parts[activePartIndex];
@@ -358,7 +427,6 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
             return (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
-                {/* Passage Column */}
                 <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
                   <div className="p-4 bg-gray-50 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center sticky top-0">
                     <span>📖 Passage Content</span>
@@ -387,10 +455,15 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                   </div>
                 </div>
 
-                {/* Questions Column */}
                 <div className="lg:col-span-5 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
-                  <div className="p-4 bg-gray-50 border-b border-gray-100 font-semibold text-gray-700 sticky top-0 z-10">
-                    <span>✍️ Questions</span>
+                  <div
+                    className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${
+                      isReviewMode
+                        ? "bg-green-50 text-green-800"
+                        : "bg-gray-50 text-gray-700"
+                    }`}
+                  >
+                    <span>✍️ Questions {isReviewMode && "(Review Mode)"}</span>
                   </div>
                   <div className="p-5 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/50">
                     {(
@@ -398,7 +471,6 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                       part.groupOfQuestions ||
                       []
                     ).map((group) => {
-                      // Xác định Type Question từ dữ liệu có sẵn
                       const rawType = group.typeQuestion;
                       const finalType = TYPE_MAPPING[rawType] || "SHORT_ANSWER";
 
@@ -416,12 +488,22 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                             </span>
                           </div>
 
-                          {/* Truyền finalType vào handler thông qua Arrow Function */}
                           <QuestionRenderer
                             group={mapGroup(group)}
-                            onAnswerChange={(qId, val) =>
-                              handleAnswerChange(qId, val, finalType)
+                            // THAY ĐỔI: Truyền cả textContent lên
+                            onAnswerChange={(qId, val, text) =>
+                              !isReviewMode &&
+                              handleAnswerChange(qId, val, finalType, text)
                             }
+                            userAnswers={
+                              isReviewMode
+                                ? reviewAnswersMap
+                                : Object.keys(answers).reduce((acc, k) => {
+                                    acc[k] = answers[k].value;
+                                    return acc;
+                                  }, {})
+                            }
+                            isReviewMode={isReviewMode}
                           />
                         </div>
                       );

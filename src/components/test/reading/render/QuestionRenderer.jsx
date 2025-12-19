@@ -16,7 +16,7 @@ const QuestionRenderer = ({
   const getUserAnswer = (qId) => userAnswers[qId];
 
   const commonProps = {
-    onAnswerChange,
+    onAnswerChange, // Component con sẽ gọi onAnswerChange(id, val, text)
     isReviewMode,
   };
 
@@ -31,14 +31,13 @@ const QuestionRenderer = ({
         />
       ));
     case "FILL_BLANK":
-      return group.questions.map((q) => (
+      return (
         <RenderFillBlank
-          key={q.question_id}
-          question={q}
-          userAnswer={getUserAnswer(q.question_id)}
+          questions={group.questions}
+          userAnswers={userAnswers}
           {...commonProps}
         />
-      ));
+      );
     case "MATCHING":
       return (
         <RenderMatching
@@ -47,6 +46,8 @@ const QuestionRenderer = ({
           {...commonProps}
         />
       );
+    // ... Các case khác tương tự, chỉ cần truyền onAnswerChange xuống là được
+    // Vì RenderTFNG, RenderShortAnswer mặc định trả về text = val nên không cần sửa
     case "TFNG":
       return group.questions.map((q) => (
         <RenderTFNG

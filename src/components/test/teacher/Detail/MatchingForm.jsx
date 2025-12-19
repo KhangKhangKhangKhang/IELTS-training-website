@@ -1,429 +1,274 @@
 import React, { useState, useEffect } from "react";
-import { Button, Input, Select, message, Spin } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
+import { Button, Input, Select, message, Card } from "antd";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   getQuestionsByIdGroupAPI,
   getAnswersByIdQuestionAPI,
-  updateAnswerAPI,
   createManyQuestion,
   updateManyQuestionAPI,
 } from "@/services/apiTest";
 
 const { Option } = Select;
 
-const MatchingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
-  const [loadedQuestions, setLoadedQuestions] = useState([]);
+const MatchingForm = ({
+  idGroup,
+  groupData,
+  questionNumberOffset = 0,
+  onRefresh,
+}) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [hasQuestionsLoaded, setHasQuestionsLoaded] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [matchingOptions, setMatchingOptions] = useState([]);
-  const [optionsCount, setOptionsCount] = useState(4);
-  const [formQuestions, setFormQuestions] = useState([
-    { content: "", answer_text: "" },
-  ]);
 
-  // Initialize form questions based on quantity when group is first created
+  // 1. POOL OPTIONS: Danh sách các lựa chọn chung (A, B, C...)
+  // [{ key: "A", text: "Nội dung A" }, { key: "B", text: "Nội dung B" }]
+  const [optionsPool, setOptionsPool] = useState([]);
+
+  // 2. QUESTIONS: Danh sách câu hỏi
+  // [{ content: "Câu hỏi 1", correctKey: "A" }]
+  const [questions, setQuestions] = useState([]);
+
+  // Load dữ liệu khi sửa
+  useEffect(() => {
+    if (idGroup) loadData();
+  }, [idGroup]);
+
+  // Khởi tạo mặc định khi tạo mới
   useEffect(() => {
     if (
       groupData?.quantity &&
-      !hasQuestionsLoaded &&
-      loadedQuestions.length === 0
+      questions.length === 0 &&
+      optionsPool.length === 0
     ) {
-      const initialQuestions = Array(groupData.quantity)
+      // Tạo options mặc định A, B, C...
+      const defaultOptions = Array(groupData.quantity)
+        .fill(null)
+        .map((_, i) => ({
+          key: String.fromCharCode(65 + i),
+          text: "",
+        }));
+      setOptionsPool(defaultOptions);
+
+      // Tạo câu hỏi rỗng
+      const defaultQuestions = Array(groupData.quantity)
         .fill(null)
         .map(() => ({
           content: "",
-          answer_text: "",
+          correctKey: undefined,
         }));
-      setFormQuestions(initialQuestions);
+      setQuestions(defaultQuestions);
     }
-  }, [groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
+  }, [groupData]);
 
-  useEffect(() => {
-    // Initialize matching options
-    if (groupData?.properties?.options) {
-      setMatchingOptions(groupData.properties.options);
-      setOptionsCount(groupData.properties.options.length);
-    } else {
-      // Fallback or default options if not provided
-      const defaultOptions = ["Option A", "Option B", "Option C", "Option D"];
-      setMatchingOptions(defaultOptions);
-      setOptionsCount(4);
-    }
-
-    if (idGroup) {
-      loadQuestions();
-    }
-  }, [idGroup, groupData]);
-
-  const loadQuestions = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       const res = await getQuestionsByIdGroupAPI(idGroup);
       const group = res?.data?.[0];
 
-      if (!group || !group.question || group.question.length === 0) {
-        setLoadedQuestions([]);
-        setHasQuestionsLoaded(false);
-      } else {
-        const withAnswers = await Promise.all(
+      if (group && group.question?.length > 0) {
+        // Lấy Options Pool từ câu hỏi đầu tiên (vì câu nào cũng lưu full options)
+        const firstQId = group.question[0].idQuestion;
+        const firstAnsRes = await getAnswersByIdQuestionAPI(firstQId);
+
+        // Reconstruct Options Pool
+        const loadedOptions = (firstAnsRes?.data || [])
+          .map((a) => ({ key: a.matching_key, text: a.answer_text }))
+          .sort((a, b) => a.key.localeCompare(b.key));
+
+        setOptionsPool(loadedOptions);
+
+        // Load từng câu hỏi để biết câu nào chọn key nào
+        const loadedQ = await Promise.all(
           group.question.map(async (q) => {
-            try {
-              const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
-              const ansData = ansRes?.data?.[0];
-              return {
-                ...q,
-                idAnswer: ansData?.idAnswer || null,
-                answer_text: ansData?.answer_text || "",
-              };
-            } catch (err) {
-              return { ...q, idAnswer: null, answer_text: "" };
-            }
+            const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
+            const answers = ansRes?.data || [];
+            // Tìm đáp án đúng (có value là CORRECT)
+            const correctAns = answers.find(
+              (a) => a.matching_value === "CORRECT"
+            );
+
+            return {
+              idQuestion: q.idQuestion,
+              numberQuestion: q.numberQuestion,
+              content: q.content,
+              correctKey: correctAns ? correctAns.matching_key : undefined,
+            };
           })
         );
 
-        setLoadedQuestions(withAnswers);
-        setHasQuestionsLoaded(true);
+        setQuestions(loadedQ);
       }
     } catch (err) {
-      console.error("Error loading questions:", err);
-      setLoadedQuestions([]);
-      setHasQuestionsLoaded(false);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddQuestion = () => {
-    setFormQuestions([...formQuestions, { content: "", answer_text: "" }]);
+  // --- HANDLERS ---
+  const handleOptionChange = (idx, val) => {
+    const newPool = [...optionsPool];
+    newPool[idx].text = val;
+    setOptionsPool(newPool);
   };
 
-  const handleChangeQuestion = (qIndex, value) => {
-    const updated = [...formQuestions];
-    updated[qIndex].content = value;
-    setFormQuestions(updated);
+  const handleAddOption = () => {
+    const nextChar = String.fromCharCode(65 + optionsPool.length);
+    setOptionsPool([...optionsPool, { key: nextChar, text: "" }]);
   };
 
-  const handleChangeAnswer = (qIndex, value) => {
-    const updated = [...formQuestions];
-    updated[qIndex].answer_text = value;
-    setFormQuestions(updated);
+  const handleRemoveOption = (idx) => {
+    const newPool = optionsPool.filter((_, i) => i !== idx);
+    setOptionsPool(newPool);
   };
 
-  const handleSaveAll = async () => {
+  const handleQuestionChange = (idx, field, val) => {
+    const newQ = [...questions];
+    newQ[idx][field] = val;
+    setQuestions(newQ);
+  };
+
+  // --- SAVE ---
+  const handleSave = async () => {
     try {
       setSaving(true);
 
-      const questionsPayload = [];
+      const payload = questions.map((q, index) => {
+        // LOGIC QUAN TRỌNG:
+        // Mỗi câu hỏi sẽ chứa TOÀN BỘ danh sách options trong answers
+        // Để Frontend lúc làm bài hiển thị đủ list A, B, C, D...
+        const answersPayload = optionsPool.map((opt) => ({
+          // 1. answer_text: Lưu nội dung (Ví dụ: "1233214")
+          answer_text: opt.text,
 
-      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
-        const q = formQuestions[qIdx];
-        if (!q.content || !q.content.trim()) {
-          message.warning(`Câu ${qIdx + 1} không có nội dung`);
-          continue;
-        }
+          // 2. matching_key: Lưu ký tự (Ví dụ: "B")
+          matching_key: opt.key,
 
-        if (!q.answer_text) {
-          message.warning(`Câu ${qIdx + 1} không có đáp án`);
-          continue;
-        }
+          // 3. matching_value: Lưu "CORRECT" nếu đúng, null nếu sai (theo yêu cầu của bạn)
+          matching_value: opt.key === q.correctKey ? "CORRECT" : null,
+        }));
 
-        questionsPayload.push({
+        return {
           idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart || null,
-          numberQuestion:
-            questionNumberOffset + loadedQuestions.length + qIdx + 1,
+          idPart: groupData?.idPart,
+          idQuestion: q.idQuestion || null,
+          numberQuestion: q.numberQuestion || questionNumberOffset + index + 1,
           content: q.content,
-          answers: [
-            {
-              answer_text: q.answer_text,
-              matching_key: null,
-              matching_value: null,
-            },
-          ],
-        });
-      }
+          answers: answersPayload, // Gửi full options cho mỗi câu
+        };
+      });
 
-      if (questionsPayload.length === 0) {
-        message.error("Không có câu hỏi hợp lệ để lưu");
-        return;
-      }
+      const toUpdate = payload.filter((p) => p.idQuestion);
+      const toCreate = payload.filter((p) => !p.idQuestion);
 
-      await createManyQuestion({ questions: questionsPayload });
-      message.success("Đã lưu tất cả câu hỏi matching!");
+      const promises = [];
+      if (toUpdate.length > 0)
+        promises.push(updateManyQuestionAPI({ questions: toUpdate }));
+      if (toCreate.length > 0)
+        promises.push(createManyQuestion({ questions: toCreate }));
 
-      setFormQuestions([{ content: "", answer_text: "" }]);
-      await loadQuestions();
+      await Promise.all(promises);
+      message.success("Lưu Matching thành công!");
+      if (onRefresh) onRefresh();
+      loadData(); // Reload lại để đồng bộ ID
     } catch (err) {
       console.error(err);
-      message.error("Lưu câu hỏi thất bại");
+      message.error("Lưu thất bại");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeleteQuestion = async (idQuestion, index) => {
-    try {
-      const updated = loadedQuestions.filter((_, idx) => idx !== index);
-      setLoadedQuestions(updated);
-      message.success("Đã xóa câu hỏi");
-    } catch (err) {
-      console.error(err);
-      message.error("Xóa câu hỏi thất bại");
-    }
-  };
-
-  const handleEditGroup = () => {
-    const editForm = loadedQuestions.map((q) => ({
-      idQuestion: q.idQuestion,
-      content: q.content,
-      answer_text: q.answer_text,
-    }));
-    setFormQuestions(editForm);
-    setIsEditMode(true);
-    setHasQuestionsLoaded(false);
-  };
-
-  const handleSaveEdit = async () => {
-    try {
-      setSaving(true);
-
-      const questionsPayload = [];
-
-      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
-        const q = formQuestions[qIdx];
-        if (!q.content || !q.content.trim()) {
-          message.warning(`Câu ${qIdx + 1} không có nội dung`);
-          continue;
-        }
-        if (!q.answer_text) {
-          message.warning(`Câu ${qIdx + 1} không có đáp án`);
-          continue;
-        }
-
-        questionsPayload.push({
-          idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart || null,
-          numberQuestion: qIdx + 1,
-          content: q.content,
-          answers: [
-            {
-              answer_text: q.answer_text,
-              matching_key: null,
-              matching_value: null,
-            },
-          ],
-          idQuestion: q.idQuestion,
-        });
-      }
-
-      if (questionsPayload.length === 0) {
-        message.error("Không có câu hỏi hợp lệ để lưu");
-        return;
-      }
-
-      await updateManyQuestionAPI({ questions: questionsPayload });
-      message.success("Đã cập nhật câu hỏi matching!");
-
-      setIsEditMode(false);
-      setFormQuestions([{ content: "", answer_text: "" }]);
-      await loadQuestions();
-    } catch (err) {
-      console.error(err);
-      message.error("Cập nhật câu hỏi thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleOptionsCountChange = (count) => {
-    setOptionsCount(count);
-    const newOptions = Array.from({ length: count }, (_, i) =>
-      String.fromCharCode(65 + i)
-    ).map((letter) => `Option ${letter}`);
-    setMatchingOptions(newOptions);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-6">
-        <Spin tip="Đang tải câu hỏi..." />
-      </div>
-    );
-  }
-
-  if (hasQuestionsLoaded && loadedQuestions.length > 0) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-start">
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded flex-1">
-            <h4 className="font-semibold mb-2">Matching Options</h4>
-            <p className="text-sm text-gray-700 mb-2">
-              Select one of the following options for each question.
-            </p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {matchingOptions.map((opt) => (
-                <span
-                  key={opt}
-                  className="bg-blue-100 text-blue-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded"
-                >
-                  {opt}
-                </span>
-              ))}
-            </div>
-            <div className="text-sm">
-              <label className="block mb-1 font-medium">Số lượng option:</label>
-              <select
-                value={optionsCount}
-                onChange={(e) =>
-                  handleOptionsCountChange(parseInt(e.target.value))
-                }
-                className="border rounded px-2 py-1"
-              >
-                {[2, 3, 4, 5, 6, 7, 8].map((num) => (
-                  <option key={num} value={num}>
-                    {num} options
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <Button type="primary" onClick={handleEditGroup} className="ml-4">
-            ✎ Chỉnh sửa
-          </Button>
-        </div>
-        <h3 className="text-lg font-medium">Câu hỏi đã có</h3>
-        {loadedQuestions.map((q, index) => (
-          <div
-            key={q.idQuestion}
-            className="border p-4 rounded bg-white shadow-sm"
-          >
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <span className="font-semibold">
-                  Câu {q.numberQuestion}: {q.content}
-                </span>
-                <div className="text-sm text-gray-600 mt-1">
-                  Đáp án: <span className="font-medium">{q.answer_text}</span>
-                </div>
+  return (
+    <div className="space-y-6 pb-4">
+      {/* 1. Nhập danh sách lựa chọn */}
+      <Card
+        title="Bước 1: Tạo danh sách lựa chọn (Options)"
+        size="small"
+        className="bg-blue-50 border-blue-200"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {optionsPool.map((opt, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <div className="bg-white border px-3 py-1 rounded font-bold text-blue-600 w-12 text-center shrink-0">
+                {opt.key}
               </div>
+              <Input
+                placeholder={`Nội dung cho ${opt.key}`}
+                value={opt.text}
+                onChange={(e) => handleOptionChange(idx, e.target.value)}
+              />
               <Button
                 type="text"
                 danger
-                size="small"
                 icon={<DeleteOutlined />}
-                onClick={() => handleDeleteQuestion(q.idQuestion, index)}
+                onClick={() => handleRemoveOption(idx)}
               />
+            </div>
+          ))}
+        </div>
+        <Button
+          type="dashed"
+          icon={<PlusOutlined />}
+          onClick={handleAddOption}
+          className="mt-3"
+        >
+          Thêm lựa chọn
+        </Button>
+      </Card>
+
+      {/* 2. Ghép câu hỏi */}
+      <Card title="Bước 2: Câu hỏi & Đáp án đúng" size="small">
+        {questions.map((q, idx) => (
+          <div key={idx} className="mb-4 pb-4 border-b last:border-0">
+            <div className="font-bold text-gray-600 mb-2">
+              Câu {q.numberQuestion || questionNumberOffset + idx + 1}
+            </div>
+            <div className="flex gap-4 items-start">
+              <div className="flex-1">
+                <Input.TextArea
+                  placeholder="Nội dung câu hỏi..."
+                  rows={2}
+                  value={q.content}
+                  onChange={(e) =>
+                    handleQuestionChange(idx, "content", e.target.value)
+                  }
+                />
+              </div>
+              <div className="w-[200px]">
+                <Select
+                  className="w-full"
+                  placeholder="Chọn đáp án đúng"
+                  value={q.correctKey}
+                  onChange={(val) =>
+                    handleQuestionChange(idx, "correctKey", val)
+                  }
+                >
+                  {optionsPool.map((opt) => (
+                    <Option key={opt.key} value={opt.key}>
+                      <strong>{opt.key}.</strong>{" "}
+                      {opt.text
+                        ? opt.text.length > 15
+                          ? opt.text.substring(0, 15) + "..."
+                          : opt.text
+                        : "(Trống)"}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
             </div>
           </div>
         ))}
+      </Card>
 
-        <div className="flex gap-2 pt-4 border-t">
-          <Button type="primary" onClick={() => setHasQuestionsLoaded(false)}>
-            + Thêm câu hỏi
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded flex-1">
-          <h4 className="font-semibold mb-2">Matching Options</h4>
-          <p className="text-sm text-gray-700 mb-2">
-            Select one of the following options for each question below.
-          </p>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {matchingOptions.map((opt) => (
-              <span
-                key={opt}
-                className="bg-blue-100 text-blue-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded"
-              >
-                {opt}
-              </span>
-            ))}
-          </div>
-          {!isEditMode && (
-            <div className="text-sm">
-              <label className="block mb-1 font-medium">Số lượng option:</label>
-              <select
-                value={optionsCount}
-                onChange={(e) =>
-                  handleOptionsCountChange(parseInt(e.target.value))
-                }
-                className="border rounded px-2 py-1"
-              >
-                {[2, 3, 4, 5, 6, 7, 8].map((num) => (
-                  <option key={num} value={num}>
-                    {num} options
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-        {isEditMode && (
-          <Button
-            onClick={() => {
-              setIsEditMode(false);
-              setFormQuestions([{ content: "", answer_text: "" }]);
-              setHasQuestionsLoaded(true);
-            }}
-            className="ml-4"
-          >
-            Hủy
-          </Button>
-        )}
-      </div>
-
-      <h3 className="text-lg font-medium">
-        {isEditMode ? "Chỉnh sửa câu hỏi matching" : "Tạo câu hỏi matching"}
-      </h3>
-      {formQuestions.map((q, qIndex) => (
-        <div key={qIndex} className="border p-4 rounded bg-white shadow-sm">
-          <div className="font-semibold mb-2">
-            Câu{" "}
-            {isEditMode
-              ? qIndex + 1
-              : questionNumberOffset + loadedQuestions.length + qIndex + 1}
-          </div>
-
-          <Input.TextArea
-            rows={2}
-            placeholder="Nhập nội dung câu hỏi..."
-            value={q.content}
-            onChange={(e) => handleChangeQuestion(qIndex, e.target.value)}
-          />
-
-          <div className="mt-3 flex items-center gap-3">
-            <span className="text-sm text-gray-600">Đáp án:</span>
-            <Select
-              style={{ width: 200 }}
-              placeholder="Chọn đáp án"
-              value={q.answer_text || undefined}
-              onChange={(v) => handleChangeAnswer(qIndex, v)}
-            >
-              {matchingOptions.map((opt) => (
-                <Option key={opt} value={opt}>
-                  {opt}
-                </Option>
-              ))}
-            </Select>
-          </div>
-        </div>
-      ))}
-
-      <div className="flex gap-3">
-        <Button onClick={handleAddQuestion}>+ Thêm câu hỏi</Button>
+      <div className="flex justify-end pt-2">
         <Button
           type="primary"
-          onClick={isEditMode ? handleSaveEdit : handleSaveAll}
+          size="large"
+          onClick={handleSave}
           loading={saving}
         >
-          {isEditMode ? "Cập nhật" : "Lưu"}
+          Lưu Matching
         </Button>
       </div>
     </div>

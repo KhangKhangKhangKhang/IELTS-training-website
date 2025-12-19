@@ -4,14 +4,10 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle2, XCircle } from "lucide-react";
 
 const RenderMCQ = ({ question, onAnswerChange, userAnswer, isReviewMode }) => {
-  // Đáp án đúng từ API trả về (nằm trong mảng correct_answers do mapGroup tạo ra)
   const correctAnswerObj = question.correct_answers?.[0];
-  const correctAnswerText = correctAnswerObj?.answer_text;
+  const correctAnswerKey = correctAnswerObj?.matching_key;
+  const isCorrect = isReviewMode && userAnswer === correctAnswerKey;
 
-  // Check trạng thái
-  const isCorrect = isReviewMode && userAnswer === correctAnswerText;
-
-  // Class bao ngoài
   let containerClass = "mb-4 p-4 border rounded-lg transition-colors ";
   if (isReviewMode) {
     containerClass += isCorrect
@@ -52,47 +48,51 @@ const RenderMCQ = ({ question, onAnswerChange, userAnswer, isReviewMode }) => {
       <RadioGroup
         disabled={isReviewMode}
         value={userAnswer}
-        onValueChange={(value) =>
-          !isReviewMode && onAnswerChange(question.question_id, value)
-        }
+        onValueChange={(val) => {
+          // LOGIC MỚI: Tìm text tương ứng
+          const selectedAns = question.answers.find(
+            (a) => a.matching_key === val
+          );
+          onAnswerChange(question.question_id, val, selectedAns?.answer_text);
+        }}
         className="space-y-2"
       >
         {question.answers.map((answer) => {
           let itemClass =
             "flex items-center space-x-3 p-2 rounded border border-transparent transition-all";
-
           if (isReviewMode) {
-            if (answer.answer_text === correctAnswerText) {
-              // Đây là đáp án đúng -> Luôn xanh
+            if (answer.matching_key === correctAnswerKey) {
               itemClass +=
                 " bg-green-100 border-green-300 ring-1 ring-green-400 font-medium";
             } else if (
-              answer.answer_text === userAnswer &&
-              userAnswer !== correctAnswerText
+              answer.matching_key === userAnswer &&
+              userAnswer !== correctAnswerKey
             ) {
-              // User chọn sai cái này -> Đỏ
               itemClass += " bg-red-100 border-red-300 opacity-80";
             } else {
-              itemClass += " opacity-50"; // Các option khác làm mờ đi
+              itemClass += " opacity-50";
             }
           } else {
             itemClass += " hover:bg-white hover:shadow-sm cursor-pointer";
-            if (userAnswer === answer.answer_text)
+            if (userAnswer === answer.matching_key)
               itemClass += " bg-blue-50 border-blue-200";
           }
 
           return (
             <div key={answer.answer_id} className={itemClass}>
               <RadioGroupItem
-                value={answer.answer_text}
+                value={answer.matching_key}
                 id={answer.answer_id}
                 className="text-blue-600"
               />
               <Label
                 htmlFor={answer.answer_id}
-                className="cursor-pointer w-full text-sm"
+                className="cursor-pointer w-full text-sm flex gap-2"
               >
-                {answer.answer_text}
+                <span className="font-bold min-w-[20px] text-gray-700">
+                  {answer.matching_key}.
+                </span>
+                <span>{answer.answer_text}</span>
               </Label>
             </div>
           );
@@ -100,8 +100,8 @@ const RenderMCQ = ({ question, onAnswerChange, userAnswer, isReviewMode }) => {
       </RadioGroup>
 
       {isReviewMode && !isCorrect && (
-        <div className="mt-3 text-sm text-green-700 font-semibold pl-8">
-          Correct Answer: {correctAnswerText}
+        <div className="mt-3 text-sm text-green-700 font-semibold pl-8 bg-green-50 p-2 rounded border border-green-200 inline-block">
+          Correct Answer: {correctAnswerKey} ({correctAnswerObj?.answer_text})
         </div>
       )}
     </div>

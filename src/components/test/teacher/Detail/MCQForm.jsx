@@ -9,20 +9,24 @@ import {
   getAnswersByIdQuestionAPI,
 } from "@/services/apiTest";
 
-const MCQForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
+const MCQForm = ({
+  idGroup,
+  groupData,
+  questionNumberOffset = 0,
+  onRefresh,
+}) => {
   const [loadedQuestions, setLoadedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasQuestionsLoaded, setHasQuestionsLoaded] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [editingIndex, setEditingIndex] = useState(null);
 
-  // Form state for creating new questions
+  // Form state
   const [formQuestions, setFormQuestions] = useState([
     { content: "", options: [{ text: "", correct: false }] },
   ]);
 
-  // Initialize form questions based on quantity when group is first created
+  // Init Data
   useEffect(() => {
     if (
       groupData?.quantity &&
@@ -33,57 +37,63 @@ const MCQForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
         .fill(null)
         .map(() => ({
           content: "",
-          options: [{ text: "", correct: false }],
+          // Mặc định 4 options
+          options: [
+            { text: "", correct: false },
+            { text: "", correct: false },
+            { text: "", correct: false },
+            { text: "", correct: false },
+          ],
         }));
       setFormQuestions(initialQuestions);
     }
   }, [groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
 
+  // Load Data
   useEffect(() => {
-    if (idGroup) {
-      loadQuestions();
-    }
+    if (idGroup) loadData();
   }, [idGroup]);
 
-  // ======== LOAD EXISTING QUESTIONS ========
-  const loadQuestions = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
       const res = await getQuestionsByIdGroupAPI(idGroup);
       const group = res?.data?.[0];
 
-      if (!group || !group.question || group.question.length === 0) {
-        setLoadedQuestions([]);
-        setHasQuestionsLoaded(false);
-      } else {
-        // Load each question with its answers
-        const withAnswers = await Promise.all(
+      if (group && group.question?.length > 0) {
+        const loadedQ = await Promise.all(
           group.question.map(async (q) => {
-            try {
-              const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
-              const answers = ansRes?.data || [];
-              return {
-                ...q,
-                answers: answers,
-              };
-            } catch (err) {
-              return { ...q, answers: [] };
-            }
+            const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
+            const answers = ansRes?.data || [];
+
+            // Map API response về Form structure
+            const options = answers.map((a) => ({
+              text: a.answer_text,
+              correct:
+                a.matching_value === "CORRECT" || a.matching_value === "TRUE",
+            }));
+
+            return {
+              idQuestion: q.idQuestion,
+              numberQuestion: q.numberQuestion,
+              content: q.content,
+              options:
+                options.length > 0 ? options : [{ text: "", correct: false }],
+            };
           })
         );
-        setLoadedQuestions(withAnswers);
+        setFormQuestions(loadedQ); // Dùng formQuestions để hiển thị luôn khi edit
+        setLoadedQuestions(loadedQ);
         setHasQuestionsLoaded(true);
       }
     } catch (err) {
-      console.error("Error loading questions:", err);
-      setLoadedQuestions([]);
-      setHasQuestionsLoaded(false);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // ======== FORM HANDLERS ========
+  // Handlers
   const handleAddQuestion = () => {
     setFormQuestions([
       ...formQuestions,
@@ -111,268 +121,202 @@ const MCQForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
 
   const handleChangeOption = (qIndex, oIndex, field, value) => {
     const updated = [...formQuestions];
+    if (field === "correct" && value === true) {
+      updated[qIndex].options.forEach((opt) => (opt.correct = false)); // Chỉ 1 đúng
+    }
     updated[qIndex].options[oIndex][field] = value;
     setFormQuestions(updated);
   };
 
-  // ======== CREATE QUESTIONS ========
+  // Save Logic (QUAN TRỌNG)
+  const buildPayload = (questions, isUpdate = false) => {
+    return questions.map((q, qIdx) => {
+      const answersPayload = q.options.map((opt, oIdx) => ({
+        // TEXT: Nội dung giáo viên nhập (VD: "Apple")
+        answer_text: opt.text || "",
+        // KEY: Tự động sinh A, B, C... dựa vào index
+        matching_key: String.fromCharCode(65 + oIdx),
+        // VALUE: Đánh dấu đúng sai
+        matching_value: opt.correct ? "CORRECT" : "INCORRECT",
+      }));
+
+      const base = {
+        idGroupOfQuestions: idGroup,
+        idPart: groupData?.idPart || null,
+        numberQuestion: isUpdate
+          ? q.numberQuestion
+          : questionNumberOffset + loadedQuestions.length + qIdx + 1,
+        content: q.content,
+        answers: answersPayload,
+      };
+
+      if (isUpdate && q.idQuestion) base.idQuestion = q.idQuestion;
+      return base;
+    });
+  };
+
   const handleSaveAll = async () => {
     try {
       setSaving(true);
+      const payload = buildPayload(formQuestions, false); // Create mode
 
-      // Build payload for createManyQuestion
-      const questionsPayload = [];
-
-      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
-        const q = formQuestions[qIdx];
-        if (!q.content || !q.content.trim()) {
-          message.warning(`Câu ${qIdx + 1} không có nội dung`);
-          continue;
-        }
-
-        // Build answers array with options as answers
-        const answers = (q.options || [])
-          .filter((opt) => opt && opt.text && opt.text.trim())
-          .map((opt, oIdx) => ({
-            answer_text: opt.text,
-            matching_key: String.fromCharCode(65 + oIdx), // A, B, C...
-            matching_value: opt.correct ? "Correct" : "Incorrect",
-          }));
-
-        if (answers.length === 0) {
-          message.warning(`Câu ${qIdx + 1} không có lựa chọn nào`);
-          continue;
-        }
-
-        questionsPayload.push({
-          idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart || null,
-          numberQuestion:
-            questionNumberOffset + loadedQuestions.length + qIdx + 1,
-          content: q.content,
-          answers: answers,
-        });
-      }
-
-      if (questionsPayload.length === 0) {
-        message.error("Không có câu hỏi hợp lệ để lưu");
+      if (payload.some((q) => q.answers.length === 0)) {
+        message.warning("Vui lòng thêm lựa chọn cho câu hỏi");
         return;
       }
 
-      // Call createManyQuestion with all questions
-      await createManyQuestion({ questions: questionsPayload });
-      message.success("Đã lưu tất cả câu hỏi MCQ!");
+      await createManyQuestion({ questions: payload });
+      message.success("Đã lưu câu hỏi MCQ!");
 
-      // Reset form and reload
       setFormQuestions([
         { content: "", options: [{ text: "", correct: false }] },
       ]);
-      await loadQuestions();
+      await loadData();
+      if (onRefresh) onRefresh();
     } catch (err) {
       console.error(err);
-      message.error("Lưu câu hỏi thất bại");
+      message.error("Lưu thất bại");
     } finally {
       setSaving(false);
     }
   };
 
-  // ======== DELETE QUESTION ========
-  const handleDeleteQuestion = async (idQuestion, index) => {
-    try {
-      const updated = loadedQuestions.filter((_, idx) => idx !== index);
-      setLoadedQuestions(updated);
-      message.success("Đã xóa câu hỏi");
-    } catch (err) {
-      console.error(err);
-      message.error("Xóa câu hỏi thất bại");
-    }
-  };
-
-  // ======== EDIT MODE ========
-  const handleEditGroup = () => {
-    // Convert loaded questions to form format for editing
-    const editForm = loadedQuestions.map((q) => ({
-      idQuestion: q.idQuestion,
-      content: q.content,
-      options: (q.answers || []).map((ans) => ({
-        text: ans.answer_text,
-        correct: ans.matching_value === "Correct",
-      })),
-    }));
-    setFormQuestions(editForm);
-    setIsEditMode(true);
-    setHasQuestionsLoaded(false);
-  };
-
-  // ======== SAVE EDIT ========
   const handleSaveEdit = async () => {
     try {
       setSaving(true);
-
-      const questionsPayload = [];
-
-      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
-        const q = formQuestions[qIdx];
-        if (!q.content || !q.content.trim()) {
-          message.warning(`Câu ${qIdx + 1} không có nội dung`);
-          continue;
-        }
-
-        const answers = (q.options || [])
-          .filter((opt) => opt && opt.text && opt.text.trim())
-          .map((opt, oIdx) => ({
-            answer_text: opt.text,
-            matching_key: String.fromCharCode(65 + oIdx),
-            matching_value: opt.correct ? "Correct" : "Incorrect",
-          }));
-
-        if (answers.length === 0) {
-          message.warning(`Câu ${qIdx + 1} không có lựa chọn nào`);
-          continue;
-        }
-
-        questionsPayload.push({
-          idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart || null,
-          numberQuestion: qIdx + 1,
-          content: q.content,
-          answers: answers,
-          idQuestion: q.idQuestion,
-        });
-      }
-
-      if (questionsPayload.length === 0) {
-        message.error("Không có câu hỏi hợp lệ để lưu");
-        return;
-      }
-
-      await updateManyQuestionAPI({ questions: questionsPayload });
-      message.success("Đã cập nhật câu hỏi MCQ!");
+      const payload = buildPayload(formQuestions, true); // Update mode
+      await updateManyQuestionAPI({ questions: payload });
+      message.success("Cập nhật thành công!");
 
       setIsEditMode(false);
-      setFormQuestions([
-        { content: "", options: [{ text: "", correct: false }] },
-      ]);
-      await loadQuestions();
+      await loadData();
+      if (onRefresh) onRefresh();
     } catch (err) {
       console.error(err);
-      message.error("Cập nhật câu hỏi thất bại");
+      message.error("Cập nhật thất bại");
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-6">
-        <Spin tip="Đang tải câu hỏi..." />
-      </div>
-    );
-  }
+  if (loading) return <Spin className="block mx-auto py-6" />;
 
-  // ======== SHOW EXISTING QUESTIONS ========
-  if (hasQuestionsLoaded && loadedQuestions.length > 0) {
+  // Render danh sách đã có (View mode)
+  if (hasQuestionsLoaded && loadedQuestions.length > 0 && !isEditMode) {
     return (
       <div className="space-y-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Câu hỏi đã có</h3>
-          <Button type="primary" onClick={handleEditGroup}>
+        <div className="flex justify-between items-center">
+          <h3 className="font-bold text-gray-700">
+            Danh sách câu hỏi ({loadedQuestions.length})
+          </h3>
+          <Button
+            type="primary"
+            onClick={() => {
+              // Copy data sang form để edit
+              const editForm = loadedQuestions.map((q) => ({
+                idQuestion: q.idQuestion,
+                numberQuestion: q.numberQuestion,
+                content: q.content,
+                options: (q.answers || []).map((ans) => ({
+                  text: ans.answer_text,
+                  correct:
+                    ans.matching_value === "CORRECT" ||
+                    ans.matching_value === "TRUE",
+                })),
+              }));
+              setFormQuestions(editForm);
+              setIsEditMode(true);
+            }}
+          >
             ✎ Chỉnh sửa
           </Button>
         </div>
-        {loadedQuestions.map((q, index) => (
-          <div
-            key={q.idQuestion}
-            className="border p-4 rounded bg-white shadow-sm"
-          >
-            <div className="flex justify-between items-start mb-2">
-              <span className="font-semibold">
-                Câu {q.numberQuestion}: {q.content}
-              </span>
-              <Button
-                type="text"
-                danger
-                size="small"
-                icon={<DeleteOutlined />}
-                onClick={() => handleDeleteQuestion(q.idQuestion, index)}
-              />
+        {loadedQuestions.map((q) => (
+          <div key={q.idQuestion} className="border p-4 rounded bg-white">
+            <div className="font-bold mb-2">
+              Câu {q.numberQuestion}: {q.content}
             </div>
-
-            <div className="bg-gray-50 p-3 rounded">
-              <p className="text-sm font-medium mb-2">Đáp án:</p>
-              <div className="space-y-1">
-                {(q.answers || []).map((ans, idx) => (
-                  <div
-                    key={idx}
-                    className="text-sm flex items-center gap-2 p-1"
-                  >
-                    <span className="font-semibold min-w-6">
-                      {ans.matching_key}:
-                    </span>
-                    <span>{ans.answer_text}</span>
-                    {ans.matching_value === "Correct" && (
-                      <span className="ml-auto text-green-600 text-xs font-bold">
-                        ✓ ĐÁP ÁN ĐÚNG
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
+            <div className="grid grid-cols-1 gap-2 pl-4">
+              {(q.answers || []).map((ans, idx) => (
+                <div
+                  key={idx}
+                  className={`p-2 border rounded text-sm flex gap-2 ${
+                    ans.matching_value === "CORRECT"
+                      ? "bg-green-50 border-green-300"
+                      : "bg-gray-50"
+                  }`}
+                >
+                  <span className="font-bold min-w-[20px]">
+                    {ans.matching_key}.
+                  </span>
+                  <span>{ans.answer_text}</span>
+                  {ans.matching_value === "CORRECT" && (
+                    <span className="ml-auto text-green-600 font-bold">✓</span>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         ))}
-
-        <div className="flex gap-2 pt-4 border-t">
-          <Button type="primary" onClick={() => setHasQuestionsLoaded(false)}>
-            + Thêm câu hỏi
-          </Button>
-        </div>
+        <Button
+          block
+          type="dashed"
+          onClick={() => {
+            setHasQuestionsLoaded(false);
+            setIsEditMode(false);
+            setFormQuestions([
+              { content: "", options: [{ text: "", correct: false }] },
+            ]);
+          }}
+        >
+          + Thêm câu hỏi mới vào nhóm này
+        </Button>
       </div>
     );
   }
 
-  // ======== SHOW FORM TO CREATE/EDIT QUESTIONS ========
+  // Render Form (Create/Edit mode)
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">
-          {isEditMode ? "Chỉnh sửa câu hỏi MCQ" : "Tạo câu hỏi MCQ"}
+      <div className="flex justify-between">
+        <h3 className="font-bold">
+          {isEditMode ? "Chỉnh sửa câu hỏi" : "Tạo câu hỏi mới"}
         </h3>
-        {isEditMode && (
+        {(isEditMode || hasQuestionsLoaded) && (
           <Button
             onClick={() => {
               setIsEditMode(false);
-              setFormQuestions([
-                { content: "", options: [{ text: "", correct: false }] },
-              ]);
               setHasQuestionsLoaded(true);
+              loadData();
             }}
           >
             Hủy
           </Button>
         )}
       </div>
+
       {formQuestions.map((q, qIndex) => (
-        <div key={qIndex} className="border p-4 rounded bg-white shadow-sm">
-          <div className="flex justify-between items-center mb-2">
-            <span className="font-semibold">
-              Câu{" "}
-              {isEditMode
-                ? qIndex + 1
-                : questionNumberOffset + loadedQuestions.length + qIndex + 1}
-            </span>
+        <div
+          key={qIndex}
+          className="border p-4 rounded bg-white shadow-sm relative"
+        >
+          <div className="font-semibold mb-2">
+            Câu{" "}
+            {q.numberQuestion ||
+              questionNumberOffset + loadedQuestions.length + qIndex + 1}
           </div>
 
           <Input.TextArea
             rows={2}
-            placeholder="Nhập nội dung câu hỏi..."
+            placeholder="Nội dung câu hỏi..."
             value={q.content}
             onChange={(e) => handleChangeQuestion(qIndex, e.target.value)}
+            className="mb-4"
           />
 
-          <div className="mt-3 space-y-2">
+          <div className="space-y-2">
             {q.options.map((opt, oIndex) => (
-              <div key={oIndex} className="flex items-center gap-2">
+              <div key={oIndex} className="flex gap-2 items-center">
                 <Checkbox
                   checked={opt.correct}
                   onChange={(e) =>
@@ -384,8 +328,12 @@ const MCQForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
                     )
                   }
                 />
+                {/* Hiển thị Key tự động A, B, C... */}
+                <span className="font-bold text-blue-600 w-6 text-center">
+                  {String.fromCharCode(65 + oIndex)}
+                </span>
                 <Input
-                  placeholder={`Lựa chọn ${String.fromCharCode(65 + oIndex)}`}
+                  placeholder={`Nội dung lựa chọn...`}
                   value={opt.text}
                   onChange={(e) =>
                     handleChangeOption(qIndex, oIndex, "text", e.target.value)
@@ -394,32 +342,33 @@ const MCQForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
                 <Button
                   type="text"
                   danger
-                  size="small"
                   icon={<DeleteOutlined />}
                   onClick={() => handleDeleteOption(qIndex, oIndex)}
                 />
               </div>
             ))}
+            <Button
+              type="dashed"
+              size="small"
+              onClick={() => handleAddOption(qIndex)}
+              className="mt-2 ml-8"
+            >
+              + Thêm lựa chọn
+            </Button>
           </div>
-
-          <Button
-            type="dashed"
-            className="mt-3 w-full"
-            onClick={() => handleAddOption(qIndex)}
-          >
-            + Thêm lựa chọn
-          </Button>
         </div>
       ))}
 
-      <div className="flex gap-3">
-        <Button onClick={handleAddQuestion}>+ Thêm câu hỏi</Button>
+      <div className="flex gap-3 justify-end">
+        {!isEditMode && (
+          <Button onClick={handleAddQuestion}>+ Thêm câu hỏi</Button>
+        )}
         <Button
           type="primary"
           onClick={isEditMode ? handleSaveEdit : handleSaveAll}
           loading={saving}
         >
-          {isEditMode ? "Cập nhật" : "Lưu"}
+          {isEditMode ? "Cập nhật tất cả" : "Lưu"}
         </Button>
       </div>
     </div>

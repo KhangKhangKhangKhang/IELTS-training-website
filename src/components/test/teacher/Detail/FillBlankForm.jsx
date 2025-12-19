@@ -1,211 +1,182 @@
-import React, { useState, useEffect } from "react";
-import { Button, Input, message, Spin, Modal, Space } from "antd";
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import React, { useState, useEffect, useRef } from "react";
+import { Button, Input, message, Spin, Radio, Tooltip } from "antd";
+import {
+  SaveOutlined,
+  ArrowUpOutlined,
+  VerticalAlignTopOutlined,
+} from "@ant-design/icons";
 import {
   getQuestionsByIdGroupAPI,
   getAnswersByIdQuestionAPI,
-  updateAnswerAPI,
   createManyQuestion,
   updateManyQuestionAPI,
 } from "@/services/apiTest";
 
-const FillBlankForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
-  const [loadedQuestions, setLoadedQuestions] = useState([]);
+const FillBlankForm = ({
+  idGroup,
+  groupData,
+  questionNumberOffset = 0,
+  onRefresh,
+}) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [hasQuestionsLoaded, setHasQuestionsLoaded] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [formQuestions, setFormQuestions] = useState([
-    { content: "", answer_text: "" },
-  ]);
-  const [blankModalVisible, setBlankModalVisible] = useState(false);
-  const [blankModalIndex, setBlankModalIndex] = useState(null);
+  const [mode, setMode] = useState("SENTENCE"); // "SENTENCE" | "SUMMARY"
 
-  // Initialize form questions based on quantity when group is first created
-  useEffect(() => {
-    if (
-      groupData?.quantity &&
-      !hasQuestionsLoaded &&
-      loadedQuestions.length === 0
-    ) {
-      const initialQuestions = Array(groupData.quantity)
-        .fill(null)
-        .map(() => ({
-          content: "",
-          answer_text: "",
-        }));
-      setFormQuestions(initialQuestions);
-    }
-  }, [groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
+  // State data
+  const [questions, setQuestions] = useState([]); // Dùng chung cho cả 2 mode
+  const [summaryText, setSummaryText] = useState("");
+
+  // Ref để xử lý chèn text vào vị trí con trỏ
+  const textAreaRef = useRef(null);
+
+  // Số lượng câu hỏi cố định của Group
+  const quantity = groupData?.quantity || 1;
 
   useEffect(() => {
-    if (idGroup) {
-      loadQuestions();
-    }
+    if (idGroup) loadQuestions();
   }, [idGroup]);
 
+  // --- 1. LOAD DATA & INIT ---
   const loadQuestions = async () => {
     try {
       setLoading(true);
       const res = await getQuestionsByIdGroupAPI(idGroup);
       const group = res?.data?.[0];
 
+      // Nếu chưa có câu hỏi nào -> Init theo số lượng quantity
       if (!group || !group.question || group.question.length === 0) {
-        setLoadedQuestions([]);
-        setHasQuestionsLoaded(false);
+        initFixedForm();
       } else {
-        const withAnswers = await Promise.all(
-          group.question.map(async (q) => {
+        const questionsList = group.question;
+
+        // Load answers
+        const fullQuestions = await Promise.all(
+          questionsList.map(async (q) => {
             try {
               const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
               const ansData = ansRes?.data?.[0];
               return {
                 ...q,
-                idAnswer: ansData?.idAnswer || null,
                 answer_text: ansData?.answer_text || "",
+                idAnswer: ansData?.idAnswer,
               };
             } catch (err) {
-              return { ...q, idAnswer: null, answer_text: "" };
+              return { ...q, answer_text: "" };
             }
           })
         );
 
-        setLoadedQuestions(withAnswers);
-        setHasQuestionsLoaded(true);
+        // Detect mode
+        detectModeAndFillData(fullQuestions);
       }
     } catch (err) {
-      console.error("Error loading questions:", err);
-      setLoadedQuestions([]);
-      setHasQuestionsLoaded(false);
+      console.error(err);
+      message.error("Lỗi tải câu hỏi");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddQuestion = () => {
-    setFormQuestions([...formQuestions, { content: "", answer_text: "" }]);
-  };
-
-  const handleChangeQuestion = (qIndex, value) => {
-    const updated = [...formQuestions];
-    updated[qIndex].content = value;
-    setFormQuestions(updated);
-  };
-
-  const handleChangeAnswer = (qIndex, value) => {
-    const updated = [...formQuestions];
-    updated[qIndex].answer_text = value;
-    setFormQuestions(updated);
-  };
-
-  const handleInsertBlank = (qIndex) => {
-    const updated = [...formQuestions];
-    updated[qIndex].content += " _____ ";
-    setFormQuestions(updated);
-    setBlankModalVisible(false);
-    setBlankModalIndex(null);
-  };
-
-  const openBlankModal = (qIndex) => {
-    setBlankModalIndex(qIndex);
-    setBlankModalVisible(true);
-  };
-
-  const handleSaveAll = async () => {
-    try {
-      setSaving(true);
-
-      const questionsPayload = [];
-
-      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
-        const q = formQuestions[qIdx];
-        if (!q.content || !q.content.trim()) {
-          message.warning(`Câu ${qIdx + 1} không có nội dung`);
-          continue;
-        }
-
-        if (!q.answer_text) {
-          message.warning(`Câu ${qIdx + 1} không có đáp án`);
-          continue;
-        }
-
-        questionsPayload.push({
-          idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart || null,
-          numberQuestion:
-            questionNumberOffset + loadedQuestions.length + qIdx + 1,
-          content: q.content,
-          answers: [
-            {
-              answer_text: q.answer_text,
-              matching_key: null,
-              matching_value: null,
-            },
-          ],
-        });
-      }
-
-      if (questionsPayload.length === 0) {
-        message.error("Không có câu hỏi hợp lệ để lưu");
-        return;
-      }
-
-      await createManyQuestion({ questions: questionsPayload });
-      message.success("Đã lưu tất cả câu hỏi điền chỗ trống!");
-
-      setFormQuestions([{ content: "", answer_text: "" }]);
-      await loadQuestions();
-    } catch (err) {
-      console.error(err);
-      message.error("Lưu câu hỏi thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteQuestion = async (idQuestion, index) => {
-    try {
-      const updated = loadedQuestions.filter((_, idx) => idx !== index);
-      setLoadedQuestions(updated);
-      message.success("Đã xóa câu hỏi");
-    } catch (err) {
-      console.error(err);
-      message.error("Xóa câu hỏi thất bại");
-    }
-  };
-
-  const handleEditGroup = () => {
-    const editForm = loadedQuestions.map((q) => ({
-      idQuestion: q.idQuestion,
-      content: q.content,
-      answer_text: q.answer_text,
+  // Khởi tạo form với số lượng cố định, không cho user thêm bớt lung tung
+  const initFixedForm = () => {
+    // Mặc định là SENTENCE, nhưng nếu user muốn Summary thì data structure vẫn vậy
+    const initialQuestions = Array.from({ length: quantity }, (_, index) => ({
+      idQuestion: null,
+      content: "", // Nếu mode Sentence thì user nhập, Summary thì để trống (sẽ fill lúc save)
+      answer_text: "",
+      numberQuestion: questionNumberOffset + index + 1, // Tự động tính: Ví dụ 4, 5, 6
     }));
-    setFormQuestions(editForm);
-    setIsEditMode(true);
-    setHasQuestionsLoaded(false);
+
+    setQuestions(initialQuestions);
+    setSummaryText("");
+    setMode("SENTENCE");
   };
 
-  const handleSaveEdit = async () => {
+  const detectModeAndFillData = (loadedQuestions) => {
+    // Nếu số lượng load về ít hơn số lượng quy định của Group (do lỗi gì đó), fill thêm cho đủ
+    let processedQuestions = [...loadedQuestions];
+    if (loadedQuestions.length < quantity) {
+      const diff = quantity - loadedQuestions.length;
+      const extra = Array.from({ length: diff }, (_, i) => ({
+        content: "",
+        answer_text: "",
+        numberQuestion: questionNumberOffset + loadedQuestions.length + i + 1,
+      }));
+      processedQuestions = [...processedQuestions, ...extra];
+    }
+
+    // Logic detect Summary
+    if (processedQuestions.length > 0) {
+      const firstContent = processedQuestions[0].content?.trim();
+      // Nếu có >1 câu và content giống nhau => Summary Mode
+      // Hoặc nếu chỉ có 1 câu nhưng content dài và chứa ký tự [...] => Có thể là Summary
+      const isSummary =
+        processedQuestions.length > 1
+          ? processedQuestions.every((q) => q.content?.trim() === firstContent)
+          : firstContent && firstContent.length > 50; // Heuristic đơn giản
+
+      if (isSummary && firstContent) {
+        setMode("SUMMARY");
+        setSummaryText(firstContent);
+        setQuestions(processedQuestions);
+        return;
+      }
+    }
+
+    setMode("SENTENCE");
+    setQuestions(processedQuestions);
+  };
+
+  // --- 2. HANDLERS ---
+
+  const handleChangeQuestion = (idx, field, val) => {
+    const newQ = [...questions];
+    newQ[idx][field] = val;
+    setQuestions(newQ);
+  };
+
+  // Hàm quan trọng: Chèn placeholder vào vị trí con trỏ chuột trong TextArea
+  const handleInsertPlaceholder = (numberQuestion) => {
+    const placeholder = ` [${numberQuestion}] `;
+
+    if (textAreaRef.current) {
+      const input = textAreaRef.current.resizableTextArea.textArea; // Antd TextArea ref path
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+      const text = input.value;
+
+      // Chèn text vào giữa
+      const newText =
+        text.substring(0, start) + placeholder + text.substring(end);
+
+      setSummaryText(newText);
+
+      // Focus lại và đặt con trỏ sau text vừa chèn (dùng setTimeout để đợi React render)
+      setTimeout(() => {
+        input.focus();
+        input.setSelectionRange(
+          start + placeholder.length,
+          start + placeholder.length
+        );
+      }, 0);
+    } else {
+      setSummaryText((prev) => prev + placeholder);
+    }
+  };
+
+  // --- 3. SAVE LOGIC ---
+  const handleSave = async () => {
     try {
       setSaving(true);
-      const questionsPayload = [];
+      let payload = [];
 
-      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
-        const q = formQuestions[qIdx];
-        if (!q.content || !q.content.trim()) {
-          message.warning(`Câu ${qIdx + 1} không có nội dung`);
-          continue;
-        }
-        if (!q.answer_text) {
-          message.warning(`Câu ${qIdx + 1} không có đáp án`);
-          continue;
-        }
-
-        questionsPayload.push({
+      if (mode === "SENTENCE") {
+        payload = questions.map((q) => ({
           idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart || null,
-          numberQuestion: qIdx + 1,
-          content: q.content,
+          idPart: groupData?.idPart,
+          idQuestion: q.idQuestion || null,
+          numberQuestion: q.numberQuestion,
+          content: q.content, // Nội dung riêng từng câu
           answers: [
             {
               answer_text: q.answer_text,
@@ -213,194 +184,223 @@ const FillBlankForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
               matching_value: null,
             },
           ],
-          idQuestion: q.idQuestion,
-        });
+        }));
+
+        // Validate
+        if (payload.some((q) => !q.content.trim())) {
+          message.warning("Vui lòng nhập nội dung cho tất cả các câu hỏi!");
+          setSaving(false);
+          return;
+        }
+      } else {
+        // SUMMARY MODE
+        if (!summaryText.trim()) {
+          message.warning("Chưa nhập nội dung đoạn văn Summary");
+          setSaving(false);
+          return;
+        }
+
+        // Validate xem trong text đã có đủ placeholder chưa (Optional)
+        // const missingPlaceholders = questions.filter(q => !summaryText.includes(`[${q.numberQuestion}]`));
+        // if (missingPlaceholders.length > 0) {
+        //    message.warning(`Cảnh báo: Trong đoạn văn thiếu vị trí cho câu ${missingPlaceholders.map(q=>q.numberQuestion).join(', ')}`);
+        // }
+
+        payload = questions.map((q) => ({
+          idGroupOfQuestions: idGroup,
+          idPart: groupData?.idPart,
+          idQuestion: q.idQuestion || null,
+          numberQuestion: q.numberQuestion,
+          content: summaryText, // Tất cả chung 1 content
+          answers: [
+            {
+              answer_text: q.answer_text,
+              matching_key: null,
+              matching_value: null,
+            },
+          ],
+        }));
       }
 
-      if (questionsPayload.length === 0) {
-        message.error("Không có câu hỏi hợp lệ để lưu");
-        return;
-      }
+      const toUpdate = payload.filter((p) => p.idQuestion);
+      const toCreate = payload.filter((p) => !p.idQuestion);
 
-      await updateManyQuestionAPI({ questions: questionsPayload });
-      message.success("Đã cập nhật câu hỏi!");
+      const promises = [];
+      if (toUpdate.length > 0)
+        promises.push(updateManyQuestionAPI({ questions: toUpdate }));
+      if (toCreate.length > 0)
+        promises.push(createManyQuestion({ questions: toCreate }));
 
-      setIsEditMode(false);
-      setFormQuestions([{ content: "", answer_text: "" }]);
+      await Promise.all(promises);
+      message.success("Đã lưu thành công!");
+      if (onRefresh) onRefresh();
       await loadQuestions();
     } catch (err) {
       console.error(err);
-      message.error("Cập nhật câu hỏi thất bại");
+      message.error("Lưu thất bại!");
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
+  if (loading)
     return (
-      <div className="flex justify-center py-6">
-        <Spin tip="Đang tải câu hỏi..." />
+      <div className="text-center py-6">
+        <Spin />
       </div>
     );
-  }
-
-  if (hasQuestionsLoaded && loadedQuestions.length > 0) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Câu hỏi đã có</h3>
-          <Button type="primary" onClick={handleEditGroup}>
-            ✎ Chỉnh sửa
-          </Button>
-        </div>
-        {loadedQuestions.map((q, index) => (
-          <div
-            key={q.idQuestion}
-            className="border p-4 rounded bg-white shadow-sm"
-          >
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <span className="font-semibold">
-                  Câu {q.numberQuestion}: {q.content}
-                </span>
-                <div className="text-sm text-gray-600 mt-1">
-                  Đáp án: <span className="font-medium">{q.answer_text}</span>
-                </div>
-              </div>
-              <Button
-                type="text"
-                danger
-                size="small"
-                icon={<DeleteOutlined />}
-                onClick={() => handleDeleteQuestion(q.idQuestion, index)}
-              />
-            </div>
-          </div>
-        ))}
-
-        <div className="flex gap-2 pt-4 border-t">
-          <Button type="primary" onClick={() => setHasQuestionsLoaded(false)}>
-            + Thêm câu hỏi
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">
-          {isEditMode ? "Chỉnh sửa câu hỏi" : "Tạo câu hỏi điền chỗ trống"}
-        </h3>
-        {isEditMode && (
-          <Button
-            onClick={() => {
-              setIsEditMode(false);
-              setFormQuestions([{ content: "", answer_text: "" }]);
-              setHasQuestionsLoaded(true);
-            }}
-          >
-            Hủy
-          </Button>
-        )}
+    <div className="space-y-5 pb-4">
+      {/* 1. Switch Mode */}
+      <div className="flex items-center gap-4 border-b pb-3 mb-4">
+        <span className="font-semibold text-gray-700">Chế độ nhập:</span>
+        <Radio.Group
+          value={mode}
+          onChange={(e) => setMode(e.target.value)}
+          buttonStyle="solid"
+          size="small"
+        >
+          <Radio.Button value="SENTENCE">Từng câu (Sentences)</Radio.Button>
+          <Radio.Button value="SUMMARY">Đoạn văn (Summary)</Radio.Button>
+        </Radio.Group>
+        <span className="text-gray-400 text-sm ml-auto">
+          Số lượng câu hỏi: <b>{quantity}</b> (câu{" "}
+          {questions[0]?.numberQuestion} -{" "}
+          {questions[questions.length - 1]?.numberQuestion})
+        </span>
       </div>
-      {formQuestions.map((q, qIndex) => (
-        <div key={qIndex} className="border p-4 rounded bg-white shadow-sm">
-          <div className="font-semibold mb-3">
-            Câu{" "}
-            {isEditMode
-              ? qIndex + 1
-              : questionNumberOffset + loadedQuestions.length + qIndex + 1}
-          </div>
 
-          <div className="mb-3">
-            <label className="block text-sm font-medium mb-1">
-              Nội dung câu hỏi
-            </label>
-            <Input.TextArea
-              rows={3}
-              placeholder="Nhập nội dung câu hỏi... (bấm nút để thêm chỗ trống)"
-              value={q.content}
-              onChange={(e) => handleChangeQuestion(qIndex, e.target.value)}
-            />
-            <div className="mt-2 flex gap-2">
-              <Button
-                type="dashed"
-                size="small"
-                icon={<PlusOutlined />}
-                onClick={() => openBlankModal(qIndex)}
-              >
-                Thêm chỗ trống (_____)
-              </Button>
-              <span className="text-xs text-gray-500 flex items-center">
-                Click để insert blank vào câu hỏi
+      {/* 2. Content */}
+      {mode === "SENTENCE" ? (
+        <div className="space-y-4">
+          {questions.map((q, idx) => (
+            <div key={idx} className="bg-gray-50 p-4 rounded border">
+              <div className="font-bold text-gray-700 mb-2">
+                Câu {q.numberQuestion}
+              </div>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input.TextArea
+                    rows={2}
+                    className="bg-white"
+                    placeholder="Nhập câu hỏi..."
+                    value={q.content}
+                    onChange={(e) =>
+                      handleChangeQuestion(idx, "content", e.target.value)
+                    }
+                  />
+                  <Button
+                    type="dashed"
+                    onClick={() =>
+                      handleChangeQuestion(
+                        idx,
+                        "content",
+                        (q.content || "") + " _____ "
+                      )
+                    }
+                  >
+                    + Chèn _____
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium min-w-[60px]">
+                    Đáp án:
+                  </span>
+                  <Input
+                    placeholder="Đáp án đúng"
+                    value={q.answer_text}
+                    onChange={(e) =>
+                      handleChangeQuestion(idx, "answer_text", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Khu vực nhập Summary */}
+          <div className="relative">
+            <div className="flex justify-between items-center mb-2">
+              <label className="font-semibold text-gray-700">
+                Nội dung đoạn văn:
+              </label>
+              <span className="text-xs text-gray-500">
+                Đặt con trỏ vào ô văn bản và bấm nút [↑ Chèn...] ở dưới để điền
+                vị trí
               </span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium min-w-fit">Đáp án:</span>
-            <Input
-              placeholder="Nhập đáp án cho chỗ trống"
-              value={q.answer_text}
-              onChange={(e) => handleChangeAnswer(qIndex, e.target.value)}
+            <Input.TextArea
+              ref={textAreaRef}
+              rows={8}
+              className="text-base leading-relaxed p-3 shadow-sm border-blue-200 focus:border-blue-500"
+              placeholder="Nhập đoạn văn summary tại đây..."
+              value={summaryText}
+              onChange={(e) => setSummaryText(e.target.value)}
             />
           </div>
-        </div>
-      ))}
 
-      <div className="flex gap-3">
-        <Button onClick={handleAddQuestion}>+ Thêm câu hỏi</Button>
+          {/* Khu vực nhập đáp án + Nút chèn */}
+          <div className="bg-gray-50 p-4 rounded border">
+            <h4 className="font-semibold mb-3 text-gray-700">
+              Nhập đáp án & Chèn vị trí vào văn bản:
+            </h4>
+            <div className="grid grid-cols-1 gap-3">
+              {questions.map((q, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 bg-white p-2 rounded border shadow-sm hover:border-blue-400 transition-colors"
+                >
+                  {/* Label số câu */}
+                  <div className="font-bold text-gray-700 w-16 text-center bg-gray-100 rounded py-1">
+                    {q.numberQuestion}
+                  </div>
+
+                  {/* Input đáp án */}
+                  <Input
+                    className="flex-1"
+                    placeholder={`Đáp án câu ${q.numberQuestion}`}
+                    value={q.answer_text}
+                    onChange={(e) =>
+                      handleChangeQuestion(idx, "answer_text", e.target.value)
+                    }
+                  />
+
+                  {/* Nút Chèn thông minh */}
+                  <Tooltip
+                    title={`Chèn vị trí [${q.numberQuestion}] vào đoạn văn ở trên`}
+                  >
+                    <Button
+                      type="primary"
+                      ghost
+                      icon={<VerticalAlignTopOutlined />}
+                      onClick={() => handleInsertPlaceholder(q.numberQuestion)}
+                    >
+                      Chèn [{q.numberQuestion}]
+                    </Button>
+                  </Tooltip>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Footer Save */}
+      <div className="pt-4 mt-4 border-t flex justify-end">
         <Button
           type="primary"
-          onClick={isEditMode ? handleSaveEdit : handleSaveAll}
+          size="large"
+          icon={<SaveOutlined />}
           loading={saving}
+          onClick={handleSave}
+          className="min-w-[150px]"
         >
-          {isEditMode ? "Cập nhật" : "Lưu"}
+          Lưu nhóm câu hỏi
         </Button>
       </div>
-
-      {/* Modal thêm chỗ trống */}
-      <Modal
-        title="Thêm chỗ trống"
-        open={blankModalVisible}
-        onCancel={() => {
-          setBlankModalVisible(false);
-          setBlankModalIndex(null);
-        }}
-        footer={null}
-        width={400}
-      >
-        <div className="space-y-3">
-          <div className="bg-blue-50 p-3 rounded border border-blue-200">
-            <p className="text-sm text-gray-700 mb-2">
-              <strong>Câu hỏi hiện tại:</strong>
-            </p>
-            <p className="text-sm p-2 bg-white rounded border">
-              {formQuestions[blankModalIndex]?.content || "(trống)"}
-            </p>
-          </div>
-          <p className="text-sm text-gray-600">
-            Bấm nút dưới để thêm chỗ trống{" "}
-            <code className="bg-gray-100 px-2 py-1 rounded">_____</code> vào
-            cuối câu hỏi
-          </p>
-          <Space className="w-full justify-center">
-            <Button
-              onClick={() => {
-                if (blankModalIndex !== null) {
-                  handleInsertBlank(blankModalIndex);
-                }
-              }}
-              type="primary"
-              size="large"
-            >
-              Thêm _____ vào câu hỏi
-            </Button>
-          </Space>
-        </div>
-      </Modal>
     </div>
   );
 };
