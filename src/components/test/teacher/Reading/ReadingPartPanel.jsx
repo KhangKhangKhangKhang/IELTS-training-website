@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { Button, Select, InputNumber, message, Tabs, Popconfirm, Upload } from "antd";
-import { DeleteOutlined, UploadOutlined, PictureOutlined } from "@ant-design/icons";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Button,
+  Select,
+  InputNumber,
+  message,
+  Tabs,
+  Popconfirm,
+  Upload,
+  Spin,
+} from "antd";
+import { DeleteOutlined, UploadOutlined } from "@ant-design/icons";
+import { Textarea } from "@/components/ui/textarea"; // Lưu ý đường dẫn import này theo source của bạn
 import {
   createPassageAPI,
   updatePassageAPI,
   createGroupOfQuestionsAPI,
   deleteGroupOfQuestionsAPI,
 } from "@/services/apiTest";
-import QuestionTypeRenderer from "@/components/test/teacher/QuestionRender";
+import QuestionTypeRenderer from "@/components/test/teacher/QuestionRender"; // Lưu ý đường dẫn import
 
 const loaiCauHoiOptions = [
   { value: "MCQ", label: "Multiple choice" },
@@ -25,9 +34,10 @@ const ReadingPartPanel = ({
   idTest,
   part,
   partDetail,
-  onPartUpdate,
-  questionNumberOffset: initialQuestionNumberOffset = 0,
+  onPartUpdate, // Hàm callback từ cha để refresh dữ liệu
+  questionNumberOffset = 0, // Số bắt đầu câu hỏi (được tính từ cha)
 }) => {
+  // --- STATE QUẢN LÝ PASSAGE ---
   const [passageData, setPassageData] = useState({
     content: "",
     title: "",
@@ -36,16 +46,19 @@ const ReadingPartPanel = ({
     image: null,
   });
   const [existingPassage, setExistingPassage] = useState(null);
+  const [savingPassage, setSavingPassage] = useState(false);
+
+  // --- STATE QUẢN LÝ TẠO GROUP ---
   const [groupType, setGroupType] = useState(null);
   const [groupTitle, setGroupTitle] = useState("");
   const [groupQuantity, setGroupQuantity] = useState(3);
-  const [groupImage, setGroupImage] = useState(null); // Thêm state cho hình ảnh nhóm
-  const [groupImagePreview, setGroupImagePreview] = useState(null); // Preview URL
+  const [groupImage, setGroupImage] = useState(null);
+  const [groupImagePreview, setGroupImagePreview] = useState(null);
   const [creatingGroup, setCreatingGroup] = useState(false);
-  const [activeTab, setActiveTab] = useState("passage");
-  const [savingPassage, setSavingPassage] = useState(false);
 
-  // Khởi tạo dữ liệu từ partDetail
+  const [activeTab, setActiveTab] = useState("passage");
+
+  // --- EFFECT: ĐỒNG BỘ DỮ LIỆU TỪ PROPS VÀO STATE ---
   useEffect(() => {
     if (partDetail?.passage) {
       const passage = partDetail.passage;
@@ -67,10 +80,11 @@ const ReadingPartPanel = ({
         image: null,
       });
     }
-    console.log("Initialized passage data from partDetail:", passageData);
-  }, [partDetail, part.namePart]);
+  }, [partDetail, part.namePart, part.idPart]);
 
-  // Lưu passage (create hoặc update)
+  // --- HANDLERS ---
+
+  // 1. Lưu Passage
   const handleSavePassage = async () => {
     try {
       setSavingPassage(true);
@@ -85,26 +99,20 @@ const ReadingPartPanel = ({
         passageData.numberParagraph.toString()
       );
 
-      // Nếu có ảnh mới, thêm vào formData
       if (passageData.image && typeof passageData.image !== "string") {
         formData.append("image", passageData.image);
       }
 
-      let res;
       if (existingPassage) {
-        // Update passage đã tồn tại
-        res = await updatePassageAPI(existingPassage.idPassage, formData);
+        await updatePassageAPI(existingPassage.idPassage, formData);
         message.success("Cập nhật passage thành công");
       } else {
-        // Tạo passage mới
-        res = await createPassageAPI(formData);
+        await createPassageAPI(formData);
         message.success("Tạo passage thành công");
       }
 
-      // Refresh part detail để lấy dữ liệu mới
-      if (onPartUpdate) {
-        onPartUpdate(part);
-      }
+      // Refresh dữ liệu ở component cha
+      if (onPartUpdate) await onPartUpdate();
     } catch (err) {
       console.error(err);
       message.error(
@@ -115,10 +123,11 @@ const ReadingPartPanel = ({
     }
   };
 
-  // Tạo nhóm câu hỏi
+  // 2. Tạo Group câu hỏi
   const handleCreateGroup = async () => {
     if (!groupType) return message.warning("Chọn loại câu hỏi trước");
     if (!groupTitle.trim()) return message.warning("Nhập tiêu đề nhóm câu hỏi");
+
     try {
       setCreatingGroup(true);
       const payload = {
@@ -128,15 +137,12 @@ const ReadingPartPanel = ({
         title: groupTitle,
         quantity: groupQuantity,
       };
-      
-      // Thêm file ảnh nếu có
+
       if (groupImage) {
         payload.avatar = groupImage;
       }
-      
-      const res = await createGroupOfQuestionsAPI(payload);
-      const idNhom = res?.data.idGroupOfQuestions || res?.idGroup || res?.id;
-      if (!idNhom) throw new Error("API không trả về idGroupOfQuestions");
+
+      await createGroupOfQuestionsAPI(payload);
       message.success("Tạo nhóm câu hỏi thành công");
 
       // Reset form
@@ -146,12 +152,10 @@ const ReadingPartPanel = ({
       setGroupImage(null);
       setGroupImagePreview(null);
 
-      // Refresh part detail
-      if (onPartUpdate) {
-        onPartUpdate(part);
-      }
+      // Refresh dữ liệu để cập nhật danh sách và tính lại số câu
+      if (onPartUpdate) await onPartUpdate();
 
-      // Chuyển sang tab questions
+      // Chuyển sang tab câu hỏi
       setActiveTab("questions");
     } catch (err) {
       console.error(err);
@@ -161,47 +165,36 @@ const ReadingPartPanel = ({
     }
   };
 
-  // Xử lý chọn ảnh cho nhóm câu hỏi
+  // 3. Xử lý ảnh group
   const handleGroupImageChange = (file) => {
     setGroupImage(file);
     setGroupImagePreview(URL.createObjectURL(file));
-    return false; // Ngăn chặn auto upload
+    return false; // chặn auto upload
   };
 
-  // Xóa ảnh nhóm câu hỏi
   const handleRemoveGroupImage = () => {
     setGroupImage(null);
     setGroupImagePreview(null);
   };
 
-  // Xóa nhóm câu hỏi
-  const handleDeleteGroup = async (idGroupOfQuestions, quantityDeleted) => {
+  // 4. Xóa Group
+  const handleDeleteGroup = async (idGroupOfQuestions) => {
     try {
       await deleteGroupOfQuestionsAPI(idGroupOfQuestions);
       message.success("Đã xóa nhóm câu hỏi");
 
-      // Refresh part detail để cập nhật numbering
-      if (onPartUpdate) {
-        onPartUpdate(part);
-      }
+      // Refresh dữ liệu để cập nhật lại số thứ tự câu hỏi
+      if (onPartUpdate) await onPartUpdate();
     } catch (err) {
       console.error(err);
       message.error("Xóa nhóm thất bại");
     }
   };
 
-  // Xử lý thay đổi passage content
+  // 5. Đếm đoạn văn
   const handleContentChange = (content) => {
-    // Tính toán số đoạn văn
-    // Bước 1: Kiểm tra nếu nội dung rỗng thì là 0
-    // Bước 2: Split theo ký tự xuống dòng đơn (\n) thay vì (\n\n)
     let count = 0;
     if (content.trim()) {
-      // Cách 1: Tính tất cả các dòng (kể cả dòng trống cũng tính là 1 đoạn)
-      // count = content.split("\n").length;
-
-      // Cách 2: Chỉ tính các dòng CÓ NỘI DUNG (khuyên dùng)
-      // Dòng này nghĩa là: Tách theo xuống dòng -> Lọc bỏ các dòng trắng -> Đếm
       count = content.split("\n").filter((p) => p.trim() !== "").length;
     }
 
@@ -212,7 +205,12 @@ const ReadingPartPanel = ({
     }));
   };
 
-  let questionNumberOffset = initialQuestionNumberOffset || 0;
+  // --- RENDER LOGIC ---
+
+  // Biến chạy để tính offset cho từng nhóm khi render
+  // Khởi tạo bằng giá trị offset nhận từ cha (đã tính tổng các Part trước)
+  let runningOffset = questionNumberOffset;
+
   const items = [
     {
       key: "passage",
@@ -275,20 +273,21 @@ const ReadingPartPanel = ({
           <div className="border rounded-lg p-4 bg-white shadow-sm">
             <h3 className="text-lg font-medium mb-4">Tạo nhóm câu hỏi mới</h3>
             <div className="space-y-4">
-              {/* Tiêu đề nhóm - Textarea nhiều dòng */}
+              {/* Tiêu đề nhóm */}
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Tiêu đề nhóm <span className="text-gray-400">(hỗ trợ nhiều dòng)</span>
+                  Tiêu đề nhóm{" "}
+                  <span className="text-gray-400">(hỗ trợ nhiều dòng)</span>
                 </label>
                 <Textarea
-                  placeholder="Ví dụ:&#10;Questions 1-5&#10;Do the following statements agree with the information given in the Reading Passage?&#10;Write YES / NO / NOT GIVEN"
+                  placeholder="Ví dụ:&#10;Questions 1-5&#10;Do the following statements agree..."
                   value={groupTitle}
                   onChange={(e) => setGroupTitle(e.target.value)}
                   className="w-full min-h-[100px] resize-y"
                 />
               </div>
 
-              {/* Hình ảnh nhóm câu hỏi */}
+              {/* Hình ảnh nhóm */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Hình ảnh (tùy chọn)
@@ -303,7 +302,7 @@ const ReadingPartPanel = ({
                       {groupImage ? "Đổi ảnh" : "Chọn ảnh"}
                     </Button>
                   </Upload>
-                  
+
                   {groupImagePreview && (
                     <div className="relative">
                       <img
@@ -366,25 +365,26 @@ const ReadingPartPanel = ({
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Các nhóm câu hỏi đã tạo</h3>
               {partDetail.groupOfQuestions.map((nhom) => {
-                const currentOffset = questionNumberOffset;
-                questionNumberOffset += nhom.quantity;
+                // LOGIC SỬA LỖI SỐ THỨ TỰ:
+                // Lưu lại offset bắt đầu cho nhóm này
+                const currentGroupStart = runningOffset;
+                // Cộng dồn số lượng câu của nhóm này cho nhóm kế tiếp
+                runningOffset += nhom.quantity;
+
                 return (
                   <div
                     key={nhom.idGroupOfQuestions}
                     className="border rounded-lg p-4 bg-white shadow-sm"
                   >
                     <div className="flex justify-between items-center mb-3">
-                      <h4 className="font-medium text-blue-600">
+                      <h4 className="font-medium text-blue-600 whitespace-pre-line">
                         {nhom.title}
                       </h4>
                       <Popconfirm
                         title="Xóa nhóm câu hỏi"
                         description={`Bạn chắc chắn muốn xóa nhóm này? Sẽ xóa ${nhom.quantity} câu hỏi.`}
                         onConfirm={() =>
-                          handleDeleteGroup(
-                            nhom.idGroupOfQuestions,
-                            nhom.quantity
-                          )
+                          handleDeleteGroup(nhom.idGroupOfQuestions)
                         }
                         okText="Xóa"
                         cancelText="Hủy"
@@ -397,11 +397,16 @@ const ReadingPartPanel = ({
                         />
                       </Popconfirm>
                     </div>
+
+                    {/* Render Form chi tiết từng loại câu hỏi */}
                     <QuestionTypeRenderer
                       type={nhom.typeQuestion}
                       idGroup={nhom.idGroupOfQuestions}
                       groupData={nhom}
-                      questionNumberOffset={currentOffset}
+                      // QUAN TRỌNG: Truyền số bắt đầu đã tính toán chính xác
+                      questionNumberOffset={currentGroupStart}
+                      // QUAN TRỌNG: Truyền callback refresh để form con gọi khi save
+                      onRefresh={onPartUpdate}
                     />
                   </div>
                 );

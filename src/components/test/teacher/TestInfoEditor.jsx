@@ -1,6 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { Card, InputNumber, Button, message, Spin, Divider, Typography, Space, Tag } from "antd";
-import { SaveOutlined, ClockCircleOutlined, QuestionCircleOutlined, InfoCircleOutlined, CheckCircleOutlined, ArrowLeftOutlined } from "@ant-design/icons";
+import {
+  Card,
+  InputNumber,
+  Button,
+  message,
+  Spin,
+  Divider,
+  Typography,
+  Space,
+  Tag,
+} from "antd";
+import {
+  SaveOutlined,
+  ClockCircleOutlined,
+  QuestionCircleOutlined,
+  InfoCircleOutlined,
+  CheckCircleOutlined,
+  ArrowLeftOutlined,
+} from "@ant-design/icons";
 import { updateTestInfoAPI } from "@/services/apiTest";
 import { useNavigate } from "react-router";
 
@@ -9,7 +26,9 @@ const { Title, Text } = Typography;
 const TestInfoEditor = ({ exam, onUpdate }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [numberQuestion, setNumberQuestion] = useState(exam?.numberQuestion || 0);
+  const [numberQuestion, setNumberQuestion] = useState(
+    exam?.numberQuestion || 0
+  );
   const [duration, setDuration] = useState(exam?.duration || 0);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -157,7 +176,7 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
             max={180}
             value={duration}
             onChange={(val) => setDuration(val || 0)}
-            className="w-20"
+            className="min-w-fit"
             addonAfter="phút"
           />
         </div>
