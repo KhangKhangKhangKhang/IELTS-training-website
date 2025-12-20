@@ -1,6 +1,4 @@
-// components/test/reading/index.jsx
-
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Button, Spin, message, Result, Card } from "antd";
 import {
   SmileOutlined,
@@ -10,7 +8,7 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import QuestionRenderer from "./reading/render/QuestionRenderer";
-import SimpleResultModal from "./SimpleResultModal"; // <--- Import Modal
+import SimpleResultModal from "./SimpleResultModal";
 import {
   getDetailInTestAPI,
   createManyAnswersAPI,
@@ -57,6 +55,7 @@ function mapGroup(apiGroup) {
       question_id: q.idQuestion,
       question_number: q.numberQuestion,
       question_text: q.content,
+      correct_answers: q.correct_answers, // Pass correct answers if available (for Review)
       answers,
     };
   });
@@ -76,20 +75,23 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const [loading, setLoading] = useState(true);
   const [test, setTest] = useState(null);
   const [activePartIndex, setActivePartIndex] = useState(0);
-  const [partDetail, setPartDetail] = useState(null);
+
+  // --- THAY ĐỔI 1: State quản lý Cache và Loading ---
+  const [loadedParts, setLoadedParts] = useState({}); // Cache: { idPart: data }
+  const [isPartLoading, setIsPartLoading] = useState(false);
 
   // State quản lý Modal kết quả
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
 
   // State dữ liệu bài thi
-  // initialTestResult đã có idTestResult từ lúc StartTestAPI trả về
   const [testResult, setTestResult] = useState(initialTestResult || null);
-
   const [answers, setAnswers] = useState({});
   const [inProgress, setInProgress] = useState(!initialTestResult?.finishedAt);
 
   // Flag check xem có phải đang xem lại lịch sử cũ hay không
-  const isReviewMode = !!initialTestResult?.finishedAt;
+  const [isReviewMode, setIsReviewMode] = useState(
+    !!initialTestResult?.finishedAt
+  );
 
   const [bandScore, setBandScore] = useState(
     initialTestResult?.band_score || null
@@ -98,7 +100,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const [timeLeft, setTimeLeft] = useState((duration || 60) * 60);
   const isSubmittingRef = useRef(false);
 
-  // --- 1. LOAD DATA ---
+  // --- 1. LOAD DATA INITIAL ---
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -113,9 +115,18 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
             setBandScore(res.data.band_score);
             setTest(res.data.test);
             setInProgress(false);
+
+            // Nếu API review trả về full parts data thì cache luôn để khỏi load lại
+            if (res.data.test?.parts) {
+              const initialCache = {};
+              res.data.test.parts.forEach((p) => {
+                initialCache[p.idPart] = p;
+              });
+              setLoadedParts(initialCache);
+            }
           }
         }
-        // CASE B: Chế độ làm bài mới (idTestResult đã có trong initialTestResult)
+        // CASE B: Chế độ làm bài mới
         else if (idTest) {
           const res = await getDetailInTestAPI(idTest);
           setTest(res?.data || null);
@@ -131,67 +142,78 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     fetchData();
   }, [idTest, initialTestResult]);
 
-  // --- 2. LOAD PART DETAIL ---
+  // --- 2. LOAD PART DETAIL (CÓ CACHE & FIX API) ---
   useEffect(() => {
-    if (!test) return;
+    if (!test || !test.parts) return;
 
-    // Nếu đang review hoặc test đã có đủ data parts thì không cần load lẻ
-    // (Logic này tùy thuộc vào việc API getTestResultAndAnswersAPI trả về full hay không)
-    // Nhưng ở đây ta giữ logic load chi tiết cho lúc làm bài.
+    const currentPart = test.parts[activePartIndex];
+    if (!currentPart || !currentPart.idPart) return;
+
+    // CHECK CACHE: Nếu part này đã có trong state loadedParts rồi thì KHÔNG gọi API nữa
+    if (loadedParts[currentPart.idPart]) {
+      return;
+    }
 
     const loadPartDetail = async () => {
+      setIsPartLoading(true); // Bắt đầu loading nội dung
       try {
-        setPartDetail(null);
-        const part = test?.parts?.[activePartIndex];
-        if (!part || !part.idPart) return;
+        // Gọi API lấy chi tiết Part
+        const res = await getPartByIdAPI(currentPart.idPart);
 
-        // Nếu part đã có câu hỏi (do load full từ review) thì bỏ qua
-        if (part.groupOfQuestions && part.groupOfQuestions.length > 0) {
-          return;
-        }
-
-        const res = await getPartByIdAPI(part.idPart);
+        // --- FIX QUAN TRỌNG: Lấy phần tử đầu tiên của mảng data ---
         let detail = res?.data?.[0] || null;
 
-        if (detail && Array.isArray(detail.groupOfQuestions)) {
-          const enrichedGroups = await Promise.all(
-            detail.groupOfQuestions.map(async (g) => {
-              try {
-                const grpRes = await getQuestionsByIdGroupAPI(
-                  g.idGroupOfQuestions
-                );
-                const grpData = grpRes?.data?.[0] || {};
-                const questions = Array.isArray(grpData.question)
-                  ? grpData.question
-                  : [];
-                const questionsWithAnswers = await Promise.all(
-                  questions.map(async (q) => {
-                    try {
-                      const ansRes = await getAnswersByIdQuestionAPI(
-                        q.idQuestion
-                      );
-                      return { ...q, answers: ansRes?.data || [] };
-                    } catch (e) {
-                      return { ...q, answers: [] };
-                    }
-                  })
-                );
-                return { ...g, question: questionsWithAnswers };
-              } catch (e) {
-                return { ...g, question: [] };
-              }
-            })
-          );
-          detail = { ...detail, groupOfQuestions: enrichedGroups };
+        if (detail) {
+          // Xử lý enrich câu hỏi (Lấy chi tiết answers cho từng question)
+          if (Array.isArray(detail.groupOfQuestions)) {
+            const enrichedGroups = await Promise.all(
+              detail.groupOfQuestions.map(async (g) => {
+                try {
+                  const grpRes = await getQuestionsByIdGroupAPI(
+                    g.idGroupOfQuestions
+                  );
+                  const grpData = grpRes?.data?.[0] || {};
+                  const questions = Array.isArray(grpData.question)
+                    ? grpData.question
+                    : [];
+
+                  const questionsWithAnswers = await Promise.all(
+                    questions.map(async (q) => {
+                      try {
+                        const ansRes = await getAnswersByIdQuestionAPI(
+                          q.idQuestion
+                        );
+                        return { ...q, answers: ansRes?.data || [] };
+                      } catch (e) {
+                        return { ...q, answers: [] };
+                      }
+                    })
+                  );
+                  return { ...g, question: questionsWithAnswers };
+                } catch (e) {
+                  return { ...g, question: [] };
+                }
+              })
+            );
+            detail = { ...detail, groupOfQuestions: enrichedGroups };
+          }
+
+          // LƯU VÀO CACHE: Merge part mới vào danh sách cũ
+          setLoadedParts((prev) => ({
+            ...prev,
+            [currentPart.idPart]: detail,
+          }));
         }
-        setPartDetail(detail);
       } catch (err) {
-        console.error("load part detail", err);
-        setPartDetail(null);
+        console.error("load part detail error", err);
+        message.error("Không tải được nội dung phần này");
+      } finally {
+        setIsPartLoading(false); // Tắt loading
       }
     };
+
     loadPartDetail();
-  }, [test, activePartIndex]);
+  }, [test, activePartIndex, loadedParts]);
 
   // --- 3. HANDLE INPUT CHANGE ---
   const handleAnswerChange = (
@@ -212,12 +234,11 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     }));
   };
 
-  // --- 4. HANDLE FINISH (QUAN TRỌNG: GIỮ ID TEST RESULT) ---
+  // --- 4. HANDLE FINISH ---
   const handleFinish = async (isAutoSubmit = false) => {
     if (isSubmittingRef.current || !inProgress) return;
     isSubmittingRef.current = true;
 
-    // Lấy ID đã có từ lúc Start Test
     const currentTestResultId = testResult?.idTestResult;
 
     if (!user?.idUser || !currentTestResultId) {
@@ -268,14 +289,11 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
       setBandScore(score);
       setInProgress(false);
 
-      // --- LOGIC QUAN TRỌNG: MERGE STATE ---
-      // Ta phải giữ lại idTestResult cũ, vì API Finish có thể không trả lại ID
       const finishData = res?.data || res || {};
       setTestResult((prev) => ({
-        ...prev, // Giữ lại idTestResult từ lúc Start
-        ...finishData, // Cập nhật điểm, status mới
+        ...prev,
+        ...finishData,
       }));
-      // -------------------------------------
 
       message.success({ content: "Nộp bài thành công!", key: "submitting" });
       window.dispatchEvent(new Event("streak-update"));
@@ -288,12 +306,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
   // --- 5. HANDLE SWITCH TO REVIEW ---
   const handleSwitchToReview = () => {
-    // Kiểm tra xem có ID chưa (được giữ lại nhờ logic merge ở trên)
     if (!testResult?.idTestResult) {
       message.error("Chưa có kết quả bài thi để xem lại.");
       return;
     }
-    // Mở Modal
     setIsResultModalOpen(true);
   };
 
@@ -363,8 +379,6 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           />
         </Card>
 
-        {/* --- MODAL HIỂN THỊ KẾT QUẢ --- */}
-        {/* Truyền ID xuống, Modal tự gọi API lấy chi tiết */}
         <SimpleResultModal
           open={isResultModalOpen}
           onClose={() => setIsResultModalOpen(false)}
@@ -374,9 +388,12 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     );
   }
 
-  // --- RENDER MAIN TEST UI (Lúc làm bài) ---
+  // --- LOGIC RENDER ---
   const part = test.parts[activePartIndex];
-  const renderPart = partDetail || part;
+  // Lấy dữ liệu từ cache loadedParts
+  const cachedPart = loadedParts[part?.idPart];
+  // Render ưu tiên dữ liệu đã load chi tiết, fallback về dữ liệu gốc
+  const renderPart = cachedPart || part;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -462,11 +479,20 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
         {part && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
-            {/* Passage Content */}
-            <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
+            {/* --- CỘT 1: PASSAGE CONTENT --- */}
+            {/* Thêm class 'relative' để loading overlay nằm gọn trong khung này */}
+            <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full relative">
+              {/* LOADING OVERLAY: Chỉ hiện đè lên phần Passage */}
+              {isPartLoading && !cachedPart && (
+                <div className="absolute inset-0 z-50 bg-white/90 flex items-center justify-center backdrop-blur-[1px]">
+                  <Spin tip="Đang tải bài đọc..." size="large" />
+                </div>
+              )}
+
               <div className="p-4 bg-gray-50 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center sticky top-0">
                 <span>📖 Passage Content</span>
               </div>
+
               <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
                 {renderPart?.passage?.content ? (
                   <div className="prose max-w-none text-gray-800 leading-relaxed font-serif text-lg">
@@ -483,14 +509,18 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                       ))}
                   </div>
                 ) : (
-                  <div className="text-center py-10 text-gray-400">
-                    Không có dữ liệu bài đọc
-                  </div>
+                  // Chỉ hiện thông báo "Không có dữ liệu" khi KHÔNG phải đang loading
+                  !isPartLoading && (
+                    <div className="text-center py-10 text-gray-400">
+                      Không có dữ liệu bài đọc
+                    </div>
+                  )
                 )}
               </div>
             </div>
 
-            {/* Questions Panel */}
+            {/* --- CỘT 2: QUESTIONS PANEL --- */}
+            {/* Bên này không bị che loading, người dùng vẫn thấy danh sách câu hỏi (nếu có data sơ bộ) */}
             <div className="lg:col-span-5 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
               <div
                 className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${
@@ -502,11 +532,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                 <span>✍️ Questions</span>
               </div>
               <div className="p-5 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/50">
-                {(
-                  renderPart.groupOfQuestions ||
-                  part.groupOfQuestions ||
-                  []
-                ).map((group) => {
+                {(renderPart.groupOfQuestions || []).map((group) => {
                   const rawType = group.typeQuestion;
                   const finalType = TYPE_MAPPING[rawType] || "SHORT_ANSWER";
 
@@ -530,8 +556,6 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                           !isReviewMode &&
                           handleAnswerChange(qId, val, finalType, text)
                         }
-                        // Khi đang làm bài thì chưa có kết quả đúng sai để hiển thị ở đây
-                        // (Vì ta đã chuyển sang dùng Modal để xem kết quả)
                         userAnswers={answers}
                         isReviewMode={false}
                       />
