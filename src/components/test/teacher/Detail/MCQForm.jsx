@@ -1,4 +1,3 @@
-// src/components/test/teacher/shared/MCQForm.jsx
 import React, { useState, useEffect } from "react";
 import { Button, Input, Checkbox, message, Spin } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
@@ -26,18 +25,18 @@ const MCQForm = ({
     { content: "", options: [{ text: "", correct: false }] },
   ]);
 
-  // Init Data
+  // Init Data (Giữ nguyên logic khởi tạo rỗng nếu cần)
   useEffect(() => {
     if (
       groupData?.quantity &&
       !hasQuestionsLoaded &&
-      loadedQuestions.length === 0
+      loadedQuestions.length === 0 &&
+      !idGroup // Chỉ init rỗng khi chưa có idGroup (tạo mới hoàn toàn)
     ) {
       const initialQuestions = Array(groupData.quantity)
         .fill(null)
         .map(() => ({
           content: "",
-          // Mặc định 4 options
           options: [
             { text: "", correct: false },
             { text: "", correct: false },
@@ -47,13 +46,19 @@ const MCQForm = ({
         }));
       setFormQuestions(initialQuestions);
     }
-  }, [groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
+  }, [
+    groupData?.quantity,
+    hasQuestionsLoaded,
+    loadedQuestions.length,
+    idGroup,
+  ]);
 
   // Load Data
   useEffect(() => {
     if (idGroup) loadData();
   }, [idGroup]);
 
+  // --- PHẦN SỬA ĐỔI QUAN TRỌNG Ở ĐÂY ---
   const loadData = async () => {
     try {
       setLoading(true);
@@ -63,37 +68,57 @@ const MCQForm = ({
       if (group && group.question?.length > 0) {
         const loadedQ = await Promise.all(
           group.question.map(async (q) => {
+            // Lấy danh sách answers của câu hỏi này
             const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
-            const answers = ansRes?.data || [];
+            const answersData = ansRes?.data || [];
 
-            // Map API response về Form structure
-            const options = answers.map((a) => ({
-              text: a.answer_text,
-              correct:
-                a.matching_value === "CORRECT" || a.matching_value === "TRUE",
+            // 1. Sắp xếp answer theo key A, B, C, D để hiển thị đúng thứ tự
+            answersData.sort((a, b) =>
+              (a.matching_key || "").localeCompare(b.matching_key || "")
+            );
+
+            // 2. Map dữ liệu API sang cấu trúc Form
+            let options = answersData.map((a) => ({
+              text: a.answer_text || "", // Lấy nội dung câu trả lời
+              correct: a.matching_value === "CORRECT", // Check đúng sai
+              key: a.matching_key, // Lưu lại key để tham khảo nếu cần
             }));
+
+            // Nếu không có options nào (lỗi dữ liệu), tạo mặc định 4 ô trống
+            if (options.length === 0) {
+              options = [
+                { text: "", correct: false },
+                { text: "", correct: false },
+                { text: "", correct: false },
+                { text: "", correct: false },
+              ];
+            }
 
             return {
               idQuestion: q.idQuestion,
               numberQuestion: q.numberQuestion,
               content: q.content,
-              options:
-                options.length > 0 ? options : [{ text: "", correct: false }],
+              options: options,
             };
           })
         );
-        setFormQuestions(loadedQ); // Dùng formQuestions để hiển thị luôn khi edit
+
+        setFormQuestions(loadedQ);
         setLoadedQuestions(loadedQ);
         setHasQuestionsLoaded(true);
+      } else {
+        // Trường hợp có Group nhưng chưa có câu hỏi (hoặc mới tạo)
+        setHasQuestionsLoaded(false);
       }
     } catch (err) {
       console.error(err);
+      message.error("Lỗi khi tải nội dung MCQ");
     } finally {
       setLoading(false);
     }
   };
 
-  // Handlers
+  // --- CÁC HANDLERS KHÁC GIỮ NGUYÊN ---
   const handleAddQuestion = () => {
     setFormQuestions([
       ...formQuestions,
@@ -121,22 +146,21 @@ const MCQForm = ({
 
   const handleChangeOption = (qIndex, oIndex, field, value) => {
     const updated = [...formQuestions];
+    // Nếu chọn đáp án đúng, bỏ chọn các đáp án khác (MCQ chỉ 1 đúng)
     if (field === "correct" && value === true) {
-      updated[qIndex].options.forEach((opt) => (opt.correct = false)); // Chỉ 1 đúng
+      updated[qIndex].options.forEach((opt) => (opt.correct = false));
     }
     updated[qIndex].options[oIndex][field] = value;
     setFormQuestions(updated);
   };
 
-  // Save Logic (QUAN TRỌNG)
+  // Save Logic
   const buildPayload = (questions, isUpdate = false) => {
     return questions.map((q, qIdx) => {
       const answersPayload = q.options.map((opt, oIdx) => ({
-        // TEXT: Nội dung giáo viên nhập (VD: "Apple")
+        // Map ngược lại khi lưu: text -> answer_text
         answer_text: opt.text || "",
-        // KEY: Tự động sinh A, B, C... dựa vào index
-        matching_key: String.fromCharCode(65 + oIdx),
-        // VALUE: Đánh dấu đúng sai
+        matching_key: String.fromCharCode(65 + oIdx), // Tự sinh A, B, C, D
         matching_value: opt.correct ? "CORRECT" : "INCORRECT",
       }));
 
@@ -158,19 +182,18 @@ const MCQForm = ({
   const handleSaveAll = async () => {
     try {
       setSaving(true);
-      const payload = buildPayload(formQuestions, false); // Create mode
-
-      if (payload.some((q) => q.answers.length === 0)) {
-        message.warning("Vui lòng thêm lựa chọn cho câu hỏi");
+      // Validate
+      if (formQuestions.some((q) => !q.content.trim())) {
+        message.warning("Vui lòng nhập nội dung câu hỏi");
+        setSaving(false);
         return;
       }
 
+      const payload = buildPayload(formQuestions, false);
       await createManyQuestion({ questions: payload });
       message.success("Đã lưu câu hỏi MCQ!");
 
-      setFormQuestions([
-        { content: "", options: [{ text: "", correct: false }] },
-      ]);
+      // Refresh lại
       await loadData();
       if (onRefresh) onRefresh();
     } catch (err) {
@@ -184,7 +207,7 @@ const MCQForm = ({
   const handleSaveEdit = async () => {
     try {
       setSaving(true);
-      const payload = buildPayload(formQuestions, true); // Update mode
+      const payload = buildPayload(formQuestions, true);
       await updateManyQuestionAPI({ questions: payload });
       message.success("Cập nhật thành công!");
 
@@ -201,7 +224,7 @@ const MCQForm = ({
 
   if (loading) return <Spin className="block mx-auto py-6" />;
 
-  // Render danh sách đã có (View mode)
+  // --- RENDER VIEW MODE (HIỂN THỊ DANH SÁCH ĐÃ CÓ) ---
   if (hasQuestionsLoaded && loadedQuestions.length > 0 && !isEditMode) {
     return (
       <div className="space-y-4">
@@ -212,18 +235,8 @@ const MCQForm = ({
           <Button
             type="primary"
             onClick={() => {
-              // Copy data sang form để edit
-              const editForm = loadedQuestions.map((q) => ({
-                idQuestion: q.idQuestion,
-                numberQuestion: q.numberQuestion,
-                content: q.content,
-                options: (q.answers || []).map((ans) => ({
-                  text: ans.answer_text,
-                  correct:
-                    ans.matching_value === "CORRECT" ||
-                    ans.matching_value === "TRUE",
-                })),
-              }));
+              // Deep copy để edit không ảnh hưởng list hiển thị
+              const editForm = JSON.parse(JSON.stringify(loadedQuestions));
               setFormQuestions(editForm);
               setIsEditMode(true);
             }}
@@ -233,28 +246,34 @@ const MCQForm = ({
         </div>
         {loadedQuestions.map((q) => (
           <div key={q.idQuestion} className="border p-4 rounded bg-white">
-            <div className="font-bold mb-2">
+            <div className="font-bold mb-2 text-blue-800">
               Câu {q.numberQuestion}: {q.content}
             </div>
             <div className="grid grid-cols-1 gap-2 pl-4">
-              {(q.answers || []).map((ans, idx) => (
-                <div
-                  key={idx}
-                  className={`p-2 border rounded text-sm flex gap-2 ${
-                    ans.matching_value === "CORRECT"
-                      ? "bg-green-50 border-green-300"
-                      : "bg-gray-50"
-                  }`}
-                >
-                  <span className="font-bold min-w-[20px]">
-                    {ans.matching_key}.
-                  </span>
-                  <span>{ans.answer_text}</span>
-                  {ans.matching_value === "CORRECT" && (
-                    <span className="ml-auto text-green-600 font-bold">✓</span>
-                  )}
-                </div>
-              ))}
+              {(q.options || []).map((opt, idx) => {
+                // Tính toán key A, B, C, D dựa vào index
+                const key = String.fromCharCode(65 + idx);
+                return (
+                  <div
+                    key={idx}
+                    className={`p-2 border rounded text-sm flex gap-2 items-center ${
+                      opt.correct
+                        ? "bg-green-50 border-green-300"
+                        : "bg-gray-50"
+                    }`}
+                  >
+                    <span className="font-bold min-w-[25px] text-center bg-white border rounded px-1">
+                      {key}
+                    </span>
+                    <span className="flex-1">{opt.text}</span>
+                    {opt.correct && (
+                      <span className="text-green-600 font-bold ml-2">
+                        ✓ TRUE
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -262,10 +281,19 @@ const MCQForm = ({
           block
           type="dashed"
           onClick={() => {
-            setHasQuestionsLoaded(false);
+            // Chuyển sang mode tạo mới nhưng giữ lại list cũ để hiển thị nếu muốn (ở đây ta reset về form tạo)
+            setHasQuestionsLoaded(false); // Ẩn list cũ đi để hiện form tạo
             setIsEditMode(false);
             setFormQuestions([
-              { content: "", options: [{ text: "", correct: false }] },
+              {
+                content: "",
+                options: [
+                  { text: "", correct: false },
+                  { text: "", correct: false },
+                  { text: "", correct: false },
+                  { text: "", correct: false },
+                ],
+              },
             ]);
           }}
         >
@@ -275,7 +303,7 @@ const MCQForm = ({
     );
   }
 
-  // Render Form (Create/Edit mode)
+  // --- RENDER EDIT/CREATE MODE ---
   return (
     <div className="space-y-6">
       <div className="flex justify-between">
@@ -287,7 +315,7 @@ const MCQForm = ({
             onClick={() => {
               setIsEditMode(false);
               setHasQuestionsLoaded(true);
-              loadData();
+              loadData(); // Reload lại dữ liệu gốc
             }}
           >
             Hủy
@@ -329,12 +357,14 @@ const MCQForm = ({
                   }
                 />
                 {/* Hiển thị Key tự động A, B, C... */}
-                <span className="font-bold text-blue-600 w-6 text-center">
+                <span className="font-bold text-blue-600 w-8 text-center bg-gray-100 rounded py-1">
                   {String.fromCharCode(65 + oIndex)}
                 </span>
                 <Input
-                  placeholder={`Nội dung lựa chọn...`}
-                  value={opt.text}
+                  placeholder={`Lựa chọn ${String.fromCharCode(
+                    65 + oIndex
+                  )}...`}
+                  value={opt.text} // BINDING QUAN TRỌNG: opt.text lấy từ API answer_text
                   onChange={(e) =>
                     handleChangeOption(qIndex, oIndex, "text", e.target.value)
                   }

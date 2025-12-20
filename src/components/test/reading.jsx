@@ -1,3 +1,5 @@
+// components/test/reading/index.jsx
+
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { Button, Spin, message, Result, Card } from "antd";
 import {
@@ -8,11 +10,12 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import QuestionRenderer from "./reading/render/QuestionRenderer";
+import SimpleResultModal from "./SimpleResultModal"; // <--- Import Modal
 import {
   getDetailInTestAPI,
   createManyAnswersAPI,
   FinistTestAPI,
-  getTestResultAndAnswersAPI, // <--- IMPORT API NÀY
+  getTestResultAndAnswersAPI,
 } from "@/services/apiDoTest";
 import {
   getPartByIdAPI,
@@ -50,18 +53,11 @@ function mapGroup(apiGroup) {
       matching_value: a.matching_value,
     }));
 
-    // Logic lấy đáp án đúng để hiển thị (cho mode Review)
-    const correct_answers = answers.filter((a) => {
-      const val = a.matching_value?.toUpperCase();
-      return val === "CORRECT" || val === "TRUE" || val === "YES";
-    });
-
     return {
       question_id: q.idQuestion,
       question_number: q.numberQuestion,
       question_text: q.content,
       answers,
-      correct_answers,
     };
   });
 
@@ -82,13 +78,19 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const [activePartIndex, setActivePartIndex] = useState(0);
   const [partDetail, setPartDetail] = useState(null);
 
-  // State
+  // State quản lý Modal kết quả
+  const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+
+  // State dữ liệu bài thi
+  // initialTestResult đã có idTestResult từ lúc StartTestAPI trả về
   const [testResult, setTestResult] = useState(initialTestResult || null);
+
   const [answers, setAnswers] = useState({});
   const [inProgress, setInProgress] = useState(!initialTestResult?.finishedAt);
-  const [isReviewMode, setIsReviewMode] = useState(
-    !!initialTestResult?.finishedAt
-  );
+
+  // Flag check xem có phải đang xem lại lịch sử cũ hay không
+  const isReviewMode = !!initialTestResult?.finishedAt;
+
   const [bandScore, setBandScore] = useState(
     initialTestResult?.band_score || null
   );
@@ -96,32 +98,24 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const [timeLeft, setTimeLeft] = useState((duration || 60) * 60);
   const isSubmittingRef = useRef(false);
 
-  // --- 1. LOAD DATA: Xử lý 2 trường hợp (Làm bài & Xem lại) ---
+  // --- 1. LOAD DATA ---
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // CASE A: Chế độ Review (Đã có kết quả thi và đã kết thúc)
-        // Chúng ta gọi API lấy full kết quả + đáp án
+        // CASE A: Chế độ Review (Lịch sử đã làm xong từ trước)
         if (initialTestResult?.idTestResult && initialTestResult?.finishedAt) {
           const res = await getTestResultAndAnswersAPI(
             initialTestResult.idTestResult
           );
-
           if (res && res.data) {
-            // 1. Set thông tin kết quả (bao gồm userAnswer có isCorrect)
             setTestResult(res.data);
             setBandScore(res.data.band_score);
-
-            // 2. Set nội dung đề thi (API trả về luôn trong res.data.test)
-            // Lưu ý: Nếu API trả về cấu trúc test lồng nhau, hãy check kỹ console log
             setTest(res.data.test);
-
-            setIsReviewMode(true);
             setInProgress(false);
           }
         }
-        // CASE B: Chế độ làm bài (Chưa có kết quả hoặc mới bắt đầu)
+        // CASE B: Chế độ làm bài mới (idTestResult đã có trong initialTestResult)
         else if (idTest) {
           const res = await getDetailInTestAPI(idTest);
           setTest(res?.data || null);
@@ -137,43 +131,13 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     fetchData();
   }, [idTest, initialTestResult]);
 
-  // --- 2. REVIEW MAP (Quan trọng: Map user answer từ API) ---
-  const reviewAnswersMap = useMemo(() => {
-    // Chỉ chạy khi có testResult và userAnswer từ API getTestResultAndAnswersAPI
-    if (!testResult?.userAnswer) return {};
-
-    return testResult.userAnswer.reduce((acc, item) => {
-      // Logic xác định giá trị hiển thị (Value)
-      let val = item.answerText; // Mặc định là text
-
-      // Nếu là MCQ/Matching -> Lấy Matching Key (A, B, C...)
-      if (item.userAnswerType === "MCQ" || item.userAnswerType === "MATCHING") {
-        // Ưu tiên matching_key, nếu null thì fallback về answerText (phòng hờ)
-        val = item.matching_key || item.answerText;
-      }
-
-      // Nếu là TFNG/YesNo -> Lấy Matching Value (YES, TRUE...)
-      if (
-        item.userAnswerType === "YES_NO_NOTGIVEN" ||
-        item.userAnswerType === "TFNG"
-      ) {
-        val = item.matching_value || item.answerText;
-      }
-
-      // Map vào object: Key là QuestionID -> Value là { value, isCorrect }
-      acc[item.idQuestion] = {
-        value: val,
-        isCorrect: item.isCorrect, // Lấy trực tiếp từ API (true/false)
-      };
-
-      return acc;
-    }, {});
-  }, [testResult]);
-
-  // --- 3. LOAD PART DETAIL (Khi chuyển Part) ---
-  // (Giữ nguyên logic cũ vì nó xử lý việc load chi tiết câu hỏi cho từng Part)
+  // --- 2. LOAD PART DETAIL ---
   useEffect(() => {
-    if (!test) return; // Chỉ chạy khi đã có test (dù load từ nguồn nào)
+    if (!test) return;
+
+    // Nếu đang review hoặc test đã có đủ data parts thì không cần load lẻ
+    // (Logic này tùy thuộc vào việc API getTestResultAndAnswersAPI trả về full hay không)
+    // Nhưng ở đây ta giữ logic load chi tiết cho lúc làm bài.
 
     const loadPartDetail = async () => {
       try {
@@ -181,8 +145,11 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
         const part = test?.parts?.[activePartIndex];
         if (!part || !part.idPart) return;
 
-        // Nếu API Review đã trả về đủ chi tiết trong groupOfQuestions rồi thì có thể không cần gọi lại
-        // Nhưng để an toàn và đồng nhất, ta vẫn gọi logic cũ để enrich data
+        // Nếu part đã có câu hỏi (do load full từ review) thì bỏ qua
+        if (part.groupOfQuestions && part.groupOfQuestions.length > 0) {
+          return;
+        }
+
         const res = await getPartByIdAPI(part.idPart);
         let detail = res?.data?.[0] || null;
 
@@ -226,7 +193,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     loadPartDetail();
   }, [test, activePartIndex]);
 
-  // --- 4. HANDLE INPUT CHANGE ---
+  // --- 3. HANDLE INPUT CHANGE ---
   const handleAnswerChange = (
     questionId,
     value,
@@ -245,13 +212,16 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     }));
   };
 
-  // --- 5. HANDLE FINISH ---
+  // --- 4. HANDLE FINISH (QUAN TRỌNG: GIỮ ID TEST RESULT) ---
   const handleFinish = async (isAutoSubmit = false) => {
     if (isSubmittingRef.current || !inProgress) return;
     isSubmittingRef.current = true;
 
-    if (!user?.idUser || !testResult?.idTestResult) {
-      message.error("Lỗi dữ liệu bài làm");
+    // Lấy ID đã có từ lúc Start Test
+    const currentTestResultId = testResult?.idTestResult;
+
+    if (!user?.idUser || !currentTestResultId) {
+      message.error("Lỗi: Không tìm thấy ID bài làm (TestResultID)");
       isSubmittingRef.current = false;
       return;
     }
@@ -282,21 +252,30 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
         }),
       };
 
+      // 1. Submit Answers
       if (answersPayload.answers.length > 0) {
         await createManyAnswersAPI(
           user.idUser,
-          testResult.idTestResult,
+          currentTestResultId,
           answersPayload
         );
       }
 
-      // Nộp bài xong -> Lấy điểm
-      const res = await FinistTestAPI(testResult.idTestResult, user.idUser, {});
+      // 2. Finish Test
+      const res = await FinistTestAPI(currentTestResultId, user.idUser, {});
       const score = res?.band_score ?? res?.data?.band_score ?? 0;
 
       setBandScore(score);
       setInProgress(false);
-      setTestResult(res?.data || res); // Lúc này testResult mới chỉ có điểm, chưa chắc có full userAnswer chi tiết
+
+      // --- LOGIC QUAN TRỌNG: MERGE STATE ---
+      // Ta phải giữ lại idTestResult cũ, vì API Finish có thể không trả lại ID
+      const finishData = res?.data || res || {};
+      setTestResult((prev) => ({
+        ...prev, // Giữ lại idTestResult từ lúc Start
+        ...finishData, // Cập nhật điểm, status mới
+      }));
+      // -------------------------------------
 
       message.success({ content: "Nộp bài thành công!", key: "submitting" });
       window.dispatchEvent(new Event("streak-update"));
@@ -307,25 +286,18 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     }
   };
 
-  // --- 6. SWITCH TO REVIEW MODE (Sau khi nộp bài) ---
-  const handleSwitchToReview = async () => {
-    if (!testResult?.idTestResult) return;
-    setLoading(true);
-    try {
-      // Gọi lại API chi tiết để lấy isCorrect cho từng câu
-      const res = await getTestResultAndAnswersAPI(testResult.idTestResult);
-      if (res && res.data) {
-        setTestResult(res.data);
-        setIsReviewMode(true);
-      }
-    } catch (error) {
-      message.error("Không thể tải kết quả chi tiết");
-    } finally {
-      setLoading(false);
+  // --- 5. HANDLE SWITCH TO REVIEW ---
+  const handleSwitchToReview = () => {
+    // Kiểm tra xem có ID chưa (được giữ lại nhờ logic merge ở trên)
+    if (!testResult?.idTestResult) {
+      message.error("Chưa có kết quả bài thi để xem lại.");
+      return;
     }
+    // Mở Modal
+    setIsResultModalOpen(true);
   };
 
-  // Timer
+  // Timer logic
   useEffect(() => {
     if (loading || !inProgress || !test) return;
     if (timeLeft <= 0) {
@@ -348,7 +320,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
       <div className="py-10 text-center text-gray-500">Không tìm thấy đề</div>
     );
 
-  // Result View (Màn hình chúc mừng)
+  // --- RESULT VIEW (Sau khi nộp bài) ---
   if (!inProgress && !isReviewMode && bandScore !== null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -383,30 +355,35 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                 key="review"
                 size="large"
                 icon={<EyeOutlined />}
-                onClick={handleSwitchToReview} // Gọi hàm load lại data chi tiết
+                onClick={handleSwitchToReview}
               >
                 Xem lại bài làm
               </Button>,
             ]}
           />
         </Card>
+
+        {/* --- MODAL HIỂN THỊ KẾT QUẢ --- */}
+        {/* Truyền ID xuống, Modal tự gọi API lấy chi tiết */}
+        <SimpleResultModal
+          open={isResultModalOpen}
+          onClose={() => setIsResultModalOpen(false)}
+          idTestResult={testResult?.idTestResult}
+        />
       </div>
     );
   }
 
-  // --- RENDER MAIN UI ---
+  // --- RENDER MAIN TEST UI (Lúc làm bài) ---
+  const part = test.parts[activePartIndex];
+  const renderPart = partDetail || part;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md h-[72px] px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div
-            className={`p-2 rounded-full ${
-              isReviewMode
-                ? "bg-green-100 text-green-600"
-                : "bg-blue-100 text-blue-600"
-            }`}
-          >
+          <div className="p-2 rounded-full bg-blue-100 text-blue-600">
             {isReviewMode ? (
               <EyeOutlined style={{ fontSize: "20px" }} />
             ) : (
@@ -483,96 +460,88 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           ))}
         </div>
 
-        {test.parts[activePartIndex] &&
-          (() => {
-            const part = test.parts[activePartIndex];
-            const renderPart = partDetail || part;
-
-            return (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
-                {/* Passage Content */}
-                <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
-                  <div className="p-4 bg-gray-50 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center sticky top-0">
-                    <span>📖 Passage Content</span>
-                  </div>
-                  <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-                    {renderPart?.passage?.content ? (
-                      <div className="prose max-w-none text-gray-800 leading-relaxed font-serif text-lg">
-                        {renderPart.passage.content
-                          .split(/\r?\n\r?\n/)
-                          .filter((paragraph) => paragraph.trim())
-                          .map((paragraph, index) => (
-                            <p
-                              key={index}
-                              className="mb-4 text-justify indent-8 first-letter:text-2xl first-letter:font-bold first-letter:text-blue-600"
-                            >
-                              {paragraph.trim()}
-                            </p>
-                          ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-10 text-gray-400">
-                        Không có dữ liệu bài đọc
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Questions Panel */}
-                <div className="lg:col-span-5 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
-                  <div
-                    className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${
-                      isReviewMode
-                        ? "bg-green-50 text-green-800"
-                        : "bg-gray-50 text-gray-700"
-                    }`}
-                  >
-                    <span>✍️ Questions {isReviewMode && "(Review Mode)"}</span>
-                  </div>
-                  <div className="p-5 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/50">
-                    {(
-                      renderPart.groupOfQuestions ||
-                      part.groupOfQuestions ||
-                      []
-                    ).map((group) => {
-                      const rawType = group.typeQuestion;
-                      const finalType = TYPE_MAPPING[rawType] || "SHORT_ANSWER";
-
-                      return (
-                        <div
-                          key={group.idGroupOfQuestions}
-                          className="mb-8 bg-white p-4 rounded-lg shadow-sm border border-gray-100"
-                        >
-                          <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
-                            <h4 className="font-bold text-gray-800 text-base">
-                              {group.title || "Group"}
-                            </h4>
-                            <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                              {group.quantity} Questions
-                            </span>
-                          </div>
-
-                          <QuestionRenderer
-                            group={mapGroup(group)}
-                            onAnswerChange={(qId, val, text) =>
-                              !isReviewMode &&
-                              handleAnswerChange(qId, val, finalType, text)
-                            }
-                            userAnswers={
-                              isReviewMode
-                                ? reviewAnswersMap // { value, isCorrect }
-                                : answers // { value, text, type }
-                            }
-                            isReviewMode={isReviewMode}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+        {part && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
+            {/* Passage Content */}
+            <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
+              <div className="p-4 bg-gray-50 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center sticky top-0">
+                <span>📖 Passage Content</span>
               </div>
-            );
-          })()}
+              <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                {renderPart?.passage?.content ? (
+                  <div className="prose max-w-none text-gray-800 leading-relaxed font-serif text-lg">
+                    {renderPart.passage.content
+                      .split(/\r?\n\r?\n/)
+                      .filter((paragraph) => paragraph.trim())
+                      .map((paragraph, index) => (
+                        <p
+                          key={index}
+                          className="mb-4 text-justify indent-8 first-letter:text-2xl first-letter:font-bold first-letter:text-blue-600"
+                        >
+                          {paragraph.trim()}
+                        </p>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10 text-gray-400">
+                    Không có dữ liệu bài đọc
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Questions Panel */}
+            <div className="lg:col-span-5 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
+              <div
+                className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${
+                  isReviewMode
+                    ? "bg-green-50 text-green-800"
+                    : "bg-gray-50 text-gray-700"
+                }`}
+              >
+                <span>✍️ Questions</span>
+              </div>
+              <div className="p-5 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/50">
+                {(
+                  renderPart.groupOfQuestions ||
+                  part.groupOfQuestions ||
+                  []
+                ).map((group) => {
+                  const rawType = group.typeQuestion;
+                  const finalType = TYPE_MAPPING[rawType] || "SHORT_ANSWER";
+
+                  return (
+                    <div
+                      key={group.idGroupOfQuestions}
+                      className="mb-8 bg-white p-4 rounded-lg shadow-sm border border-gray-100"
+                    >
+                      <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
+                        <h4 className="font-bold text-gray-800 text-base">
+                          {group.title || "Group"}
+                        </h4>
+                        <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                          {group.quantity} Questions
+                        </span>
+                      </div>
+
+                      <QuestionRenderer
+                        group={mapGroup(group)}
+                        onAnswerChange={(qId, val, text) =>
+                          !isReviewMode &&
+                          handleAnswerChange(qId, val, finalType, text)
+                        }
+                        // Khi đang làm bài thì chưa có kết quả đúng sai để hiển thị ở đây
+                        // (Vì ta đã chuyển sang dùng Modal để xem kết quả)
+                        userAnswers={answers}
+                        isReviewMode={false}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
