@@ -5,22 +5,20 @@ import { CheckCircle2, XCircle } from "lucide-react";
 // --- SUB-COMPONENT: Ô Input nhỏ trong đoạn văn (Cho mode Summary) ---
 const InlineInput = ({
   question,
-  userAnswer,
+  userAnswer, // Lúc này props này sẽ là String (nhờ fix bên dưới)
   onAnswerChange,
   isReviewMode,
 }) => {
-  // 1. Thêm Local State để UI phản hồi ngay lập tức khi gõ
   const [localValue, setLocalValue] = useState(userAnswer || "");
 
-  // 2. Sync với props khi có thay đổi từ bên ngoài (hoặc load lại trang)
   useEffect(() => {
     setLocalValue(userAnswer || "");
   }, [userAnswer]);
 
   const handleChange = (e) => {
     const val = e.target.value;
-    setLocalValue(val); // Cập nhật UI ngay
-    onAnswerChange(question.question_id, val); // Gửi dữ liệu lên cha
+    setLocalValue(val);
+    onAnswerChange(question.question_id, val);
   };
 
   const correctAnswerText = question.correct_answers?.[0]?.answer_text;
@@ -46,7 +44,7 @@ const InlineInput = ({
       <span className="relative">
         <Input
           disabled={isReviewMode}
-          value={localValue} // Bind vào local state
+          value={localValue}
           onChange={handleChange}
           className={inputClass}
           placeholder={`(${question.question_number})`}
@@ -73,7 +71,7 @@ const InlineInput = ({
 // --- SUB-COMPONENT: Câu hỏi lẻ thông thường (Cho mode Sentence) ---
 const SentenceItem = ({
   question,
-  userAnswer,
+  userAnswer, // Props này cũng sẽ là String
   onAnswerChange,
   isReviewMode,
 }) => {
@@ -162,7 +160,19 @@ const RenderFillBlank = ({
   onAnswerChange,
   isReviewMode,
 }) => {
-  // 1. Kiểm tra xem có phải dạng Summary không
+  // --- FIX START: Hàm helper để lấy giá trị chuỗi từ object answers ---
+  const getValue = (qId) => {
+    const ans = userAnswers[qId];
+    if (!ans) return "";
+    // Nếu là object (Format { value: "...", ... }) -> lấy .value
+    if (typeof ans === "object") {
+      return ans.value || "";
+    }
+    // Nếu là string (fallback) -> trả về chính nó
+    return ans;
+  };
+  // --- FIX END ---
+
   const isSummaryMode = () => {
     if (!questions || questions.length <= 1) return false;
     const firstContent = questions[0].question_text?.trim();
@@ -173,14 +183,11 @@ const RenderFillBlank = ({
   // --- RENDER DẠNG SUMMARY ---
   if (isSummaryMode()) {
     const summaryContent = questions[0]?.question_text || "";
-
-    // Tách chuỗi theo pattern [số], ví dụ [4], [5]
     const parts = summaryContent.split(/\[\s*(\d+)\s*\]/g);
 
     return (
       <div className="mb-6 p-6 bg-white border border-gray-200 rounded-xl shadow-sm leading-8 text-gray-800 text-base">
         {parts.map((part, index) => {
-          // Phần tử lẻ là số thứ tự câu hỏi
           if (index % 2 === 1) {
             const questionNum = parseInt(part);
             const question = questions.find(
@@ -192,7 +199,8 @@ const RenderFillBlank = ({
                 <InlineInput
                   key={question.question_id}
                   question={question}
-                  userAnswer={userAnswers[question.question_id]}
+                  // SỬ DỤNG HÀM getValue Ở ĐÂY
+                  userAnswer={getValue(question.question_id)}
                   onAnswerChange={onAnswerChange}
                   isReviewMode={isReviewMode}
                 />
@@ -204,7 +212,6 @@ const RenderFillBlank = ({
               </span>
             );
           }
-          // Phần tử chẵn là text
           return (
             <span key={index} dangerouslySetInnerHTML={{ __html: part }} />
           );
@@ -220,7 +227,8 @@ const RenderFillBlank = ({
         <SentenceItem
           key={q.question_id}
           question={q}
-          userAnswer={userAnswers[q.question_id]}
+          // SỬ DỤNG HÀM getValue Ở ĐÂY
+          userAnswer={getValue(q.question_id)}
           onAnswerChange={onAnswerChange}
           isReviewMode={isReviewMode}
         />
