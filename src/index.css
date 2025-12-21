@@ -155,3 +155,62 @@
 .dark .ant-dropdown-menu-item-danger:hover {
     background-color: rgb(127 29 29) !important;
 }
+
+/* Card in dark mode */
+.dark .ant-card {
+    background-color: rgb(30 41 59) !important;
+    border-color: rgb(51 65 85) !important;
+}
+
+.dark .ant-card-body {
+    background-color: rgb(30 41 59) !important;
+    color: white !important;
+}
+
+.dark .ant-card-meta-title {
+    color: white !important;
+}
+
+.dark .ant-card-meta-description {
+    color: rgb(148 163 184) !important;
+}
+
+.dark .ant-card-actions {
+    background-color: rgb(51 65 85) !important;
+    border-top-color: rgb(71 85 105) !important;
+}
+
+.dark .ant-card-actions>li {
+    color: rgb(148 163 184) !important;
+}
+
+.dark .ant-card-actions>li:not(:last-child) {
+    border-inline-end-color: rgb(71 85 105) !important;
+}
+
+.dark .ant-card-hoverable:hover {
+    border-color: rgb(71 85 105) !important;
+}
+
+/* Select Dropdown Popup in dark mode */
+html.dark .ant-select-dropdown {
+    background-color: rgb(30 41 59) !important;
+    border-color: rgb(51 65 85) !important;
+}
+
+html.dark .ant-select-item {
+    color: white !important;
+}
+
+html.dark .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+    background-color: rgb(51 65 85) !important;
+}
+
+html.dark .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+    background-color: rgb(71 85 105) !important;
+    color: white !important;
+}
+
+html.dark .ant-select-item-option:hover {
+    background-color: rgb(51 65 85) !important;
+}
