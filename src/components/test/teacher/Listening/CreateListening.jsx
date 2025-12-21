@@ -1,193 +1,220 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { message, Spin, Card } from "antd";
+import { SoundOutlined } from "@ant-design/icons";
 import {
-  Card,
-  Tag,
-  Button,
-  Collapse,
-  Typography,
-  Empty,
-  Divider,
-  Space,
-} from "antd";
-import {
-  SoundOutlined,
-  ClockCircleOutlined,
-  QuestionCircleOutlined,
-  PlusOutlined,
-  EditOutlined,
-} from "@ant-design/icons";
-import CreatePartForm from "../Detail/CreatePartForm"; // Component bạn đã có
-import TestInfoEditor from "../TestInfoEditor";
-
-const { Title, Text, Paragraph } = Typography;
-const { Panel } = Collapse;
+  createPartAPI,
+  getAllPartByIdAPI,
+  updatePartAPI,
+  deletePartAPI,
+  getPartByIdAPI,
+} from "@/services/apiTest";
+import PartListSidebar from "../Reading/PartListSideBar"; // Tái sử dụng của Reading
+import ListeningPartPanel from "./ListeningPartPanel"; // Component mới bên dưới
+import TestInfoEditor from "../TestInfoEditor"; // Tái sử dụng
 
 const CreateListening = ({ idTest, exam, onExamUpdate }) => {
-  const [parts, setParts] = useState([]); // State lưu danh sách các Part
-  const [isCreatingPart, setIsCreatingPart] = useState(false);
+  const [allParts, setAllParts] = useState([]);
+  const [selectedPart, setSelectedPart] = useState(null);
+  const [selectedPartDetail, setSelectedPartDetail] = useState(null);
+  const [partDetailsMap, setPartDetailsMap] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [creatingPart, setCreatingPart] = useState(false);
 
-  // Giả sử API trả về audioUrl là đường dẫn file.
-  // Nếu API trả về base64, bạn có thể dùng trực tiếp.
-  // Nếu chỉ trả về filename, bạn cần ghép với BASE_URL của server.
-  const audioSrc = exam.audioUrl;
+  // Audio URL từ thông tin đề thi
+  const audioSrc = exam?.audio || exam?.audioUrl;
 
-  // Hàm xử lý khi tạo Part thành công
-  const handlePartSuccess = (newPart) => {
-    console.log("New part created:", newPart);
-    setParts([...parts, newPart]);
-    setIsCreatingPart(false);
+  // --- 1. DATA FETCHING (Giống hệt Reading) ---
+  useEffect(() => {
+    if (!idTest) {
+      setIsLoading(false);
+      return;
+    }
+    fetchParts();
+  }, [idTest]);
+
+  const fetchParts = async () => {
+    try {
+      setIsLoading(true);
+      const res = await getAllPartByIdAPI(idTest);
+      const parts = res?.data || [];
+      setAllParts(parts);
+      await fetchAllDetails(parts);
+
+      if (parts.length > 0 && !selectedPart) {
+        handleSelectPart(parts[0]);
+      }
+    } catch (err) {
+      console.error(err);
+      message.error("Không thể tải danh sách part");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  const fetchAllDetails = async (parts) => {
+    const details = await Promise.all(
+      parts.map(async (p) => {
+        try {
+          const r = await getPartByIdAPI(p.idPart);
+          return { idPart: p.idPart, detail: r?.data?.[0] || null };
+        } catch (e) {
+          return { idPart: p.idPart, detail: null };
+        }
+      })
+    );
+    const map = {};
+    details.forEach((d) => {
+      if (d && d.idPart) map[d.idPart] = d.detail;
+    });
+    setPartDetailsMap(map);
+  };
+
+  const handleSelectPart = async (part, forceUpdate = false) => {
+    try {
+      setSelectedPart(part);
+      if (!forceUpdate && partDetailsMap[part.idPart]) {
+        setSelectedPartDetail(partDetailsMap[part.idPart]);
+        return;
+      }
+      const resDetail = await getPartByIdAPI(part.idPart);
+      const partDetail = resDetail?.data?.[0];
+      setSelectedPartDetail(partDetail);
+      setPartDetailsMap((prev) => ({ ...prev, [part.idPart]: partDetail }));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const refreshCurrentPartData = async () => {
+    if (selectedPart) {
+      await handleSelectPart(selectedPart, true);
+      // Refresh background để tính lại offset
+      const res = await getAllPartByIdAPI(idTest);
+      if (res?.data) {
+        setAllParts(res.data);
+        await fetchAllDetails(res.data);
+      }
+    }
+  };
+
+  // --- 2. CRUD PARTS (Giống hệt Reading) ---
+  const handleCreatePart = async () => {
+    try {
+      setCreatingPart(true);
+      const payload = { idTest, namePart: `Part ${allParts.length + 1}` };
+      const res = await createPartAPI(payload);
+      const newPart = res?.data;
+      const newPartsList = [...allParts, newPart];
+      setAllParts(newPartsList);
+      await handleSelectPart(newPart, true);
+      message.success("Tạo part thành công");
+    } catch (err) {
+      message.error("Tạo part thất bại");
+    } finally {
+      setCreatingPart(false);
+    }
+  };
+
+  const handleRenamePart = async (idPart, newName) => {
+    try {
+      await updatePartAPI(idPart, { idTest, namePart: newName });
+      const updatedParts = allParts.map((p) =>
+        p.idPart === idPart ? { ...p, namePart: newName } : p
+      );
+      setAllParts(updatedParts);
+      if (selectedPart?.idPart === idPart) {
+        setSelectedPart({ ...selectedPart, namePart: newName });
+      }
+      message.success("Đổi tên thành công");
+    } catch (err) {
+      message.error("Lỗi đổi tên");
+    }
+  };
+
+  const handleDeletePart = async (idPart) => {
+    try {
+      await deletePartAPI(idPart);
+      const updatedParts = allParts.filter((p) => p.idPart !== idPart);
+      setAllParts(updatedParts);
+      const newMap = { ...partDetailsMap };
+      delete newMap[idPart];
+      setPartDetailsMap(newMap);
+      if (selectedPart?.idPart === idPart) {
+        setSelectedPart(null);
+        setSelectedPartDetail(null);
+      }
+      message.success("Xóa part thành công");
+    } catch (err) {
+      message.error("Xóa part thất bại");
+    }
+  };
+
+  // --- 3. CALCULATE OFFSET ---
+  const calculateOffset = () => {
+    if (!allParts || allParts.length === 0 || !selectedPart) return 0;
+    let offset = 0;
+    for (const p of allParts) {
+      if (p.idPart === selectedPart.idPart) break;
+      const d = partDetailsMap[p.idPart];
+      if (d && d.groupOfQuestions) {
+        offset += d.groupOfQuestions.reduce(
+          (sum, g) => sum + (g.quantity || 0),
+          0
+        );
+      }
+    }
+    return offset;
+  };
+
+  if (isLoading) return <Spin className="block mx-auto mt-10" />;
+
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6">
-      {/* Panel chỉnh sửa thông tin đề thi */}
-      <TestInfoEditor exam={exam} onUpdate={onExamUpdate} />
-      
-      {/* --- SECTION 1: THÔNG TIN CHUNG & AUDIO PLAYER --- */}
-      <Card className="shadow-md border-t-4 border-blue-500">
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Cột trái: Thông tin đề */}
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <Tag color="blue" className="text-sm px-3 py-1">
-                {exam.testType}
-              </Tag>
-              <Tag color={exam.level === "Hard" ? "red" : "green"}>
-                {exam.level || "Medium"}
-              </Tag>
+    <div className="flex flex-col h-[90vh] bg-gray-50 rounded-lg shadow">
+      {/* HEADER: Thông tin đề + Audio Player */}
+      <div className="bg-white border-b">
+        <TestInfoEditor exam={exam} onUpdate={onExamUpdate} />
+
+        {/* Audio Player cho Admin */}
+        {audioSrc && (
+          <div className="px-6 py-2 bg-blue-50 border-t flex items-center gap-4">
+            <div className="flex items-center gap-2 text-blue-700 font-medium">
+              <SoundOutlined /> Audio đề:
             </div>
-
-            <Title level={2} className="mb-2 !text-blue-800">
-              {exam.title}
-            </Title>
-
-            <Paragraph type="secondary" className="mb-4">
-              {exam.description || "Chưa có mô tả cho đề thi này."}
-            </Paragraph>
-
-            <Space size="large" className="text-gray-600">
-              <span className="flex items-center gap-2">
-                <ClockCircleOutlined /> {exam.duration} phút
-              </span>
-              <span className="flex items-center gap-2">
-                <QuestionCircleOutlined /> {exam.numberQuestion} câu hỏi
-              </span>
-            </Space>
+            <audio controls className="h-8 w-96" src={audioSrc}>
+              Trình duyệt không hỗ trợ audio.
+            </audio>
           </div>
+        )}
+      </div>
 
-          {/* Cột phải: Audio Player */}
-          {audioSrc && (
-            <div className="md:w-1/3 bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col justify-center items-center">
-              <div className="mb-3 text-blue-600 font-medium flex items-center gap-2">
-                <SoundOutlined className="text-xl animate-pulse" />
-                <span>File nghe chính</span>
-              </div>
+      <div className="flex flex-1 overflow-hidden">
+        {/* SIDEBAR: Danh sách Part */}
+        <PartListSidebar
+          parts={allParts}
+          selectedPart={selectedPart}
+          onSelect={(p) => handleSelectPart(p, false)}
+          onCreate={handleCreatePart}
+          onRename={handleRenamePart}
+          onDelete={handleDeletePart}
+          creating={creatingPart}
+        />
 
-              {/* HTML5 Audio Player - Có thể thay bằng thư viện 'react-h5-audio-player' nếu cần đẹp hơn */}
-              <audio controls className="w-full shadow-sm rounded-full">
-                <source src={audioSrc} type="audio/mpeg" />
-                <source src={audioSrc} type="audio/wav" />
-                Trình duyệt của bạn không hỗ trợ phát âm thanh.
-              </audio>
-
-              <Text type="secondary" className="text-xs mt-2 text-center block">
-                Nghe kỹ đoạn audio để chia Part và tạo câu hỏi chính xác.
-              </Text>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <Divider orientation="left">
-        <span className="text-xl font-semibold text-gray-700">
-          Cấu trúc bài thi (Parts)
-        </span>
-      </Divider>
-
-      {/* --- SECTION 2: DANH SÁCH PARTS --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Cột trái: Form tạo Part hoặc List Parts */}
-        <div className="lg:col-span-3">
-          {isCreatingPart ? (
-            <div className="bg-white p-6 rounded-lg shadow border border-indigo-100">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-indigo-700">
-                  Thêm phần thi mới
-                </h3>
-                <Button onClick={() => setIsCreatingPart(false)}>Hủy bỏ</Button>
-              </div>
-              {/* Gọi Component CreatePartForm của bạn */}
-              <CreatePartForm
-                idTest={idTest}
-                testType="LISTENING"
-                onSuccess={handlePartSuccess}
-              />
+        {/* MAIN CONTENT: Listening Panel */}
+        <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
+          {!selectedPart ? (
+            <div className="text-center text-gray-500 mt-20">
+              {allParts.length === 0
+                ? "Chưa có Part nào, hãy tạo mới."
+                : "Chọn một Part để bắt đầu chỉnh sửa."}
             </div>
           ) : (
-            <Button
-              type="dashed"
-              block
-              size="large"
-              icon={<PlusOutlined />}
-              onClick={() => setIsCreatingPart(true)}
-              className="mb-6 h-16 text-lg border-blue-400 text-blue-500 hover:text-blue-700 hover:border-blue-600"
-            >
-              Thêm Part mới (Ví dụ: Part 1 - Mô tả tranh)
-            </Button>
-          )}
-
-          {/* Danh sách các Part đã tạo */}
-          {parts.length > 0 ? (
-            <Collapse
-              defaultActiveKey={["0"]}
-              className="bg-white shadow-sm"
-              expandIconPosition="end"
-            >
-              {parts.map((part, index) => (
-                <Panel
-                  header={
-                    <div className="flex items-center gap-2 font-medium text-lg py-1">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
-                        Part {index + 1}
-                      </span>
-                      <span>{part.name || `Phần thi số ${index + 1}`}</span>
-                    </div>
-                  }
-                  key={index}
-                  extra={
-                    <Button
-                      type="text"
-                      icon={<EditOutlined />}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  }
-                >
-                  <div className="pl-4 border-l-2 border-gray-200">
-                    <p className="text-gray-500 mb-4">{part.description}</p>
-
-                    {/* Placeholder cho danh sách câu hỏi trong Part */}
-                    <div className="bg-gray-50 p-4 rounded border border-dashed border-gray-300 text-center">
-                      <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description="Chưa có câu hỏi nào trong phần này"
-                      />
-                      <Button type="primary" size="small" className="mt-2">
-                        Thêm câu hỏi
-                      </Button>
-                    </div>
-                  </div>
-                </Panel>
-              ))}
-            </Collapse>
-          ) : (
-            !isCreatingPart && (
-              <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                <Empty description="Chưa có phần thi nào được tạo" />
-                <p className="text-gray-400 mt-2">
-                  Hãy bắt đầu bằng cách nhấn nút "Thêm Part mới" ở trên
-                </p>
-              </div>
-            )
+            <ListeningPartPanel
+              idTest={idTest}
+              part={selectedPart}
+              partDetail={selectedPartDetail}
+              onPartUpdate={refreshCurrentPartData}
+              questionNumberOffset={calculateOffset()}
+            />
           )}
         </div>
       </div>
