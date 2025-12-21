@@ -1,9 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Button, Input, message, Spin, Radio, Tooltip } from "antd";
+import {
+  Button,
+  Input,
+  message,
+  Spin,
+  Radio,
+  Tooltip,
+  Select,
+  Card,
+} from "antd";
 import {
   SaveOutlined,
-  ArrowUpOutlined,
   VerticalAlignTopOutlined,
+  PlusOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import {
   getQuestionsByIdGroupAPI,
@@ -11,6 +21,8 @@ import {
   createManyQuestion,
   updateManyQuestionAPI,
 } from "@/services/apiTest";
+
+const { Option } = Select;
 
 const FillBlankForm = ({
   idGroup,
@@ -20,45 +32,81 @@ const FillBlankForm = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [mode, setMode] = useState("SENTENCE"); // "SENTENCE" | "SUMMARY"
 
-  // State data
-  const [questions, setQuestions] = useState([]); // Dùng chung cho cả 2 mode
+  // Mode: "SENTENCE" | "SUMMARY" | "SUMMARY_BOX"
+  const [mode, setMode] = useState("SENTENCE");
+
+  // State chung
+  const [questions, setQuestions] = useState([]);
   const [summaryText, setSummaryText] = useState("");
 
-  // Ref để xử lý chèn text vào vị trí con trỏ
-  const textAreaRef = useRef(null);
+  // State riêng cho mode SUMMARY_BOX (Danh sách các từ trong Box)
+  // [{ key: "A", text: "example" }, { key: "B", text: "answer" }]
+  const [boxOptions, setBoxOptions] = useState([]);
 
-  // Số lượng câu hỏi cố định của Group
+  const textAreaRef = useRef(null);
   const quantity = groupData?.quantity || 1;
 
   useEffect(() => {
     if (idGroup) loadQuestions();
+    else initFixedForm();
   }, [idGroup]);
 
-  // --- 1. LOAD DATA & INIT ---
+  // --- 1. INIT & LOAD DATA ---
+
+  const initFixedForm = () => {
+    // Khởi tạo form rỗng theo số lượng quantity
+    const initialQuestions = Array.from({ length: quantity }, (_, index) => ({
+      idQuestion: null,
+      content: "",
+      answer_text: "", // Dùng cho mode thường
+      selectedBoxKey: null, // Dùng cho mode Box (lưu Key A, B...)
+      numberQuestion: questionNumberOffset + index + 1,
+    }));
+
+    setQuestions(initialQuestions);
+    setSummaryText("");
+    setBoxOptions([
+      { key: "A", text: "" },
+      { key: "B", text: "" },
+      { key: "C", text: "" },
+    ]);
+    setMode("SENTENCE");
+  };
+
   const loadQuestions = async () => {
     try {
       setLoading(true);
       const res = await getQuestionsByIdGroupAPI(idGroup);
       const group = res?.data?.[0];
 
-      // Nếu chưa có câu hỏi nào -> Init theo số lượng quantity
       if (!group || !group.question || group.question.length === 0) {
         initFixedForm();
       } else {
         const questionsList = group.question;
 
-        // Load answers
+        // Load answers cho tất cả câu hỏi
         const fullQuestions = await Promise.all(
           questionsList.map(async (q) => {
             try {
               const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
-              const ansData = ansRes?.data?.[0];
+              const ansData = ansRes?.data || [];
+
+              // Logic detect đáp án
+              // 1. Nếu là Box: ansData sẽ chứa nhiều option (A, B, C...), ta cần tìm cái CORRECT
+              const correctAns = ansData.find(
+                (a) => a.matching_value === "CORRECT"
+              );
+              // 2. Nếu là thường: ansData chỉ có 1 phần tử hoặc matching_value null
+
               return {
                 ...q,
-                answer_text: ansData?.answer_text || "",
-                idAnswer: ansData?.idAnswer,
+                // Dữ liệu cho mode thường
+                answer_text: ansData[0]?.answer_text || "",
+                // Dữ liệu cho mode Box
+                selectedBoxKey: correctAns ? correctAns.matching_key : null,
+                // Lưu lại full options để tí nữa detect mode
+                rawAnswers: ansData,
               };
             } catch (err) {
               return { ...q, answer_text: "" };
@@ -66,7 +114,6 @@ const FillBlankForm = ({
           })
         );
 
-        // Detect mode
         detectModeAndFillData(fullQuestions);
       }
     } catch (err) {
@@ -77,43 +124,54 @@ const FillBlankForm = ({
     }
   };
 
-  // Khởi tạo form với số lượng cố định, không cho user thêm bớt lung tung
-  const initFixedForm = () => {
-    // Mặc định là SENTENCE, nhưng nếu user muốn Summary thì data structure vẫn vậy
-    const initialQuestions = Array.from({ length: quantity }, (_, index) => ({
-      idQuestion: null,
-      content: "", // Nếu mode Sentence thì user nhập, Summary thì để trống (sẽ fill lúc save)
-      answer_text: "",
-      numberQuestion: questionNumberOffset + index + 1, // Tự động tính: Ví dụ 4, 5, 6
-    }));
-
-    setQuestions(initialQuestions);
-    setSummaryText("");
-    setMode("SENTENCE");
-  };
-
   const detectModeAndFillData = (loadedQuestions) => {
-    // Nếu số lượng load về ít hơn số lượng quy định của Group (do lỗi gì đó), fill thêm cho đủ
+    // Fill thêm nếu thiếu câu hỏi so với quantity
     let processedQuestions = [...loadedQuestions];
     if (loadedQuestions.length < quantity) {
       const diff = quantity - loadedQuestions.length;
       const extra = Array.from({ length: diff }, (_, i) => ({
         content: "",
         answer_text: "",
+        selectedBoxKey: null,
         numberQuestion: questionNumberOffset + loadedQuestions.length + i + 1,
       }));
       processedQuestions = [...processedQuestions, ...extra];
     }
 
-    // Logic detect Summary
     if (processedQuestions.length > 0) {
-      const firstContent = processedQuestions[0].content?.trim();
-      // Nếu có >1 câu và content giống nhau => Summary Mode
-      // Hoặc nếu chỉ có 1 câu nhưng content dài và chứa ký tự [...] => Có thể là Summary
+      const firstQ = processedQuestions[0];
+      const firstContent = firstQ.content?.trim();
+      const firstAnswers = firstQ.rawAnswers || [];
+
+      // DETECT MODE: SUMMARY_BOX
+      // Điều kiện: Có matching_key (A, B...) trong đáp án
+      const hasKey = firstAnswers.some((a) => a.matching_key);
+      if (hasKey) {
+        setMode("SUMMARY_BOX");
+        setSummaryText(firstContent); // Các câu hỏi Box đều chung content
+        setQuestions(processedQuestions);
+
+        // Reconstruct Box Options từ câu hỏi đầu tiên
+        const options = firstAnswers
+          .map((a) => ({ key: a.matching_key, text: a.answer_text }))
+          .sort((a, b) => a.key.localeCompare(b.key));
+
+        if (options.length > 0) setBoxOptions(options);
+        else
+          setBoxOptions([
+            { key: "A", text: "" },
+            { key: "B", text: "" },
+          ]); // fallback
+
+        return;
+      }
+
+      // DETECT MODE: SUMMARY (Thường)
+      // Điều kiện: Content giống nhau hoặc dài
       const isSummary =
         processedQuestions.length > 1
           ? processedQuestions.every((q) => q.content?.trim() === firstContent)
-          : firstContent && firstContent.length > 50; // Heuristic đơn giản
+          : firstContent && firstContent.length > 50;
 
       if (isSummary && firstContent) {
         setMode("SUMMARY");
@@ -123,35 +181,31 @@ const FillBlankForm = ({
       }
     }
 
+    // Default: SENTENCE
     setMode("SENTENCE");
     setQuestions(processedQuestions);
   };
 
   // --- 2. HANDLERS ---
 
+  // Xử lý thay đổi câu hỏi
   const handleChangeQuestion = (idx, field, val) => {
     const newQ = [...questions];
     newQ[idx][field] = val;
     setQuestions(newQ);
   };
 
-  // Hàm quan trọng: Chèn placeholder vào vị trí con trỏ chuột trong TextArea
+  // Xử lý chèn placeholder vào Summary Text
   const handleInsertPlaceholder = (numberQuestion) => {
     const placeholder = ` [${numberQuestion}] `;
-
     if (textAreaRef.current) {
-      const input = textAreaRef.current.resizableTextArea.textArea; // Antd TextArea ref path
+      const input = textAreaRef.current.resizableTextArea.textArea;
       const start = input.selectionStart;
       const end = input.selectionEnd;
       const text = input.value;
-
-      // Chèn text vào giữa
       const newText =
         text.substring(0, start) + placeholder + text.substring(end);
-
       setSummaryText(newText);
-
-      // Focus lại và đặt con trỏ sau text vừa chèn (dùng setTimeout để đợi React render)
       setTimeout(() => {
         input.focus();
         input.setSelectionRange(
@@ -164,54 +218,40 @@ const FillBlankForm = ({
     }
   };
 
+  // --- Box Options Handlers ---
+  const handleBoxOptionChange = (idx, val) => {
+    const newBox = [...boxOptions];
+    newBox[idx].text = val;
+    setBoxOptions(newBox);
+  };
+  const handleAddBoxOption = () => {
+    const nextChar = String.fromCharCode(65 + boxOptions.length);
+    setBoxOptions([...boxOptions, { key: nextChar, text: "" }]);
+  };
+  const handleRemoveBoxOption = (idx) => {
+    const newBox = boxOptions.filter((_, i) => i !== idx);
+    setBoxOptions(newBox);
+  };
+
   // --- 3. SAVE LOGIC ---
   const handleSave = async () => {
     try {
       setSaving(true);
       let payload = [];
 
+      // --- LOGIC: SENTENCE ---
       if (mode === "SENTENCE") {
-        payload = questions.map((q) => ({
-          idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart,
-          idQuestion: q.idQuestion || null,
-          numberQuestion: q.numberQuestion,
-          content: q.content, // Nội dung riêng từng câu
-          answers: [
-            {
-              answer_text: q.answer_text,
-              matching_key: null,
-              matching_value: null,
-            },
-          ],
-        }));
-
-        // Validate
-        if (payload.some((q) => !q.content.trim())) {
+        if (questions.some((q) => !q.content.trim())) {
           message.warning("Vui lòng nhập nội dung cho tất cả các câu hỏi!");
           setSaving(false);
           return;
         }
-      } else {
-        // SUMMARY MODE
-        if (!summaryText.trim()) {
-          message.warning("Chưa nhập nội dung đoạn văn Summary");
-          setSaving(false);
-          return;
-        }
-
-        // Validate xem trong text đã có đủ placeholder chưa (Optional)
-        // const missingPlaceholders = questions.filter(q => !summaryText.includes(`[${q.numberQuestion}]`));
-        // if (missingPlaceholders.length > 0) {
-        //    message.warning(`Cảnh báo: Trong đoạn văn thiếu vị trí cho câu ${missingPlaceholders.map(q=>q.numberQuestion).join(', ')}`);
-        // }
-
         payload = questions.map((q) => ({
           idGroupOfQuestions: idGroup,
           idPart: groupData?.idPart,
           idQuestion: q.idQuestion || null,
           numberQuestion: q.numberQuestion,
-          content: summaryText, // Tất cả chung 1 content
+          content: q.content,
           answers: [
             {
               answer_text: q.answer_text,
@@ -222,9 +262,66 @@ const FillBlankForm = ({
         }));
       }
 
+      // --- LOGIC: SUMMARY (Typing) ---
+      else if (mode === "SUMMARY") {
+        if (!summaryText.trim()) {
+          message.warning("Chưa nhập nội dung đoạn văn Summary");
+          setSaving(false);
+          return;
+        }
+        payload = questions.map((q) => ({
+          idGroupOfQuestions: idGroup,
+          idPart: groupData?.idPart,
+          idQuestion: q.idQuestion || null,
+          numberQuestion: q.numberQuestion,
+          content: summaryText,
+          answers: [
+            {
+              answer_text: q.answer_text,
+              matching_key: null,
+              matching_value: null,
+            },
+          ],
+        }));
+      }
+
+      // --- LOGIC: SUMMARY_BOX (Selection) ---
+      else if (mode === "SUMMARY_BOX") {
+        if (!summaryText.trim()) {
+          message.warning("Chưa nhập nội dung đoạn văn Summary");
+          setSaving(false);
+          return;
+        }
+        // Validate Box
+        if (boxOptions.some((o) => !o.text.trim())) {
+          message.warning("Vui lòng điền đủ nội dung các lựa chọn trong Box");
+          setSaving(false);
+          return;
+        }
+
+        payload = questions.map((q) => {
+          // Với dạng Box, answers chứa TOÀN BỘ options
+          // Option nào user chọn thì matching_value = "CORRECT"
+          const answersPayload = boxOptions.map((opt) => ({
+            answer_text: opt.text,
+            matching_key: opt.key,
+            matching_value: opt.key === q.selectedBoxKey ? "CORRECT" : null,
+          }));
+
+          return {
+            idGroupOfQuestions: idGroup,
+            idPart: groupData?.idPart,
+            idQuestion: q.idQuestion || null,
+            numberQuestion: q.numberQuestion,
+            content: summaryText,
+            answers: answersPayload,
+          };
+        });
+      }
+
+      // CALL API
       const toUpdate = payload.filter((p) => p.idQuestion);
       const toCreate = payload.filter((p) => !p.idQuestion);
-
       const promises = [];
       if (toUpdate.length > 0)
         promises.push(updateManyQuestionAPI({ questions: toUpdate }));
@@ -253,7 +350,7 @@ const FillBlankForm = ({
   return (
     <div className="space-y-5 pb-4">
       {/* 1. Switch Mode */}
-      <div className="flex items-center gap-4 border-b pb-3 mb-4">
+      <div className="flex flex-col md:flex-row md:items-center gap-4 border-b pb-3 mb-4">
         <span className="font-semibold text-gray-700">Chế độ nhập:</span>
         <Radio.Group
           value={mode}
@@ -261,116 +358,185 @@ const FillBlankForm = ({
           buttonStyle="solid"
           size="small"
         >
-          <Radio.Button value="SENTENCE">Từng câu (Sentences)</Radio.Button>
-          <Radio.Button value="SUMMARY">Đoạn văn (Summary)</Radio.Button>
+          <Radio.Button value="SENTENCE">Từng câu</Radio.Button>
+          <Radio.Button value="SUMMARY">Đoạn văn (Điền từ)</Radio.Button>
+          <Radio.Button value="SUMMARY_BOX">
+            Đoạn văn + Box (Chọn từ)
+          </Radio.Button>
         </Radio.Group>
+
         <span className="text-gray-400 text-sm ml-auto">
-          Số lượng câu hỏi: <b>{quantity}</b> (câu{" "}
-          {questions[0]?.numberQuestion} -{" "}
+          Số lượng: <b>{quantity}</b> (câu {questions[0]?.numberQuestion} -{" "}
           {questions[questions.length - 1]?.numberQuestion})
         </span>
       </div>
 
-      {/* 2. Content */}
-      {mode === "SENTENCE" ? (
-        <div className="space-y-4">
-          {questions.map((q, idx) => (
-            <div key={idx} className="bg-gray-50 p-4 rounded border">
-              <div className="font-bold text-gray-700 mb-2">
-                Câu {q.numberQuestion}
+      {/* 2. RENDER FOR SUMMARY_BOX: OPTIONS POOL */}
+      {mode === "SUMMARY_BOX" && (
+        <Card
+          size="small"
+          title="Danh sách lựa chọn (The Box)"
+          className="bg-blue-50 border-blue-200"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+            {boxOptions.map((opt, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <span className="font-bold bg-white border px-2 py-1 rounded w-10 text-center text-blue-600">
+                  {opt.key}
+                </span>
+                <Input
+                  placeholder={`Nội dung ${opt.key}`}
+                  value={opt.text}
+                  onChange={(e) => handleBoxOptionChange(idx, e.target.value)}
+                />
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleRemoveBoxOption(idx)}
+                  disabled={boxOptions.length <= 2}
+                />
               </div>
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <Input.TextArea
-                    rows={2}
-                    className="bg-white"
-                    placeholder="Nhập câu hỏi..."
-                    value={q.content}
-                    onChange={(e) =>
-                      handleChangeQuestion(idx, "content", e.target.value)
-                    }
-                  />
-                  <Button
-                    type="dashed"
-                    onClick={() =>
-                      handleChangeQuestion(
-                        idx,
-                        "content",
-                        (q.content || "") + " _____ "
-                      )
-                    }
-                  >
-                    + Chèn _____
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium min-w-[60px]">
-                    Đáp án:
-                  </span>
+            ))}
+          </div>
+          <Button
+            type="dashed"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={handleAddBoxOption}
+          >
+            Thêm lựa chọn
+          </Button>
+        </Card>
+      )}
+
+      {/* 3. CONTENT AREA (SUMMARY TEXT) */}
+      {(mode === "SUMMARY" || mode === "SUMMARY_BOX") && (
+        <div className="relative">
+          <div className="flex justify-between items-center mb-2">
+            <label className="font-semibold text-gray-700">
+              Nội dung đoạn văn Summary:
+            </label>
+            <span className="text-xs text-gray-500">
+              Đặt con trỏ vào ô văn bản và bấm nút [Chèn...] ở dưới để điền vị
+              trí
+            </span>
+          </div>
+          <Input.TextArea
+            ref={textAreaRef}
+            rows={8}
+            className="text-base leading-relaxed p-3 shadow-sm border-blue-200 focus:border-blue-500"
+            placeholder="Nhập đoạn văn summary tại đây..."
+            value={summaryText}
+            onChange={(e) => setSummaryText(e.target.value)}
+          />
+        </div>
+      )}
+
+      {/* 4. QUESTIONS LIST */}
+      <div className="bg-gray-50 p-4 rounded border">
+        <h4 className="font-semibold mb-3 text-gray-700">
+          {mode === "SENTENCE"
+            ? "Nhập câu hỏi & Đáp án:"
+            : "Thiết lập đáp án & Vị trí:"}
+        </h4>
+
+        <div className="space-y-3">
+          {questions.map((q, idx) => (
+            <div
+              key={idx}
+              className={`p-3 rounded border shadow-sm ${
+                mode === "SENTENCE"
+                  ? "bg-gray-50"
+                  : "bg-white flex items-center gap-2"
+              }`}
+            >
+              {/* --- CASE: SENTENCE MODE --- */}
+              {mode === "SENTENCE" && (
+                <div className="space-y-2">
+                  <div className="font-bold text-gray-700">
+                    Câu {q.numberQuestion}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input.TextArea
+                      rows={1}
+                      placeholder="Nội dung câu hỏi..."
+                      className="bg-white"
+                      value={q.content}
+                      onChange={(e) =>
+                        handleChangeQuestion(idx, "content", e.target.value)
+                      }
+                    />
+                    <Button
+                      onClick={() =>
+                        handleChangeQuestion(
+                          idx,
+                          "content",
+                          (q.content || "") + " _____ "
+                        )
+                      }
+                    >
+                      + ____
+                    </Button>
+                  </div>
                   <Input
-                    placeholder="Đáp án đúng"
+                    prefix={
+                      <span className="font-bold text-sm mr-1">Đáp án:</span>
+                    }
                     value={q.answer_text}
                     onChange={(e) =>
                       handleChangeQuestion(idx, "answer_text", e.target.value)
                     }
                   />
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {/* Khu vực nhập Summary */}
-          <div className="relative">
-            <div className="flex justify-between items-center mb-2">
-              <label className="font-semibold text-gray-700">
-                Nội dung đoạn văn:
-              </label>
-              <span className="text-xs text-gray-500">
-                Đặt con trỏ vào ô văn bản và bấm nút [↑ Chèn...] ở dưới để điền
-                vị trí
-              </span>
-            </div>
-            <Input.TextArea
-              ref={textAreaRef}
-              rows={8}
-              className="text-base leading-relaxed p-3 shadow-sm border-blue-200 focus:border-blue-500"
-              placeholder="Nhập đoạn văn summary tại đây..."
-              value={summaryText}
-              onChange={(e) => setSummaryText(e.target.value)}
-            />
-          </div>
+              )}
 
-          {/* Khu vực nhập đáp án + Nút chèn */}
-          <div className="bg-gray-50 p-4 rounded border">
-            <h4 className="font-semibold mb-3 text-gray-700">
-              Nhập đáp án & Chèn vị trí vào văn bản:
-            </h4>
-            <div className="grid grid-cols-1 gap-3">
-              {questions.map((q, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 bg-white p-2 rounded border shadow-sm hover:border-blue-400 transition-colors"
-                >
+              {/* --- CASE: SUMMARY / SUMMARY_BOX --- */}
+              {mode !== "SENTENCE" && (
+                <>
                   {/* Label số câu */}
-                  <div className="font-bold text-gray-700 w-16 text-center bg-gray-100 rounded py-1">
+                  <div className="font-bold text-gray-700 w-12 text-center bg-gray-100 rounded py-2 shrink-0">
                     {q.numberQuestion}
                   </div>
 
-                  {/* Input đáp án */}
-                  <Input
-                    className="flex-1"
-                    placeholder={`Đáp án câu ${q.numberQuestion}`}
-                    value={q.answer_text}
-                    onChange={(e) =>
-                      handleChangeQuestion(idx, "answer_text", e.target.value)
-                    }
-                  />
+                  {/* Input Đáp án */}
+                  <div className="flex-1">
+                    {mode === "SUMMARY" ? (
+                      <Input
+                        placeholder={`Đáp án từ điền vào (Text)`}
+                        value={q.answer_text}
+                        onChange={(e) =>
+                          handleChangeQuestion(
+                            idx,
+                            "answer_text",
+                            e.target.value
+                          )
+                        }
+                      />
+                    ) : (
+                      <Select
+                        className="w-full"
+                        placeholder="Chọn đáp án từ Box"
+                        value={q.selectedBoxKey}
+                        onChange={(val) =>
+                          handleChangeQuestion(idx, "selectedBoxKey", val)
+                        }
+                      >
+                        {boxOptions.map((opt) => (
+                          <Option key={opt.key} value={opt.key}>
+                            <span className="font-bold text-blue-600 mr-2">
+                              {opt.key}.
+                            </span>
+                            {opt.text || "(Trống)"}
+                          </Option>
+                        ))}
+                      </Select>
+                    )}
+                  </div>
 
-                  {/* Nút Chèn thông minh */}
+                  {/* Nút Chèn */}
                   <Tooltip
-                    title={`Chèn vị trí [${q.numberQuestion}] vào đoạn văn ở trên`}
+                    title={`Chèn vị trí [${q.numberQuestion}] vào đoạn văn`}
                   >
                     <Button
                       type="primary"
@@ -378,17 +544,17 @@ const FillBlankForm = ({
                       icon={<VerticalAlignTopOutlined />}
                       onClick={() => handleInsertPlaceholder(q.numberQuestion)}
                     >
-                      Chèn [{q.numberQuestion}]
+                      Chèn
                     </Button>
                   </Tooltip>
-                </div>
-              ))}
+                </>
+              )}
             </div>
-          </div>
+          ))}
         </div>
-      )}
+      </div>
 
-      {/* 3. Footer Save */}
+      {/* 5. Footer Save */}
       <div className="pt-4 mt-4 border-t flex justify-end">
         <Button
           type="primary"
