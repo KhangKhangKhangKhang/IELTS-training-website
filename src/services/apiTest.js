@@ -73,7 +73,7 @@ export const createPassageAPI = async (formData) => {
 
 export const createGroupOfQuestionsAPI = async (data) => {
   const formData = new FormData();
-  
+
   // Thêm các fields vào FormData
   for (const key in data) {
     if (data[key] != null) {
@@ -81,11 +81,15 @@ export const createGroupOfQuestionsAPI = async (data) => {
     }
   }
 
-  const res = await API.post("/group-of-questions/create-group-question", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+  const res = await API.post(
+    "/group-of-questions/create-group-question",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
   return res.data;
 };
 

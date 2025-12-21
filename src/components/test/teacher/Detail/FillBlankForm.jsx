@@ -8,12 +8,14 @@ import {
   Tooltip,
   Select,
   Card,
+  InputNumber,
 } from "antd";
 import {
   SaveOutlined,
   VerticalAlignTopOutlined,
   PlusOutlined,
   DeleteOutlined,
+  TableOutlined,
 } from "@ant-design/icons";
 import {
   getQuestionsByIdGroupAPI,
@@ -33,16 +35,27 @@ const FillBlankForm = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Mode: "SENTENCE" | "SUMMARY" | "SUMMARY_BOX"
+  // Mode: "SENTENCE" | "SUMMARY" | "SUMMARY_BOX" | "TABLE"
   const [mode, setMode] = useState("SENTENCE");
 
   // State chung
   const [questions, setQuestions] = useState([]);
   const [summaryText, setSummaryText] = useState("");
 
-  // State riêng cho mode SUMMARY_BOX (Danh sách các từ trong Box)
-  // [{ key: "A", text: "example" }, { key: "B", text: "answer" }]
+  // State cho mode SUMMARY_BOX
   const [boxOptions, setBoxOptions] = useState([]);
+
+  // State cho mode TABLE
+  const [tableRows, setTableRows] = useState(3);
+  const [tableCols, setTableCols] = useState(2);
+  // tableData is a 2D array: [ ["Cell 1-1", "Cell 1-2"], ... ]
+  const [tableData, setTableData] = useState([
+    ["", ""],
+    ["", ""],
+    ["", ""],
+  ]);
+  // Track focused cell to insert placeholder
+  const [focusedCell, setFocusedCell] = useState({ r: 0, c: 0 });
 
   const textAreaRef = useRef(null);
   const quantity = groupData?.quantity || 1;
@@ -55,12 +68,11 @@ const FillBlankForm = ({
   // --- 1. INIT & LOAD DATA ---
 
   const initFixedForm = () => {
-    // Khởi tạo form rỗng theo số lượng quantity
     const initialQuestions = Array.from({ length: quantity }, (_, index) => ({
       idQuestion: null,
       content: "",
-      answer_text: "", // Dùng cho mode thường
-      selectedBoxKey: null, // Dùng cho mode Box (lưu Key A, B...)
+      answer_text: "",
+      selectedBoxKey: null,
       numberQuestion: questionNumberOffset + index + 1,
     }));
 
@@ -69,8 +81,15 @@ const FillBlankForm = ({
     setBoxOptions([
       { key: "A", text: "" },
       { key: "B", text: "" },
-      { key: "C", text: "" },
     ]);
+    // Reset Table
+    setTableData([
+      ["", ""],
+      ["", ""],
+      ["", ""],
+    ]);
+    setTableRows(3);
+    setTableCols(2);
     setMode("SENTENCE");
   };
 
@@ -85,27 +104,19 @@ const FillBlankForm = ({
       } else {
         const questionsList = group.question;
 
-        // Load answers cho tất cả câu hỏi
         const fullQuestions = await Promise.all(
           questionsList.map(async (q) => {
             try {
               const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
               const ansData = ansRes?.data || [];
-
-              // Logic detect đáp án
-              // 1. Nếu là Box: ansData sẽ chứa nhiều option (A, B, C...), ta cần tìm cái CORRECT
               const correctAns = ansData.find(
                 (a) => a.matching_value === "CORRECT"
               );
-              // 2. Nếu là thường: ansData chỉ có 1 phần tử hoặc matching_value null
 
               return {
                 ...q,
-                // Dữ liệu cho mode thường
                 answer_text: ansData[0]?.answer_text || "",
-                // Dữ liệu cho mode Box
                 selectedBoxKey: correctAns ? correctAns.matching_key : null,
-                // Lưu lại full options để tí nữa detect mode
                 rawAnswers: ansData,
               };
             } catch (err) {
@@ -124,8 +135,37 @@ const FillBlankForm = ({
     }
   };
 
+  // --- HTML TABLE PARSER HELPER ---
+  const parseHTMLToTableData = (htmlString) => {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlString, "text/html");
+      const table = doc.querySelector("table");
+      if (!table) return null;
+
+      const rows = table.querySelectorAll("tr");
+      const newGrid = [];
+      let maxCols = 0;
+
+      rows.forEach((row) => {
+        const cells = row.querySelectorAll("td, th");
+        const rowData = [];
+        cells.forEach((cell) => {
+          // Keep inner HTML to preserve placeholders like [1]
+          rowData.push(cell.innerHTML);
+        });
+        if (rowData.length > maxCols) maxCols = rowData.length;
+        newGrid.push(rowData);
+      });
+
+      return { grid: newGrid, rows: newGrid.length, cols: maxCols };
+    } catch (e) {
+      console.error("Error parsing table HTML", e);
+      return null;
+    }
+  };
+
   const detectModeAndFillData = (loadedQuestions) => {
-    // Fill thêm nếu thiếu câu hỏi so với quantity
     let processedQuestions = [...loadedQuestions];
     if (loadedQuestions.length < quantity) {
       const diff = quantity - loadedQuestions.length;
@@ -143,31 +183,42 @@ const FillBlankForm = ({
       const firstContent = firstQ.content?.trim();
       const firstAnswers = firstQ.rawAnswers || [];
 
-      // DETECT MODE: SUMMARY_BOX
-      // Điều kiện: Có matching_key (A, B...) trong đáp án
+      // 1. Detect TABLE Mode
+      if (firstContent && firstContent.startsWith("<table")) {
+        const parsed = parseHTMLToTableData(firstContent);
+        if (parsed) {
+          setMode("TABLE");
+          setTableData(parsed.grid);
+          setTableRows(parsed.rows);
+          setTableCols(parsed.cols);
+          setQuestions(processedQuestions);
+          return;
+        }
+      }
+
+      // 2. Detect SUMMARY_BOX Mode
       const hasKey = firstAnswers.some((a) => a.matching_key);
       if (hasKey) {
         setMode("SUMMARY_BOX");
-        setSummaryText(firstContent); // Các câu hỏi Box đều chung content
+        setSummaryText(firstContent);
         setQuestions(processedQuestions);
 
-        // Reconstruct Box Options từ câu hỏi đầu tiên
         const options = firstAnswers
           .map((a) => ({ key: a.matching_key, text: a.answer_text }))
           .sort((a, b) => a.key.localeCompare(b.key));
 
-        if (options.length > 0) setBoxOptions(options);
-        else
-          setBoxOptions([
-            { key: "A", text: "" },
-            { key: "B", text: "" },
-          ]); // fallback
-
+        setBoxOptions(
+          options.length > 0
+            ? options
+            : [
+                { key: "A", text: "" },
+                { key: "B", text: "" },
+              ]
+        );
         return;
       }
 
-      // DETECT MODE: SUMMARY (Thường)
-      // Điều kiện: Content giống nhau hoặc dài
+      // 3. Detect SUMMARY Mode
       const isSummary =
         processedQuestions.length > 1
           ? processedQuestions.every((q) => q.content?.trim() === firstContent)
@@ -188,15 +239,14 @@ const FillBlankForm = ({
 
   // --- 2. HANDLERS ---
 
-  // Xử lý thay đổi câu hỏi
   const handleChangeQuestion = (idx, field, val) => {
     const newQ = [...questions];
     newQ[idx][field] = val;
     setQuestions(newQ);
   };
 
-  // Xử lý chèn placeholder vào Summary Text
-  const handleInsertPlaceholder = (numberQuestion) => {
+  // -- SUMMARY HANDLER --
+  const handleInsertPlaceholderSummary = (numberQuestion) => {
     const placeholder = ` [${numberQuestion}] `;
     if (textAreaRef.current) {
       const input = textAreaRef.current.resizableTextArea.textArea;
@@ -218,7 +268,63 @@ const FillBlankForm = ({
     }
   };
 
-  // --- Box Options Handlers ---
+  // -- TABLE HANDLERS --
+  const handleTableDimensionChange = (newR, newC) => {
+    // Resize grid while keeping data
+    const newGrid = [];
+    for (let r = 0; r < newR; r++) {
+      const row = [];
+      for (let c = 0; c < newC; c++) {
+        // Copy existing data if available
+        if (tableData[r] && tableData[r][c] !== undefined) {
+          row.push(tableData[r][c]);
+        } else {
+          row.push("");
+        }
+      }
+      newGrid.push(row);
+    }
+    setTableRows(newR);
+    setTableCols(newC);
+    setTableData(newGrid);
+  };
+
+  const handleCellChange = (r, c, val) => {
+    const newData = [...tableData];
+    newData[r][c] = val;
+    setTableData(newData);
+  };
+
+  const handleInsertPlaceholderTable = (numberQuestion) => {
+    const { r, c } = focusedCell;
+    const currentVal = tableData[r]?.[c] || "";
+    // Insert simple [X] placeholder
+    const newVal = currentVal + ` [${numberQuestion}] `;
+    handleCellChange(r, c, newVal);
+  };
+
+  const generateTableHTML = () => {
+    // Generate basic HTML table with inline styles
+    let html = `<table border="1" style="border-collapse: collapse; width: 100%; border: 1px solid #ddd;">`;
+    tableData.forEach((row, rIdx) => {
+      // First row usually header in typical listening tasks, but let's keep it simple as tds
+      // or implement a "Header Row" toggle later if needed.
+      // Inline styles for cells
+      const cellStyle =
+        "padding: 8px; border: 1px solid #ddd; text-align: left;";
+      const bgStyle = rIdx === 0 ? "background-color: #f2f2f2;" : ""; // Light grey for first row
+
+      html += `<tr>`;
+      row.forEach((cell) => {
+        html += `<td style="${cellStyle} ${bgStyle}">${cell}</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</table>`;
+    return html;
+  };
+
+  // --- BOX OPTIONS HANDLERS ---
   const handleBoxOptionChange = (idx, val) => {
     const newBox = [...boxOptions];
     newBox[idx].text = val;
@@ -292,16 +398,12 @@ const FillBlankForm = ({
           setSaving(false);
           return;
         }
-        // Validate Box
         if (boxOptions.some((o) => !o.text.trim())) {
           message.warning("Vui lòng điền đủ nội dung các lựa chọn trong Box");
           setSaving(false);
           return;
         }
-
         payload = questions.map((q) => {
-          // Với dạng Box, answers chứa TOÀN BỘ options
-          // Option nào user chọn thì matching_value = "CORRECT"
           const answersPayload = boxOptions.map((opt) => ({
             answer_text: opt.text,
             matching_key: opt.key,
@@ -317,6 +419,29 @@ const FillBlankForm = ({
             answers: answersPayload,
           };
         });
+      }
+
+      // --- LOGIC: TABLE (New) ---
+      else if (mode === "TABLE") {
+        // 1. Generate HTML from grid
+        const tableHTML = generateTableHTML();
+
+        // 2. Build payload (Similar to Summary)
+        payload = questions.map((q) => ({
+          idGroupOfQuestions: idGroup,
+          idPart: groupData?.idPart,
+          idQuestion: q.idQuestion || null,
+          numberQuestion: q.numberQuestion,
+          // !!! IMPORTANT: Content is the HTML Table string !!!
+          content: tableHTML,
+          answers: [
+            {
+              answer_text: q.answer_text,
+              matching_key: null,
+              matching_value: null,
+            },
+          ],
+        }));
       }
 
       // CALL API
@@ -350,28 +475,94 @@ const FillBlankForm = ({
   return (
     <div className="space-y-5 pb-4">
       {/* 1. Switch Mode */}
-      <div className="flex flex-col md:flex-row md:items-center gap-4 border-b pb-3 mb-4">
-        <span className="font-semibold text-gray-700">Chế độ nhập:</span>
+      <div className="flex flex-col gap-4 border-b pb-3 mb-4">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold text-gray-700">Chế độ nhập:</span>
+          <span className="text-gray-400 text-sm">
+            Số lượng: <b>{quantity}</b> (câu {questions[0]?.numberQuestion} -{" "}
+            {questions[questions.length - 1]?.numberQuestion})
+          </span>
+        </div>
         <Radio.Group
           value={mode}
           onChange={(e) => setMode(e.target.value)}
           buttonStyle="solid"
-          size="small"
+          size="middle"
         >
           <Radio.Button value="SENTENCE">Từng câu</Radio.Button>
-          <Radio.Button value="SUMMARY">Đoạn văn (Điền từ)</Radio.Button>
-          <Radio.Button value="SUMMARY_BOX">
-            Đoạn văn + Box (Chọn từ)
-          </Radio.Button>
+          <Radio.Button value="TABLE">Bảng (Table Completion)</Radio.Button>
+          <Radio.Button value="SUMMARY">Summary (Điền từ)</Radio.Button>
+          <Radio.Button value="SUMMARY_BOX">Summary (Chọn Box)</Radio.Button>
         </Radio.Group>
-
-        <span className="text-gray-400 text-sm ml-auto">
-          Số lượng: <b>{quantity}</b> (câu {questions[0]?.numberQuestion} -{" "}
-          {questions[questions.length - 1]?.numberQuestion})
-        </span>
       </div>
 
-      {/* 2. RENDER FOR SUMMARY_BOX: OPTIONS POOL */}
+      {/* 2. RENDER: TABLE EDITOR (Only in TABLE mode) */}
+      {mode === "TABLE" && (
+        <Card
+          size="small"
+          title={
+            <div className="flex items-center gap-4">
+              <TableOutlined />
+              <span>Cấu hình bảng biểu</span>
+            </div>
+          }
+          className="bg-blue-50 border-blue-200"
+        >
+          <div className="flex gap-4 items-center mb-4">
+            <div>
+              <span className="mr-2">Số dòng:</span>
+              <InputNumber
+                min={1}
+                max={20}
+                value={tableRows}
+                onChange={(v) => handleTableDimensionChange(v, tableCols)}
+              />
+            </div>
+            <div>
+              <span className="mr-2">Số cột:</span>
+              <InputNumber
+                min={1}
+                max={10}
+                value={tableCols}
+                onChange={(v) => handleTableDimensionChange(tableRows, v)}
+              />
+            </div>
+            <div className="text-xs text-gray-500 italic ml-2">
+              *Nhập dữ liệu vào ô và chèn vị trí câu hỏi
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse border border-gray-300 bg-white">
+              <tbody>
+                {tableData.map((row, rIdx) => (
+                  <tr key={rIdx}>
+                    {row.map((cellVal, cIdx) => (
+                      <td
+                        key={`${rIdx}-${cIdx}`}
+                        className="border border-gray-300 p-1 min-w-[150px]"
+                      >
+                        <Input.TextArea
+                          value={cellVal}
+                          onChange={(e) =>
+                            handleCellChange(rIdx, cIdx, e.target.value)
+                          }
+                          onFocus={() => setFocusedCell({ r: rIdx, c: cIdx })}
+                          rows={2}
+                          className="text-sm"
+                          placeholder={`R${rIdx + 1} C${cIdx + 1}`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* 3. RENDER: BOX OPTIONS (Only in SUMMARY_BOX mode) */}
       {mode === "SUMMARY_BOX" && (
         <Card
           size="small"
@@ -410,7 +601,7 @@ const FillBlankForm = ({
         </Card>
       )}
 
-      {/* 3. CONTENT AREA (SUMMARY TEXT) */}
+      {/* 4. CONTENT AREA (SUMMARY TEXT only) */}
       {(mode === "SUMMARY" || mode === "SUMMARY_BOX") && (
         <div className="relative">
           <div className="flex justify-between items-center mb-2">
@@ -433,7 +624,7 @@ const FillBlankForm = ({
         </div>
       )}
 
-      {/* 4. QUESTIONS LIST */}
+      {/* 5. QUESTIONS LIST */}
       <div className="bg-gray-50 p-4 rounded border">
         <h4 className="font-semibold mb-3 text-gray-700">
           {mode === "SENTENCE"
@@ -491,7 +682,7 @@ const FillBlankForm = ({
                 </div>
               )}
 
-              {/* --- CASE: SUMMARY / SUMMARY_BOX --- */}
+              {/* --- CASE: SUMMARY / SUMMARY_BOX / TABLE --- */}
               {mode !== "SENTENCE" && (
                 <>
                   {/* Label số câu */}
@@ -501,7 +692,7 @@ const FillBlankForm = ({
 
                   {/* Input Đáp án */}
                   <div className="flex-1">
-                    {mode === "SUMMARY" ? (
+                    {mode === "SUMMARY" || mode === "TABLE" ? (
                       <Input
                         placeholder={`Đáp án từ điền vào (Text)`}
                         value={q.answer_text}
@@ -536,13 +727,23 @@ const FillBlankForm = ({
 
                   {/* Nút Chèn */}
                   <Tooltip
-                    title={`Chèn vị trí [${q.numberQuestion}] vào đoạn văn`}
+                    title={
+                      mode === "TABLE"
+                        ? `Chèn vào ô đang chọn`
+                        : `Chèn vị trí [${q.numberQuestion}] vào đoạn văn`
+                    }
                   >
                     <Button
                       type="primary"
                       ghost
                       icon={<VerticalAlignTopOutlined />}
-                      onClick={() => handleInsertPlaceholder(q.numberQuestion)}
+                      onClick={() => {
+                        if (mode === "TABLE") {
+                          handleInsertPlaceholderTable(q.numberQuestion);
+                        } else {
+                          handleInsertPlaceholderSummary(q.numberQuestion);
+                        }
+                      }}
                     >
                       Chèn
                     </Button>
