@@ -55,24 +55,24 @@ const TestManager = () => {
   // Lọc và sắp xếp exams
   const filteredExams = Array.isArray(exams)
     ? exams
-        .filter((exam) => {
-          const matchTestType =
-            testType === "ALL" || exam.testType === testType;
-          const matchSearch =
-            exam.title.toLowerCase().includes(searchText.toLowerCase()) ||
-            exam.description.toLowerCase().includes(searchText.toLowerCase());
-          return matchTestType && matchSearch;
-        })
-        .sort((a, b) => {
-          const levelValue = { Low: 1, Mid: 2, High: 3 };
-          if (sortBy === "newest")
-            return new Date(b.createdAt) - new Date(a.createdAt);
-          if (sortBy === "level-asc")
-            return levelValue[a.level] - levelValue[b.level];
-          if (sortBy === "level-desc")
-            return levelValue[b.level] - levelValue[a.level];
-          return 0;
-        })
+      .filter((exam) => {
+        const matchTestType =
+          testType === "ALL" || exam.testType === testType;
+        const matchSearch =
+          exam.title.toLowerCase().includes(searchText.toLowerCase()) ||
+          exam.description.toLowerCase().includes(searchText.toLowerCase());
+        return matchTestType && matchSearch;
+      })
+      .sort((a, b) => {
+        const levelValue = { Low: 1, Mid: 2, High: 3 };
+        if (sortBy === "newest")
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        if (sortBy === "level-asc")
+          return levelValue[a.level] - levelValue[b.level];
+        if (sortBy === "level-desc")
+          return levelValue[b.level] - levelValue[a.level];
+        return 0;
+      })
     : [];
 
   // Xử lý các action
@@ -118,7 +118,7 @@ const TestManager = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header với tiêu đề và nút tạo mới */}
         <div className="flex justify-between items-center mb-6">
@@ -229,8 +229,8 @@ const TestManager = () => {
                         <span className="font-medium">
                           {exam.createdAt
                             ? new Date(exam.createdAt).toLocaleDateString(
-                                "vi-VN"
-                              )
+                              "vi-VN"
+                            )
                             : "N/A"}
                         </span>
                       </div>

@@ -179,19 +179,19 @@ const CreateWriting = ({ idTest, exam, onExamUpdate }) => {
         [currentTask]: {
           ...(currentTask === "TASK1"
             ? {
-                id: null,
-                title: "",
-                time_limit: "",
-                imageUrl: null,
-                image: null,
-                task_type: "TASK1",
-              }
+              id: null,
+              title: "",
+              time_limit: "",
+              imageUrl: null,
+              image: null,
+              task_type: "TASK1",
+            }
             : {
-                id: null,
-                title: "",
-                time_limit: "",
-                task_type: "TASK2",
-              }),
+              id: null,
+              title: "",
+              time_limit: "",
+              task_type: "TASK2",
+            }),
         },
       }));
       alert("Xoá thành công!");
@@ -202,12 +202,12 @@ const CreateWriting = ({ idTest, exam, onExamUpdate }) => {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-gray-50">
+    <div className="min-h-screen p-6 bg-gradient-to-br from-blue-50 to-indigo-50">
       {/* Panel chỉnh sửa thông tin đề thi */}
       <div className="max-w-6xl mx-auto mb-4">
         <TestInfoEditor exam={exam} onUpdate={onExamUpdate} />
       </div>
-      
+
       <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg">
         {/* Tabs */}
         <div className="flex border-b">
@@ -215,11 +215,10 @@ const CreateWriting = ({ idTest, exam, onExamUpdate }) => {
             <Button
               key={task}
               onClick={() => setCurrentTask(task)}
-              className={`px-6 py-3 font-medium transition-all ${
-                currentTask === task
+              className={`px-6 py-3 font-medium transition-all ${currentTask === task
                   ? "border-b-4 border-blue-600 bg-blue-50 text-blue-700"
                   : "text-gray-600 hover:bg-gray-50"
-              }`}
+                }`}
             >
               {task.replace("TASK", "Task ")}
             </Button>
@@ -375,8 +374,8 @@ const CreateWriting = ({ idTest, exam, onExamUpdate }) => {
               {tasks.TASK1.title.trim() && tasks.TASK2.title.trim()
                 ? "Sẽ lưu cả 2 tasks"
                 : tasks.TASK1.title.trim() || tasks.TASK2.title.trim()
-                ? "Sẽ lưu 1 task"
-                : "Nhập dữ liệu để lưu"}
+                  ? "Sẽ lưu 1 task"
+                  : "Nhập dữ liệu để lưu"}
             </span>
             <Button
               size="lg"

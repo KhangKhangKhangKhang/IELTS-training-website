@@ -96,11 +96,10 @@ const TestDetailModal = ({ result, onClose }) => {
               result.userAnswer.map((ans, idx) => (
                 <div
                   key={idx}
-                  className={`p-2 rounded border text-sm flex justify-between ${
-                    ans.isCorrect
-                      ? "bg-green-50 border-green-200"
-                      : "bg-red-50 border-red-200"
-                  }`}
+                  className={`p-2 rounded border text-sm flex justify-between ${ans.isCorrect
+                    ? "bg-green-50 border-green-200"
+                    : "bg-red-50 border-red-200"
+                    }`}
                 >
                   <span>{ans.answerText}</span>
                   <span className="font-bold">
@@ -280,7 +279,7 @@ const HomePage = () => {
     );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 font-sans text-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6 font-sans text-gray-800">
       {/* --- HEADER & TARGET INFO BAR (ĐÃ CẬP NHẬT UI) --- */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-6">
         {/* Title Section */}
@@ -328,14 +327,12 @@ const HomePage = () => {
           {/* Block 3: Countdown */}
           <div className="flex items-center gap-4 px-6 py-4 min-w-[180px]">
             <div
-              className={`${
-                targetInfo?.daysLeft <= 30 ? "bg-red-100" : "bg-green-100"
-              } p-3 rounded-xl transition-colors`}
+              className={`${targetInfo?.daysLeft <= 30 ? "bg-red-100" : "bg-green-100"
+                } p-3 rounded-xl transition-colors`}
             >
               <Clock
-                className={`${
-                  targetInfo?.daysLeft <= 30 ? "text-red-600" : "text-green-600"
-                }`}
+                className={`${targetInfo?.daysLeft <= 30 ? "text-red-600" : "text-green-600"
+                  }`}
                 size={24}
               />
             </div>
@@ -345,11 +342,10 @@ const HomePage = () => {
               </p>
               <div className="flex items-baseline gap-1">
                 <p
-                  className={`text-2xl font-extrabold ${
-                    targetInfo?.daysLeft <= 30
-                      ? "text-red-600"
-                      : "text-green-600"
-                  }`}
+                  className={`text-2xl font-extrabold ${targetInfo?.daysLeft <= 30
+                    ? "text-red-600"
+                    : "text-green-600"
+                    }`}
                 >
                   {targetInfo ? targetInfo.daysLeft : "--"}
                 </p>
@@ -489,59 +485,59 @@ const HomePage = () => {
                   <Legend />
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "OVERALL") && (
-                    <Line
-                      name="Overall"
-                      type="monotone"
-                      dataKey="OVERALL"
-                      stroke="#8884d8"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                  )}
+                      <Line
+                        name="Overall"
+                        type="monotone"
+                        dataKey="OVERALL"
+                        stroke="#8884d8"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "READING") && (
-                    <Line
-                      name="Reading"
-                      type="monotone"
-                      dataKey="READING"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Reading"
+                        type="monotone"
+                        dataKey="READING"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "LISTENING") && (
-                    <Line
-                      name="Listening"
-                      type="monotone"
-                      dataKey="LISTENING"
-                      stroke="#22c55e"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Listening"
+                        type="monotone"
+                        dataKey="LISTENING"
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "WRITING") && (
-                    <Line
-                      name="Writing"
-                      type="monotone"
-                      dataKey="WRITING"
-                      stroke="#eab308"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Writing"
+                        type="monotone"
+                        dataKey="WRITING"
+                        stroke="#eab308"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "SPEAKING") && (
-                    <Line
-                      name="Speaking"
-                      type="monotone"
-                      dataKey="SPEAKING"
-                      stroke="#ef4444"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Speaking"
+                        type="monotone"
+                        dataKey="SPEAKING"
+                        stroke="#ef4444"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                 </LineChart>
               </ResponsiveContainer>
             ) : (

@@ -257,8 +257,8 @@ const UserList = () => {
       render: (type) => (
         <span
           className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${type === "GOOGLE"
-              ? "bg-orange-50 text-orange-600"
-              : "bg-slate-100 text-slate-600"
+            ? "bg-orange-50 text-orange-600"
+            : "bg-slate-100 text-slate-600"
             }`}
         >
           {type === "GOOGLE" ? <GoogleOutlined /> : <LockOutlined />}
@@ -342,7 +342,7 @@ const UserList = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header - giống Forum */}
         <div className="relative overflow-hidden bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 rounded-2xl shadow-lg p-8 border border-slate-700">

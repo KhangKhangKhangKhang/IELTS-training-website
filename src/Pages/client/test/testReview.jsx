@@ -40,20 +40,20 @@ const TestPage = () => {
 
   const filteredExams = Array.isArray(exams)
     ? exams
-        .filter((exam) => {
-          const matchTestType =
-            testType === "Tất cả" || exam.testType === testType;
-          const matchSearch =
-            exam.title.toLowerCase().includes(searchText.toLowerCase()) ||
-            exam.description.toLowerCase().includes(searchText.toLowerCase());
-          return matchTestType && matchSearch;
-        })
-        .sort((a, b) => {
-          if (sortBy === "newest")
-            return new Date(b.createdAt) - new Date(a.createdAt);
-          if (sortBy === "level") return b.level - a.level;
-          return 0;
-        })
+      .filter((exam) => {
+        const matchTestType =
+          testType === "Tất cả" || exam.testType === testType;
+        const matchSearch =
+          exam.title.toLowerCase().includes(searchText.toLowerCase()) ||
+          exam.description.toLowerCase().includes(searchText.toLowerCase());
+        return matchTestType && matchSearch;
+      })
+      .sort((a, b) => {
+        if (sortBy === "newest")
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        if (sortBy === "level") return b.level - a.level;
+        return 0;
+      })
     : [];
 
   // 1. Khi click vào đề -> Mở Modal xác nhận (chưa navigate vội)
@@ -103,7 +103,7 @@ const TestPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* ... (Giữ nguyên phần Search/Filter UI cũ) ... */}
         <div className="bg-white p-6 rounded-lg shadow-md mb-6">
