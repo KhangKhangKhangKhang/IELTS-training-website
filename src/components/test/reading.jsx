@@ -90,6 +90,25 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const [timeLeft, setTimeLeft] = useState((duration || 60) * 60);
   const isSubmittingRef = useRef(false);
 
+  // Load lại đáp án cũ khi Review
+  useEffect(() => {
+    if (
+      initialTestResult?.userAnswer &&
+      initialTestResult.userAnswer.length > 0
+    ) {
+      const mappedAnswers = {};
+      initialTestResult.userAnswer.forEach((ans) => {
+        mappedAnswers[ans.idQuestion] = {
+          value: ans.matching_key || ans.answerText, // Ưu tiên lấy matching_key nếu có (cho dạng Box)
+          text: ans.answerText,
+          type: ans.userAnswerType,
+          isCorrect: ans.isCorrect,
+        };
+      });
+      setAnswers(mappedAnswers);
+    }
+  }, [initialTestResult]);
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -201,6 +220,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     }));
   };
 
+  // Hàm tìm Text dựa trên Key và ID câu hỏi
   const getAnswerText = (qId, key) => {
     for (const part of Object.values(loadedParts)) {
       if (!part?.groupOfQuestions) continue;
@@ -214,7 +234,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
         }
       }
     }
-    return "";
+    return null; // Trả về null nếu không tìm thấy key (nghĩa là input thường)
   };
 
   const handleFinish = async (isAutoSubmit = false) => {
@@ -232,18 +252,22 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
         message.loading({ content: "Đang nộp bài...", key: "submitting" });
 
       const flattenedAnswers = [];
+
       Object.entries(answers).forEach(([qId, data]) => {
         let matchingValue = null;
+        // Xử lý riêng cho YES/NO/TFNG
         if (data.type === "YES_NO_NOTGIVEN" || data.type === "TFNG") {
           matchingValue = data.value;
         }
 
+        // --- XỬ LÝ QUAN TRỌNG TẠI ĐÂY ---
         if (data.type === "MCQ" || data.type === "MATCHING") {
+          // Logic cũ cho MCQ/Matching
           if (Array.isArray(data.value)) {
             data.value.forEach((val) => {
               flattenedAnswers.push({
                 idQuestion: qId,
-                answerText: getAnswerText(qId, val),
+                answerText: getAnswerText(qId, val) || "",
                 userAnswerType: data.type,
                 matching_key: val,
                 matching_value: matchingValue,
@@ -252,20 +276,37 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           } else {
             flattenedAnswers.push({
               idQuestion: qId,
-              answerText: data.text || getAnswerText(qId, data.value),
+              answerText: data.text || getAnswerText(qId, data.value) || "",
               userAnswerType: data.type,
               matching_key: data.value,
               matching_value: matchingValue,
             });
           }
         } else {
-          flattenedAnswers.push({
-            idQuestion: qId,
-            answerText: data.text,
-            userAnswerType: data.type,
-            matching_key: null,
-            matching_value: matchingValue,
-          });
+          // --- LOGIC MỚI CHO FILL_BLANK VÀ CÁC DẠNG KHÁC ---
+
+          // Thử tìm text tương ứng với value (Giả sử value là Key A, B...)
+          const resolvedTextFromKey = getAnswerText(qId, data.value);
+
+          if (resolvedTextFromKey) {
+            // [CASE 1]: Đây là dạng Box (Value là Key "A", resolvedText là "Evolution")
+            flattenedAnswers.push({
+              idQuestion: qId,
+              answerText: resolvedTextFromKey, // Gửi nội dung chữ
+              userAnswerType: data.type,
+              matching_key: data.value, // Gửi Key (A, B...)
+              matching_value: matchingValue,
+            });
+          } else {
+            // [CASE 2]: Đây là dạng nhập tay (Value là text user nhập)
+            flattenedAnswers.push({
+              idQuestion: qId,
+              answerText: data.text || data.value,
+              userAnswerType: data.type,
+              matching_key: null, // Không có Key
+              matching_value: matchingValue,
+            });
+          }
         }
       });
 
@@ -406,10 +447,11 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-4 py-1.5 rounded-lg border shadow-sm ${timeLeft < 300
-                  ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
-                  : "bg-gray-50 text-gray-700 border-gray-200"
-                  }`}
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-4 py-1.5 rounded-lg border shadow-sm ${
+                  timeLeft < 300
+                    ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
+                    : "bg-gray-50 text-gray-700 border-gray-200"
+                }`}
               >
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
@@ -443,10 +485,11 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`px-5 py-2 rounded-full border text-sm font-semibold transition-all whitespace-nowrap ${idx === activePartIndex
-                ? "bg-blue-600 text-white border-blue-600 shadow-md"
-                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
-                }`}
+              className={`px-5 py-2 rounded-full border text-sm font-semibold transition-all whitespace-nowrap ${
+                idx === activePartIndex
+                  ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+              }`}
             >
               {p.namePart || `Part ${idx + 1}`}
             </button>
@@ -491,10 +534,11 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
             <div className="lg:col-span-5 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
               <div
-                className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${isReviewMode
-                  ? "bg-green-50 text-green-800"
-                  : "bg-gray-50 text-gray-700"
-                  }`}
+                className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${
+                  isReviewMode
+                    ? "bg-green-50 text-green-800"
+                    : "bg-gray-50 text-gray-700"
+                }`}
               >
                 <span>✍️ Questions</span>
               </div>
@@ -540,7 +584,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                         }
                         userAnswers={answers}
                         isReviewMode={isReviewMode}
-                        isMultiple={isMultiple} // Truyền prop này
+                        isMultiple={isMultiple}
                       />
                     </div>
                   );
