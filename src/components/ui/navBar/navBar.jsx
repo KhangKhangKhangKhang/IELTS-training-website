@@ -16,6 +16,7 @@ import ChatBotWidget from "./chatBotWidget";
 import Cookies from "js-cookie";
 import StreakWidget from "./StreakWidget";
 import XpWidget from "./xPWidget";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -81,6 +82,9 @@ const Navbar = () => {
 
             {/* Desktop Right Section */}
             <div className="hidden sm:flex items-center gap-2">
+              {/* THEME TOGGLE */}
+              <ThemeToggle />
+
               {/* XP WIDGET */}
               <XpWidget />
 

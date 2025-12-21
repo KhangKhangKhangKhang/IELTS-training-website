@@ -7,6 +7,7 @@ const ExamCard = ({ exam, onExamClick }) => {
   return (
     <Card
       hoverable
+      className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 [&_.ant-card-body]:dark:text-white [&_.ant-card-meta-title]:dark:text-white [&_.ant-card-meta-description]:dark:text-slate-400 [&_.ant-card-actions]:dark:bg-slate-700 [&_.ant-card-actions]:dark:border-slate-600 [&_.ant-card-actions>li]:dark:text-slate-300"
       cover={
         <img
           alt={exam.title}
@@ -30,8 +31,8 @@ const ExamCard = ({ exam, onExamClick }) => {
             exam.testType === "Listening"
               ? "blue"
               : exam.testType === "Writing"
-              ? "green"
-              : "orange"
+                ? "green"
+                : "orange"
           }
         >
           {exam.testType}
@@ -45,7 +46,7 @@ const ExamCard = ({ exam, onExamClick }) => {
           </div>
         }
       />
-      <div className="mt-2">
+      <div className="mt-2 text-slate-700 dark:text-slate-300">
         <span className="font-semibold">Độ khó: </span>
         {exam.level}
       </div>

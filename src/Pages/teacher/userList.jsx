@@ -342,7 +342,7 @@ const UserList = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 transition-colors duration-300">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header - giống Forum */}
         <div className="relative overflow-hidden bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 rounded-2xl shadow-lg p-8 border border-slate-700">
@@ -410,7 +410,7 @@ const UserList = () => {
         </div>
 
         {/* Search & Filter */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
           <div className="flex flex-col sm:flex-row gap-3 items-center">
             <div className="flex-1 w-full">
               <Input
@@ -450,7 +450,7 @@ const UserList = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
           <Table
             loading={loading}
             rowKey={"idUser"}
@@ -464,7 +464,7 @@ const UserList = () => {
             columns={columns}
             dataSource={filteredData}
             scroll={{ x: 900 }}
-            rowClassName="hover:bg-slate-50 transition-colors"
+            rowClassName="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
           />
         </div>
       </div>

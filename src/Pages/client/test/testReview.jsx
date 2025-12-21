@@ -103,20 +103,20 @@ const TestPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
         {/* ... (Giữ nguyên phần Search/Filter UI cũ) ... */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md mb-6 border border-transparent dark:border-slate-700">
           {/* Code UI Search cũ giữ nguyên */}
           <Row gutter={[16, 16]} align="bottom">
             <Col xs={24} md={8}>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
                 Loại đề thi
               </label>
               <ExamSelector currentType={testType} onTypeChange={setTestType} />
             </Col>
             <Col xs={24} md={10}>
-              <label className="block text-sm font-medium mb-2">Tìm kiếm</label>
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Tìm kiếm</label>
               <Input
                 size="large"
                 placeholder="Nhập tên đề hoặc mô tả..."
@@ -126,7 +126,7 @@ const TestPage = () => {
               />
             </Col>
             <Col xs={24} md={6}>
-              <label className="block text-sm font-medium mb-2">Sắp xếp</label>
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Sắp xếp</label>
               <Select
                 size="large"
                 className="w-full"
@@ -159,7 +159,7 @@ const TestPage = () => {
         )}
 
         {!loading && filteredExams.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             Không tìm thấy đề thi phù hợp
           </div>
         )}

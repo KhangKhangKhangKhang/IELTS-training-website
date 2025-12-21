@@ -89,8 +89,8 @@ const CommentItem = ({ comment, onUpdated, onDeleted }) => {
   return (
     <div
       className={`p-4 rounded-2xl transition-all duration-300 ${isHovered
-          ? "bg-gradient-to-r from-blue-50 to-blue-50 border-2 border-blue-100"
-          : "bg-slate-50 border-2 border-transparent"
+        ? "bg-gradient-to-r from-blue-50 to-blue-50 dark:from-slate-700 dark:to-slate-700 border-2 border-blue-100 dark:border-blue-800"
+        : "bg-slate-50 dark:bg-slate-800 border-2 border-transparent"
         }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -106,9 +106,9 @@ const CommentItem = ({ comment, onUpdated, onDeleted }) => {
 
         <div className="flex-1 min-w-0">
           {/* Comment bubble */}
-          <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm border border-slate-100">
+          <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm border border-slate-100 dark:border-slate-600">
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-slate-900 text-sm hover:text-blue-600 cursor-pointer transition-colors">
+              <span className="font-semibold text-slate-900 dark:text-white text-sm hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors">
                 {comment.user?.nameUser}
               </span>
               <Tooltip
@@ -120,7 +120,7 @@ const CommentItem = ({ comment, onUpdated, onDeleted }) => {
               </Tooltip>
             </div>
 
-            <p className="text-slate-700 text-sm leading-relaxed">
+            <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
               {comment.content}
             </p>
           </div>
@@ -130,8 +130,8 @@ const CommentItem = ({ comment, onUpdated, onDeleted }) => {
             <button
               onClick={handleLike}
               className={`flex items-center gap-1.5 text-xs font-medium transition-all duration-200 ${liked
-                  ? "text-blue-500"
-                  : "text-slate-500 hover:text-blue-500"
+                ? "text-blue-500"
+                : "text-slate-500 dark:text-slate-400 hover:text-blue-500"
                 }`}
             >
               {liked ? (
@@ -146,14 +146,14 @@ const CommentItem = ({ comment, onUpdated, onDeleted }) => {
               <>
                 <button
                   onClick={() => setOpenEdit(true)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-blue-600 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors"
                 >
                   <EditOutlined className="text-sm" />
                   <span>Sửa</span>
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-red-500 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors"
                 >
                   <DeleteOutlined className="text-sm" />
                   <span>Xóa</span>

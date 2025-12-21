@@ -118,11 +118,11 @@ const TestManager = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
         {/* Header với tiêu đề và nút tạo mới */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Quản lý đề thi</h1>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Quản lý đề thi</h1>
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -134,10 +134,10 @@ const TestManager = () => {
         </div>
 
         {/* Search và Filter Section */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md mb-6 border border-transparent dark:border-slate-700">
           <Row gutter={[16, 16]} align="bottom">
             <Col xs={24} md={8}>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
                 Loại đề thi
               </label>
               <Select
@@ -155,7 +155,7 @@ const TestManager = () => {
               />
             </Col>
             <Col xs={24} md={10}>
-              <label className="block text-sm font-medium mb-2">Tìm kiếm</label>
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Tìm kiếm</label>
               <Input
                 size="large"
                 placeholder="Nhập tên đề hoặc mô tả..."
@@ -165,7 +165,7 @@ const TestManager = () => {
               />
             </Col>
             <Col xs={24} md={6}>
-              <label className="block text-sm font-medium mb-2">Sắp xếp</label>
+              <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Sắp xếp</label>
               <Select
                 size="large"
                 className="w-full"
@@ -190,43 +190,43 @@ const TestManager = () => {
           <Row gutter={[24, 24]}>
             {filteredExams.map((exam) => (
               <Col key={exam.idTest} xs={24} sm={12} lg={8} xl={6}>
-                <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 h-full flex flex-col">
+                <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 h-full flex flex-col border border-transparent dark:border-slate-700">
                   {/* Header với badge loại đề */}
-                  <div className="p-4 border-b">
+                  <div className="p-4 border-b dark:border-slate-700">
                     <div className="flex justify-between items-start mb-2">
                       <Tag color={getTypeColor(exam.testType)} className="mb-2">
                         {exam.testType}
                       </Tag>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         Độ khó: <b>{exam.level || "N/A"}</b>
                       </span>
                     </div>
-                    <h3 className="font-semibold text-lg text-gray-800 line-clamp-2">
+                    <h3 className="font-semibold text-lg text-gray-800 dark:text-white line-clamp-2">
                       {exam.title}
                     </h3>
-                    <p className="text-gray-600 text-sm mt-1 line-clamp-2">
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mt-1 line-clamp-2">
                       {exam.description}
                     </p>
                   </div>
 
                   {/* Thông tin đề thi */}
                   <div className="p-4 flex-grow">
-                    <div className="space-y-2 text-sm text-gray-600">
+                    <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                       <div className="flex justify-between">
                         <span>Số câu:</span>
-                        <span className="font-medium">
+                        <span className="font-medium text-gray-800 dark:text-gray-200">
                           {exam.numberQuestion || "N/A"}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Thời gian:</span>
-                        <span className="font-medium">
+                        <span className="font-medium text-gray-800 dark:text-gray-200">
                           {exam.duration || "N/A"} phút
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Ngày tạo:</span>
-                        <span className="font-medium">
+                        <span className="font-medium text-gray-800 dark:text-gray-200">
                           {exam.createdAt
                             ? new Date(exam.createdAt).toLocaleDateString(
                               "vi-VN"
@@ -238,7 +238,7 @@ const TestManager = () => {
                   </div>
 
                   {/* Action buttons */}
-                  <div className="p-4 border-t">
+                  <div className="p-4 border-t dark:border-slate-700">
                     <Space size="small" className="w-full flex justify-between">
                       <Button
                         icon={<EyeOutlined />}
@@ -272,7 +272,7 @@ const TestManager = () => {
         )}
 
         {!loading && filteredExams.length === 0 && (
-          <div className="text-center py-12 text-gray-500 bg-white rounded-lg">
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-white dark:bg-slate-800 rounded-lg border border-transparent dark:border-slate-700">
             Không tìm thấy đề thi phù hợp
           </div>
         )}

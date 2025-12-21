@@ -16,7 +16,8 @@ import {
 import ProfileModal from "./profileModal";
 import Cookies from "js-cookie";
 import ChatBotWidget from "./chatBotWidget";
-import StreakWidget from "./StreakWidget"; // Import Component mới
+import StreakWidget from "./StreakWidget";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 const NavbarTeacher = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -84,8 +85,8 @@ const NavbarTeacher = () => {
 
             {/* Desktop Right Section */}
             <div className="hidden lg:flex items-center gap-2">
-              {/* STREAK WIDGET */}
-              <StreakWidget onClick={() => setIsProfileModalOpen(true)} />
+              {/* THEME TOGGLE */}
+              <ThemeToggle />
 
               <button
                 onClick={() => setIsProfileModalOpen(true)}

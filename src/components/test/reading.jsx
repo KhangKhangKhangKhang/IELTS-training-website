@@ -324,7 +324,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
   if (!inProgress && !isReviewMode && bandScore !== null) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4 transition-colors duration-300">
         <Card
           className="w-full max-w-2xl shadow-lg rounded-xl overflow-hidden"
           bodyStyle={{ padding: "40px 24px" }}
@@ -377,7 +377,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const renderPart = cachedPart || part;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
       <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md h-[72px] px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-full bg-blue-100 text-blue-600">

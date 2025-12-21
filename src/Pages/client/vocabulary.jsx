@@ -343,7 +343,7 @@ const Vocabulary = () => {
     : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 transition-colors duration-300">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="relative overflow-hidden bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 rounded-2xl shadow-lg p-8 mb-6 border border-slate-700">
@@ -373,9 +373,9 @@ const Vocabulary = () => {
         )}
 
         {/* Topics Section */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 border border-slate-200">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 mb-6 border border-slate-200 dark:border-slate-700">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-slate-800">Chủ đề</h2>
+            <h2 className="text-xl font-semibold text-slate-800 dark:text-white">Chủ đề</h2>
             <div className="flex space-x-2">
               <button
                 onClick={() => setShowAddTopic(true)}
@@ -394,7 +394,7 @@ const Vocabulary = () => {
                   onClick={() => handleSelectTopic(topic.idTopic)}
                   className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${topic.isSelected
                     ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                    : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600"
                     }`}
                 >
                   {topic.nameTopic}
@@ -427,7 +427,7 @@ const Vocabulary = () => {
             ))}
 
             {topics.length === 0 && (
-              <p className="text-slate-500 text-sm">
+              <p className="text-slate-500 dark:text-slate-400 text-sm">
                 Chưa có chủ đề nào. Hãy thêm chủ đề mới!
               </p>
             )}
@@ -521,9 +521,9 @@ const Vocabulary = () => {
           </div>
         )}
         {selectedTopic && (
-          <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-slate-800">
+              <h2 className="text-xl font-semibold text-slate-800 dark:text-white">
                 Từ vựng: {selectedTopic.nameTopic}
               </h2>
               <div className="flex space-x-4">
@@ -537,7 +537,7 @@ const Vocabulary = () => {
                     placeholder="Tìm kiếm từ vựng..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <button
@@ -562,55 +562,55 @@ const Vocabulary = () => {
             </div>
 
             {vocabularies.length > 0 ? (
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="min-w-full divide-y divide-slate-200">
-                  <thead className="bg-slate-100">
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                  <thead className="bg-slate-100 dark:bg-slate-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                         Từ vựng
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                         Loại từ
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                         Level
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                         Phonetic
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                         Nghĩa
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                         Ví dụ
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                         Thao tác
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-slate-200">
+                  <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                     {filteredVocabularies.map((vocab, index) => (
-                      <tr key={vocab.idVocab || `temp-${index}`} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                      <tr key={vocab.idVocab || `temp-${index}`} className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
                           {vocab.word}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs">{vocab.VocabType}</span>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
+                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs">{vocab.VocabType}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
-                          <span className={`px-2 py-1 rounded-lg text-xs ${vocab.level === 'High' ? 'bg-red-100 text-red-700' :
-                            vocab.level === 'Mid' ? 'bg-amber-100 text-amber-700' :
-                              'bg-green-100 text-green-700'
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
+                          <span className={`px-2 py-1 rounded-lg text-xs ${vocab.level === 'High' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' :
+                            vocab.level === 'Mid' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' :
+                              'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
                             }`}>{vocab.level}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 italic">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400 italic">
                           {vocab.phonetic}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-700">
+                        <td className="px-6 py-4 text-sm text-slate-700 dark:text-slate-300">
                           {vocab.meaning}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-500 italic">
+                        <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 italic">
                           {vocab.example}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -620,7 +620,7 @@ const Vocabulary = () => {
                                 setVocabToEdit(vocab);
                                 setShowEditVocabulary(true);
                               }}
-                              className="text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
                               title="Chỉnh sửa"
                             >
                               <Edit size={16} />
@@ -629,7 +629,7 @@ const Vocabulary = () => {
                               onClick={() =>
                                 handleDeleteVocabulary(vocab.idVocab)
                               }
-                              className="text-red-600 hover:text-red-800 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                               title="Xóa"
                             >
                               <Trash2 size={16} />
@@ -658,11 +658,11 @@ const Vocabulary = () => {
           </div>
         )}
         {!selectedTopic && topics.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm p-12 text-center border border-slate-200">
-            <div className="w-20 h-20 mx-auto rounded-full bg-blue-50 flex items-center justify-center mb-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-12 text-center border border-slate-200 dark:border-slate-700">
+            <div className="w-20 h-20 mx-auto rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
               <BookOpen className="w-10 h-10 text-blue-400" />
             </div>
-            <p className="text-slate-600 text-lg">
+            <p className="text-slate-600 dark:text-slate-400 text-lg">
               Vui lòng chọn một chủ đề để xem từ vựng.
             </p>
           </div>

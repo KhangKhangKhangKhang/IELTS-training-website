@@ -28,7 +28,7 @@ const ThreadSidebar = ({ onSelect, threads, setThreads }) => {
   );
 
   return (
-    <div className="w-80 bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden h-fit sticky top-6">
+    <div className="w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden h-fit sticky top-6">
       {/* Header với gradient */}
       <div className="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 p-6 border-b border-slate-700">
         <div className="flex items-center gap-3 mb-4">
@@ -53,21 +53,21 @@ const ThreadSidebar = ({ onSelect, threads, setThreads }) => {
       </div>
 
       {/* Trending badge */}
-      <div className="px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50">
-        <div className="flex items-center gap-2 text-amber-700">
-          <FireOutlined className="text-orange-500" />
+      <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20">
+        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+          <FireOutlined className="text-orange-500 dark:text-orange-400" />
           <span className="text-sm font-medium">Thảo luận nổi bật</span>
         </div>
       </div>
 
       {/* Danh sách có thể scroll */}
-      <div className="h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400">
+      <div className="h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-slate-100 dark:scrollbar-track-slate-800 hover:scrollbar-thumb-slate-400">
         {loading && (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="relative">
               <div className="w-12 h-12 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin" />
             </div>
-            <p className="text-slate-500 text-sm mt-3">Đang tải...</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-3">Đang tải...</p>
           </div>
         )}
 
@@ -84,7 +84,7 @@ const ThreadSidebar = ({ onSelect, threads, setThreads }) => {
             ))}
           {!loading && filteredThreads.length === 0 && (
             <div className="text-center py-12">
-              <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-r from-blue-100 to-blue-100 flex items-center justify-center mb-4">
+              <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-r from-blue-100 to-blue-100 dark:from-blue-900/30 dark:to-blue-900/30 flex items-center justify-center mb-4">
                 <svg
                   className="w-10 h-10 text-blue-400"
                   fill="none"
@@ -99,7 +99,7 @@ const ThreadSidebar = ({ onSelect, threads, setThreads }) => {
                   />
                 </svg>
               </div>
-              <p className="text-slate-600 font-medium mb-1">Không tìm thấy chủ đề</p>
+              <p className="text-slate-600 dark:text-slate-300 font-medium mb-1">Không tìm thấy chủ đề</p>
               <p className="text-slate-400 text-sm">Thử tìm kiếm với từ khóa khác</p>
             </div>
           )}
