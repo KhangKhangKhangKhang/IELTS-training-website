@@ -38,10 +38,10 @@ import { useAuth } from "@/context/authContext";
 // --- Components Con (SkillCard, TestDetailModal) ---
 
 const SkillCard = ({ type, score, icon: Icon, color }) => (
-  <div className="p-6 rounded-2xl bg-white shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+  <div className="p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-gray-100 dark:border-slate-700 flex items-center justify-between hover:shadow-md transition-shadow">
     <div>
-      <p className="text-sm text-gray-500 font-medium mb-1">{type}</p>
-      <h3 className="text-3xl font-bold text-gray-800">{score}</h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">{type}</p>
+      <h3 className="text-3xl font-bold text-gray-800 dark:text-white">{score}</h3>
     </div>
     <div className={`p-3 rounded-xl ${color}`}>
       <Icon size={24} className="text-white" />
@@ -53,39 +53,39 @@ const TestDetailModal = ({ result, onClose }) => {
   if (!result) return null;
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-purple-50">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200 border border-transparent dark:border-slate-700">
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-purple-50 dark:bg-slate-700">
           <div>
-            <h3 className="text-xl font-bold text-purple-900">
+            <h3 className="text-xl font-bold text-purple-900 dark:text-white">
               {result.test?.title || "Test Detail"}
             </h3>
-            <p className="text-sm text-purple-600">
+            <p className="text-sm text-purple-600 dark:text-purple-400">
               Ngày làm: {new Date(result.createdAt).toLocaleDateString("vi-VN")}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-purple-100 rounded-full transition-colors"
+            className="p-2 hover:bg-purple-100 dark:hover:bg-slate-600 rounded-full transition-colors"
           >
-            <X size={24} className="text-purple-700" />
+            <X size={24} className="text-purple-700 dark:text-slate-300" />
           </button>
         </div>
         <div className="p-6 overflow-y-auto">
           {/* Stats Grid */}
           <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-gray-50 p-4 rounded-xl text-center">
-              <p className="text-xs text-gray-500">Score</p>
-              <p className="text-xl font-bold text-blue-600">{result.score}</p>
+            <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded-xl text-center">
+              <p className="text-xs text-gray-500 dark:text-slate-400">Score</p>
+              <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{result.score}</p>
             </div>
-            <div className="bg-gray-50 p-4 rounded-xl text-center">
-              <p className="text-xs text-gray-500">Correct</p>
-              <p className="text-xl font-bold text-green-600">
+            <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded-xl text-center">
+              <p className="text-xs text-gray-500 dark:text-slate-400">Correct</p>
+              <p className="text-xl font-bold text-green-600 dark:text-green-400">
                 {result.total_correct}/{result.total_questions}
               </p>
             </div>
-            <div className="bg-gray-50 p-4 rounded-xl text-center">
-              <p className="text-xs text-gray-500">ID</p>
-              <p className="text-xs font-mono text-gray-600 truncate px-2">
+            <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded-xl text-center">
+              <p className="text-xs text-gray-500 dark:text-slate-400">ID</p>
+              <p className="text-xs font-mono text-gray-600 dark:text-slate-300 truncate px-2">
                 {result.idTestResult.slice(0, 8)}...
               </p>
             </div>
@@ -96,11 +96,10 @@ const TestDetailModal = ({ result, onClose }) => {
               result.userAnswer.map((ans, idx) => (
                 <div
                   key={idx}
-                  className={`p-2 rounded border text-sm flex justify-between ${
-                    ans.isCorrect
-                      ? "bg-green-50 border-green-200"
-                      : "bg-red-50 border-red-200"
-                  }`}
+                  className={`p-2 rounded border text-sm flex justify-between ${ans.isCorrect
+                    ? "bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-900 dark:text-green-300"
+                    : "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-900 dark:text-red-300"
+                    }`}
                 >
                   <span>{ans.answerText}</span>
                   <span className="font-bold">
@@ -109,7 +108,7 @@ const TestDetailModal = ({ result, onClose }) => {
                 </div>
               ))
             ) : (
-              <p className="text-center text-gray-400 italic">
+              <p className="text-center text-gray-400 dark:text-slate-500 italic">
                 Chưa có dữ liệu chi tiết
               </p>
             )}
@@ -274,52 +273,52 @@ const HomePage = () => {
 
   if (loading)
     return (
-      <div className="min-h-screen flex justify-center items-center text-purple-600">
+      <div className="min-h-screen flex justify-center items-center text-purple-600 dark:bg-slate-900">
         <Spin size="large" />
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 font-sans text-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 font-sans text-gray-800 dark:text-gray-100 transition-colors duration-300">
       {/* --- HEADER & TARGET INFO BAR (ĐÃ CẬP NHẬT UI) --- */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-6">
         {/* Title Section */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Dashboard Tổng quan
           </h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
             Chào mừng trở lại! Cùng theo dõi tiến độ và đếm ngược tới ngày thi.
           </p>
         </div>
 
         {/* Target Info Box */}
-        <div className="bg-white p-1 rounded-2xl shadow-sm border border-purple-100 flex flex-col sm:flex-row items-stretch sm:items-center">
+        <div className="bg-white dark:bg-slate-800 p-1 rounded-2xl shadow-sm border border-purple-100 dark:border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center">
           {/* Block 1: Target Band */}
-          <div className="flex items-center gap-4 px-6 py-4 border-b sm:border-b-0 sm:border-r border-gray-100 min-w-[160px]">
-            <div className="bg-purple-100 p-3 rounded-xl">
-              <Target className="text-purple-600" size={24} />
+          <div className="flex items-center gap-4 px-6 py-4 border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-slate-700 min-w-[160px]">
+            <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-xl">
+              <Target className="text-purple-600 dark:text-purple-400" size={24} />
             </div>
             <div>
               <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">
                 Target
               </p>
-              <p className="text-2xl font-extrabold text-purple-700">
+              <p className="text-2xl font-extrabold text-purple-700 dark:text-purple-400">
                 {target.targetBandScore || "N/A"}
               </p>
             </div>
           </div>
 
           {/* Block 2: Exam Date */}
-          <div className="flex items-center gap-4 px-6 py-4 border-b sm:border-b-0 sm:border-r border-gray-100 min-w-[180px]">
-            <div className="bg-blue-100 p-3 rounded-xl">
-              <Calendar className="text-blue-600" size={24} />
+          <div className="flex items-center gap-4 px-6 py-4 border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-slate-700 min-w-[180px]">
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-xl">
+              <Calendar className="text-blue-600 dark:text-blue-400" size={24} />
             </div>
             <div>
               <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">
                 Ngày thi
               </p>
-              <p className="text-lg font-bold text-gray-800">
+              <p className="text-lg font-bold text-gray-800 dark:text-white">
                 {targetInfo?.formattedDate || "--/--/----"}
               </p>
             </div>
@@ -328,14 +327,12 @@ const HomePage = () => {
           {/* Block 3: Countdown */}
           <div className="flex items-center gap-4 px-6 py-4 min-w-[180px]">
             <div
-              className={`${
-                targetInfo?.daysLeft <= 30 ? "bg-red-100" : "bg-green-100"
-              } p-3 rounded-xl transition-colors`}
+              className={`${targetInfo?.daysLeft <= 30 ? "bg-red-100" : "bg-green-100"
+                } p-3 rounded-xl transition-colors`}
             >
               <Clock
-                className={`${
-                  targetInfo?.daysLeft <= 30 ? "text-red-600" : "text-green-600"
-                }`}
+                className={`${targetInfo?.daysLeft <= 30 ? "text-red-600" : "text-green-600"
+                  }`}
                 size={24}
               />
             </div>
@@ -345,11 +342,10 @@ const HomePage = () => {
               </p>
               <div className="flex items-baseline gap-1">
                 <p
-                  className={`text-2xl font-extrabold ${
-                    targetInfo?.daysLeft <= 30
-                      ? "text-red-600"
-                      : "text-green-600"
-                  }`}
+                  className={`text-2xl font-extrabold ${targetInfo?.daysLeft <= 30
+                    ? "text-red-600"
+                    : "text-green-600"
+                    }`}
                 >
                   {targetInfo ? targetInfo.daysLeft : "--"}
                 </p>
@@ -403,18 +399,18 @@ const HomePage = () => {
       {/* --- PHẦN BIỂU ĐỒ & ĐỀ XUẤT --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         {/* Cột Trái: Chart */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700">
           <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
               Tiến độ học tập
             </h3>
 
             <div className="flex gap-2 items-center flex-wrap">
               {/* Filter Skill */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 rounded-lg border border-purple-100 mr-2">
+              <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-slate-700 rounded-lg border border-purple-100 dark:border-slate-600 mr-2">
                 <Filter size={16} className="text-purple-600" />
                 <select
-                  className="bg-transparent text-sm font-medium text-purple-900 focus:outline-none cursor-pointer"
+                  className="bg-transparent text-sm font-medium text-purple-900 dark:text-white dark:bg-slate-700 focus:outline-none cursor-pointer"
                   value={selectedSkillType}
                   onChange={(e) => setSelectedSkillType(e.target.value)}
                 >
@@ -429,7 +425,7 @@ const HomePage = () => {
 
               {/* Filter Month */}
               <select
-                className="bg-gray-50 border border-gray-200 text-sm rounded-lg p-2 focus:outline-none disabled:opacity-50"
+                className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-sm text-gray-800 dark:text-white rounded-lg p-2 focus:outline-none disabled:opacity-50"
                 value={filterMonth}
                 onChange={(e) => setFilterMonth(e.target.value)}
                 disabled={filterYear === "ALL"}
@@ -444,7 +440,7 @@ const HomePage = () => {
 
               {/* Filter Year */}
               <select
-                className="bg-gray-50 border border-gray-200 text-sm rounded-lg p-2 focus:outline-none"
+                className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-sm text-gray-800 dark:text-white rounded-lg p-2 focus:outline-none"
                 value={filterYear}
                 onChange={(e) => {
                   setFilterYear(e.target.value);
@@ -489,59 +485,59 @@ const HomePage = () => {
                   <Legend />
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "OVERALL") && (
-                    <Line
-                      name="Overall"
-                      type="monotone"
-                      dataKey="OVERALL"
-                      stroke="#8884d8"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                  )}
+                      <Line
+                        name="Overall"
+                        type="monotone"
+                        dataKey="OVERALL"
+                        stroke="#8884d8"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "READING") && (
-                    <Line
-                      name="Reading"
-                      type="monotone"
-                      dataKey="READING"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Reading"
+                        type="monotone"
+                        dataKey="READING"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "LISTENING") && (
-                    <Line
-                      name="Listening"
-                      type="monotone"
-                      dataKey="LISTENING"
-                      stroke="#22c55e"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Listening"
+                        type="monotone"
+                        dataKey="LISTENING"
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "WRITING") && (
-                    <Line
-                      name="Writing"
-                      type="monotone"
-                      dataKey="WRITING"
-                      stroke="#eab308"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Writing"
+                        type="monotone"
+                        dataKey="WRITING"
+                        stroke="#eab308"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "SPEAKING") && (
-                    <Line
-                      name="Speaking"
-                      type="monotone"
-                      dataKey="SPEAKING"
-                      stroke="#ef4444"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Speaking"
+                        type="monotone"
+                        dataKey="SPEAKING"
+                        stroke="#ef4444"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -553,8 +549,8 @@ const HomePage = () => {
         </div>
 
         {/* Cột Phải: Recommended Tests */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
             <Award className="text-yellow-500" /> Đề xuất cho bạn
           </h3>
           <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar max-h-[400px]">
@@ -562,7 +558,7 @@ const HomePage = () => {
               <div
                 key={test.idTest}
                 onClick={() => handleRecommendClick(test)}
-                className="flex gap-4 p-3 border border-gray-100 rounded-xl hover:bg-purple-50 hover:border-purple-200 transition-all cursor-pointer group"
+                className="flex gap-4 p-3 border border-gray-100 dark:border-slate-600 rounded-xl hover:bg-purple-50 dark:hover:bg-slate-700 hover:border-purple-200 dark:hover:border-slate-500 transition-all cursor-pointer group"
               >
                 <img
                   src={test.img || "https://placehold.co/100"}
@@ -570,14 +566,14 @@ const HomePage = () => {
                   className="w-16 h-16 rounded object-cover"
                 />
                 <div className="flex-1">
-                  <h4 className="text-sm font-bold text-gray-800 line-clamp-2 group-hover:text-purple-700">
+                  <h4 className="text-sm font-bold text-gray-800 dark:text-white line-clamp-2 group-hover:text-purple-700 dark:group-hover:text-purple-400">
                     {test.title}
                   </h4>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+                    <span className="text-xs bg-gray-100 dark:bg-slate-600 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">
                       {test.testType}
                     </span>
-                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                       <Clock size={12} /> {test.duration}p
                     </span>
                   </div>
@@ -594,11 +590,11 @@ const HomePage = () => {
       </div>
 
       {/* Bảng Lịch sử */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h3 className="text-lg font-bold mb-4">Lịch sử làm bài</h3>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
+        <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Lịch sử làm bài</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 font-semibold uppercase">
+            <thead className="bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-gray-300 font-semibold uppercase">
               <tr>
                 <th className="p-3">Bài thi</th>
                 <th className="p-3">Kỹ năng</th>
@@ -609,7 +605,7 @@ const HomePage = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {history.map((item) => (
-                <tr key={item.idTestResult} className="hover:bg-purple-50">
+                <tr key={item.idTestResult} className="hover:bg-purple-50 dark:hover:bg-slate-700">
                   <td className="p-3 font-medium max-w-[200px] truncate">
                     {item.test?.title}
                   </td>
@@ -642,15 +638,15 @@ const HomePage = () => {
       {/* 1. Modal sửa mục tiêu */}
       {isEditingTarget && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-2xl w-96 shadow-lg">
-            <h3 className="font-bold text-lg mb-4">Cập nhật mục tiêu</h3>
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl w-96 shadow-lg border border-transparent dark:border-slate-700">
+            <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Cập nhật mục tiêu</h3>
             <div className="space-y-4">
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">
+                <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block">
                   Target Band Score
                 </label>
                 <input
-                  className="w-full border p-2 rounded focus:ring-2 focus:ring-purple-200 outline-none"
+                  className="w-full border border-gray-200 dark:border-slate-600 p-2 rounded focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   type="number"
                   step="0.5"
                   max="9"
@@ -665,11 +661,11 @@ const HomePage = () => {
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">
+                <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block">
                   Ngày thi dự kiến
                 </label>
                 <input
-                  className="w-full border p-2 rounded focus:ring-2 focus:ring-purple-200 outline-none"
+                  className="w-full border border-gray-200 dark:border-slate-600 p-2 rounded focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   type="date"
                   value={
                     tempTarget.targetExamDate
@@ -687,7 +683,7 @@ const HomePage = () => {
               <div className="flex justify-end gap-2 mt-4">
                 <button
                   onClick={() => setIsEditingTarget(false)}
-                  className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded"
+                  className="px-4 py-2 text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded"
                 >
                   Hủy
                 </button>

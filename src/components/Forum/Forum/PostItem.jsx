@@ -99,9 +99,9 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   return (
     <>
       <div
-        className={`bg-white rounded-2xl border-2 transition-all duration-300 p-6 mb-5 ${isHovered
-          ? "border-blue-200 shadow-lg shadow-blue-50"
-          : "border-slate-100 shadow-sm"
+        className={`bg-white dark:bg-slate-800 rounded-2xl border-2 transition-all duration-300 p-6 mb-5 ${isHovered
+          ? "border-blue-200 dark:border-blue-700 shadow-lg shadow-blue-50 dark:shadow-blue-900/20"
+          : "border-slate-100 dark:border-slate-700 shadow-sm"
           }`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -120,11 +120,11 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white" />
             </div>
             <div>
-              <h4 className="font-semibold text-slate-900 text-base hover:text-blue-600 cursor-pointer transition-colors">
+              <h4 className="font-semibold text-slate-900 dark:text-white text-base hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors">
                 {post.user?.nameUser}
               </h4>
               <Tooltip title={new Date(post.created_at).toLocaleString("vi-VN")}>
-                <p className="text-sm text-slate-500 cursor-help">
+                <p className="text-sm text-slate-500 dark:text-slate-400 cursor-help">
                   {getTimeAgo(post.created_at)}
                 </p>
               </Tooltip>
@@ -148,7 +148,7 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
 
         {/* Content */}
         <div className="mb-4">
-          <p className="text-slate-700 text-base leading-relaxed whitespace-pre-line">
+          <p className="text-slate-700 dark:text-slate-300 text-base leading-relaxed whitespace-pre-line">
             {post.content}
           </p>
         </div>
@@ -166,7 +166,7 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
         )}
 
         {/* Stats */}
-        <div className="flex items-center gap-6 text-sm text-slate-500 mb-4 py-2">
+        <div className="flex items-center gap-6 text-sm text-slate-500 dark:text-slate-400 mb-4 py-2">
           <div className="flex items-center gap-2">
             <div className="flex -space-x-2">
               <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-400 to-rose-500 flex items-center justify-center">
@@ -176,12 +176,12 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
                 <LikeFilled className="text-white text-xs" />
               </div>
             </div>
-            <span className="font-medium text-slate-600">
+            <span className="font-medium text-slate-600 dark:text-slate-300">
               {likeCount} lượt thích
             </span>
           </div>
           <span
-            className="hover:text-blue-600 cursor-pointer transition-colors"
+            className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors"
             onClick={() => setShowComments(!showComments)}
           >
             {comments.length} bình luận
@@ -189,12 +189,12 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
         </div>
 
         {/* Actions */}
-        <div className="flex border-t border-b border-slate-100 py-1">
+        <div className="flex border-t border-b border-slate-100 dark:border-slate-700 py-1">
           <button
             onClick={handleLike}
             className={`flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl transition-all duration-200 font-medium ${liked
-              ? "text-blue-600 bg-blue-50"
-              : "text-slate-600 hover:bg-slate-50 hover:text-blue-600"
+              ? "text-blue-600 bg-blue-50 dark:bg-blue-900/30"
+              : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400"
               }`}
           >
             {liked ? (
@@ -208,8 +208,8 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
           <button
             onClick={() => setShowComments(!showComments)}
             className={`flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl transition-all duration-200 font-medium ${showComments
-              ? "text-blue-600 bg-blue-50"
-              : "text-slate-600 hover:bg-slate-50 hover:text-blue-600"
+              ? "text-blue-600 bg-blue-50 dark:bg-blue-900/30"
+              : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400"
               }`}
           >
             <MessageOutlined className="text-lg" />

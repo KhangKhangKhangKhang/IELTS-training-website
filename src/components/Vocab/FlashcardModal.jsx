@@ -9,8 +9,9 @@ import {
   Trophy,
   Loader2,
 } from "lucide-react";
-import { postVocabStreakAPI } from "@/services/apiUser";
-import { message } from "antd"; // Hoặc dùng thư viện toast khác nếu bạn có
+import { postVocabStreakAPI, userProfileAPI } from "@/services/apiUser";
+import { message } from "antd";
+import LevelUpModal from "@/components/ui/LevelUpModal";
 
 const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
   // --- STATE ---
@@ -21,6 +22,10 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
   const [results, setResults] = useState([]); // Lưu kết quả từng câu
   const [isFinished, setIsFinished] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // Loading khi gọi API
+
+  // State cho Level Up Modal
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [levelUpData, setLevelUpData] = useState({ oldLevel: null, newLevel: null });
 
   // --- EFFECT: KHỞI TẠO ---
   useEffect(() => {
@@ -78,6 +83,15 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
   const finishSession = async (finalResults) => {
     setIsSubmitting(true);
 
+    // Lấy level hiện tại trước khi gọi API
+    let oldLevel = null;
+    try {
+      const userRes = await userProfileAPI(user?.idUser);
+      oldLevel = userRes?.data?.level;
+    } catch (e) {
+      console.error("Failed to get current level:", e);
+    }
+
     // Payload gửi lên server
     const payload = {
       idUser: user?.idUser,
@@ -86,12 +100,20 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
 
     try {
       // 1. Gọi API lưu kết quả
-      await postVocabStreakAPI(payload);
+      const response = await postVocabStreakAPI(payload);
 
       // 2. 🔥 QUAN TRỌNG: Bắn sự kiện để StreakWidget cập nhật ngay lập tức
       window.dispatchEvent(new Event("streak-update"));
 
-      // 3. Hiển thị màn hình kết thúc
+      // 3. Kiểm tra xem có lên level không
+      const newLevel = response?.data?.level;
+      if (oldLevel && newLevel && oldLevel !== newLevel) {
+        // Hiển thị modal chúc mừng lên level!
+        setLevelUpData({ oldLevel, newLevel });
+        setShowLevelUp(true);
+      }
+
+      // 4. Hiển thị màn hình kết thúc
       setIsFinished(true);
     } catch (error) {
       console.error("Failed to save streak:", error);
@@ -271,9 +293,8 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
           onClick={handleFlip}
         >
           <div
-            className={`relative w-full h-full duration-500 preserve-3d transition-all transform ease-in-out ${
-              isFlipped ? "rotate-y-180" : ""
-            }`}
+            className={`relative w-full h-full duration-500 preserve-3d transition-all transform ease-in-out ${isFlipped ? "rotate-y-180" : ""
+              }`}
             style={{ transformStyle: "preserve-3d" }}
           >
             {/* --- FRONT SIDE --- */}
@@ -304,11 +325,10 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
 
         {/* Controls Buttons */}
         <div
-          className={`grid grid-cols-2 gap-6 transition-all duration-500 transform ${
-            isFlipped
-              ? "opacity-100 translate-y-0"
-              : "opacity-50 translate-y-4 pointer-events-none grayscale"
-          }`}
+          className={`grid grid-cols-2 gap-6 transition-all duration-500 transform ${isFlipped
+            ? "opacity-100 translate-y-0"
+            : "opacity-50 translate-y-4 pointer-events-none grayscale"
+            }`}
         >
           <button
             onClick={(e) => {
@@ -351,6 +371,14 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
           </button>
         </div>
       </div>
+
+      {/* Level Up Celebration Modal */}
+      <LevelUpModal
+        isOpen={showLevelUp}
+        onClose={() => setShowLevelUp(false)}
+        oldLevel={levelUpData.oldLevel}
+        newLevel={levelUpData.newLevel}
+      />
     </div>
   );
 };

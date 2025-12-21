@@ -78,9 +78,9 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
 
   return (
     <div
-      className={`bg-white rounded-2xl shadow-sm border-2 transition-all duration-300 p-5 mb-6 ${isFocused
-          ? "border-blue-300 shadow-md shadow-blue-100"
-          : "border-slate-200"
+      className={`bg-white dark:bg-slate-800 rounded-2xl shadow-sm border-2 transition-all duration-300 p-5 mb-6 ${isFocused
+        ? "border-blue-300 dark:border-blue-600 shadow-md shadow-blue-100 dark:shadow-blue-900/20"
+        : "border-slate-200 dark:border-slate-700"
         }`}
     >
       <div className="flex gap-4">
@@ -102,22 +102,22 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
             onChange={(e) => setContent(e.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            className="rounded-xl border-0 bg-slate-50 hover:bg-slate-100 focus:bg-white text-slate-900 resize-none text-base"
+            className="rounded-xl border-0 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 focus:bg-white dark:focus:bg-slate-700 text-slate-900 dark:text-white resize-none text-base"
             style={{ padding: "12px 16px" }}
           />
 
           {/* File preview */}
           {file && (
-            <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-blue-50 rounded-xl border border-blue-200 flex items-center justify-between group">
+            <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-blue-50 dark:from-slate-700 dark:to-slate-700 rounded-xl border border-blue-200 dark:border-slate-600 flex items-center justify-between group">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <PictureOutlined className="text-blue-600" />
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                  <PictureOutlined className="text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-700 truncate max-w-xs">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-xs">
                     {file.name}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     {(file.size / 1024).toFixed(1)} KB
                   </p>
                 </div>
@@ -143,7 +143,7 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
                 accept="image/*,video/*"
               >
                 <Tooltip title="Thêm ảnh/video">
-                  <button className="p-2.5 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200">
+                  <button className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-all duration-200">
                     <PictureOutlined className="text-xl" />
                   </button>
                 </Tooltip>
@@ -157,7 +157,7 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
                 showUploadList={false}
               >
                 <Tooltip title="Đính kèm file">
-                  <button className="p-2.5 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200">
+                  <button className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-all duration-200">
                     <PaperClipOutlined className="text-xl" />
                   </button>
                 </Tooltip>
@@ -176,7 +176,7 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
                   <button
                     type="button"
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="p-2.5 rounded-xl text-slate-500 hover:text-amber-500 hover:bg-amber-50 transition-all duration-200"
+                    className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-slate-700 transition-all duration-200"
                   >
                     <SmileOutlined className="text-xl" />
                   </button>
@@ -190,7 +190,7 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
               onClick={handlePost}
               disabled={!content.trim() && !file}
               icon={<SendOutlined />}
-              className="bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 border-0 rounded-xl px-6 h-10 font-medium shadow-md shadow-blue-200 disabled:opacity-50"
+              className="bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 border-0 rounded-xl px-6 h-10 font-medium shadow-md shadow-blue-200 dark:shadow-blue-900/20 disabled:opacity-50"
             >
               Đăng bài
             </Button>

@@ -324,7 +324,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
   if (!inProgress && !isReviewMode && bandScore !== null) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4 transition-colors duration-300">
         <Card
           className="w-full max-w-2xl shadow-lg rounded-xl overflow-hidden"
           bodyStyle={{ padding: "40px 24px" }}
@@ -377,7 +377,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const renderPart = cachedPart || part;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
       <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md h-[72px] px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-full bg-blue-100 text-blue-600">
@@ -406,11 +406,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-4 py-1.5 rounded-lg border shadow-sm ${
-                  timeLeft < 300
-                    ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
-                    : "bg-gray-50 text-gray-700 border-gray-200"
-                }`}
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-4 py-1.5 rounded-lg border shadow-sm ${timeLeft < 300
+                  ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
+                  : "bg-gray-50 text-gray-700 border-gray-200"
+                  }`}
               >
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
@@ -444,11 +443,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`px-5 py-2 rounded-full border text-sm font-semibold transition-all whitespace-nowrap ${
-                idx === activePartIndex
-                  ? "bg-blue-600 text-white border-blue-600 shadow-md"
-                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
-              }`}
+              className={`px-5 py-2 rounded-full border text-sm font-semibold transition-all whitespace-nowrap ${idx === activePartIndex
+                ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+                }`}
             >
               {p.namePart || `Part ${idx + 1}`}
             </button>
@@ -493,11 +491,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
             <div className="lg:col-span-5 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
               <div
-                className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${
-                  isReviewMode
-                    ? "bg-green-50 text-green-800"
-                    : "bg-gray-50 text-gray-700"
-                }`}
+                className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${isReviewMode
+                  ? "bg-green-50 text-green-800"
+                  : "bg-gray-50 text-gray-700"
+                  }`}
               >
                 <span>✍️ Questions</span>
               </div>

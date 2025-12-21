@@ -221,7 +221,7 @@ const Grammar = () => {
 
         const mistakes =
           typeof grammarData.commonMistakes === "string" &&
-          grammarData.commonMistakes
+            grammarData.commonMistakes
             ? JSON.parse(grammarData.commonMistakes)
             : grammarData.commonMistakes || [];
 
@@ -482,39 +482,39 @@ const Grammar = () => {
 
   const filteredGrammarItems = selectedCategory
     ? grammarItems.filter((item) => {
-        const hasTitle = item && typeof item.title === "string";
-        const hasExplanation = item && typeof item.explanation === "string";
-        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+      const hasTitle = item && typeof item.title === "string";
+      const hasExplanation = item && typeof item.explanation === "string";
+      const lowerCaseSearchTerm = searchTerm.toLowerCase();
 
-        if (!lowerCaseSearchTerm) {
-          return true;
-        }
+      if (!lowerCaseSearchTerm) {
+        return true;
+      }
 
-        const titleMatches =
-          hasTitle && item.title.toLowerCase().includes(lowerCaseSearchTerm);
-        const explanationMatches =
-          hasExplanation &&
-          item.explanation.toLowerCase().includes(lowerCaseSearchTerm);
+      const titleMatches =
+        hasTitle && item.title.toLowerCase().includes(lowerCaseSearchTerm);
+      const explanationMatches =
+        hasExplanation &&
+        item.explanation.toLowerCase().includes(lowerCaseSearchTerm);
 
-        return titleMatches || explanationMatches;
-      })
+      return titleMatches || explanationMatches;
+    })
     : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
-              <div className="bg-indigo-100 p-3 rounded-xl mr-4">
-                <BookOpen className="text-indigo-600" size={28} />
+              <div className="bg-indigo-100 dark:bg-indigo-900/30 p-3 rounded-xl mr-4">
+                <BookOpen className="text-indigo-600 dark:text-indigo-400" size={28} />
               </div>
               <div>
-                <h1 className="text-4xl font-bold text-gray-900">
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
                   Grammar IELTS
                 </h1>
-                <p className="text-gray-600 mt-1">
+                <p className="text-gray-600 dark:text-slate-400 mt-1">
                   Quản lý và học ngữ pháp IELTS hiệu quả
                 </p>
               </div>
@@ -527,11 +527,10 @@ const Grammar = () => {
                     setActiveTab("user");
                     setShowGrammarManagement(false);
                   }}
-                  className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                    activeTab === "user"
-                      ? "bg-indigo-600 !text-white"
-                      : "bg-gray-200 !text-gray-700 hover:bg-gray-300"
-                  }`}
+                  className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === "user"
+                    ? "bg-indigo-600 !text-white"
+                    : "bg-gray-200 dark:bg-slate-700 !text-gray-700 dark:!text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600"
+                    }`}
                 >
                   Học Ngữ Pháp
                 </button>
@@ -540,11 +539,10 @@ const Grammar = () => {
                     setActiveTab("management");
                     setShowGrammarManagement(true);
                   }}
-                  className={`px-4 py-2 rounded-xl font-medium transition-colors flex items-center ${
-                    activeTab === "management"
-                      ? "bg-green-600 !text-white"
-                      : "bg-gray-200 !text-gray-700 hover:bg-gray-300"
-                  }`}
+                  className={`px-4 py-2 rounded-xl font-medium transition-colors flex items-center ${activeTab === "management"
+                    ? "bg-green-600 !text-white"
+                    : "bg-gray-200 dark:bg-slate-700 !text-gray-700 dark:!text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600"
+                    }`}
                 >
                   <Users size={18} className="mr-2" />
                   Quản Lý Ngữ Pháp
@@ -575,9 +573,9 @@ const Grammar = () => {
 
         {/* PHẦN QUẢN LÝ GRAMMAR CHO ADMIN/TEACHER */}
         {showGrammarManagement && isAdminOrTeacher ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Quản Lý Ngữ Pháp Hệ Thống
               </h2>
               <button
@@ -594,15 +592,15 @@ const Grammar = () => {
                 availableGrammars.map((grammar, index) => (
                   <div
                     key={grammar.idGrammar}
-                    className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 bg-white group"
+                    className="border border-gray-200 dark:border-slate-700 rounded-xl p-6 hover:shadow-md transition-all duration-200 bg-white dark:bg-slate-700 group"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex-1">
                         <div className="flex items-center mb-2">
-                          <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                          <div className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-3 py-1 rounded-full text-sm font-medium">
                             {index + 1}
                           </div>
-                          <h3 className="text-xl font-bold text-gray-900 ml-3">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white ml-3">
                             {grammar.title}
                           </h3>
                           <div className="ml-4">
@@ -611,7 +609,7 @@ const Grammar = () => {
                             </Tag>
                           </div>
                         </div>
-                        <p className="text-gray-700 leading-relaxed">
+                        <p className="text-gray-700 dark:text-slate-300 leading-relaxed">
                           {grammar.explanation}
                         </p>
                       </div>
@@ -761,9 +759,9 @@ const Grammar = () => {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Sidebar - Categories */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-6">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 sticky top-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                     Chủ đề ngữ pháp
                   </h2>
                   <button
@@ -781,11 +779,10 @@ const Grammar = () => {
                       cat && (
                         <div
                           key={cat.idGrammarCategory}
-                          className={`group relative p-4 rounded-xl transition-all duration-200 cursor-pointer ${
-                            cat.isSelected
-                              ? "bg-indigo-50 border-2 border-indigo-200 shadow-sm"
-                              : "bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
-                          }`}
+                          className={`group relative p-4 rounded-xl transition-all duration-200 cursor-pointer ${cat.isSelected
+                            ? "bg-indigo-50 dark:bg-indigo-900/30 border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
+                            : "bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 border-2 border-transparent"
+                            }`}
                           onClick={() =>
                             handleSelectCategory(cat.idGrammarCategory)
                           }
@@ -793,16 +790,15 @@ const Grammar = () => {
                           <div className="flex justify-between items-start">
                             <div className="flex-1 min-w-0">
                               <h3
-                                className={`font-semibold truncate ${
-                                  cat.isSelected
-                                    ? "text-indigo-700"
-                                    : "text-gray-800"
-                                }`}
+                                className={`font-semibold truncate ${cat.isSelected
+                                  ? "text-indigo-700 dark:text-indigo-400"
+                                  : "text-gray-800 dark:text-white"
+                                  }`}
                               >
                                 {cat.name}
                               </h3>
                               {cat.description && (
-                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                <p className="text-sm text-gray-600 dark:text-slate-400 mt-1 line-clamp-2">
                                   {cat.description}
                                 </p>
                               )}
@@ -845,17 +841,17 @@ const Grammar = () => {
 
                   {grammarCategories?.length === 0 && !loadingCategories && (
                     <div className="text-center py-8">
-                      <div className="bg-gray-100 p-4 rounded-xl">
+                      <div className="bg-gray-100 dark:bg-slate-700 p-4 rounded-xl">
                         <BookOpen
                           className="text-gray-400 mx-auto mb-2"
                           size={32}
                         />
-                        <p className="text-gray-500 text-sm">
+                        <p className="text-gray-500 dark:text-slate-400 text-sm">
                           Chưa có chủ đề nào
                         </p>
                         <button
                           onClick={() => setShowAddCategory(true)}
-                          className="!text-indigo-600 hover:text-indigo-700 text-sm font-medium mt-2"
+                          className="!text-indigo-600 dark:!text-indigo-400 hover:text-indigo-700 text-sm font-medium mt-2"
                         >
                           Thêm chủ đề đầu tiên
                         </button>
@@ -875,14 +871,14 @@ const Grammar = () => {
             {/* Main Content - Grammar Items */}
             <div className="lg:col-span-3">
               {selectedCategory ? (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mr-2">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 mr-2">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-1">
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900">
+                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                         {selectedCategory.name}
                       </h2>
                       {selectedCategory.description && (
-                        <p className="text-gray-600 mt-1">
+                        <p className="text-gray-600 dark:text-slate-400 mt-1">
                           {selectedCategory.description}
                         </p>
                       )}
@@ -898,7 +894,7 @@ const Grammar = () => {
                           placeholder="Tìm kiếm cấu trúc ngữ pháp..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50 transition-all max-w-2xl"
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-gray-50 dark:bg-slate-700 dark:text-white transition-all max-w-2xl"
                         />
                       </div>
                       <button
@@ -920,15 +916,15 @@ const Grammar = () => {
                       {filteredGrammarItems.map((item, index) => (
                         <div
                           key={item.idGrammar}
-                          className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 bg-white group"
+                          className="border border-gray-200 dark:border-slate-700 rounded-xl p-6 hover:shadow-md transition-all duration-200 bg-white dark:bg-slate-700 group"
                         >
                           <div className="flex justify-between items-start mb-4">
                             <div className="flex-1">
                               <div className="flex items-center mb-2">
-                                <div className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
+                                <div className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400 px-3 py-1 rounded-full text-sm font-medium">
                                   {index + 1}
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 ml-3">
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white ml-3">
                                   {item.title}
                                 </h3>
 
@@ -938,7 +934,7 @@ const Grammar = () => {
                                   </Tag>
                                 </div>
                               </div>
-                              <p className="text-gray-700 leading-relaxed">
+                              <p className="text-gray-700 dark:text-slate-300 leading-relaxed">
                                 {item.explanation}
                               </p>
                             </div>
@@ -958,7 +954,7 @@ const Grammar = () => {
                           </div>
 
                           {(item.commonMistakes || item.examples) && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
                               {item.commonMistakes &&
                                 item.commonMistakes.length > 0 && (
                                   <div className="space-y-3">
@@ -1025,12 +1021,12 @@ const Grammar = () => {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <div className="bg-gray-50 rounded-2xl p-8 max-w-md mx-auto">
+                      <div className="bg-gray-50 dark:bg-slate-700 rounded-2xl p-8 max-w-md mx-auto">
                         <BookOpen
                           className="text-gray-400 mx-auto mb-4"
                           size={48}
                         />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                           Chưa có ngữ pháp nào
                         </h3>
                         <p className="text-gray-600 mb-4">
@@ -1047,12 +1043,12 @@ const Grammar = () => {
                   )}
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-12 text-center">
                   <BookOpen className="text-gray-400 mx-auto mb-4" size={64} />
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                     Chọn một chủ đề ngữ pháp
                   </h3>
-                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  <p className="text-gray-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
                     Chọn một chủ đề từ danh sách bên trái để xem và quản lý các
                     điểm ngữ pháp, hoặc tạo chủ đề mới.
                   </p>
@@ -1072,21 +1068,21 @@ const Grammar = () => {
         {/* Modal Thêm Chủ đề */}
         {showAddCategory && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                   Thêm chủ đề mới
                 </h3>
                 <button
                   onClick={() => setShowAddCategory(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 >
                   <X size={24} />
                 </button>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                     Tên chủ đề *
                   </label>
                   <input
@@ -1095,13 +1091,13 @@ const Grammar = () => {
                     onChange={(e) =>
                       setNewCategory({ ...newCategory, name: e.target.value })
                     }
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                     placeholder="Ví dụ: Thì hiện tại, Câu điều kiện..."
                     autoFocus
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                     Mô tả
                   </label>
                   <textarea
@@ -1112,7 +1108,7 @@ const Grammar = () => {
                         description: e.target.value,
                       })
                     }
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                     placeholder="Mô tả ngắn về chủ đề này..."
                     rows="3"
                   />
@@ -1121,7 +1117,7 @@ const Grammar = () => {
               <div className="flex justify-end space-x-3 mt-6">
                 <button
                   onClick={() => setShowAddCategory(false)}
-                  className="px-6 py-3 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                  className="px-6 py-3 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors"
                 >
                   Hủy
                 </button>
@@ -1139,21 +1135,21 @@ const Grammar = () => {
         {/* Modal Sửa Chủ đề */}
         {showEditCategory && categoryToEdit && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                   Chỉnh sửa chủ đề
                 </h3>
                 <button
                   onClick={() => setShowEditCategory(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 >
                   <X size={24} />
                 </button>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                     Tên chủ đề *
                   </label>
                   <input
@@ -1165,12 +1161,12 @@ const Grammar = () => {
                         name: e.target.value,
                       })
                     }
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                     autoFocus
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                     Mô tả
                   </label>
                   <textarea
@@ -1181,7 +1177,7 @@ const Grammar = () => {
                         description: e.target.value,
                       })
                     }
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                     rows="3"
                   />
                 </div>
@@ -1189,7 +1185,7 @@ const Grammar = () => {
               <div className="flex justify-end space-x-3 mt-6">
                 <button
                   onClick={() => setShowEditCategory(false)}
-                  className="px-6 py-3 text-gray-700 hover:text-gray-900 font-medium transition-colors"
+                  className="px-6 py-3 text-gray-700 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors"
                 >
                   Hủy
                 </button>
@@ -1207,14 +1203,14 @@ const Grammar = () => {
         {/* Modal Thêm Grammar vào Category */}
         {showAddGrammarToCategory && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                   Thêm ngữ pháp vào chủ đề
                 </h3>
                 <button
                   onClick={() => setShowAddGrammarToCategory(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 >
                   <X size={24} />
                 </button>
@@ -1281,14 +1277,14 @@ const Grammar = () => {
         {/* Modal Thêm Grammar Mới (Admin/Teacher) */}
         {showAddGrammar && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                   Thêm Ngữ Pháp Mới
                 </h3>
                 <button
                   onClick={() => setShowAddGrammar(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 >
                   <X size={24} />
                 </button>
@@ -1297,7 +1293,7 @@ const Grammar = () => {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                       Tiêu đề *
                     </label>
                     <input
@@ -1306,12 +1302,12 @@ const Grammar = () => {
                       onChange={(e) =>
                         setNewGrammar({ ...newGrammar, title: e.target.value })
                       }
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                       placeholder="Ví dụ: Present Perfect Tense"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                       Cấp độ
                     </label>
                     <select
@@ -1319,7 +1315,7 @@ const Grammar = () => {
                       onChange={(e) =>
                         setNewGrammar({ ...newGrammar, level: e.target.value })
                       }
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                     >
                       <option value="Low">Cơ bản</option>
                       <option value="Mid">Trung bình</option>
@@ -1329,7 +1325,7 @@ const Grammar = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                     Giải thích *
                   </label>
                   <textarea
@@ -1340,7 +1336,7 @@ const Grammar = () => {
                         explanation: e.target.value,
                       })
                     }
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                     placeholder="Giải thích chi tiết về cấu trúc ngữ pháp..."
                     rows="4"
                   />
