@@ -34,7 +34,6 @@ const LabelingForm = ({
   // Khởi tạo mặc định
   const initDefault = () => {
     if (groupData?.quantity) {
-      // Tạo dư ra vài option mặc định (A-H chẳng hạn)
       const defaultOptionsCount = groupData.quantity + 3;
       const defaultOptions = Array.from(
         { length: defaultOptionsCount },
@@ -75,7 +74,7 @@ const LabelingForm = ({
         const loadedOptions = ansData
           .map((a) => ({
             key: a.matching_key,
-            text: a.answer_text || "", // Cho phép rỗng
+            text: a.answer_text || "",
           }))
           .sort((a, b) => (a.key || "").localeCompare(b.key || ""));
 
@@ -136,7 +135,6 @@ const LabelingForm = ({
   };
 
   const handleRemoveOption = (idx) => {
-    // Nếu xóa option đang được chọn làm đáp án thì reset đáp án đó
     const keyRemoved = optionsPool[idx].key;
     const newQuestions = questions.map((q) =>
       q.correctKey === keyRemoved ? { ...q, correctKey: undefined } : q
@@ -158,19 +156,26 @@ const LabelingForm = ({
     try {
       setSaving(true);
 
-      // --- BỎ ĐOẠN VALIDATE BẮT BUỘC NHẬP TEXT ---
-      // if (optionsPool.some(o => !o.text.trim())) { ... } -> Deleted
-
-      // Check xem có ít nhất 1 option không (để tránh lỗi crash)
       if (optionsPool.length === 0) {
         message.warning("Cần ít nhất 1 lựa chọn (Option)");
         setSaving(false);
         return;
       }
 
+      // Warn if user hasn't filled in text (helps avoid the empty string issue)
+      const emptyTextCount = optionsPool.filter(
+        (o) => !o.text || !o.text.trim()
+      ).length;
+      if (emptyTextCount > 0) {
+        // Just a warning, still allow save
+        message.warning(
+          `Lưu ý: Có ${emptyTextCount} nhãn chưa nhập nội dung mô tả.`
+        );
+      }
+
       const payload = questions.map((q) => {
         const answersPayload = optionsPool.map((opt) => ({
-          answer_text: opt.text || "", // Nếu rỗng thì gửi chuỗi rỗng
+          answer_text: opt.text ? opt.text.trim() : "", // Explicitly trim
           matching_key: opt.key,
           matching_value: opt.key === q.correctKey ? "CORRECT" : null,
         }));
@@ -214,9 +219,14 @@ const LabelingForm = ({
       {/* SECTION 1: OPTIONS POOL */}
       <Card
         title={
-          <span className="text-blue-700 font-bold">
-            Bước 1: Tạo danh sách Nhãn (Options)
-          </span>
+          <div className="flex justify-between items-center">
+            <span className="text-blue-700 font-bold">
+              Bước 1: Tạo danh sách Nhãn (Options)
+            </span>
+            <span className="text-xs text-gray-500 font-normal">
+              Nhập mô tả cho từng nhãn
+            </span>
+          </div>
         }
         size="small"
         className="bg-blue-50 border-blue-200"
@@ -228,9 +238,10 @@ const LabelingForm = ({
                 {opt.key}
               </div>
               <Input
-                placeholder={`Nội dung (để trống nếu chỉ dùng Key ${opt.key})`}
+                placeholder={`Nhập nội dung cho ${opt.key}...`}
                 value={opt.text}
                 onChange={(e) => handleOptionChange(idx, e.target.value)}
+                status={!opt.text ? "warning" : ""}
               />
               <Button
                 type="text"
@@ -299,7 +310,6 @@ const LabelingForm = ({
                       <span className="font-bold text-blue-600 mr-2">
                         {opt.key}.
                       </span>
-                      {/* Hiển thị text hoặc chữ Trống nếu không có text */}
                       {opt.text ? (
                         opt.text.length > 20 ? (
                           opt.text.substring(0, 20) + "..."

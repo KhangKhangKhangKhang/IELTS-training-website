@@ -1,5 +1,5 @@
 import React from "react";
-import { Select, Card, Image, Tag, Tooltip } from "antd";
+import { Select, Card, Image, Tag } from "antd";
 import { CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 
 const { Option } = Select;
@@ -10,7 +10,7 @@ const RenderLabeling = ({
   onAnswerChange,
   isReviewMode,
 }) => {
-  // 1. Chuẩn bị dữ liệu Options
+  // 1. Prepare Data
   const questions = group.questions || [];
   if (questions.length === 0) return null;
 
@@ -19,7 +19,7 @@ const RenderLabeling = ({
     .filter((a) => a.matching_key)
     .sort((a, b) => (a.matching_key || "").localeCompare(b.matching_key || ""));
 
-  // Check xem options có nội dung text hay không
+  // Check valid content
   const hasContent = optionsPool.some(
     (opt) => opt.answer_text && opt.answer_text.trim() !== ""
   );
@@ -28,7 +28,7 @@ const RenderLabeling = ({
     <div
       className={`grid grid-cols-1 ${group.img ? "lg:grid-cols-2" : ""} gap-8`}
     >
-      {/* --- CỘT 1: HÌNH ẢNH (MAP) --- */}
+      {/* COLUMN 1: IMAGE (MAP) */}
       {group.img && (
         <div className="flex flex-col">
           <div className="lg:sticky lg:top-4">
@@ -38,7 +38,7 @@ const RenderLabeling = ({
                 alt="Labeling Map"
                 className="max-h-[600px] object-contain rounded"
                 preview={{
-                  mask: <span className="text-white text-sm">Phóng to</span>,
+                  mask: <span className="text-white text-sm">Zoom</span>,
                 }}
               />
             </div>
@@ -46,14 +46,14 @@ const RenderLabeling = ({
         </div>
       )}
 
-      {/* --- CỘT 2: OPTIONS & QUESTIONS --- */}
+      {/* COLUMN 2: OPTIONS & QUESTIONS */}
       <div className="flex flex-col gap-5">
-        {/* A. Bảng Chú thích (Legend) - Chỉ hiện nếu có text */}
+        {/* Legend */}
         {hasContent && (
           <Card
             title={
               <span className="text-blue-700 font-bold text-sm">
-                Danh sách lựa chọn
+                Options List
               </span>
             }
             size="small"
@@ -75,23 +75,31 @@ const RenderLabeling = ({
           </Card>
         )}
 
-        {/* B. Danh sách Câu hỏi */}
+        {/* Questions List */}
         <div className="space-y-3">
           {questions.map((q) => {
-            const userData = userAnswers[q.question_id] || {};
-            const userValue = userData.value || undefined;
-            const isCorrect = userData.isCorrect;
+            const userData = userAnswers[q.question_id];
 
-            // Tìm Key đáp án đúng
+            // Lấy value an toàn
+            let userValue = undefined;
+            if (userData) {
+              userValue =
+                typeof userData === "object" ? userData.value : userData;
+            }
+
             const correctOpt = q.answers?.find(
               (a) => a.matching_value === "CORRECT"
             );
             const correctAnswerKey = correctOpt?.matching_key;
 
+            const isCorrect =
+              userData?.isCorrect !== undefined
+                ? userData.isCorrect
+                : String(userValue) === String(correctAnswerKey);
+
             return (
               <div
                 key={q.question_id}
-                // Flex row để dàn hàng ngang: Số câu - Text ..... Dropdown
                 className={`flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg transition-all ${
                   isReviewMode
                     ? isCorrect
@@ -100,7 +108,6 @@ const RenderLabeling = ({
                     : "bg-white hover:border-blue-400 hover:shadow-sm"
                 }`}
               >
-                {/* 1. Bên Trái: Số câu + Nội dung câu hỏi */}
                 <div className="flex items-center gap-3 flex-1 min-w-[200px]">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-sm ${
@@ -117,15 +124,13 @@ const RenderLabeling = ({
                   <div className="font-medium text-gray-800 text-base leading-tight">
                     {q.question_text || (
                       <span className="text-gray-400 italic font-normal text-sm">
-                        Vị trí số {q.question_number}
+                        Question {q.question_number}
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* 2. Bên Phải: Dropdown chọn đáp án */}
                 <div className="flex items-center gap-2 shrink-0">
-                  {/* Nếu Review sai thì hiện đáp án đúng bên cạnh */}
                   {isReviewMode && !isCorrect && (
                     <div className="flex flex-col items-end mr-2">
                       <Tag
@@ -134,20 +139,11 @@ const RenderLabeling = ({
                       >
                         {correctAnswerKey}
                       </Tag>
-                      {correctOpt?.answer_text && (
-                        <span className="text-[10px] text-gray-500 max-w-[100px] truncate">
-                          {correctOpt.answer_text}
-                        </span>
-                      )}
                     </div>
                   )}
 
-                  {/* CÁI DROPDOWN ĐÃ ĐƯỢC TỐI ƯU */}
                   <Select
                     placeholder="?"
-                    // Logic style:
-                    // - Nếu không có text (chỉ A,B): width nhỏ (80px), chữ to, đậm.
-                    // - Nếu có text: width lớn (200px) để hiện text.
                     style={{ width: hasContent ? 220 : 90 }}
                     size="large"
                     value={userValue}
@@ -155,12 +151,11 @@ const RenderLabeling = ({
                     disabled={isReviewMode}
                     status={isReviewMode ? (isCorrect ? "" : "error") : ""}
                     className={!hasContent ? "font-bold text-center" : ""}
-                    dropdownMatchSelectWidth={hasContent ? true : false} // Nếu box nhỏ thì dropdown cũng nhỏ
+                    dropdownMatchSelectWidth={hasContent ? true : false}
                   >
                     {optionsPool.map((opt) => (
                       <Option key={opt.matching_key} value={opt.matching_key}>
                         {hasContent ? (
-                          // Có nội dung: Hiện "A. Library"
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-blue-700">
                               {opt.matching_key}.
@@ -168,7 +163,6 @@ const RenderLabeling = ({
                             <span className="truncate">{opt.answer_text}</span>
                           </div>
                         ) : (
-                          // Không nội dung: Hiện "A" ở giữa, to rõ
                           <div className="text-center font-bold text-blue-700 text-lg">
                             {opt.matching_key}
                           </div>
@@ -177,7 +171,6 @@ const RenderLabeling = ({
                     ))}
                   </Select>
 
-                  {/* Icon Check/X khi review */}
                   {isReviewMode && (
                     <div className="w-6 flex justify-center">
                       {isCorrect ? (
