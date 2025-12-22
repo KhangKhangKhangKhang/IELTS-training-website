@@ -17,13 +17,11 @@ import {
   CloseCircleOutlined,
 } from "@ant-design/icons";
 
-// Import Component Render gốc của bạn
 import QuestionRenderer from "./reading/render/QuestionRenderer";
 import { getTestResultAndAnswersAPI } from "@/services/apiDoTest";
 
 const { Title, Text } = Typography;
 
-// Mapping loại câu hỏi (Giống Reading.jsx)
 const TYPE_MAPPING = {
   YES_NO_NOTGIVEN: "YES_NO_NOTGIVEN",
   TFNG: "TFNG",
@@ -35,14 +33,12 @@ const TYPE_MAPPING = {
   OTHER: "OTHER",
 };
 
-// --- HELPER 1: Map dữ liệu API sang cấu trúc QuestionRenderer cần ---
-// Quan trọng: Tạo trường `correct_answers` từ danh sách `answers` của API
+// Helper function mapGroupForReview như cũ
 function mapGroupForReview(apiGroup) {
   const type_question =
     TYPE_MAPPING[apiGroup.typeQuestion] || apiGroup.typeQuestion;
 
   const questions = (apiGroup.question || []).map((q) => {
-    // 1. Tạo danh sách câu trả lời
     const answers = (q.answers || []).map((a) => ({
       answer_id: a.idAnswer,
       answer_text: a.answer_text,
@@ -50,22 +46,14 @@ function mapGroupForReview(apiGroup) {
       matching_value: a.matching_value,
     }));
 
-    // 2. Tìm danh sách đáp án ĐÚNG để truyền vào props `correct_answers`
-    // Logic: Lọc những câu có value là CORRECT/TRUE/YES hoặc lấy text nếu là điền từ
     let correct_answers = [];
-
-    // Nếu API trả về sẵn correct_answers thì dùng, nếu không thì tự suy diễn từ answers
     if (q.correct_answers && q.correct_answers.length > 0) {
       correct_answers = q.correct_answers;
     } else {
-      // Tự filter từ answers
       correct_answers = answers.filter((a) => {
         const val = (a.matching_value || "").toUpperCase();
         return val === "CORRECT" || val === "TRUE" || val === "YES";
       });
-
-      // Fallback: Nếu không có cờ hiệu (thường là câu điền từ/short answer),
-      // thì toàn bộ list answers trả về thường là đáp án đúng chấp nhận được.
       if (correct_answers.length === 0 && answers.length > 0) {
         correct_answers = answers;
       }
@@ -75,7 +63,7 @@ function mapGroupForReview(apiGroup) {
       question_id: q.idQuestion,
       question_number: q.numberQuestion,
       question_text: q.content,
-      correct_answers: correct_answers, // Component con dùng cái này để hiện đáp án đúng
+      correct_answers: correct_answers,
       answers,
     };
   });
@@ -84,6 +72,7 @@ function mapGroupForReview(apiGroup) {
     title: apiGroup.title,
     quantity: apiGroup.quantity,
     type_question,
+    img: apiGroup.img, // Mapping thêm ảnh cho dạng Labeling
     instruction: apiGroup.instruction || "",
     questions,
   };
@@ -93,7 +82,6 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
 
-  // --- 1. Fetch Data ---
   useEffect(() => {
     if (open && idTestResult) {
       const fetchData = async () => {
@@ -118,49 +106,45 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
     }
   }, [open, idTestResult]);
 
-  // --- 2. Chuẩn hóa User Answers ---
-  // Chuyển mảng phẳng thành Object: { [questionId]: { value: "...", isCorrect: true/false } }
   const normalizedUserAnswers = useMemo(() => {
     if (!data?.userAnswer) return {};
     const map = {};
-
     data.userAnswer.forEach((ua) => {
-      // Xác định giá trị user chọn để hiển thị
-      let val = ua.answerText; // Mặc định (Fill blank, Short answer)
-
+      let val = ua.answerText;
       if (ua.matching_key) {
-        val = ua.matching_key; // MCQ, Matching (A, B, C...)
+        val = ua.matching_key;
       } else if (
         ua.matching_value &&
         (ua.userAnswerType === "YES_NO_NOTGIVEN" ||
           ua.userAnswerType === "TFNG")
       ) {
-        val = ua.matching_value; // YES, NO, TRUE...
+        val = ua.matching_value;
       }
-
-      // Lưu vào map.
-      // Lưu ý: Logic MCQ Multiple Choice sẽ được QuestionRenderer tự gộp dựa trên ID
-      // nên ở đây ta cứ lưu từng ID riêng lẻ.
       map[ua.idQuestion] = {
         value: val,
         isCorrect: ua.isCorrect,
       };
     });
-
     return map;
   }, [data]);
 
-  // --- 3. Render Nội dung từng Part (Passage + QuestionRenderer) ---
+  // --- COMPONENT RENDER PART ---
   const RenderPartTab = ({ part }) => {
+    // KIỂM TRA XEM CÓ BÀI ĐỌC KHÔNG
+    const hasPassage =
+      part.passage &&
+      part.passage.content &&
+      part.passage.content.trim().length > 0;
+
     return (
-      <div className="h-full flex flex-col md:flex-row gap-6 overflow-hidden">
-        {/* CỘT TRÁI: READING PASSAGE */}
-        <div className="w-full md:w-1/2 h-full flex flex-col bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-4 bg-gray-50 border-b border-gray-100 font-bold text-gray-700 flex items-center gap-2">
-            <ReadOutlined /> Reading Passage
-          </div>
-          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-            {part.passage?.content ? (
+      <div className="h-full flex flex-col md:flex-row gap-6 overflow-hidden bg-gray-100 p-4">
+        {/* CỘT TRÁI: READING PASSAGE (Chỉ hiện nếu có nội dung) */}
+        {hasPassage && (
+          <div className="w-full md:w-1/2 h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-4 bg-gray-50 border-b border-gray-100 font-bold text-gray-700 flex items-center gap-2">
+              <ReadOutlined /> Reading Passage
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
               <div className="prose max-w-none text-justify text-gray-800 text-lg leading-8 font-serif">
                 {part.passage.content.split(/\r?\n\r?\n/).map((para, i) => (
                   <p key={i} className="mb-4 indent-8">
@@ -168,22 +152,22 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                   </p>
                 ))}
               </div>
-            ) : (
-              <div className="text-center text-gray-400 mt-10">
-                Không có bài đọc
-              </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* CỘT PHẢI: QUESTIONS (Dùng lại QuestionRenderer) */}
-        <div className="w-full md:w-1/2 h-full flex flex-col bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {/* CỘT PHẢI: QUESTIONS */}
+        {/* Nếu không có passage (Listening), cột này sẽ full width và căn giữa */}
+        <div
+          className={`h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${
+            hasPassage ? "w-full md:w-1/2" : "w-full max-w-5xl mx-auto"
+          }`}
+        >
           <div className="p-4 bg-blue-50 border-b border-blue-100 font-bold text-blue-800 flex items-center gap-2">
             <FileTextOutlined /> Questions & Answers
           </div>
           <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-gray-50/30">
             {(part.groupOfQuestions || []).map((group) => {
-              // Logic xử lý title như trong Reading.jsx
               let displayTitle = group.title || "Group";
               let isMultiple = false;
               if (displayTitle.startsWith("Multiple ||| ")) {
@@ -193,27 +177,27 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                 displayTitle = displayTitle.replace("Single ||| ", "");
               }
 
-              // Map data sang format chuẩn
               const mappedGroup = mapGroupForReview(group);
 
               return (
                 <div key={group.idGroupOfQuestions} className="mb-8">
                   <div className="mb-3 border-b border-gray-200 pb-2">
-                    <h4 className="font-bold text-gray-800">{displayTitle}</h4>
+                    <h4 className="font-bold text-gray-800 text-lg">
+                      {displayTitle}
+                    </h4>
                     {group.instruction && (
-                      <p className="text-sm text-gray-500 italic">
+                      <p className="text-sm text-gray-500 italic mt-1">
                         {group.instruction}
                       </p>
                     )}
                   </div>
 
-                  {/* --- KEY POINT: TÁI SỬ DỤNG COMPONENT CỦA BẠN --- */}
                   <QuestionRenderer
                     group={mappedGroup}
-                    userAnswers={normalizedUserAnswers} // Truyền object {id: {value, isCorrect}}
-                    isReviewMode={true} // Bật chế độ Review
+                    userAnswers={normalizedUserAnswers}
+                    isReviewMode={true}
                     isMultiple={isMultiple}
-                    onAnswerChange={() => {}} // Dummy function (read-only)
+                    onAnswerChange={() => {}}
                   />
                 </div>
               );
@@ -229,7 +213,6 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
     );
   };
 
-  // --- 4. Cấu hình Tabs ---
   const tabItems = useMemo(() => {
     if (!data?.test?.parts) return [];
     return data.test.parts.map((part, index) => ({
@@ -262,7 +245,7 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
         </div>
       ) : data ? (
         <div className="flex flex-col h-full bg-gray-100">
-          {/* HEADER: INFO & SCORE */}
+          {/* HEADER */}
           <div className="bg-white px-6 py-3 border-b shadow-sm flex flex-wrap justify-between items-center gap-4 shrink-0">
             <div>
               <Title level={4} style={{ margin: 0, color: "#1f2937" }}>
@@ -301,14 +284,19 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
             </div>
           </div>
 
-          {/* BODY: TABS */}
-          <div className="flex-1 p-4 overflow-hidden">
+          {/* TABS */}
+          <div className="flex-1 overflow-hidden">
             <Tabs
               defaultActiveKey="0"
               items={tabItems}
               type="card"
               className="h-full custom-result-tabs"
-              tabBarStyle={{ marginBottom: 0 }}
+              tabBarStyle={{
+                marginBottom: 0,
+                background: "#fff",
+                paddingLeft: 16,
+                paddingTop: 8,
+              }}
             />
           </div>
         </div>
@@ -318,7 +306,6 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
         </div>
       )}
 
-      {/* CSS Nhúng cho thanh cuộn đẹp hơn */}
       <style jsx>{`
         .custom-result-tabs .ant-tabs-content {
           height: 100%;
