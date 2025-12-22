@@ -69,6 +69,20 @@ const QuestionRenderer = ({
       return resultIsCorrect;
     });
 
+    // --- [FIX] TỔNG HỢP TẤT CẢ KEY ĐÚNG TỪ CÁC CÂU HỎI CON ---
+    // Duyệt qua từng câu hỏi con, lấy TOÀN BỘ matching_key trong mảng correct_answers
+    const allCorrectKeys = group.questions.reduce((acc, q) => {
+      if (Array.isArray(q.correct_answers)) {
+        q.correct_answers.forEach((ans) => {
+          if (ans.matching_key) {
+            acc.push(ans.matching_key);
+          }
+        });
+      }
+      return acc;
+    }, []);
+    // ---------------------------------------------------------
+
     return (
       <RenderMCQ
         key={firstQ.question_id}
@@ -77,6 +91,7 @@ const QuestionRenderer = ({
         isMultiple={true}
         resultIsCorrect={allCorrect}
         isReviewMode={isReviewMode}
+        correctKeysList={allCorrectKeys} // <--- TRUYỀN LIST KEY ĐÚNG ĐẦY ĐỦ
         // --- LOGIC PHÂN PHỐI (REVERSE MAPPING) ---
         onAnswerChange={(fakeId, newValuesArray) => {
           // newValuesArray = ["B", "A"] -> Sort thành ["A", "B"] để điền tuần tự
@@ -98,6 +113,12 @@ const QuestionRenderer = ({
     case "MCQ":
       return group.questions.map((q) => {
         const { value, resultIsCorrect } = getUserData(q.question_id);
+
+        // Với Single MCQ, lấy tất cả key đúng (thường chỉ có 1, nhưng cứ map cho chắc)
+        const singleCorrectKeys = (q.correct_answers || []).map(
+          (a) => a.matching_key
+        );
+
         return (
           <RenderMCQ
             key={q.question_id}
@@ -105,6 +126,7 @@ const QuestionRenderer = ({
             userAnswer={value}
             resultIsCorrect={resultIsCorrect}
             isMultiple={false} // Force false cho single MCQ
+            correctKeysList={singleCorrectKeys} // <--- TRUYỀN LIST KEY ĐÚNG
             {...commonProps}
           />
         );

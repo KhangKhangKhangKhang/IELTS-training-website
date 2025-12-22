@@ -1,5 +1,5 @@
-import React from "react";
-import { Checkbox } from "antd"; // [FIX] Sử dụng Antd Checkbox
+import React, { useMemo } from "react";
+import { Checkbox } from "antd";
 import { CheckCircle2, XCircle } from "lucide-react";
 
 const RenderMCQ = ({
@@ -8,15 +8,20 @@ const RenderMCQ = ({
   userAnswer, // String (Single) hoặc Array (Multiple)
   isReviewMode,
   resultIsCorrect,
-  isMultiple = false, // [FIX] Nhận prop
+  isMultiple = false,
+  correctKeysList = [], // Nhận danh sách full đáp án đúng từ cha: VD ["B", "C", "B", "C"]
 }) => {
-  const correctAnswerObj = question.correct_answers?.[0];
-  const correctAnswerKey = correctAnswerObj?.matching_key;
+  // Check tổng thể: Nếu user làm sai hoặc thiếu -> false
+  const isOverallCorrect = isReviewMode && resultIsCorrect === true;
 
-  // Logic check đúng/sai trong Review Mode
-  const isCorrect = isReviewMode && resultIsCorrect === true;
+  // --- [FIX] LỌC TRÙNG LẶP CHO PHẦN HIỂN THỊ FOOTER ---
+  // Sử dụng Set để loại bỏ các key trùng nhau (VD: ['B', 'B'] -> ['B'])
+  const uniqueCorrectKeys = useMemo(() => {
+    return [...new Set(correctKeysList)].sort();
+  }, [correctKeysList]);
+  // ----------------------------------------------------
 
-  // --- [FIX] XỬ LÝ CHỌN NHIỀU ---
+  // --- XỬ LÝ CHỌN NHIỀU ---
   const handleCheckboxChange = (key, checked) => {
     let currentAnswers = Array.isArray(userAnswer) ? [...userAnswer] : [];
 
@@ -26,7 +31,6 @@ const RenderMCQ = ({
       currentAnswers = currentAnswers.filter((k) => k !== key);
     }
 
-    // Gửi mảng lên cha
     onAnswerChange(
       question.question_id,
       currentAnswers,
@@ -34,11 +38,12 @@ const RenderMCQ = ({
     );
   };
 
+  // Container Class
   let containerClass = "mb-4 p-4 border rounded-lg transition-colors ";
   if (isReviewMode) {
-    containerClass += isCorrect
-      ? "bg-green-50 border-green-200"
-      : "bg-red-50 border-red-200";
+    containerClass += isOverallCorrect
+      ? "bg-green-50/30 border-green-200"
+      : "bg-red-50/30 border-red-200";
   } else {
     containerClass += "bg-slate-50 border-gray-200 hover:border-blue-300";
   }
@@ -49,9 +54,9 @@ const RenderMCQ = ({
       <div className="flex justify-between items-start mb-3">
         <div className="flex gap-2">
           <span
-            className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold text-white shadow-sm ${
+            className={`flex items-center justify-center min-w-[24px] h-6 rounded px-2 text-xs font-bold text-white shadow-sm ${
               isReviewMode
-                ? isCorrect
+                ? isOverallCorrect
                   ? "bg-green-500"
                   : "bg-red-500"
                 : "bg-blue-600"
@@ -65,7 +70,7 @@ const RenderMCQ = ({
           />
         </div>
         {isReviewMode &&
-          (isCorrect ? (
+          (isOverallCorrect ? (
             <CheckCircle2 className="text-green-600 w-5 h-5 shrink-0" />
           ) : (
             <XCircle className="text-red-500 w-5 h-5 shrink-0" />
@@ -76,47 +81,67 @@ const RenderMCQ = ({
         {question.answers.map((answer) => {
           const key = answer.matching_key;
           let itemClass =
-            "flex items-center space-x-3 p-2 rounded border border-transparent transition-all";
+            "flex items-center space-x-3 p-2 rounded border transition-all ";
+
+          // User có chọn key này không?
+          const isSelected = isMultiple
+            ? Array.isArray(userAnswer) && userAnswer.includes(key)
+            : userAnswer === key;
 
           if (isReviewMode) {
-            // Logic highlight review
-            // Nếu là mảng (Multiple) kiểm tra includes, nếu string (Single) so sánh bằng
-            const isSelected = Array.isArray(userAnswer)
-              ? userAnswer.includes(key)
-              : userAnswer === key;
+            // Key này có phải là đáp án đúng không?
+            // Dùng list gốc để tô màu (dù list gốc có trùng thì includes vẫn đúng)
+            const isKeyActuallyCorrect = correctKeysList.includes(key);
 
-            if (isSelected && !isCorrect) {
-              itemClass += " bg-red-100 border-red-300 opacity-80";
+            if (isSelected) {
+              if (isKeyActuallyCorrect) {
+                // User chọn + Đúng -> XANH
+                itemClass +=
+                  " bg-green-100 border-green-400 text-green-800 font-medium";
+              } else {
+                // User chọn + Sai -> ĐỎ
+                itemClass +=
+                  " bg-red-100 border-red-300 text-red-800 opacity-90";
+              }
             } else {
-              itemClass += " opacity-50";
+              // User KHÔNG chọn
+              if (isKeyActuallyCorrect) {
+                // Đúng mà không chọn -> Viền xanh đứt đoạn (gợi ý)
+                itemClass += " border-green-300 border-dashed bg-green-50/30";
+              } else {
+                // Sai và không chọn -> Mờ đi
+                itemClass += " border-transparent opacity-50 grayscale-[0.5]";
+              }
             }
           } else {
-            itemClass += " hover:bg-white hover:shadow-sm cursor-pointer";
-            const isSelected = isMultiple
-              ? Array.isArray(userAnswer) && userAnswer.includes(key)
-              : userAnswer === key;
-
+            // Mode làm bài
+            itemClass +=
+              " border-transparent hover:bg-white hover:shadow-sm cursor-pointer";
             if (isSelected) itemClass += " bg-blue-50 border-blue-200";
           }
 
           return (
             <div key={answer.answer_id} className={itemClass}>
               {isMultiple ? (
-                // --- [FIX] RENDER CHECKBOX (MULTIPLE) ---
                 <Checkbox
                   disabled={isReviewMode}
-                  checked={
-                    Array.isArray(userAnswer) && userAnswer.includes(key)
-                  }
+                  checked={isSelected}
                   onChange={(e) => handleCheckboxChange(key, e.target.checked)}
                 >
-                  <span className="font-bold min-w-[20px] text-gray-700 ml-2">
+                  <span
+                    className={`font-bold min-w-[20px] ml-2 ${
+                      isReviewMode &&
+                      isSelected &&
+                      !correctKeysList.includes(key)
+                        ? "text-red-700"
+                        : "text-gray-700"
+                    }`}
+                  >
                     {key}.
                   </span>
                   <span className="ml-1">{answer.answer_text}</span>
                 </Checkbox>
               ) : (
-                // --- [FIX] RENDER RADIO (SINGLE) ---
                 <div
                   className="flex items-center w-full"
                   onClick={() =>
@@ -130,10 +155,10 @@ const RenderMCQ = ({
                 >
                   <div
                     className={`w-4 h-4 rounded-full border flex items-center justify-center mr-3 ${
-                      userAnswer === key ? "border-blue-600" : "border-gray-400"
+                      isSelected ? "border-blue-600" : "border-gray-400"
                     }`}
                   >
-                    {userAnswer === key && (
+                    {isSelected && (
                       <div className="w-2 h-2 rounded-full bg-blue-600" />
                     )}
                   </div>
@@ -148,9 +173,21 @@ const RenderMCQ = ({
         })}
       </div>
 
-      {isReviewMode && !isCorrect && (
-        <div className="mt-3 text-sm text-green-700 font-semibold pl-8 bg-green-50 p-2 rounded border border-green-200 inline-block">
-          Correct Answer: {correctAnswerKey} ({correctAnswerObj?.answer_text})
+      {/* --- PHẦN HIỂN THỊ ĐÁP ÁN (FOOTER) --- */}
+      {/* Logic: Nếu chưa đúng hoàn toàn -> Show list đáp án đúng (Đã lọc trùng) */}
+      {isReviewMode && !isOverallCorrect && (
+        <div className="mt-3 text-sm flex items-center gap-2">
+          <span className="text-gray-500 font-medium">Đáp án đúng:</span>
+          <div className="flex gap-2">
+            {uniqueCorrectKeys.map((k) => (
+              <span
+                key={k}
+                className="px-2 py-0.5 bg-green-100 text-green-700 font-bold border border-green-300 rounded text-xs"
+              >
+                {k}
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </div>
