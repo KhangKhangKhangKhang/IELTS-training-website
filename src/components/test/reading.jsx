@@ -447,11 +447,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-4 py-1.5 rounded-lg border shadow-sm ${
-                  timeLeft < 300
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-4 py-1.5 rounded-lg border shadow-sm ${timeLeft < 300
                     ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
                     : "bg-gray-50 text-gray-700 border-gray-200"
-                }`}
+                  }`}
               >
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
@@ -485,11 +484,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`px-5 py-2 rounded-full border text-sm font-semibold transition-all whitespace-nowrap ${
-                idx === activePartIndex
+              className={`px-5 py-2 rounded-full border text-sm font-semibold transition-all whitespace-nowrap ${idx === activePartIndex
                   ? "bg-blue-600 text-white border-blue-600 shadow-md"
                   : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
-              }`}
+                }`}
             >
               {p.namePart || `Part ${idx + 1}`}
             </button>
@@ -534,11 +532,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
             <div className="lg:col-span-5 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
               <div
-                className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${
-                  isReviewMode
+                className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${isReviewMode
                     ? "bg-green-50 text-green-800"
                     : "bg-gray-50 text-gray-700"
-                }`}
+                  }`}
               >
                 <span>✍️ Questions</span>
               </div>
@@ -562,16 +559,30 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                     isMultiple = false;
                   }
 
+                  // Split title by ||| to separate main title from instructions
+                  const titleParts = displayTitle.split(' ||| ');
+                  const mainTitle = titleParts[0]; // "Questions 1-6"
+                  const instructions = titleParts.slice(1); // ["The Reading Passage...", "Choose...", ...]
+
                   return (
                     <div
                       key={group.idGroupOfQuestions}
                       className="mb-8 bg-white p-4 rounded-lg shadow-sm border border-gray-100"
                     >
                       <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
-                        <h4 className="font-bold text-gray-800 text-base">
-                          {displayTitle}
-                        </h4>
-                        <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-gray-800 text-base mb-1">
+                            {mainTitle}
+                          </h4>
+                          {instructions.length > 0 && (
+                            <div className="text-sm text-gray-600 space-y-1 mt-2">
+                              {instructions.map((instruction, idx) => (
+                                <p key={idx} className="italic">{instruction}</p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded ml-4 shrink-0">
                           {group.quantity} Questions
                         </span>
                       </div>
