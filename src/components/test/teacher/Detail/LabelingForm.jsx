@@ -1,426 +1,343 @@
 import React, { useState, useEffect } from "react";
-import { Button, Input, message, Spin, Card, Empty } from "antd";
-import { DeleteOutlined, PlusOutlined, EditOutlined } from "@ant-design/icons";
+import { Button, Input, Select, message, Card, Spin } from "antd";
+import { DeleteOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
 import {
   getQuestionsByIdGroupAPI,
   getAnswersByIdQuestionAPI,
   createManyQuestion,
   updateManyQuestionAPI,
 } from "@/services/apiTest";
-import { getMaxNumberQuestion } from "@/lib/utils";
 
-const LabelingForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
-  const [loadedQuestions, setLoadedQuestions] = useState([]);
+const { Option } = Select;
+
+const LabelingForm = ({
+  idGroup,
+  groupData,
+  questionNumberOffset = 0,
+  onRefresh,
+}) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [hasQuestionsLoaded, setHasQuestionsLoaded] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [initialized, setInitialized] = useState(false);
-  const [formQuestions, setFormQuestions] = useState([]);
 
-  useEffect(() => {
-    if (!initialized && groupData?.quantity && loadedQuestions.length === 0) {
-      const initialQuestions = Array(groupData.quantity)
-        .fill(null)
-        .map((_, idx) => ({
-          numberQuestion: questionNumberOffset + idx + 1,
-          content: "",
-          labels: ["", "", ""],
-        }));
-      setFormQuestions(initialQuestions);
-      setInitialized(true);
-    }
-  }, [
-    groupData?.quantity,
-    initialized,
-    loadedQuestions.length,
-    questionNumberOffset,
-  ]);
+  // 1. POOL OPTIONS: Danh sách các nhãn chung (A, B, C...)
+  const [optionsPool, setOptionsPool] = useState([]);
 
+  // 2. QUESTIONS: Danh sách câu hỏi
+  const [questions, setQuestions] = useState([]);
+
+  // --- INIT & LOAD DATA ---
   useEffect(() => {
-    if (idGroup) {
-      loadQuestions();
-    }
+    if (idGroup) loadData();
+    else initDefault();
   }, [idGroup]);
 
-  const loadQuestions = async () => {
+  // Khởi tạo mặc định
+  const initDefault = () => {
+    if (groupData?.quantity) {
+      const defaultOptionsCount = groupData.quantity + 3;
+      const defaultOptions = Array.from(
+        { length: defaultOptionsCount },
+        (_, i) => ({
+          key: String.fromCharCode(65 + i), // A, B, C...
+          text: "",
+        })
+      );
+      setOptionsPool(defaultOptions);
+
+      const defaultQuestions = Array.from(
+        { length: groupData.quantity },
+        (_, i) => ({
+          idQuestion: null,
+          numberQuestion: questionNumberOffset + i + 1,
+          content: "",
+          correctKey: undefined,
+        })
+      );
+      setQuestions(defaultQuestions);
+    }
+  };
+
+  const loadData = async () => {
     try {
       setLoading(true);
       const res = await getQuestionsByIdGroupAPI(idGroup);
       const group = res?.data?.[0];
 
       if (!group || !group.question || group.question.length === 0) {
-        setLoadedQuestions([]);
-        setHasQuestionsLoaded(false);
+        initDefault();
       } else {
-        const withAnswers = await Promise.all(
+        // --- 1. Load Options Pool ---
+        const firstQId = group.question[0].idQuestion;
+        const firstAnsRes = await getAnswersByIdQuestionAPI(firstQId);
+        const ansData = firstAnsRes?.data || [];
+
+        const loadedOptions = ansData
+          .map((a) => ({
+            key: a.matching_key,
+            text: a.answer_text || "",
+          }))
+          .sort((a, b) => (a.key || "").localeCompare(b.key || ""));
+
+        if (loadedOptions.length > 0) {
+          setOptionsPool(loadedOptions);
+        } else {
+          setOptionsPool([
+            { key: "A", text: "" },
+            { key: "B", text: "" },
+          ]);
+        }
+
+        // --- 2. Load Questions ---
+        const loadedQuestions = await Promise.all(
           group.question.map(async (q) => {
-            try {
-              const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
-              const ansData = ansRes?.data || [];
-              const labels = ansData.map((a) => a.answer_text || "");
-              return {
-                ...q,
-                labels: labels.length > 0 ? labels : [],
-              };
-            } catch (err) {
-              return { ...q, labels: [] };
-            }
+            const qAnsRes = await getAnswersByIdQuestionAPI(q.idQuestion);
+            const qAnsData = qAnsRes?.data || [];
+
+            const correctAns = qAnsData.find(
+              (a) => a.matching_value === "CORRECT"
+            );
+
+            return {
+              idQuestion: q.idQuestion,
+              numberQuestion: q.numberQuestion,
+              content: q.content,
+              correctKey: correctAns ? correctAns.matching_key : undefined,
+            };
           })
         );
 
-        setLoadedQuestions(withAnswers);
-        setHasQuestionsLoaded(true);
+        loadedQuestions.sort((a, b) => a.numberQuestion - b.numberQuestion);
+        setQuestions(loadedQuestions);
       }
     } catch (err) {
-      console.error("Error loading questions:", err);
-      setLoadedQuestions([]);
-      setHasQuestionsLoaded(false);
+      console.error(err);
+      message.error("Lỗi tải dữ liệu Labeling");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddQuestion = () => {
-    const nextNum = questionNumberOffset + formQuestions.length + 1;
-    setFormQuestions([
-      ...formQuestions,
-      { numberQuestion: nextNum, content: "", labels: ["", "", ""] },
-    ]);
+  // --- HANDLERS ---
+  const handleOptionChange = (idx, val) => {
+    const newPool = [...optionsPool];
+    newPool[idx].text = val;
+    setOptionsPool(newPool);
   };
 
-  const handleChangeQuestion = (qIndex, value) => {
-    const updated = [...formQuestions];
-    updated[qIndex].content = value;
-    setFormQuestions(updated);
-  };
-
-  const handleChangeLabel = (qIndex, labelIndex, value) => {
-    const updated = [...formQuestions];
-    updated[qIndex].labels[labelIndex] = value;
-    setFormQuestions(updated);
-  };
-
-  const handleAddLabel = (qIndex) => {
-    const updated = [...formQuestions];
-    updated[qIndex].labels.push("");
-    setFormQuestions(updated);
-  };
-
-  const handleRemoveLabel = (qIndex, labelIndex) => {
-    const updated = [...formQuestions];
-    updated[qIndex].labels.splice(labelIndex, 1);
-    setFormQuestions(updated);
-  };
-
-  const handleSaveAll = async () => {
-    try {
-      setSaving(true);
-      const questionsPayload = [];
-
-      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
-        const q = formQuestions[qIdx];
-        if (!q.content || !q.content.trim()) {
-          message.warning(`Câu ${q.numberQuestion} không có nội dung`);
-          continue;
-        }
-
-        if (!q.labels || q.labels.filter((l) => l.trim()).length === 0) {
-          message.warning(`Câu ${q.numberQuestion} không có nhãn nào`);
-          continue;
-        }
-
-        const labels = q.labels.filter((l) => l.trim());
-
-        questionsPayload.push({
-          idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart || null,
-          numberQuestion: q.numberQuestion,
-          content: q.content,
-          answers: labels.map((label) => ({
-            answer_text: label,
-            matching_key: null,
-            matching_value: null,
-          })),
-        });
-      }
-
-      if (questionsPayload.length === 0) {
-        message.error("Không có câu hỏi hợp lệ để lưu");
-        return;
-      }
-
-      await createManyQuestion({ questions: questionsPayload });
-      message.success("Đã lưu tất cả câu hỏi gán nhãn!");
-
-      setFormQuestions([]);
-      setInitialized(false);
-      await loadQuestions();
-    } catch (err) {
-      console.error(err);
-      message.error("Lưu câu hỏi thất bại");
-    } finally {
-      setSaving(false);
+  const handleAddOption = () => {
+    let nextKey = "A";
+    if (optionsPool.length > 0) {
+      const lastKey = optionsPool[optionsPool.length - 1].key;
+      const lastCharCode = lastKey.charCodeAt(0);
+      nextKey = String.fromCharCode(lastCharCode + 1);
     }
+    setOptionsPool([...optionsPool, { key: nextKey, text: "" }]);
   };
 
-  const handleDeleteQuestion = async (idQuestion, index) => {
-    try {
-      const updated = loadedQuestions.filter((_, idx) => idx !== index);
-      setLoadedQuestions(updated);
-      message.success("Đã xóa câu hỏi");
-    } catch (err) {
-      console.error(err);
-      message.error("Xóa câu hỏi thất bại");
-    }
-  };
-
-  const handleEditGroup = () => {
-    const editForm = loadedQuestions.map((q) => ({
-      idQuestion: q.idQuestion,
-      numberQuestion: q.numberQuestion,
-      content: q.content,
-      labels: q.labels || [],
-    }));
-    setFormQuestions(editForm);
-    setIsEditMode(true);
-    setHasQuestionsLoaded(false);
-  };
-
-  const handleSaveEdit = async () => {
-    try {
-      setSaving(true);
-      const questionsPayload = [];
-
-      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
-        const q = formQuestions[qIdx];
-        if (!q.content || !q.content.trim()) {
-          message.warning(
-            `Câu ${q.numberQuestion || qIdx + 1} không có nội dung`
-          );
-          continue;
-        }
-        if (!q.labels || q.labels.filter((l) => l.trim()).length === 0) {
-          message.warning(`Câu ${q.numberQuestion || qIdx + 1} không có nhãn`);
-          continue;
-        }
-
-        const labels = q.labels.filter((l) => l.trim());
-
-        questionsPayload.push({
-          idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart || null,
-          numberQuestion: q.numberQuestion || qIdx + 1,
-          content: q.content,
-          answers: labels.map((label) => ({
-            answer_text: label,
-            matching_key: null,
-            matching_value: null,
-          })),
-          idQuestion: q.idQuestion,
-        });
-      }
-
-      if (questionsPayload.length === 0) {
-        message.error("Không có câu hỏi hợp lệ để lưu");
-        return;
-      }
-
-      await updateManyQuestionAPI({ questions: questionsPayload });
-      message.success("Đã cập nhật câu hỏi!");
-
-      setIsEditMode(false);
-      setFormQuestions([]);
-      setInitialized(false);
-      await loadQuestions();
-    } catch (err) {
-      console.error(err);
-      message.error("Cập nhật câu hỏi thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-6">
-        <Spin tip="Đang tải câu hỏi..." />
-      </div>
+  const handleRemoveOption = (idx) => {
+    const keyRemoved = optionsPool[idx].key;
+    const newQuestions = questions.map((q) =>
+      q.correctKey === keyRemoved ? { ...q, correctKey: undefined } : q
     );
-  }
+    setQuestions(newQuestions);
 
-  if (hasQuestionsLoaded && loadedQuestions.length > 0) {
-    return (
-      <div className="space-y-4 p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-semibold">
-            Câu hỏi đã tạo ({loadedQuestions.length})
-          </h3>
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            onClick={handleEditGroup}
-          >
-            Chỉnh sửa
-          </Button>
-        </div>
+    const newPool = optionsPool.filter((_, i) => i !== idx);
+    setOptionsPool(newPool);
+  };
 
-        {loadedQuestions.map((q, index) => (
-          <Card key={q.idQuestion} className="shadow-sm" size="small">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <div className="font-semibold text-base mb-1">
-                  Câu {q.numberQuestion}
-                </div>
-                {q.content && (
-                  <div className="text-sm text-gray-700 mb-2">
-                    <span className="text-gray-600">Mô tả: </span>
-                    {q.content}
-                  </div>
-                )}
-                <div className="text-sm">
-                  <span className="text-gray-600">Nhãn lựa chọn:</span>
-                  <div className="mt-1 flex flex-wrap gap-2">
-                    {q.labels && q.labels.length > 0 ? (
-                      q.labels.map((label, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-block bg-blue-50 border border-blue-300 text-blue-700 px-3 py-1 rounded text-xs font-medium"
-                        >
-                          {label}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-400 italic">
-                        Không có nhãn
-                      </span>
-                    )}
-                  </div>
-                </div>
+  const handleQuestionChange = (idx, field, val) => {
+    const newQ = [...questions];
+    newQ[idx][field] = val;
+    setQuestions(newQ);
+  };
+
+  // --- SAVE ---
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      if (optionsPool.length === 0) {
+        message.warning("Cần ít nhất 1 lựa chọn (Option)");
+        setSaving(false);
+        return;
+      }
+
+      // Warn if user hasn't filled in text (helps avoid the empty string issue)
+      const emptyTextCount = optionsPool.filter(
+        (o) => !o.text || !o.text.trim()
+      ).length;
+      if (emptyTextCount > 0) {
+        // Just a warning, still allow save
+        message.warning(
+          `Lưu ý: Có ${emptyTextCount} nhãn chưa nhập nội dung mô tả.`
+        );
+      }
+
+      const payload = questions.map((q) => {
+        const answersPayload = optionsPool.map((opt) => ({
+          answer_text: opt.text ? opt.text.trim() : "", // Explicitly trim
+          matching_key: opt.key,
+          matching_value: opt.key === q.correctKey ? "CORRECT" : null,
+        }));
+
+        return {
+          idGroupOfQuestions: idGroup,
+          idPart: groupData?.idPart,
+          idQuestion: q.idQuestion || null,
+          numberQuestion: q.numberQuestion,
+          content: q.content || "",
+          answers: answersPayload,
+        };
+      });
+
+      const toUpdate = payload.filter((p) => p.idQuestion);
+      const toCreate = payload.filter((p) => !p.idQuestion);
+
+      const promises = [];
+      if (toUpdate.length > 0)
+        promises.push(updateManyQuestionAPI({ questions: toUpdate }));
+      if (toCreate.length > 0)
+        promises.push(createManyQuestion({ questions: toCreate }));
+
+      await Promise.all(promises);
+      message.success("Lưu Labeling thành công!");
+
+      if (onRefresh) onRefresh();
+      loadData();
+    } catch (err) {
+      console.error(err);
+      message.error("Lưu thất bại");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <Spin className="block mx-auto py-10" />;
+
+  return (
+    <div className="space-y-6 pb-4">
+      {/* SECTION 1: OPTIONS POOL */}
+      <Card
+        title={
+          <div className="flex justify-between items-center">
+            <span className="text-blue-700 font-bold">
+              Bước 1: Tạo danh sách Nhãn (Options)
+            </span>
+            <span className="text-xs text-gray-500 font-normal">
+              Nhập mô tả cho từng nhãn
+            </span>
+          </div>
+        }
+        size="small"
+        className="bg-blue-50 border-blue-200"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {optionsPool.map((opt, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <div className="flex-none w-10 h-9 flex items-center justify-center bg-white border border-blue-300 rounded font-bold text-blue-600 shadow-sm">
+                {opt.key}
               </div>
+              <Input
+                placeholder={`Nhập nội dung cho ${opt.key}...`}
+                value={opt.text}
+                onChange={(e) => handleOptionChange(idx, e.target.value)}
+                status={!opt.text ? "warning" : ""}
+              />
               <Button
                 type="text"
                 danger
-                size="small"
                 icon={<DeleteOutlined />}
-                onClick={() => handleDeleteQuestion(q.idQuestion, index)}
+                onClick={() => handleRemoveOption(idx)}
               />
             </div>
-          </Card>
-        ))}
-
-        <div className="flex gap-2 pt-4 border-t">
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setHasQuestionsLoaded(false)}
-          >
-            Thêm câu hỏi
-          </Button>
+          ))}
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4 p-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-base font-semibold">
-          {isEditMode ? "Chỉnh sửa câu hỏi" : "Tạo câu hỏi gán nhãn"}
-        </h3>
-        {isEditMode && (
-          <Button
-            onClick={() => {
-              setIsEditMode(false);
-              setFormQuestions([]);
-              setInitialized(false);
-              setHasQuestionsLoaded(true);
-            }}
-          >
-            Hủy
-          </Button>
-        )}
-      </div>
-
-      {formQuestions.length === 0 && (
-        <Empty
-          description="Chưa có câu hỏi nào"
-          style={{ marginTop: "40px" }}
-        />
-      )}
-
-      {formQuestions.map((q, qIndex) => (
-        <Card key={qIndex} className="shadow-sm" size="small">
-          <div className="font-semibold text-base mb-3">
-            Câu {q.numberQuestion}
-          </div>
-
-          <Input.TextArea
-            rows={1}
-            placeholder="Mô tả câu hỏi hoặc yêu cầu"
-            value={q.content}
-            onChange={(e) => handleChangeQuestion(qIndex, e.target.value)}
-            style={{ resize: "none" }}
-            className="mb-4"
-          />
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
-                Nhãn lựa chọn:
-              </label>
-              <span className="text-xs text-gray-500">
-                {q.labels ? q.labels.filter((l) => l.trim()).length : 0} nhãn
-              </span>
-            </div>
-
-            {q.labels &&
-              q.labels.map((label, labelIdx) => (
-                <div key={labelIdx} className="flex gap-2 items-center">
-                  <Input
-                    placeholder={`Nhãn ${labelIdx + 1}`}
-                    value={label}
-                    onChange={(e) =>
-                      handleChangeLabel(qIndex, labelIdx, e.target.value)
-                    }
-                    size="small"
-                  />
-                  {q.labels.length > 1 && (
-                    <Button
-                      type="text"
-                      danger
-                      size="small"
-                      icon={<DeleteOutlined />}
-                      onClick={() => handleRemoveLabel(qIndex, labelIdx)}
-                    />
-                  )}
-                </div>
-              ))}
-
-            <Button
-              type="dashed"
-              block
-              size="small"
-              icon={<PlusOutlined />}
-              onClick={() => handleAddLabel(qIndex)}
-              className="mt-2"
-            >
-              Thêm nhãn
-            </Button>
-          </div>
-        </Card>
-      ))}
-
-      <div className="flex gap-3">
-        <Button onClick={handleAddQuestion} icon={<PlusOutlined />}>
-          Thêm câu hỏi
+        <Button
+          type="dashed"
+          icon={<PlusOutlined />}
+          onClick={handleAddOption}
+          className="mt-4 bg-white"
+        >
+          Thêm nhãn
         </Button>
+      </Card>
+
+      {/* SECTION 2: QUESTIONS */}
+      <Card
+        title={
+          <span className="font-bold">Bước 2: Gán đáp án cho câu hỏi</span>
+        }
+        size="small"
+      >
+        <div className="space-y-4">
+          {questions.map((q, idx) => (
+            <div
+              key={idx}
+              className="flex items-start gap-4 p-3 border rounded-lg bg-gray-50 hover:bg-white transition-colors"
+            >
+              <div className="flex-none w-12 h-10 flex items-center justify-center bg-blue-600 text-white font-bold rounded shadow-sm">
+                {q.numberQuestion}
+              </div>
+
+              <div className="flex-1">
+                <label className="text-xs text-gray-500 font-medium ml-1">
+                  Mô tả câu hỏi
+                </label>
+                <Input
+                  placeholder="Mô tả vị trí (không bắt buộc)..."
+                  value={q.content}
+                  onChange={(e) =>
+                    handleQuestionChange(idx, "content", e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="w-[200px]">
+                <label className="text-xs text-gray-500 font-medium ml-1">
+                  Đáp án đúng
+                </label>
+                <Select
+                  className="w-full"
+                  placeholder="Chọn đáp án"
+                  value={q.correctKey}
+                  onChange={(val) =>
+                    handleQuestionChange(idx, "correctKey", val)
+                  }
+                  allowClear
+                >
+                  {optionsPool.map((opt) => (
+                    <Option key={opt.key} value={opt.key}>
+                      <span className="font-bold text-blue-600 mr-2">
+                        {opt.key}.
+                      </span>
+                      {opt.text ? (
+                        opt.text.length > 20 ? (
+                          opt.text.substring(0, 20) + "..."
+                        ) : (
+                          opt.text
+                        )
+                      ) : (
+                        <span className="text-gray-400 italic">(Trống)</span>
+                      )}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div className="flex justify-end pt-2 border-t">
         <Button
           type="primary"
-          onClick={isEditMode ? handleSaveEdit : handleSaveAll}
+          size="large"
+          icon={<SaveOutlined />}
+          onClick={handleSave}
           loading={saving}
+          className="min-w-[150px]"
         >
-          {isEditMode ? "Cập nhật" : "Lưu"}
+          Lưu Labeling
         </Button>
       </div>
     </div>

@@ -166,18 +166,13 @@ const QuestionRenderer = ({
         );
       });
     case "LABELING":
-      return group.questions.map((q) => {
-        const { value, resultIsCorrect } = getUserData(q.question_id);
-        return (
-          <RenderLabeling
-            key={q.question_id}
-            question={q}
-            userAnswer={value}
-            resultIsCorrect={resultIsCorrect}
-            {...commonProps}
-          />
-        );
-      });
+      return (
+        <RenderLabeling
+          group={group} // Truyền nguyên group để render Map + Options
+          userAnswers={userAnswers}
+          {...commonProps}
+        />
+      );
     default:
       return (
         <div className="text-red-500">Unknown type: {group.type_question}</div>
