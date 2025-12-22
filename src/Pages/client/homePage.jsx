@@ -30,94 +30,29 @@ import {
   Award,
   Clock,
   ChevronRight,
-  X,
   Filter,
 } from "lucide-react";
 import { useAuth } from "@/context/authContext";
 
-// --- Components Con (SkillCard, TestDetailModal) ---
+// --- IMPORT COMPONENT REVIEW MỚI ---
+import SimpleResultModal from "@/components/test/SimpleResultModal"; // Đảm bảo đường dẫn import đúng file bạn vừa tạo
 
+// --- Components Con (SkillCard) ---
 const SkillCard = ({ type, score, icon: Icon, color }) => (
   <div className="p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-gray-100 dark:border-slate-700 flex items-center justify-between hover:shadow-md transition-shadow">
     <div>
-      <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">{type}</p>
-      <h3 className="text-3xl font-bold text-gray-800 dark:text-white">{score}</h3>
+      <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">
+        {type}
+      </p>
+      <h3 className="text-3xl font-bold text-gray-800 dark:text-white">
+        {score}
+      </h3>
     </div>
     <div className={`p-3 rounded-xl ${color}`}>
       <Icon size={24} className="text-white" />
     </div>
   </div>
 );
-
-const TestDetailModal = ({ result, onClose }) => {
-  if (!result) return null;
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200 border border-transparent dark:border-slate-700">
-        <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-purple-50 dark:bg-slate-700">
-          <div>
-            <h3 className="text-xl font-bold text-purple-900 dark:text-white">
-              {result.test?.title || "Test Detail"}
-            </h3>
-            <p className="text-sm text-purple-600 dark:text-purple-400">
-              Ngày làm: {new Date(result.createdAt).toLocaleDateString("vi-VN")}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-purple-100 dark:hover:bg-slate-600 rounded-full transition-colors"
-          >
-            <X size={24} className="text-purple-700 dark:text-slate-300" />
-          </button>
-        </div>
-        <div className="p-6 overflow-y-auto">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded-xl text-center">
-              <p className="text-xs text-gray-500 dark:text-slate-400">Score</p>
-              <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{result.score}</p>
-            </div>
-            <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded-xl text-center">
-              <p className="text-xs text-gray-500 dark:text-slate-400">Correct</p>
-              <p className="text-xl font-bold text-green-600 dark:text-green-400">
-                {result.total_correct}/{result.total_questions}
-              </p>
-            </div>
-            <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded-xl text-center">
-              <p className="text-xs text-gray-500 dark:text-slate-400">ID</p>
-              <p className="text-xs font-mono text-gray-600 dark:text-slate-300 truncate px-2">
-                {result.idTestResult.slice(0, 8)}...
-              </p>
-            </div>
-          </div>
-          {/* Detail Answers */}
-          <div className="space-y-2">
-            {result.userAnswer?.length > 0 ? (
-              result.userAnswer.map((ans, idx) => (
-                <div
-                  key={idx}
-                  className={`p-2 rounded border text-sm flex justify-between ${ans.isCorrect
-                    ? "bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-900 dark:text-green-300"
-                    : "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-900 dark:text-red-300"
-                    }`}
-                >
-                  <span>{ans.answerText}</span>
-                  <span className="font-bold">
-                    {ans.isCorrect ? "Đúng" : "Sai"}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="text-center text-gray-400 dark:text-slate-500 italic">
-                Chưa có dữ liệu chi tiết
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // --- MAIN COMPONENT ---
 
@@ -138,7 +73,10 @@ const HomePage = () => {
 
   // --- UI States ---
   const [loading, setLoading] = useState(true);
+
+  // State này dùng để lưu item lịch sử được chọn (để lấy ID truyền vào Modal)
   const [selectedTestDetail, setSelectedTestDetail] = useState(null);
+
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [tempTarget, setTempTarget] = useState({});
 
@@ -183,21 +121,19 @@ const HomePage = () => {
     fetchData();
   }, [idUser]);
 
-  // --- LOGIC 1: Xử lý Target & Countdown (MỚI) ---
+  // --- LOGIC 1: Xử lý Target & Countdown ---
   const targetInfo = useMemo(() => {
     if (!target.targetExamDate) return null;
 
     const now = new Date();
     const examDate = new Date(target.targetExamDate);
 
-    // Format ngày hiển thị (VD: 27/03/2026)
     const formattedDate = examDate.toLocaleDateString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
 
-    // Tính số ngày còn lại (Countdown)
     const diffTime = examDate.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -280,9 +216,8 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 font-sans text-gray-800 dark:text-gray-100 transition-colors duration-300">
-      {/* --- HEADER & TARGET INFO BAR (ĐÃ CẬP NHẬT UI) --- */}
+      {/* --- HEADER & TARGET INFO BAR --- */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-6">
-        {/* Title Section */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Dashboard Tổng quan
@@ -292,12 +227,14 @@ const HomePage = () => {
           </p>
         </div>
 
-        {/* Target Info Box */}
         <div className="bg-white dark:bg-slate-800 p-1 rounded-2xl shadow-sm border border-purple-100 dark:border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center">
-          {/* Block 1: Target Band */}
+          {/* Target Info Blocks... (Giữ nguyên phần này) */}
           <div className="flex items-center gap-4 px-6 py-4 border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-slate-700 min-w-[160px]">
             <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-xl">
-              <Target className="text-purple-600 dark:text-purple-400" size={24} />
+              <Target
+                className="text-purple-600 dark:text-purple-400"
+                size={24}
+              />
             </div>
             <div>
               <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">
@@ -308,11 +245,12 @@ const HomePage = () => {
               </p>
             </div>
           </div>
-
-          {/* Block 2: Exam Date */}
           <div className="flex items-center gap-4 px-6 py-4 border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-slate-700 min-w-[180px]">
             <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-xl">
-              <Calendar className="text-blue-600 dark:text-blue-400" size={24} />
+              <Calendar
+                className="text-blue-600 dark:text-blue-400"
+                size={24}
+              />
             </div>
             <div>
               <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">
@@ -323,16 +261,16 @@ const HomePage = () => {
               </p>
             </div>
           </div>
-
-          {/* Block 3: Countdown */}
           <div className="flex items-center gap-4 px-6 py-4 min-w-[180px]">
             <div
-              className={`${targetInfo?.daysLeft <= 30 ? "bg-red-100" : "bg-green-100"
-                } p-3 rounded-xl transition-colors`}
+              className={`${
+                targetInfo?.daysLeft <= 30 ? "bg-red-100" : "bg-green-100"
+              } p-3 rounded-xl transition-colors`}
             >
               <Clock
-                className={`${targetInfo?.daysLeft <= 30 ? "text-red-600" : "text-green-600"
-                  }`}
+                className={`${
+                  targetInfo?.daysLeft <= 30 ? "text-red-600" : "text-green-600"
+                }`}
                 size={24}
               />
             </div>
@@ -342,10 +280,11 @@ const HomePage = () => {
               </p>
               <div className="flex items-baseline gap-1">
                 <p
-                  className={`text-2xl font-extrabold ${targetInfo?.daysLeft <= 30
-                    ? "text-red-600"
-                    : "text-green-600"
-                    }`}
+                  className={`text-2xl font-extrabold ${
+                    targetInfo?.daysLeft <= 30
+                      ? "text-red-600"
+                      : "text-green-600"
+                  }`}
                 >
                   {targetInfo ? targetInfo.daysLeft : "--"}
                 </p>
@@ -356,7 +295,6 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* Edit Button */}
           <div className="px-4 py-4 sm:pl-0">
             <button
               onClick={() => setIsEditingTarget(true)}
@@ -404,7 +342,6 @@ const HomePage = () => {
             <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
               Tiến độ học tập
             </h3>
-
             <div className="flex gap-2 items-center flex-wrap">
               {/* Filter Skill */}
               <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-slate-700 rounded-lg border border-purple-100 dark:border-slate-600 mr-2">
@@ -422,7 +359,6 @@ const HomePage = () => {
                   <option value="SPEAKING">Speaking</option>
                 </select>
               </div>
-
               {/* Filter Month */}
               <select
                 className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-sm text-gray-800 dark:text-white rounded-lg p-2 focus:outline-none disabled:opacity-50"
@@ -437,7 +373,6 @@ const HomePage = () => {
                   </option>
                 ))}
               </select>
-
               {/* Filter Year */}
               <select
                 className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-sm text-gray-800 dark:text-white rounded-lg p-2 focus:outline-none"
@@ -485,59 +420,59 @@ const HomePage = () => {
                   <Legend />
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "OVERALL") && (
-                      <Line
-                        name="Overall"
-                        type="monotone"
-                        dataKey="OVERALL"
-                        stroke="#8884d8"
-                        strokeWidth={3}
-                        dot={{ r: 4 }}
-                      />
-                    )}
+                    <Line
+                      name="Overall"
+                      type="monotone"
+                      dataKey="OVERALL"
+                      stroke="#8884d8"
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                    />
+                  )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "READING") && (
-                      <Line
-                        name="Reading"
-                        type="monotone"
-                        dataKey="READING"
-                        stroke="#3b82f6"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    )}
+                    <Line
+                      name="Reading"
+                      type="monotone"
+                      dataKey="READING"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "LISTENING") && (
-                      <Line
-                        name="Listening"
-                        type="monotone"
-                        dataKey="LISTENING"
-                        stroke="#22c55e"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    )}
+                    <Line
+                      name="Listening"
+                      type="monotone"
+                      dataKey="LISTENING"
+                      stroke="#22c55e"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "WRITING") && (
-                      <Line
-                        name="Writing"
-                        type="monotone"
-                        dataKey="WRITING"
-                        stroke="#eab308"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    )}
+                    <Line
+                      name="Writing"
+                      type="monotone"
+                      dataKey="WRITING"
+                      stroke="#eab308"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "SPEAKING") && (
-                      <Line
-                        name="Speaking"
-                        type="monotone"
-                        dataKey="SPEAKING"
-                        stroke="#ef4444"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    )}
+                    <Line
+                      name="Speaking"
+                      type="monotone"
+                      dataKey="SPEAKING"
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -591,7 +526,9 @@ const HomePage = () => {
 
       {/* Bảng Lịch sử */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-        <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Lịch sử làm bài</h3>
+        <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">
+          Lịch sử làm bài
+        </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-gray-300 font-semibold uppercase">
@@ -605,7 +542,10 @@ const HomePage = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {history.map((item) => (
-                <tr key={item.idTestResult} className="hover:bg-purple-50 dark:hover:bg-slate-700">
+                <tr
+                  key={item.idTestResult}
+                  className="hover:bg-purple-50 dark:hover:bg-slate-700"
+                >
                   <td className="p-3 font-medium max-w-[200px] truncate">
                     {item.test?.title}
                   </td>
@@ -639,7 +579,9 @@ const HomePage = () => {
       {isEditingTarget && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl w-96 shadow-lg border border-transparent dark:border-slate-700">
-            <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Cập nhật mục tiêu</h3>
+            <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">
+              Cập nhật mục tiêu
+            </h3>
             <div className="space-y-4">
               <div>
                 <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block">
@@ -699,10 +641,11 @@ const HomePage = () => {
         </div>
       )}
 
-      {/* 2. Modal Chi tiết lịch sử */}
-      <TestDetailModal
-        result={selectedTestDetail}
+      {/* 2. [THAY THẾ] Modal Chi tiết lịch sử MỚI */}
+      <SimpleResultModal
+        open={!!selectedTestDetail}
         onClose={() => setSelectedTestDetail(null)}
+        idTestResult={selectedTestDetail?.idTestResult}
       />
 
       {/* 3. Modal Xác nhận làm bài (Recommended) */}
