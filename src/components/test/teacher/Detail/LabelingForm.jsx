@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Button, Input, Select, message, Card, Spin } from "antd";
+import { Button, Input, Select, message, Card, Spin, Radio } from "antd";
 import { DeleteOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
 import {
   getQuestionsByIdGroupAPI,
@@ -10,6 +10,35 @@ import {
 
 const { Option } = Select;
 
+// Hàm tạo nhãn tự động theo index
+const getLabelByKeyType = (index, type) => {
+  if (type === "ROMAN") {
+    const romans = [
+      "I",
+      "II",
+      "III",
+      "IV",
+      "V",
+      "VI",
+      "VII",
+      "VIII",
+      "IX",
+      "X",
+      "XI",
+      "XII",
+      "XIII",
+      "XIV",
+      "XV",
+    ];
+    return romans[index] || String(index + 1);
+  }
+  if (type === "NUMBER") {
+    return String(index + 1);
+  }
+  // Default ABC
+  return String.fromCharCode(65 + index);
+};
+
 const LabelingForm = ({
   idGroup,
   groupData,
@@ -19,10 +48,13 @@ const LabelingForm = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // 1. POOL OPTIONS: Danh sách các nhãn chung (A, B, C...)
+  // Mặc định là ABC
+  const [labelType, setLabelType] = useState("ABC");
+
+  // 1. POOL OPTIONS
   const [optionsPool, setOptionsPool] = useState([]);
 
-  // 2. QUESTIONS: Danh sách câu hỏi
+  // 2. QUESTIONS
   const [questions, setQuestions] = useState([]);
 
   // --- INIT & LOAD DATA ---
@@ -31,14 +63,13 @@ const LabelingForm = ({
     else initDefault();
   }, [idGroup]);
 
-  // Khởi tạo mặc định
   const initDefault = () => {
     if (groupData?.quantity) {
       const defaultOptionsCount = groupData.quantity + 3;
       const defaultOptions = Array.from(
         { length: defaultOptionsCount },
         (_, i) => ({
-          key: String.fromCharCode(65 + i), // A, B, C...
+          key: getLabelByKeyType(i, "ABC"),
           text: "",
         })
       );
@@ -66,20 +97,31 @@ const LabelingForm = ({
       if (!group || !group.question || group.question.length === 0) {
         initDefault();
       } else {
-        // --- 1. Load Options Pool ---
+        // Load Options
         const firstQId = group.question[0].idQuestion;
         const firstAnsRes = await getAnswersByIdQuestionAPI(firstQId);
         const ansData = firstAnsRes?.data || [];
 
+        // Sắp xếp để đảm bảo thứ tự
         const loadedOptions = ansData
           .map((a) => ({
             key: a.matching_key,
             text: a.answer_text || "",
           }))
-          .sort((a, b) => (a.key || "").localeCompare(b.key || ""));
+          .sort((a, b) =>
+            a.key.localeCompare(b.key, undefined, {
+              numeric: true,
+              sensitivity: "base",
+            })
+          );
 
         if (loadedOptions.length > 0) {
           setOptionsPool(loadedOptions);
+          // Tự động nhận diện kiểu nhãn đang có trong DB
+          const firstKey = loadedOptions[0].key;
+          if (!isNaN(firstKey)) setLabelType("NUMBER");
+          else if (["I", "V", "X"].includes(firstKey[0])) setLabelType("ROMAN");
+          else setLabelType("ABC");
         } else {
           setOptionsPool([
             { key: "A", text: "" },
@@ -87,12 +129,11 @@ const LabelingForm = ({
           ]);
         }
 
-        // --- 2. Load Questions ---
+        // Load Questions
         const loadedQuestions = await Promise.all(
           group.question.map(async (q) => {
             const qAnsRes = await getAnswersByIdQuestionAPI(q.idQuestion);
             const qAnsData = qAnsRes?.data || [];
-
             const correctAns = qAnsData.find(
               (a) => a.matching_value === "CORRECT"
             );
@@ -105,43 +146,65 @@ const LabelingForm = ({
             };
           })
         );
-
         loadedQuestions.sort((a, b) => a.numberQuestion - b.numberQuestion);
         setQuestions(loadedQuestions);
       }
     } catch (err) {
       console.error(err);
-      message.error("Lỗi tải dữ liệu Labeling");
+      message.error("Lỗi tải dữ liệu");
     } finally {
       setLoading(false);
     }
   };
 
-  // --- HANDLERS ---
-  const handleOptionChange = (idx, val) => {
-    const newPool = [...optionsPool];
-    newPool[idx].text = val;
+  // --- LOGIC TỰ ĐỘNG ĐÁNH SỐ LẠI ---
+  // Mỗi khi list thay đổi hoặc type thay đổi, ta chạy lại key cho toàn bộ list
+  const regenerateKeys = (currentPool, type) => {
+    return currentPool.map((opt, index) => ({
+      ...opt,
+      key: getLabelByKeyType(index, type),
+    }));
+  };
+
+  // Đổi kiểu nhãn (ABC -> 123)
+  const handleLabelTypeChange = (e) => {
+    const newType = e.target.value;
+    setLabelType(newType);
+
+    // Refresh lại toàn bộ key theo kiểu mới
+    const newPool = regenerateKeys(optionsPool, newType);
     setOptionsPool(newPool);
+
+    // Reset đáp án đã chọn vì Key thay đổi
+    setQuestions(questions.map((q) => ({ ...q, correctKey: undefined })));
+    message.info("Đã đổi kiểu nhãn. Vui lòng chọn lại đáp án đúng.");
   };
 
+  // Thêm nhãn
   const handleAddOption = () => {
-    let nextKey = "A";
-    if (optionsPool.length > 0) {
-      const lastKey = optionsPool[optionsPool.length - 1].key;
-      const lastCharCode = lastKey.charCodeAt(0);
-      nextKey = String.fromCharCode(lastCharCode + 1);
-    }
-    setOptionsPool([...optionsPool, { key: nextKey, text: "" }]);
+    const newPool = [...optionsPool, { text: "" }]; // Thêm item rỗng trước
+    // Tự động tính key cho tất cả
+    setOptionsPool(regenerateKeys(newPool, labelType));
   };
 
+  // Xóa nhãn
   const handleRemoveOption = (idx) => {
     const keyRemoved = optionsPool[idx].key;
+
+    // Cập nhật câu hỏi nếu đang chọn key bị xóa
     const newQuestions = questions.map((q) =>
       q.correctKey === keyRemoved ? { ...q, correctKey: undefined } : q
     );
     setQuestions(newQuestions);
 
-    const newPool = optionsPool.filter((_, i) => i !== idx);
+    const tempPool = optionsPool.filter((_, i) => i !== idx);
+    // Tự động đánh số lại (A, B, C... ko bị lủng lỗ)
+    setOptionsPool(regenerateKeys(tempPool, labelType));
+  };
+
+  const handleOptionTextChange = (idx, val) => {
+    const newPool = [...optionsPool];
+    newPool[idx].text = val;
     setOptionsPool(newPool);
   };
 
@@ -155,27 +218,15 @@ const LabelingForm = ({
   const handleSave = async () => {
     try {
       setSaving(true);
-
       if (optionsPool.length === 0) {
-        message.warning("Cần ít nhất 1 lựa chọn (Option)");
+        message.warning("Cần ít nhất 1 lựa chọn");
         setSaving(false);
         return;
       }
 
-      // Warn if user hasn't filled in text (helps avoid the empty string issue)
-      const emptyTextCount = optionsPool.filter(
-        (o) => !o.text || !o.text.trim()
-      ).length;
-      if (emptyTextCount > 0) {
-        // Just a warning, still allow save
-        message.warning(
-          `Lưu ý: Có ${emptyTextCount} nhãn chưa nhập nội dung mô tả.`
-        );
-      }
-
       const payload = questions.map((q) => {
         const answersPayload = optionsPool.map((opt) => ({
-          answer_text: opt.text ? opt.text.trim() : "", // Explicitly trim
+          answer_text: opt.text ? opt.text.trim() : "",
           matching_key: opt.key,
           matching_value: opt.key === q.correctKey ? "CORRECT" : null,
         }));
@@ -200,8 +251,7 @@ const LabelingForm = ({
         promises.push(createManyQuestion({ questions: toCreate }));
 
       await Promise.all(promises);
-      message.success("Lưu Labeling thành công!");
-
+      message.success("Lưu thành công!");
       if (onRefresh) onRefresh();
       loadData();
     } catch (err) {
@@ -216,16 +266,32 @@ const LabelingForm = ({
 
   return (
     <div className="space-y-6 pb-4">
-      {/* SECTION 1: OPTIONS POOL */}
       <Card
         title={
-          <div className="flex justify-between items-center">
-            <span className="text-blue-700 font-bold">
-              Bước 1: Tạo danh sách Nhãn (Options)
-            </span>
-            <span className="text-xs text-gray-500 font-normal">
-              Nhập mô tả cho từng nhãn
-            </span>
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-center">
+              <span className="text-blue-700 font-bold">
+                Bước 1: Danh sách Nhãn (Options)
+              </span>
+              <span className="text-xs text-gray-500 font-normal">
+                Nhập text (nếu có) hoặc để trống
+              </span>
+            </div>
+
+            {/* THANH CHỌN KIỂU NHÃN - DẠNG BUTTON */}
+            <div className="flex items-center gap-3 text-sm font-normal">
+              <span className="text-gray-600">Loại nhãn:</span>
+              <Radio.Group
+                value={labelType}
+                onChange={handleLabelTypeChange}
+                buttonStyle="solid"
+                size="middle"
+              >
+                <Radio.Button value="ABC">A, B, C</Radio.Button>
+                <Radio.Button value="ROMAN">I, II, III</Radio.Button>
+                <Radio.Button value="NUMBER">1, 2, 3</Radio.Button>
+              </Radio.Group>
+            </div>
           </div>
         }
         size="small"
@@ -234,14 +300,15 @@ const LabelingForm = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {optionsPool.map((opt, idx) => (
             <div key={idx} className="flex items-center gap-2">
-              <div className="flex-none w-10 h-9 flex items-center justify-center bg-white border border-blue-300 rounded font-bold text-blue-600 shadow-sm">
+              {/* DISPLAY KEY (KHÔNG CHO SỬA) */}
+              <div className="flex-none w-10 h-9 flex items-center justify-center bg-blue-600 text-white font-bold rounded shadow-sm select-none">
                 {opt.key}
               </div>
+
               <Input
-                placeholder={`Nhập nội dung cho ${opt.key}...`}
+                placeholder={`Mô tả cho ${opt.key} (có thể để trống)`}
                 value={opt.text}
-                onChange={(e) => handleOptionChange(idx, e.target.value)}
-                status={!opt.text ? "warning" : ""}
+                onChange={(e) => handleOptionTextChange(idx, e.target.value)}
               />
               <Button
                 type="text"
@@ -256,17 +323,14 @@ const LabelingForm = ({
           type="dashed"
           icon={<PlusOutlined />}
           onClick={handleAddOption}
-          className="mt-4 bg-white"
+          className="mt-4 bg-white block w-full"
         >
-          Thêm nhãn
+          + Thêm nhãn mới
         </Button>
       </Card>
 
-      {/* SECTION 2: QUESTIONS */}
       <Card
-        title={
-          <span className="font-bold">Bước 2: Gán đáp án cho câu hỏi</span>
-        }
+        title={<span className="font-bold">Bước 2: Gán đáp án</span>}
         size="small"
       >
         <div className="space-y-4">
@@ -284,7 +348,7 @@ const LabelingForm = ({
                   Mô tả câu hỏi
                 </label>
                 <Input
-                  placeholder="Mô tả vị trí (không bắt buộc)..."
+                  placeholder="Mô tả vị trí..."
                   value={q.content}
                   onChange={(e) =>
                     handleQuestionChange(idx, "content", e.target.value)
@@ -310,15 +374,11 @@ const LabelingForm = ({
                       <span className="font-bold text-blue-600 mr-2">
                         {opt.key}.
                       </span>
-                      {opt.text ? (
-                        opt.text.length > 20 ? (
-                          opt.text.substring(0, 20) + "..."
-                        ) : (
-                          opt.text
-                        )
-                      ) : (
-                        <span className="text-gray-400 italic">(Trống)</span>
-                      )}
+                      {opt.text
+                        ? opt.text.length > 15
+                          ? opt.text.substring(0, 15) + "..."
+                          : opt.text
+                        : "(Trống)"}
                     </Option>
                   ))}
                 </Select>
