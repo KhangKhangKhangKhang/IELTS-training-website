@@ -8,6 +8,7 @@ import {
   Popconfirm,
   Upload,
   Checkbox,
+  Input,
 } from "antd";
 import { DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import { Textarea } from "@/components/ui/textarea";
@@ -254,11 +255,12 @@ const ReadingPartPanel = ({
                 <label className="block text-sm font-medium mb-1">
                   Tiêu đề nhóm
                 </label>
-                <Textarea
-                  placeholder="Questions 1-5..."
+                <Input.TextArea // SỬA: Dùng Input.TextArea của Antd
+                  placeholder="Questions 1-5... (Có thể xuống dòng)"
                   value={groupTitle}
                   onChange={(e) => setGroupTitle(e.target.value)}
-                  className="w-full min-h-[100px] resize-y"
+                  className="w-full"
+                  rows={4} // Cho phép hiển thị nhiều dòng mặc định
                 />
               </div>
               <div className="flex items-end gap-3">

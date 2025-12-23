@@ -26,7 +26,7 @@ const MCQForm = ({
     { content: "", options: [{ text: "", correct: false }] },
   ]);
 
-  // --- 1. INIT DATA ---
+  // --- 1. INIT DATA (Khi component mount) ---
   useEffect(() => {
     let _isMultiple = false;
     if (groupData?.title) {
@@ -36,40 +36,40 @@ const MCQForm = ({
     }
     setIsMultipleMode(_isMultiple);
 
+    // Nếu chưa load và chưa có idGroup (trường hợp hiếm), init form
     if (
       groupData?.quantity &&
       !hasQuestionsLoaded &&
       loadedQuestions.length === 0 &&
       !idGroup
     ) {
-      // Nếu là Multiple Mode: Chỉ tạo 1 form duy nhất đại diện
-      const quantityToInit = _isMultiple ? 1 : groupData.quantity;
-
-      const initialQuestions = Array(quantityToInit)
-        .fill(null)
-        .map(() => ({
-          content: "",
-          options: [
-            { text: "", correct: false },
-            { text: "", correct: false },
-            { text: "", correct: false },
-            { text: "", correct: false },
-          ],
-        }));
-      setFormQuestions(initialQuestions);
+      initEmptyForms(_isMultiple, groupData.quantity);
     }
-  }, [
-    groupData?.quantity,
-    groupData?.title,
-    hasQuestionsLoaded,
-    loadedQuestions.length,
-    idGroup,
-  ]);
+  }, [groupData, hasQuestionsLoaded, loadedQuestions.length, idGroup]);
 
-  // --- 2. LOAD DATA ---
+  // --- 2. LOAD DATA (Khi có idGroup) ---
   useEffect(() => {
     if (idGroup) loadData();
   }, [idGroup]);
+
+  // Hàm hỗ trợ tạo form rỗng
+  const initEmptyForms = (isMultiple, quantity) => {
+    // Nếu Multiple: Chỉ tạo 1 form. Nếu Single: Tạo N form theo quantity.
+    const quantityToInit = isMultiple ? 1 : quantity || 1;
+
+    const initialQuestions = Array(quantityToInit)
+      .fill(null)
+      .map(() => ({
+        content: "",
+        options: [
+          { text: "", correct: false },
+          { text: "", correct: false },
+          { text: "", correct: false },
+          { text: "", correct: false },
+        ],
+      }));
+    setFormQuestions(initialQuestions);
+  };
 
   const loadData = async () => {
     try {
@@ -77,21 +77,21 @@ const MCQForm = ({
       const res = await getQuestionsByIdGroupAPI(idGroup);
       const group = res?.data?.[0];
 
+      // CASE 1: ĐÃ CÓ CÂU HỎI TRONG DB
       if (group && group.question?.length > 0) {
         const loadedQ = await Promise.all(
           group.question.map(async (q) => {
             const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
             const answersData = ansRes?.data || [];
-            answersData.sort((a, b) =>
-              (a.matching_key || "").localeCompare(b.matching_key || "")
-            );
 
+            // Sort answers if needed, then map to options
             let options = answersData.map((a) => ({
               text: a.answer_text || "",
               correct: a.matching_value === "CORRECT",
               key: a.matching_key,
             }));
 
+            // Fallback options nếu lỗi data
             if (options.length === 0) {
               options = [
                 { text: "", correct: false },
@@ -110,29 +110,35 @@ const MCQForm = ({
           })
         );
 
-        // LOGIC HIỂN THỊ KHI EDIT (Multiple Mode)
+        // Logic Multiple Mode: Gộp hiển thị
         if (group.title.startsWith("Multiple |||") && loadedQ.length > 0) {
-          // Lấy câu đầu tiên làm mẫu form
-          // Vì theo logic mới, tất cả các câu đều có correct giống hệt nhau
-          // nên chỉ cần lấy options của câu đầu tiên là đủ.
+          // Lấy câu đầu tiên làm mẫu, lưu lại realIds để update
           const mergedForm = [
             {
               ...loadedQ[0],
-              // Lưu mảng ID thực để update sau này
               realIds: loadedQ.map((q) => q.idQuestion),
             },
           ];
-
           setFormQuestions(mergedForm);
           setLoadedQuestions(loadedQ);
         } else {
+          // Single Mode: Hiển thị tất cả
           setFormQuestions(loadedQ);
           setLoadedQuestions(loadedQ);
         }
-
         setHasQuestionsLoaded(true);
-      } else {
-        setHasQuestionsLoaded(false);
+      }
+      // CASE 2: CHƯA CÓ CÂU HỎI (Nhóm mới tạo) -> AUTO GEN FORM
+      else {
+        let _isMultiple = false;
+        if (groupData?.title && groupData.title.startsWith("Multiple |||")) {
+          _isMultiple = true;
+        }
+        // Gọi hàm tạo form rỗng dựa trên quantity
+        initEmptyForms(_isMultiple, groupData?.quantity);
+
+        setLoadedQuestions([]);
+        setHasQuestionsLoaded(false); // Để hiển thị màn hình nhập liệu ngay
       }
     } catch (err) {
       console.error(err);
@@ -142,6 +148,7 @@ const MCQForm = ({
     }
   };
 
+  // --- HANDLERS ---
   const handleAddQuestion = () => {
     setFormQuestions([
       ...formQuestions,
@@ -172,17 +179,13 @@ const MCQForm = ({
     setFormQuestions(updated);
   };
 
-  // --- 3. [SỬA LẠI] BUILD PAYLOAD ---
+  // --- BUILD PAYLOAD ---
   const buildPayload = (questions, isUpdate = false) => {
     // A. NẾU LÀ MULTIPLE MODE (GỘP)
     if (isMultipleMode) {
       const masterQ = questions[0];
-
-      // Đếm số đáp án đúng user đã tick
       const correctCount = masterQ.options.filter((opt) => opt.correct).length;
 
-      // Validate: Số lượng đáp án đúng phải bằng số lượng câu hỏi quy định
-      // VD: Group quantity = 2 thì phải tick đúng 2 cái Correct
       if (correctCount !== groupData.quantity) {
         message.warning(
           `Bạn cần chọn đúng ${groupData.quantity} đáp án ĐÚNG cho nhóm câu hỏi này.`
@@ -195,26 +198,21 @@ const MCQForm = ({
         ? loadedQuestions[0].numberQuestion
         : questionNumberOffset + loadedQuestions.length + 1;
 
-      // Vòng lặp tạo ra N câu hỏi (N = quantity)
       for (let i = 0; i < groupData.quantity; i++) {
-        // [NEW LOGIC]: Tất cả các câu hỏi sinh ra đều có bộ đáp án GIỐNG HỆT NHAU
-        // (Cả A và B đều Correct ở tất cả các câu)
         const answersPayload = masterQ.options.map((opt, oIdx) => ({
           answer_text: opt.text || "",
           matching_key: String.fromCharCode(65 + oIdx),
-          // Nếu option được tick là correct -> CORRECT, ngược lại INCORRECT
           matching_value: opt.correct ? "CORRECT" : "INCORRECT",
         }));
 
         const qPayload = {
           idGroupOfQuestions: idGroup,
           idPart: groupData?.idPart || null,
-          numberQuestion: startNumber + i, // Câu 1, Câu 2...
+          numberQuestion: startNumber + i,
           content: masterQ.content,
           answers: answersPayload,
         };
 
-        // Map ID cũ khi Update
         if (isUpdate && masterQ.realIds && masterQ.realIds[i]) {
           qPayload.idQuestion = masterQ.realIds[i];
         }
@@ -224,7 +222,7 @@ const MCQForm = ({
       return payload;
     }
 
-    // B. NẾU LÀ SINGLE MODE (GIỮ NGUYÊN)
+    // B. NẾU LÀ SINGLE MODE
     return questions.map((q, qIdx) => {
       const answersPayload = q.options.map((opt, oIdx) => ({
         answer_text: opt.text || "",
@@ -304,7 +302,6 @@ const MCQForm = ({
             numberQuestionDisplay: `${loadedQuestions[0].numberQuestion} - ${
               loadedQuestions[loadedQuestions.length - 1].numberQuestion
             }`,
-            // Hiển thị đúng những gì đã lưu (Tất cả correct đều được đánh dấu)
             options: loadedQuestions[0].options,
           },
         ]
