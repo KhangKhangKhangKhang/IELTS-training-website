@@ -23,6 +23,14 @@ export const FinistTestAPI = async (idUser, idTestResult, data) => {
   return res.data;
 };
 
+export const FinishTestWritingAPI = async (idTestResult, idUser, data) => {
+  const res = await API.patch(
+    `/user-test-result/finish-test-writing/${idTestResult}/${idUser}`,
+    data
+  );
+  return res.data;
+};
+
 export const getManyAnswersAPI = async (idTestResult, idUser) => {
   const res = await API.get(
     `/user-answer/get-all-user-answers-by-idUser-and-idTestResult/${idTestResult}/${idUser}`

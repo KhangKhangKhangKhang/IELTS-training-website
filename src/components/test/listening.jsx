@@ -101,6 +101,32 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
   const [timeLeft, setTimeLeft] = useState((duration || 40) * 60);
   const isSubmittingRef = useRef(false);
 
+  // Resizer state
+  const [leftPanelWidth, setLeftPanelWidth] = useState(55);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+      if (newWidth >= 30 && newWidth <= 70) {
+        setLeftPanelWidth(newWidth);
+      }
+    };
+    const handleMouseUp = () => setIsDragging(false);
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
   // --- 1. INITIAL LOAD & SYNC ---
   useEffect(() => {
     if (
@@ -441,25 +467,25 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
   const renderPart = cachedPart || part;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex flex-col font-sans transition-colors duration-300">
       {/* 1. TOP BAR */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md h-[72px] px-6 flex items-center justify-between">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 shadow-lg border-b border-slate-200 dark:border-slate-800 h-[72px] px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-full bg-blue-100 text-blue-600">
+          <div className="p-2 rounded-full bg-blue-600">
             {isReviewMode ? (
-              <EyeOutlined className="text-xl" />
+              <EyeOutlined className="text-2xl text-white" />
             ) : (
-              <CustomerServiceOutlined className="text-xl" />
+              <CustomerServiceOutlined className="text-2xl text-white" />
             )}
           </div>
           <div className="overflow-hidden">
             <h1
-              className="text-lg font-bold truncate max-w-[250px] md:max-w-md m-0 leading-tight"
+              className="text-lg font-bold truncate max-w-[250px] md:max-w-md m-0 leading-tight text-slate-800 dark:text-white"
               title={test.title}
             >
               {test.title}
             </h1>
-            <p className="text-xs text-gray-500 m-0">IELTS Listening Test</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 m-0 font-medium">🎧 IELTS Listening Test</p>
           </div>
         </div>
 
@@ -467,10 +493,12 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-4 py-1.5 rounded-lg border shadow-sm ${
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${
                   timeLeft < 300
-                    ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
-                    : "bg-gray-50 text-gray-700 border-gray-200"
+                    ? "bg-red-600 text-white border-red-500 animate-pulse"
+                    : timeLeft < 600
+                    ? "bg-orange-600 text-white border-orange-500"
+                    : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
                 }`}
               >
                 <ClockCircleOutlined />
@@ -481,18 +509,21 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
                 danger
                 size="large"
                 onClick={() => handleFinish(false)}
-                className="font-semibold shadow-md hover:scale-105 transition-transform"
+                className="font-bold shadow-xl hover:scale-105 transition-transform bg-blue-600 hover:bg-blue-700 border-0 h-12 px-6"
               >
-                NỘP BÀI
+                🚀 SUBMIT TEST
               </Button>
             </>
           ) : (
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-xl text-blue-600 mr-2">
-                Score: {bandScore}
+            <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700">
+              <span className="font-bold text-2xl text-blue-400">
+                ⭐ Score: {bandScore}
               </span>
-              <Button onClick={() => setIsReviewMode(false)}>
-                Thoát xem lại
+              <Button
+                onClick={() => setIsReviewMode(false)}
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0"
+              >
+                Exit Review
               </Button>
             </div>
           )}
@@ -500,19 +531,25 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
       </div>
 
       {/* 2. AUDIO PLAYER */}
-      <div className="fixed top-[72px] left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm py-3 px-6">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <div className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wider shrink-0">
-            Audio Source
+      <div className="fixed top-[72px] left-0 right-0 z-40 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-lg py-4 px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md uppercase tracking-wider shrink-0">
+              🎵 Audio Source
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Listen carefully - audio plays only once!</div>
           </div>
           <audio
             controls
             controlsList="nodownload"
-            className="w-full h-10 outline-none rounded-full shadow-inner bg-gray-100"
+            className="w-full h-12 outline-none rounded-2xl shadow-xl"
             src={test.audioUrl}
-            style={{ borderRadius: "20px" }}
+            style={{ 
+              borderRadius: "16px",
+              filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1))"
+            }}
           >
-            Trình duyệt của bạn không hỗ trợ audio.
+            Your browser does not support audio.
           </audio>
         </div>
       </div>
@@ -525,13 +562,21 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`px-6 py-2.5 rounded-full border text-sm font-bold transition-all shadow-sm whitespace-nowrap ${
+              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${
                 idx === activePartIndex
-                  ? "bg-blue-600 text-white border-blue-600 ring-2 ring-blue-200"
-                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                  ? "bg-blue-600 text-white border-blue-500 scale-105"
+                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
               }`}
             >
-              {p.namePart || `Part ${idx + 1}`}
+              <div className="flex items-center gap-2">
+                <span className={idx === activePartIndex ? "text-xl" : "text-lg"}>
+                  {idx === 0 ? "🎧" : idx === 1 ? "🎵" : idx === 2 ? "🎼" : "🎹"}
+                </span>
+                <span>{p.namePart || `Part ${idx + 1}`}</span>
+                {idx === activePartIndex && (
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                )}
+              </div>
             </button>
           ))}
         </div>
@@ -539,7 +584,7 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
         {/* Part Content */}
         <div className="relative min-h-[400px]">
           {isPartLoading && !cachedPart && (
-            <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-[1px] flex items-start justify-center pt-20">
+            <div className="absolute inset-0 z-10 bg-slate-900/60 backdrop-blur-[1px] flex items-start justify-center pt-20">
               <Spin size="large" tip="Đang tải câu hỏi..." />
             </div>
           )}
@@ -565,18 +610,18 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
                   return (
                     <div
                       key={group.idGroupOfQuestions}
-                      className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
+                      className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
                     >
                       {/* Header Group */}
-                      <div className="bg-slate-50/80 px-6 py-4 border-b border-gray-100 flex flex-wrap justify-between items-center gap-4">
-                        <h3 className="font-bold text-slate-800 text-lg">
+                      <div className="bg-slate-50 dark:bg-slate-900 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-4">
+                        <h3 className="font-bold text-slate-800 dark:text-white text-lg">
                           {displayTitle}
                         </h3>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-white bg-slate-500 px-2 py-1 rounded">
+                          <span className="text-xs font-bold text-white bg-slate-500 dark:bg-slate-600 px-2 py-1 rounded">
                             {finalType}
                           </span>
-                          <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                          <span className="text-xs font-medium bg-blue-600 text-white px-2 py-1 rounded">
                             {group.quantity} Questions
                           </span>
                         </div>

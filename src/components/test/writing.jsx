@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
@@ -210,6 +210,33 @@ const Writing = ({ idTest, duration }) => {
   const [submissionResults, setSubmissionResults] = useState([]);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
 
+  // Resizer state
+  const [leftPanelWidth, setLeftPanelWidth] = useState(45);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef(null);
+
+  // Handle resizer drag
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+      if (newWidth >= 25 && newWidth <= 65) {
+        setLeftPanelWidth(newWidth);
+      }
+    };
+    const handleMouseUp = () => setIsDragging(false);
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
   // === FETCH TASKS WITH LOADING ===
   useEffect(() => {
     const fetchTasks = async () => {
@@ -390,13 +417,16 @@ const Writing = ({ idTest, duration }) => {
   }));
 
   return (
-    <div className="p-4 sm:p-6 md:p-8">
-      <Card className="max-w-6xl mx-auto border-slate-200 shadow-sm">
-        <CardHeader className="flex-row items-center justify-between border-b border-slate-100 pb-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4 sm:p-6 md:p-8 transition-colors duration-300">
+      <Card className="max-w-6xl mx-auto border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 backdrop-blur shadow-lg dark:shadow-xl">
+        <CardHeader className="flex-row items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
           <div className="flex items-center gap-4">
-            <CardTitle className="text-slate-800">Writing Section</CardTitle>
+            <CardTitle className="text-slate-800 dark:text-white flex items-center gap-2">
+              <PenTool className="text-blue-600 dark:text-blue-400" size={24} />
+              Writing Section
+            </CardTitle>
             {multiTask && (
-              <div className="flex border border-slate-200 rounded-md p-1 bg-slate-50">
+              <div className="flex border border-slate-300 dark:border-slate-600 rounded-lg p-1 bg-slate-50 dark:bg-slate-800">
                 {tasks.map((t) => (
                   <Button
                     key={t.task_type}
@@ -405,8 +435,8 @@ const Writing = ({ idTest, duration }) => {
                     className={cn(
                       "font-medium transition-all",
                       currentTask === t.task_type
-                        ? "bg-white text-slate-900 shadow-sm"
-                        : "text-slate-500 hover:text-slate-700"
+                        ? "bg-blue-600 text-white"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700"
                     )}
                   >
                     {t.task_type === "TASK1" ? "Task 1" : "Task 2"}
@@ -415,70 +445,99 @@ const Writing = ({ idTest, duration }) => {
               </div>
             )}
           </div>
-          <div className="text-2xl font-bold font-mono text-red-500 bg-red-50 px-3 py-1 rounded-md border border-red-100">
+          <div className={cn(
+            "text-2xl font-bold font-mono px-4 py-2 rounded-lg border transition-colors",
+            timeLeft < 300 
+              ? "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-800" 
+              : "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-slate-800 border-blue-200 dark:border-slate-700"
+          )}>
             {formatTime(timeLeft)}
           </div>
         </CardHeader>
 
-        <CardContent className="grid md:grid-cols-2 gap-8 pt-6">
-          {/* Left: Task Prompt */}
-          <div className="flex flex-col gap-4 h-[calc(100vh-250px)] overflow-y-auto pr-2 custom-scrollbar">
-            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-              <h3 className="text-xl font-bold text-slate-800 mb-2">
-                {activeTask?.task_type} Prompt
-              </h3>
-              <div className="w-10 h-1 bg-blue-500 rounded-full mb-4"></div>
-              <p className="text-slate-700 whitespace-pre-line leading-relaxed text-sm md:text-base">
-                {activeTask?.title}
-              </p>
+        <CardContent className="pt-6">
+          <div ref={containerRef} className="flex h-[calc(100vh-250px)]" style={{ userSelect: isDragging ? 'none' : 'auto' }}>
+            {/* Left: Task Prompt */}
+            <div 
+              className="flex flex-col gap-4 overflow-y-auto pr-4 custom-scrollbar"
+              style={{ width: `${leftPanelWidth}%` }}
+            >
+              <div className="bg-slate-50 dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700">
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+                  {activeTask?.task_type} Prompt
+                </h3>
+                <div className="w-10 h-1 bg-blue-500 rounded-full mb-4"></div>
+                <p className="text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed text-sm md:text-base">
+                  {activeTask?.title}
+                </p>
+              </div>
+
+              {activeTask?.task_type === "TASK1" && activeTask?.image && (
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+                  <img
+                    src={activeTask.image}
+                    alt="Task 1 Visual"
+                    className="w-full h-auto object-contain"
+                  />
+                </div>
+              )}
             </div>
 
-            {activeTask?.task_type === "TASK1" && activeTask?.image && (
-              <div className="border rounded-lg overflow-hidden">
-                <img
-                  src={activeTask.image}
-                  alt="Task 1 Visual"
-                  className="w-full h-auto object-contain bg-white"
-                />
+            {/* Draggable Resizer */}
+            <div
+              onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
+              className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${
+                isDragging ? 'bg-blue-100 dark:bg-blue-600/30' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              <div className="flex flex-col gap-1">
+                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Right: Writing Area */}
-          <div className="flex flex-col gap-2 h-full">
-            <Textarea
-              placeholder="Start writing your essay here..."
-              value={answers[activeTask?.idWritingTask] || ""}
-              onChange={(e) =>
-                setAnswers((prev) => ({
-                  ...prev,
-                  [activeTask.idWritingTask]: e.target.value,
-                }))
-              }
-              className="flex-1 min-h-[400px] resize-none text-base p-4 border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm font-serif leading-relaxed"
-            />
-            <div className="flex justify-between items-center text-sm text-slate-500 px-1">
-              <span>Time is running...</span>
-              <span
-                className={cn(
-                  wordCount < (activeTask?.task_type === "TASK1" ? 150 : 250)
-                    ? "text-amber-600"
-                    : "text-green-600",
-                  "font-medium"
-                )}
-              >
-                Word count: {wordCount}
-              </span>
+            {/* Right: Writing Area */}
+            <div 
+              className="flex flex-col gap-2 pl-4"
+              style={{ width: `${100 - leftPanelWidth}%` }}
+            >
+              <Textarea
+                placeholder="Start writing your essay here..."
+                value={answers[activeTask?.idWritingTask] || ""}
+                onChange={(e) =>
+                  setAnswers((prev) => ({
+                    ...prev,
+                    [activeTask.idWritingTask]: e.target.value,
+                  }))
+                }
+                className="flex-1 min-h-[400px] resize-none text-base p-4 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg font-serif leading-relaxed"
+              />
+              <div className="flex justify-between items-center text-sm px-1">
+                <span className="text-slate-500">Auto-saved</span>
+                <span
+                  className={cn(
+                    wordCount < (activeTask?.task_type === "TASK1" ? 150 : 250)
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-green-600 dark:text-green-400",
+                    "font-medium"
+                  )}
+                >
+                  {wordCount} / {activeTask?.task_type === "TASK1" ? "150" : "250"} words
+                </span>
+              </div>
             </div>
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-end border-t border-slate-100 pt-4">
+        <CardFooter className="flex justify-end border-t border-slate-200 dark:border-slate-700 pt-4">
           <Button
             onClick={() => handleSubmit(false)}
             size="lg"
             disabled={isSubmitting || isLoadingTasks}
-            className="bg-slate-900 hover:bg-slate-800 text-white min-w-[150px]"
+            className="bg-blue-600 hover:bg-blue-700 text-white min-w-[150px]"
           >
             {isSubmitting ? (
               <>
