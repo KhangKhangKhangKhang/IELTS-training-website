@@ -8,6 +8,7 @@ import {
   Typography,
   Statistic,
   Tag,
+  Collapse,
 } from "antd";
 import {
   TrophyOutlined,
@@ -15,6 +16,11 @@ import {
   FileTextOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  BookOutlined,
+  EditOutlined,
+  LinkOutlined,
+  CheckSquareOutlined,
+  AlertOutlined,
 } from "@ant-design/icons";
 
 import QuestionRenderer from "./reading/render/QuestionRenderer";
@@ -77,6 +83,182 @@ function mapGroupForReview(apiGroup) {
     questions,
   };
 }
+
+// --- COMPONENT: Render Writing Submission ---
+const RenderWritingSubmission = ({ submission }) => {
+  if (!submission) return null;
+
+  const { submission_text, writingTask, feedback } = submission;
+  const feedbackData = feedback && feedback.length > 0 ? feedback[0] : null;
+
+  // Collapse items for detailed feedback
+  const collapseItems = [
+    {
+      key: "1",
+      label: (
+        <span className="font-semibold flex items-center gap-2">
+          <FileTextOutlined /> Task Response
+        </span>
+      ),
+      children: (
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+          {feedbackData?.taskResponse || "No feedback available"}
+        </p>
+      ),
+    },
+    {
+      key: "2",
+      label: (
+        <span className="font-semibold flex items-center gap-2">
+          <LinkOutlined /> Coherence & Cohesion
+        </span>
+      ),
+      children: (
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+          {feedbackData?.coherenceAndCohesion || "No feedback available"}
+        </p>
+      ),
+    },
+    {
+      key: "3",
+      label: (
+        <span className="font-semibold flex items-center gap-2">
+          <BookOutlined /> Lexical Resource
+        </span>
+      ),
+      children: (
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+          {feedbackData?.lexicalResource || "No feedback available"}
+        </p>
+      ),
+    },
+    {
+      key: "4",
+      label: (
+        <span className="font-semibold flex items-center gap-2">
+          <CheckSquareOutlined /> Grammatical Range & Accuracy
+        </span>
+      ),
+      children: (
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+          {feedbackData?.grammaticalRangeAndAccuracy || "No feedback available"}
+        </p>
+      ),
+    },
+  ];
+
+  return (
+    <div className="h-full overflow-y-auto p-6 bg-gray-50 custom-scrollbar">
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* Header Info */}
+        <Card className="shadow-sm">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                {writingTask?.task_type || "Writing Task"}
+              </h3>
+              <p className="text-gray-600 text-sm">
+                {writingTask?.title || "No title"}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Your Submission */}
+        <Card title={<span><EditOutlined /> Your Submission</span>} className="shadow-sm">
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+              {submission_text || "No submission text"}
+            </p>
+          </div>
+          <div className="mt-2 text-sm text-gray-500">
+            Word count: {submission_text ? submission_text.trim().split(/\s+/).length : 0}
+          </div>
+        </Card>
+
+        {/* General Feedback */}
+        {feedbackData?.generalFeedback && (
+          <Card
+            className="shadow-sm"
+            style={{ backgroundColor: '#f0f9ff', borderColor: '#0284c7' }}
+          >
+            <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+              <TrophyOutlined /> General Feedback
+            </h4>
+            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+              {feedbackData.generalFeedback}
+            </p>
+          </Card>
+        )}
+
+        {/* Detailed Criteria */}
+        <Card title="Detailed Evaluation" className="shadow-sm">
+          <Collapse
+            items={collapseItems}
+            defaultActiveKey={["1"]}
+            ghost
+          />
+        </Card>
+
+        {/* Detailed Corrections */}
+        {feedbackData?.detailedCorrections && Array.isArray(feedbackData.detailedCorrections) && feedbackData.detailedCorrections.length > 0 && (
+          <Card
+            title={
+              <span className="flex items-center gap-2">
+                <AlertOutlined className="text-amber-500" /> Improvements & Corrections
+              </span>
+            }
+            className="shadow-sm"
+          >
+            <div className="grid gap-4">
+              {feedbackData.detailedCorrections.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <Tag
+                      color={
+                        item.type === "Grammar"
+                          ? "red"
+                          : item.type === "Lexis"
+                            ? "blue"
+                            : "orange"
+                      }
+                      className="font-semibold"
+                    >
+                      {item.type}
+                    </Tag>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4 mb-3">
+                    <div className="bg-red-50 p-3 rounded border border-red-200">
+                      <span className="font-semibold text-red-700 block mb-2 text-sm">
+                        Original:
+                      </span>
+                      <span className="text-gray-700 line-through decoration-red-400 decoration-2">
+                        {item.mistake}
+                      </span>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded border border-green-200">
+                      <span className="font-semibold text-green-700 block mb-2 text-sm">
+                        Correction:
+                      </span>
+                      <span className="text-gray-700">{item.correct}</span>
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600 italic bg-blue-50 p-3 rounded border border-blue-200">
+                    <span className="font-bold text-blue-700">Explanation: </span>
+                    {item.explanation}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const SimpleResultModal = ({ open, onClose, idTestResult }) => {
   const [loading, setLoading] = useState(false);
@@ -159,9 +341,8 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
         {/* CỘT PHẢI: QUESTIONS */}
         {/* Nếu không có passage (Listening), cột này sẽ full width và căn giữa */}
         <div
-          className={`h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${
-            hasPassage ? "w-full md:w-1/2" : "w-full max-w-5xl mx-auto"
-          }`}
+          className={`h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${hasPassage ? "w-full md:w-1/2" : "w-full max-w-5xl mx-auto"
+            }`}
         >
           <div className="p-4 bg-blue-50 border-b border-blue-100 font-bold text-blue-800 flex items-center gap-2">
             <FileTextOutlined /> Questions & Answers
@@ -197,7 +378,7 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                     userAnswers={normalizedUserAnswers}
                     isReviewMode={true}
                     isMultiple={isMultiple}
-                    onAnswerChange={() => {}}
+                    onAnswerChange={() => { }}
                   />
                 </div>
               );
@@ -214,6 +395,21 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
   };
 
   const tabItems = useMemo(() => {
+    // Check if this is a Writing test
+    if (data?.test?.testType === "WRITING" && data?.writingSubmission) {
+      // Create tabs from writing submissions
+      return data.writingSubmission.map((submission, index) => ({
+        key: submission.idWritingSubmission || String(index),
+        label: submission.writingTask?.task_type === "TASK1"
+          ? "Task 1"
+          : submission.writingTask?.task_type === "TASK2"
+            ? "Task 2"
+            : `Task ${index + 1}`,
+        children: <RenderWritingSubmission submission={submission} />,
+      }));
+    }
+
+    // Default: Reading/Listening tests with parts
     if (!data?.test?.parts) return [];
     return data.test.parts.map((part, index) => ({
       key: part.idPart || String(index),
@@ -263,13 +459,22 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                 valueStyle={{ color: "#2563eb", fontWeight: "bold" }}
                 prefix={<TrophyOutlined />}
               />
-              <Statistic
-                title="Câu đúng"
-                value={data.total_correct}
-                suffix={`/ ${data.total_questions}`}
-                valueStyle={{ color: "#16a34a", fontWeight: "bold" }}
-                prefix={<CheckCircleOutlined />}
-              />
+              {data.test?.testType === "WRITING" ? (
+                <Statistic
+                  title="Submissions"
+                  value={data.writingSubmission?.length || 0}
+                  valueStyle={{ color: "#16a34a", fontWeight: "bold" }}
+                  prefix={<FileTextOutlined />}
+                />
+              ) : (
+                <Statistic
+                  title="Câu đúng"
+                  value={data.total_correct}
+                  suffix={`/ ${data.total_questions}`}
+                  valueStyle={{ color: "#16a34a", fontWeight: "bold" }}
+                  prefix={<CheckCircleOutlined />}
+                />
+              )}
               <div className="h-10 w-px bg-gray-300 mx-2 hidden md:block"></div>
             </div>
           </div>
