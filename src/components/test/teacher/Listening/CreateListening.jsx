@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { message, Spin, Card } from "antd";
-import { SoundOutlined } from "@ant-design/icons";
+import { message, Spin } from "antd";
 import {
   createPartAPI,
   getAllPartByIdAPI,
@@ -8,9 +7,10 @@ import {
   deletePartAPI,
   getPartByIdAPI,
 } from "@/services/apiTest";
-import PartListSidebar from "../Reading/PartListSideBar"; // Tái sử dụng của Reading
-import ListeningPartPanel from "./ListeningPartPanel"; // Component mới bên dưới
-import TestInfoEditor from "../TestInfoEditor"; // Tái sử dụng
+
+import PartListSidebar from "../Reading/PartListSideBar";
+import ListeningPartPanel from "./ListeningPartPanel";
+import TestInfoEditor from "../TestInfoEditor";
 
 const CreateListening = ({ idTest, exam, onExamUpdate }) => {
   const [allParts, setAllParts] = useState([]);
@@ -20,16 +20,14 @@ const CreateListening = ({ idTest, exam, onExamUpdate }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [creatingPart, setCreatingPart] = useState(false);
 
-  // Audio URL từ thông tin đề thi
-  const audioSrc = exam?.audio || exam?.audioUrl;
-
-  // --- 1. DATA FETCHING (Giống hệt Reading) ---
+  // --- 1. DATA FETCHING ---
   useEffect(() => {
     if (!idTest) {
       setIsLoading(false);
       return;
     }
     fetchParts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idTest]);
 
   const fetchParts = async () => {
@@ -88,7 +86,6 @@ const CreateListening = ({ idTest, exam, onExamUpdate }) => {
   const refreshCurrentPartData = async () => {
     if (selectedPart) {
       await handleSelectPart(selectedPart, true);
-      // Refresh background để tính lại offset
       const res = await getAllPartByIdAPI(idTest);
       if (res?.data) {
         setAllParts(res.data);
@@ -97,17 +94,20 @@ const CreateListening = ({ idTest, exam, onExamUpdate }) => {
     }
   };
 
-  // --- 2. CRUD PARTS (Giống hệt Reading) ---
+  // --- 2. CRUD PARTS ---
   const handleCreatePart = async () => {
     try {
       setCreatingPart(true);
-      const payload = { idTest, namePart: `Part ${allParts.length + 1}` };
-      const res = await createPartAPI(payload);
-      const newPart = res?.data;
-      const newPartsList = [...allParts, newPart];
-      setAllParts(newPartsList);
-      await handleSelectPart(newPart, true);
-      message.success("Tạo part thành công");
+      const res = await createPartAPI({
+        idTest,
+        namePart: `Part ${allParts.length + 1}`,
+      });
+      if (res?.data) {
+        const newPartsList = [...allParts, res.data];
+        setAllParts(newPartsList);
+        await handleSelectPart(res.data, true);
+        message.success("Tạo part thành công");
+      }
     } catch (err) {
       message.error("Tạo part thất bại");
     } finally {
@@ -122,9 +122,8 @@ const CreateListening = ({ idTest, exam, onExamUpdate }) => {
         p.idPart === idPart ? { ...p, namePart: newName } : p
       );
       setAllParts(updatedParts);
-      if (selectedPart?.idPart === idPart) {
+      if (selectedPart?.idPart === idPart)
         setSelectedPart({ ...selectedPart, namePart: newName });
-      }
       message.success("Đổi tên thành công");
     } catch (err) {
       message.error("Lỗi đổi tên");
@@ -149,14 +148,14 @@ const CreateListening = ({ idTest, exam, onExamUpdate }) => {
     }
   };
 
-  // --- 3. CALCULATE OFFSET ---
+  // --- 3. OFFSET ---
   const calculateOffset = () => {
-    if (!allParts || allParts.length === 0 || !selectedPart) return 0;
+    if (!allParts || !selectedPart) return 0;
     let offset = 0;
     for (const p of allParts) {
       if (p.idPart === selectedPart.idPart) break;
       const d = partDetailsMap[p.idPart];
-      if (d && d.groupOfQuestions) {
+      if (d?.groupOfQuestions) {
         offset += d.groupOfQuestions.reduce(
           (sum, g) => sum + (g.quantity || 0),
           0
@@ -166,29 +165,18 @@ const CreateListening = ({ idTest, exam, onExamUpdate }) => {
     return offset;
   };
 
-  if (isLoading) return <Spin className="block mx-auto mt-10" />;
+  if (isLoading) return <Spin size="large" className="block mx-auto mt-20" />;
 
   return (
-    <div className="flex flex-col h-[90vh] bg-gray-50 rounded-lg shadow">
-      {/* HEADER: Thông tin đề + Audio Player */}
-      <div className="bg-white border-b">
+    <div className="flex flex-col h-[90vh] bg-gray-50 rounded-xl shadow border overflow-hidden">
+      {/* HEADER: Chỉ render TestInfoEditor. 
+          Nó tự quản lý việc hiển thị Audio ở chế độ thu gọn. */}
+      <div className="bg-white z-20 relative">
         <TestInfoEditor exam={exam} onUpdate={onExamUpdate} />
-
-        {/* Audio Player cho Admin */}
-        {audioSrc && (
-          <div className="px-6 py-2 bg-blue-50 border-t flex items-center gap-4">
-            <div className="flex items-center gap-2 text-blue-700 font-medium">
-              <SoundOutlined /> Audio đề:
-            </div>
-            <audio controls className="h-8 w-96" src={audioSrc}>
-              Trình duyệt không hỗ trợ audio.
-            </audio>
-          </div>
-        )}
       </div>
 
+      {/* BODY */}
       <div className="flex flex-1 overflow-hidden">
-        {/* SIDEBAR: Danh sách Part */}
         <PartListSidebar
           parts={allParts}
           selectedPart={selectedPart}
@@ -199,13 +187,11 @@ const CreateListening = ({ idTest, exam, onExamUpdate }) => {
           creating={creatingPart}
         />
 
-        {/* MAIN CONTENT: Listening Panel */}
-        <div className="flex-1 p-6 overflow-y-auto bg-gray-100">
+        <div className="flex-1 p-6 overflow-y-auto bg-gray-100 scroll-smooth">
           {!selectedPart ? (
-            <div className="text-center text-gray-500 mt-20">
-              {allParts.length === 0
-                ? "Chưa có Part nào, hãy tạo mới."
-                : "Chọn một Part để bắt đầu chỉnh sửa."}
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <div className="text-6xl mb-4">🎧</div>
+              <p className="text-lg">Chọn Part để bắt đầu biên soạn.</p>
             </div>
           ) : (
             <ListeningPartPanel
