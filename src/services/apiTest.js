@@ -16,25 +16,16 @@ export const deleteAPITest = async (idTest) => {
   return res.data;
 };
 
-export const updateAPITest = async (idTest, data) => {
-  const res = await API.patch(`/test/update-test/${idTest}`, data);
-  return res.data;
-};
-
-// Cập nhật thông tin cơ bản của test (duration, numberQuestion, etc.)
-export const updateTestInfoAPI = async (idTest, data) => {
-  const bodyFormData = new FormData();
-  for (const key in data) {
-    if (data[key] != null) bodyFormData.append(key, data[key]);
-  }
-
-  const res = await API.patch(`/test/update-test/${idTest}`, bodyFormData, {
+export const updateTestInfoAPI = async (idTest, formData) => {
+  const res = await API.patch(`/test/update-test/${idTest}`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
   });
   return res.data;
 };
+
+// Cập nhật thông tin cơ bản của test (duration, numberQuestion, etc.)
 //===============================================================================================
 //PHÂN CHIA GIỮA TEACHER VÀ USER
 //===============================================================================================

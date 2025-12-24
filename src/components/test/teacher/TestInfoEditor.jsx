@@ -5,222 +5,302 @@ import {
   Button,
   message,
   Spin,
-  Divider,
-  Typography,
-  Space,
+  Select,
+  Input,
+  Upload,
+  Row,
+  Col,
   Tag,
+  Form,
+  Space,
+  Tooltip,
 } from "antd";
 import {
   SaveOutlined,
   ClockCircleOutlined,
   QuestionCircleOutlined,
-  InfoCircleOutlined,
-  CheckCircleOutlined,
   ArrowLeftOutlined,
+  UploadOutlined,
+  FileTextOutlined,
+  SoundOutlined,
+  EditOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
 import { updateTestInfoAPI } from "@/services/apiTest";
 import { useNavigate } from "react-router";
 
-const { Title, Text } = Typography;
+const { TextArea: AntTextArea } = Input;
+const { Option } = Select;
 
 const TestInfoEditor = ({ exam, onUpdate }) => {
   const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [numberQuestion, setNumberQuestion] = useState(
-    exam?.numberQuestion || 0
-  );
-  const [duration, setDuration] = useState(exam?.duration || 0);
-  const [hasChanges, setHasChanges] = useState(false);
 
-  // Cập nhật state khi exam thay đổi
+  const [form] = Form.useForm();
+
+  // State lưu trữ File Object thực sự
+  const [newAudioFile, setNewAudioFile] = useState(null);
+
+  // --- FIX CACHE: State để lưu phiên bản audio ---
+  const [audioVersion, setAudioVersion] = useState(Date.now());
+
+  // Lấy URL gốc
+  const rawAudioSrc = exam?.audio || exam?.audioUrl;
+
+  // Reset version khi chuyển sang đề thi khác
   useEffect(() => {
     if (exam) {
-      setNumberQuestion(exam.numberQuestion || 0);
-      setDuration(exam.duration || 0);
-      setHasChanges(false);
+      setAudioVersion(Date.now()); // Reset cache buster khi load đề mới
+      form.setFieldsValue({
+        title: exam.title,
+        description: exam.description,
+        level: exam.level || "EASY",
+        duration: exam.duration,
+        numberQuestion: exam.numberQuestion,
+      });
     }
-  }, [exam]);
+  }, [exam, form]);
 
-  // Kiểm tra thay đổi
-  useEffect(() => {
-    const changed =
-      numberQuestion !== (exam?.numberQuestion || 0) ||
-      duration !== (exam?.duration || 0);
-    setHasChanges(changed);
-  }, [numberQuestion, duration, exam]);
+  // Tạo URL có gắn đuôi timestamp để chống cache
+  // VD: .../audio.mp3?v=17100023...
+  const audioSrcWithCache = rawAudioSrc
+    ? `${rawAudioSrc}?v=${audioVersion}`
+    : null;
 
-  // Xác định max câu hỏi dựa vào loại test
   const getMaxQuestions = () => {
-    if (exam?.testType === "WRITING" || exam?.testType === "SPEAKING") {
-      return 2;
-    }
+    if (exam?.testType === "WRITING" || exam?.testType === "SPEAKING") return 2;
     return 40;
   };
 
-  const getTypeColor = (type) => {
-    const colors = {
-      LISTENING: "blue",
-      READING: "green",
-      WRITING: "orange",
-      SPEAKING: "purple",
-    };
-    return colors[type] || "gray";
+  const onBeforeUpload = (file) => {
+    setNewAudioFile(file);
+    return false;
+  };
+
+  const onRemoveFile = () => {
+    setNewAudioFile(null);
   };
 
   const handleSave = async () => {
-    if (!exam?.idTest || !exam?.idUser) {
-      message.error("Thiếu thông tin đề thi");
-      return;
-    }
-
-    // Validation
-    const maxQ = getMaxQuestions();
-    if (numberQuestion > maxQ) {
-      message.error(`Số câu hỏi tối đa cho ${exam.testType} là ${maxQ}`);
-      return;
-    }
-
-    if (numberQuestion < 1) {
-      message.error("Số câu hỏi phải lớn hơn 0");
-      return;
-    }
-
-    if (duration < 1) {
-      message.error("Thời gian phải lớn hơn 0");
-      return;
-    }
-
     try {
+      const values = await form.validateFields();
+      if (!exam?.idTest || !exam?.idUser)
+        return message.error("Thiếu thông tin");
+
       setLoading(true);
-      const res = await updateTestInfoAPI(exam.idTest, {
-        idUser: exam.idUser,
-        testType: exam.testType,
-        title: exam.title,
-        description: exam.description,
-        level: exam.level,
-        numberQuestion: numberQuestion,
-        duration: duration,
-      });
+
+      // LOGIC TẠO FORMDATA (Cần khớp với apiTest.js đã sửa trước đó)
+      // Nếu bạn dùng cách gửi Object, hãy sửa lại thành Object.
+      // Ở đây tôi giữ nguyên FormData theo code bạn gửi.
+      const formData = new FormData();
+      formData.append("idUser", exam.idUser);
+      formData.append("testType", exam.testType);
+      formData.append("title", values.title);
+      formData.append("description", values.description || "");
+      formData.append("level", values.level);
+      formData.append("duration", values.duration);
+      formData.append("numberQuestion", values.numberQuestion);
+
+      if (newAudioFile) {
+        // Lưu ý: Key này phải khớp với Backend (file, audio, audioUrl...)
+        // Tôi để mặc định là audioUrl như code cũ của bạn
+        formData.append("audioUrl", newAudioFile);
+      }
+
+      const res = await updateTestInfoAPI(exam.idTest, formData);
 
       if (res?.data) {
-        message.success("Cập nhật thông tin đề thi thành công!");
-        if (onUpdate) {
-          onUpdate({
-            ...exam,
-            numberQuestion,
-            duration,
-          });
-        }
-        setHasChanges(false);
+        message.success("Cập nhật thành công!");
+        setNewAudioFile(null);
+        setIsEditing(false);
+
+        // --- FIX CACHE: Cập nhật timestamp ngay lập tức ---
+        setAudioVersion(Date.now());
+
+        if (onUpdate) onUpdate(res.data);
       } else {
-        message.error("Cập nhật thất bại, vui lòng thử lại");
+        message.error("Cập nhật thất bại.");
       }
     } catch (error) {
-      console.error("Update test info error:", error);
-      message.error("Có lỗi xảy ra khi cập nhật");
+      console.error(error);
+      message.error("Lỗi khi lưu.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!exam) {
-    return <Spin />;
-  }
+  if (!exam) return <Spin className="block mx-auto my-4" />;
 
-  return (
-    <Card
-      className="mb-4"
-      size="small"
-      styles={{ header: { background: "#f5f5f5" } }}
-      title={
-        <Space>
-          <InfoCircleOutlined />
-          <span>Thông tin đề thi</span>
-          <Tag color={getTypeColor(exam.testType)}>{exam.testType}</Tag>
-        </Space>
-      }
-    >
-      <div className="flex flex-wrap items-center gap-6">
-        {/* Tên đề */}
-        <div className="flex items-center gap-2">
-          <Text strong>Đề thi:</Text>
-          <Text className="text-blue-600">{exam.title}</Text>
-        </div>
-
-        <Divider type="vertical" className="h-8" />
-
-        {/* Số câu hỏi */}
-        <div className="flex items-center gap-2">
-          <QuestionCircleOutlined className="text-green-600" />
-          <Text>Số câu:</Text>
-          <InputNumber
-            size="small"
-            min={1}
-            max={getMaxQuestions()}
-            value={numberQuestion}
-            onChange={(val) => setNumberQuestion(val || 0)}
-            className="w-20"
-          />
-          <Text type="secondary">(max: {getMaxQuestions()})</Text>
-        </div>
-
-        <Divider type="vertical" className="h-8" />
-
-        {/* Thời gian */}
-        <div className="flex items-center gap-2">
-          <ClockCircleOutlined className="text-orange-500" />
-          <Text>Thời gian:</Text>
-          <InputNumber
-            size="small"
-            min={1}
-            max={180}
-            value={duration}
-            onChange={(val) => setDuration(val || 0)}
-            className="min-w-fit"
-            addonAfter="phút"
-          />
-        </div>
-
-        <Divider type="vertical" className="h-8" />
-
-        {/* Nút lưu */}
-        <Button
-          type="primary"
-          icon={<SaveOutlined />}
-          onClick={handleSave}
-          loading={loading}
-          disabled={!hasChanges}
-          size="small"
-        >
-          Lưu thay đổi
-        </Button>
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Nút quay lại và hoàn thành */}
-        <div className="flex gap-2">
+  // --- COMPACT VIEW ---
+  if (!isEditing) {
+    return (
+      <div className="bg-white p-3 border-b shadow-sm flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 flex-1 overflow-hidden">
           <Button
             icon={<ArrowLeftOutlined />}
             size="small"
             onClick={() => navigate("/teacher/testManager")}
-          >
-            Quay lại
-          </Button>
-          <Button
-            type="primary"
-            icon={<CheckCircleOutlined />}
-            size="small"
-            className="bg-green-600 hover:bg-green-700 border-green-600"
-            onClick={() => {
-              message.success("Hoàn thành chỉnh sửa đề thi!");
-              navigate("/teacher/testManager");
-            }}
-          >
-            Hoàn thành
-          </Button>
+          />
+          <div className="flex flex-col min-w-[200px]">
+            <span
+              className="font-bold text-lg truncate text-blue-800"
+              title={exam.title}
+            >
+              {exam.title}
+            </span>
+            <Space size="small" className="text-xs text-gray-500">
+              <Tag color="blue">{exam.testType}</Tag>
+              <span>
+                <ClockCircleOutlined /> {exam.duration}p
+              </span>
+              <span>
+                <QuestionCircleOutlined /> {exam.numberQuestion} câu
+              </span>
+            </Space>
+          </div>
+
+          {/* AUDIO PLAYER - COMPACT MODE */}
+          {rawAudioSrc && (
+            <div className="flex-1 max-w-2xl px-4 border-l border-gray-200 flex items-center gap-2">
+              <SoundOutlined className="text-blue-600" />
+              <audio
+                // Quan trọng: key thay đổi buộc React render lại thẻ audio
+                key={audioVersion}
+                controls
+                className="h-8 w-full shadow-sm rounded-full bg-gray-50"
+                // Dùng URL đã thêm timestamp
+                src={audioSrcWithCache}
+                controlsList="nodownload"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0">
+          <Tooltip title="Chỉnh sửa thông tin đề & Upload Audio">
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              onClick={() => setIsEditing(true)}
+            >
+              Sửa thông tin
+            </Button>
+          </Tooltip>
         </div>
       </div>
+    );
+  }
+
+  // --- EDIT FORM ---
+  return (
+    <Card
+      className="m-4 shadow-md border-t-4 border-t-blue-600 animate-fade-in"
+      bodyStyle={{ padding: "16px 24px" }}
+      title={
+        <div className="flex justify-between items-center">
+          <span>Chỉnh sửa thông tin đề thi</span>
+          <Button
+            type="text"
+            icon={<CloseOutlined />}
+            danger
+            onClick={() => setIsEditing(false)}
+          >
+            Đóng
+          </Button>
+        </div>
+      }
+    >
+      <Form form={form} layout="vertical" initialValues={{ ...exam }}>
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1 mr-8">
+            <Form.Item
+              name="title"
+              label="Tên đề thi"
+              rules={[{ required: true }]}
+            >
+              <Input size="large" prefix={<FileTextOutlined />} />
+            </Form.Item>
+          </div>
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            onClick={handleSave}
+            loading={loading}
+            className="mt-8 bg-green-600 hover:bg-green-500 border-green-600"
+          >
+            Lưu & Đóng
+          </Button>
+        </div>
+
+        <Row gutter={24}>
+          <Col span={14}>
+            <Form.Item name="description" label="Mô tả">
+              <AntTextArea rows={4} showCount maxLength={500} />
+            </Form.Item>
+
+            <div className="p-4 bg-blue-50 rounded border border-blue-100 mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold text-blue-800">
+                  <SoundOutlined /> File Audio
+                </span>
+                {newAudioFile && <Tag color="green">Đã chọn file mới</Tag>}
+              </div>
+
+              <Upload
+                beforeUpload={onBeforeUpload}
+                onRemove={onRemoveFile}
+                maxCount={1}
+                accept="audio/*"
+                fileList={newAudioFile ? [newAudioFile] : []}
+              >
+                <Button icon={<UploadOutlined />}>
+                  {newAudioFile
+                    ? "Đổi file khác"
+                    : rawAudioSrc
+                    ? "Thay đổi Audio hiện tại"
+                    : "Tải Audio"}
+                </Button>
+              </Upload>
+            </div>
+          </Col>
+
+          <Col span={10}>
+            <Card
+              type="inner"
+              title="Cấu hình"
+              size="small"
+              className="bg-gray-50"
+            >
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item name="level" label="Độ khó">
+                    <Select>
+                      <Option value="EASY">Easy</Option>
+                      <Option value="MEDIUM">Medium</Option>
+                      <Option value="HARD">Hard</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="duration" label="Thời gian (phút)">
+                    <InputNumber min={1} className="w-full" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="numberQuestion" label="Số câu hỏi">
+                    <InputNumber
+                      min={1}
+                      max={getMaxQuestions()}
+                      className="w-full"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
+          </Col>
+        </Row>
+      </Form>
     </Card>
   );
 };
