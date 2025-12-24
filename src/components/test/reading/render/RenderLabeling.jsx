@@ -32,7 +32,7 @@ const RenderLabeling = ({
       {group.img && (
         <div className="flex flex-col">
           <div className="lg:sticky lg:top-4">
-            <div className="bg-white border rounded-lg p-2 flex justify-center shadow-sm">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 flex justify-center shadow-sm">
               <Image
                 src={group.img}
                 alt="Labeling Map"
@@ -52,21 +52,21 @@ const RenderLabeling = ({
         {hasContent && (
           <Card
             title={
-              <span className="text-blue-700 font-bold text-sm">
+              <span className="text-blue-700 dark:text-blue-400 font-bold text-sm">
                 Options List
               </span>
             }
             size="small"
-            className="bg-blue-50/60 border-blue-100 shadow-sm"
+            className="bg-blue-50/60 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800 shadow-sm"
             bodyStyle={{ padding: "12px" }}
           >
             <div className="flex flex-wrap gap-x-6 gap-y-2">
               {optionsPool.map((opt, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm">
-                  <span className="font-bold text-blue-700 bg-white border px-1.5 rounded text-xs min-w-[24px] text-center">
+                  <span className="font-bold text-blue-700 dark:text-blue-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-1.5 rounded text-xs min-w-[24px] text-center">
                     {opt.matching_key}
                   </span>
-                  <span className="text-gray-700 font-medium">
+                  <span className="text-slate-700 dark:text-slate-300 font-medium">
                     {opt.answer_text}
                   </span>
                 </div>
@@ -100,17 +100,17 @@ const RenderLabeling = ({
             return (
               <div
                 key={q.question_id}
-                className={`flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg transition-all ${
+                className={`flex flex-wrap items-center justify-between gap-3 p-3 border rounded-xl transition-all duration-200 ${
                   isReviewMode
                     ? isCorrect
-                      ? "bg-green-50 border-green-200"
-                      : "bg-red-50 border-red-200"
-                    : "bg-white hover:border-blue-400 hover:shadow-sm"
+                      ? "bg-green-50/50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                      : "bg-red-50/50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                    : "bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-sm"
                 }`}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-[200px]">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-sm ${
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white shrink-0 shadow-sm ${
                       isReviewMode
                         ? isCorrect
                           ? "bg-green-500"
@@ -121,9 +121,9 @@ const RenderLabeling = ({
                     {q.question_number}
                   </div>
 
-                  <div className="font-medium text-gray-800 text-base leading-tight">
+                  <div className="font-medium text-slate-800 dark:text-slate-200 text-base leading-tight">
                     {q.question_text || (
-                      <span className="text-gray-400 italic font-normal text-sm">
+                      <span className="text-slate-400 dark:text-slate-500 italic font-normal text-sm">
                         Question {q.question_number}
                       </span>
                     )}

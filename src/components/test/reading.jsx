@@ -90,6 +90,32 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const [timeLeft, setTimeLeft] = useState((duration || 60) * 60);
   const isSubmittingRef = useRef(false);
 
+  // Resizer state
+  const [leftPanelWidth, setLeftPanelWidth] = useState(55);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+      if (newWidth >= 30 && newWidth <= 70) {
+        setLeftPanelWidth(newWidth);
+      }
+    };
+    const handleMouseUp = () => setIsDragging(false);
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
   // Load lại đáp án cũ khi Review
   useEffect(() => {
     if (
@@ -419,27 +445,27 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md h-[72px] px-6 flex items-center justify-between">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 shadow-lg border-b border-slate-200 dark:border-slate-800 h-[72px] px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-full bg-blue-100 text-blue-600">
+          <div className="p-2 rounded-full bg-blue-600">
             {isReviewMode ? (
-              <EyeOutlined style={{ fontSize: "20px" }} />
+              <EyeOutlined className="text-2xl text-white" />
             ) : (
-              <FormOutlined style={{ fontSize: "20px" }} />
+              <FormOutlined className="text-2xl text-white" />
             )}
           </div>
           <div>
             <h1
-              className="text-lg font-bold truncate max-w-[300px] md:max-w-md m-0 leading-tight"
+              className="text-lg font-bold truncate max-w-[300px] md:max-w-md m-0 leading-tight text-slate-800 dark:text-white"
               title={test.title}
             >
               {test.title}{" "}
               {isReviewMode && (
-                <span className="text-green-600">(Xem lại)</span>
+                <span className="text-blue-600 dark:text-blue-400">(Review Mode)</span>
               )}
             </h1>
-            <p className="text-xs text-gray-500 m-0 hidden md:block">
-              Reading Test
+            <p className="text-xs text-slate-500 dark:text-slate-400 m-0 hidden md:block font-medium">
+              📖 IELTS Reading Test
             </p>
           </div>
         </div>
@@ -447,10 +473,13 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-4 py-1.5 rounded-lg border shadow-sm ${timeLeft < 300
-                    ? "bg-red-50 text-red-600 border-red-200 animate-pulse"
-                    : "bg-gray-50 text-gray-700 border-gray-200"
-                  }`}
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${
+                  timeLeft < 300
+                    ? "bg-red-600 text-white border-red-500 animate-pulse"
+                    : timeLeft < 600
+                    ? "bg-orange-600 text-white border-orange-500"
+                    : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
+                }`}
               >
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
@@ -460,18 +489,21 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                 danger
                 size="large"
                 onClick={() => handleFinish(false)}
-                className="font-semibold shadow-md hover:scale-105 transition-transform"
+                className="font-bold shadow-xl hover:scale-105 transition-transform bg-blue-600 hover:bg-blue-700 border-0 h-12 px-6"
               >
-                NỘP BÀI
+                🚀 SUBMIT TEST
               </Button>
             </>
           ) : (
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-xl text-blue-600 mr-2">
-                Score: {bandScore}
+            <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700">
+              <span className="font-bold text-2xl text-blue-400">
+                ⭐ Score: {bandScore}
               </span>
-              <Button onClick={() => setIsReviewMode(false)}>
-                Quay lại kết quả
+              <Button 
+                onClick={() => setIsReviewMode(false)}
+                className="bg-blue-600 hover:bg-blue-700 text-white border-0"
+              >
+                Exit Review
               </Button>
             </div>
           )}
@@ -479,42 +511,55 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
       </div>
 
       <div className="pt-[90px] p-6 max-w-[1400px] mx-auto h-screen flex flex-col">
-        <div className="flex gap-2 overflow-x-auto mb-4 pb-1 shrink-0">
+        <div className="flex gap-2 overflow-x-auto mb-4 pb-1 shrink-0 justify-center">
           {test.parts.map((p, idx) => (
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`px-5 py-2 rounded-full border text-sm font-semibold transition-all whitespace-nowrap ${idx === activePartIndex
-                  ? "bg-blue-600 text-white border-blue-600 shadow-md"
-                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
-                }`}
+              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${
+                idx === activePartIndex
+                  ? "bg-blue-600 text-white border-blue-500 scale-105"
+                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+              }`}
             >
-              {p.namePart || `Part ${idx + 1}`}
+              <div className="flex items-center gap-2">
+                <span className={idx === activePartIndex ? "text-xl" : "text-lg"}>
+                  {idx === 0 ? "📖" : idx === 1 ? "📚" : "📕"}
+                </span>
+                <span>{p.namePart || `Part ${idx + 1}`}</span>
+                {idx === activePartIndex && (
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                )}
+              </div>
             </button>
           ))}
         </div>
 
         {part && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 relative">
+          <div ref={containerRef} className="flex flex-1 min-h-0 relative" style={{ userSelect: isDragging ? 'none' : 'auto' }}>
             {isPartLoading && !cachedPart && (
-              <div className="absolute inset-0 z-50 bg-white/80 flex items-center justify-center rounded-xl backdrop-blur-sm">
+              <div className="absolute inset-0 z-50 bg-slate-900/80 flex items-center justify-center rounded-xl backdrop-blur-sm">
                 <Spin tip="Đang tải nội dung..." size="large" />
               </div>
             )}
-            <div className="lg:col-span-7 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
-              <div className="p-4 bg-gray-50 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center sticky top-0">
+            {/* Passage Panel */}
+            <div 
+              className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden"
+              style={{ width: `${leftPanelWidth}%` }}
+            >
+              <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-white flex justify-between items-center">
                 <span>📖 Passage Content</span>
               </div>
               <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
                 {renderPart?.passage?.content ? (
-                  <div className="prose max-w-none text-gray-800 leading-relaxed font-serif text-lg">
+                  <div className="prose max-w-none text-slate-700 dark:text-slate-300 leading-relaxed font-serif text-lg">
                     {renderPart.passage.content
                       .split(/\r?\n\r?\n/)
                       .filter((p) => p.trim())
                       .map((paragraph, index) => (
                         <p
                           key={index}
-                          className="mb-4 text-justify indent-8 first-letter:text-2xl first-letter:font-bold first-letter:text-blue-600"
+                          className="mb-4 text-justify indent-8 first-letter:text-2xl first-letter:font-bold first-letter:text-blue-600 dark:first-letter:text-blue-400"
                         >
                           {paragraph.trim()}
                         </p>
@@ -522,7 +567,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                   </div>
                 ) : (
                   !isPartLoading && (
-                    <div className="text-center py-10 text-gray-400">
+                    <div className="text-center py-10 text-slate-500">
                       Không có dữ liệu bài đọc
                     </div>
                   )
@@ -530,16 +575,36 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
               </div>
             </div>
 
-            <div className="lg:col-span-5 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
+            {/* Draggable Resizer */}
+            <div
+              onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
+              className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${
+                isDragging ? 'bg-blue-100 dark:bg-blue-600/30' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+            >
+              <div className="flex flex-col gap-1">
+                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+              </div>
+            </div>
+
+            {/* Questions Panel */}
+            <div 
+              className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden"
+              style={{ width: `${100 - leftPanelWidth}%` }}
+            >
               <div
-                className={`p-4 border-b border-gray-100 font-semibold sticky top-0 z-10 ${isReviewMode
-                    ? "bg-green-50 text-green-800"
-                    : "bg-gray-50 text-gray-700"
+                className={`p-4 border-b border-slate-200 dark:border-slate-700 font-semibold sticky top-0 z-10 ${isReviewMode
+                    ? "bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-400"
+                    : "bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white"
                   }`}
               >
                 <span>✍️ Questions</span>
               </div>
-              <div className="p-5 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/50">
+              <div className="p-5 overflow-y-auto custom-scrollbar flex-1 bg-slate-50 dark:bg-slate-800">
                 {(
                   renderPart.groupOfQuestions ||
                   part.groupOfQuestions ||
