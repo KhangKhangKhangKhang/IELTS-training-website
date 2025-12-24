@@ -232,11 +232,7 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
       bodyStyle={{ height: "90vh", padding: 0, overflow: "hidden" }}
       className="review-modal"
       title={null}
-      closeIcon={
-        <span className="bg-gray-200 hover:bg-red-500 hover:text-white rounded-full p-2 transition-all">
-          <CloseCircleOutlined style={{ fontSize: 16 }} />
-        </span>
-      }
+      closeIcon={<CloseCircleOutlined style={{ fontSize: 25 }} />}
     >
       {loading ? (
         <div className="flex flex-col justify-center items-center h-full gap-4">
@@ -275,12 +271,6 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                 prefix={<CheckCircleOutlined />}
               />
               <div className="h-10 w-px bg-gray-300 mx-2 hidden md:block"></div>
-              <button
-                onClick={onClose}
-                className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium shadow-md"
-              >
-                Đóng Review
-              </button>
             </div>
           </div>
 
