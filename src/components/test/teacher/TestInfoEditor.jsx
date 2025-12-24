@@ -63,7 +63,6 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
   }, [exam, form]);
 
   // Tạo URL có gắn đuôi timestamp để chống cache
-  // VD: .../audio.mp3?v=17100023...
   const audioSrcWithCache = rawAudioSrc
     ? `${rawAudioSrc}?v=${audioVersion}`
     : null;
@@ -90,9 +89,6 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
 
       setLoading(true);
 
-      // LOGIC TẠO FORMDATA (Cần khớp với apiTest.js đã sửa trước đó)
-      // Nếu bạn dùng cách gửi Object, hãy sửa lại thành Object.
-      // Ở đây tôi giữ nguyên FormData theo code bạn gửi.
       const formData = new FormData();
       formData.append("idUser", exam.idUser);
       formData.append("testType", exam.testType);
@@ -103,8 +99,6 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
       formData.append("numberQuestion", values.numberQuestion);
 
       if (newAudioFile) {
-        // Lưu ý: Key này phải khớp với Backend (file, audio, audioUrl...)
-        // Tôi để mặc định là audioUrl như code cũ của bạn
         formData.append("audioUrl", newAudioFile);
       }
 
@@ -160,16 +154,14 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
             </Space>
           </div>
 
-          {/* AUDIO PLAYER - COMPACT MODE */}
-          {rawAudioSrc && (
+          {/* CHỈ HIỂN THỊ AUDIO PLAYER NẾU LÀ LISTENING */}
+          {exam.testType === "LISTENING" && rawAudioSrc && (
             <div className="flex-1 max-w-2xl px-4 border-l border-gray-200 flex items-center gap-2">
               <SoundOutlined className="text-blue-600" />
               <audio
-                // Quan trọng: key thay đổi buộc React render lại thẻ audio
                 key={audioVersion}
                 controls
                 className="h-8 w-full shadow-sm rounded-full bg-gray-50"
-                // Dùng URL đã thêm timestamp
                 src={audioSrcWithCache}
                 controlsList="nodownload"
               />
@@ -178,7 +170,7 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
         </div>
 
         <div className="shrink-0">
-          <Tooltip title="Chỉnh sửa thông tin đề & Upload Audio">
+          <Tooltip title="Chỉnh sửa thông tin đề">
             <Button
               type="primary"
               icon={<EditOutlined />}
@@ -239,30 +231,33 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
               <AntTextArea rows={4} showCount maxLength={500} />
             </Form.Item>
 
-            <div className="p-4 bg-blue-50 rounded border border-blue-100 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-blue-800">
-                  <SoundOutlined /> File Audio
-                </span>
-                {newAudioFile && <Tag color="green">Đã chọn file mới</Tag>}
-              </div>
+            {/* CHỈ HIỂN THỊ UPLOAD AUDIO NẾU LÀ LISTENING */}
+            {exam.testType === "LISTENING" && (
+              <div className="p-4 bg-blue-50 rounded border border-blue-100 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-blue-800">
+                    <SoundOutlined /> File Audio
+                  </span>
+                  {newAudioFile && <Tag color="green">Đã chọn file mới</Tag>}
+                </div>
 
-              <Upload
-                beforeUpload={onBeforeUpload}
-                onRemove={onRemoveFile}
-                maxCount={1}
-                accept="audio/*"
-                fileList={newAudioFile ? [newAudioFile] : []}
-              >
-                <Button icon={<UploadOutlined />}>
-                  {newAudioFile
-                    ? "Đổi file khác"
-                    : rawAudioSrc
-                    ? "Thay đổi Audio hiện tại"
-                    : "Tải Audio"}
-                </Button>
-              </Upload>
-            </div>
+                <Upload
+                  beforeUpload={onBeforeUpload}
+                  onRemove={onRemoveFile}
+                  maxCount={1}
+                  accept="audio/*"
+                  fileList={newAudioFile ? [newAudioFile] : []}
+                >
+                  <Button icon={<UploadOutlined />}>
+                    {newAudioFile
+                      ? "Đổi file khác"
+                      : rawAudioSrc
+                      ? "Thay đổi Audio hiện tại"
+                      : "Tải Audio"}
+                  </Button>
+                </Upload>
+              </div>
+            )}
           </Col>
 
           <Col span={10}>
