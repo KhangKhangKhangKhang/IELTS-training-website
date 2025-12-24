@@ -54,6 +54,47 @@ const SkillCard = ({ type, score, icon: Icon, color }) => (
   </div>
 );
 
+// --- Helper: Get Default Test Image ---
+const getDefaultTestImage = (testType) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 400;
+  canvas.height = 400;
+  const ctx = canvas.getContext('2d');
+
+  // Gradient backgrounds based on test type
+  const gradients = {
+    READING: ['#3b82f6', '#06b6d4'],
+    LISTENING: ['#10b981', '#059669'],
+    WRITING: ['#8b5cf6', '#ec4899'],
+    SPEAKING: ['#f59e0b', '#ef4444'],
+  };
+
+  const colors = gradients[testType] || ['#6b7280', '#4b5563'];
+  const gradient = ctx.createLinearGradient(0, 0, 400, 400);
+  gradient.addColorStop(0, colors[0]);
+  gradient.addColorStop(1, colors[1]);
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 400, 400);
+
+  // Add icon text
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.font = 'bold 80px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const icons = {
+    READING: '📖',
+    LISTENING: '🎧',
+    WRITING: '✍️',
+    SPEAKING: '🎤',
+  };
+
+  ctx.fillText(icons[testType] || '📝', 200, 200);
+
+  return canvas.toDataURL('image/png');
+};
+
 // --- MAIN COMPONENT ---
 
 const HomePage = () => {
@@ -263,14 +304,12 @@ const HomePage = () => {
           </div>
           <div className="flex items-center gap-4 px-6 py-4 min-w-[180px]">
             <div
-              className={`${
-                targetInfo?.daysLeft <= 30 ? "bg-red-100" : "bg-green-100"
-              } p-3 rounded-xl transition-colors`}
+              className={`${targetInfo?.daysLeft <= 30 ? "bg-red-100" : "bg-green-100"
+                } p-3 rounded-xl transition-colors`}
             >
               <Clock
-                className={`${
-                  targetInfo?.daysLeft <= 30 ? "text-red-600" : "text-green-600"
-                }`}
+                className={`${targetInfo?.daysLeft <= 30 ? "text-red-600" : "text-green-600"
+                  }`}
                 size={24}
               />
             </div>
@@ -280,11 +319,10 @@ const HomePage = () => {
               </p>
               <div className="flex items-baseline gap-1">
                 <p
-                  className={`text-2xl font-extrabold ${
-                    targetInfo?.daysLeft <= 30
-                      ? "text-red-600"
-                      : "text-green-600"
-                  }`}
+                  className={`text-2xl font-extrabold ${targetInfo?.daysLeft <= 30
+                    ? "text-red-600"
+                    : "text-green-600"
+                    }`}
                 >
                   {targetInfo ? targetInfo.daysLeft : "--"}
                 </p>
@@ -420,59 +458,59 @@ const HomePage = () => {
                   <Legend />
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "OVERALL") && (
-                    <Line
-                      name="Overall"
-                      type="monotone"
-                      dataKey="OVERALL"
-                      stroke="#8884d8"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                  )}
+                      <Line
+                        name="Overall"
+                        type="monotone"
+                        dataKey="OVERALL"
+                        stroke="#8884d8"
+                        strokeWidth={3}
+                        dot={{ r: 4 }}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "READING") && (
-                    <Line
-                      name="Reading"
-                      type="monotone"
-                      dataKey="READING"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Reading"
+                        type="monotone"
+                        dataKey="READING"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "LISTENING") && (
-                    <Line
-                      name="Listening"
-                      type="monotone"
-                      dataKey="LISTENING"
-                      stroke="#22c55e"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Listening"
+                        type="monotone"
+                        dataKey="LISTENING"
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "WRITING") && (
-                    <Line
-                      name="Writing"
-                      type="monotone"
-                      dataKey="WRITING"
-                      stroke="#eab308"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Writing"
+                        type="monotone"
+                        dataKey="WRITING"
+                        stroke="#eab308"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                   {(selectedSkillType === "ALL" ||
                     selectedSkillType === "SPEAKING") && (
-                    <Line
-                      name="Speaking"
-                      type="monotone"
-                      dataKey="SPEAKING"
-                      stroke="#ef4444"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
+                      <Line
+                        name="Speaking"
+                        type="monotone"
+                        dataKey="SPEAKING"
+                        stroke="#ef4444"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    )}
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -484,41 +522,114 @@ const HomePage = () => {
         </div>
 
         {/* Cột Phải: Recommended Tests */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col">
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-            <Award className="text-yellow-500" /> Đề xuất cho bạn
-          </h3>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar max-h-[400px]">
-            {recommended.map((test) => (
-              <div
-                key={test.idTest}
-                onClick={() => handleRecommendClick(test)}
-                className="flex gap-4 p-3 border border-gray-100 dark:border-slate-600 rounded-xl hover:bg-purple-50 dark:hover:bg-slate-700 hover:border-purple-200 dark:hover:border-slate-500 transition-all cursor-pointer group"
-              >
-                <img
-                  src={test.img || "https://placehold.co/100"}
-                  alt=""
-                  className="w-16 h-16 rounded object-cover"
-                />
-                <div className="flex-1">
-                  <h4 className="text-sm font-bold text-gray-800 dark:text-white line-clamp-2 group-hover:text-purple-700 dark:group-hover:text-purple-400">
-                    {test.title}
-                  </h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs bg-gray-100 dark:bg-slate-600 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">
-                      {test.testType}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                      <Clock size={12} /> {test.duration}p
-                    </span>
+        <div className="bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 p-6 rounded-2xl shadow-lg border border-purple-100 dark:border-slate-700 flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl">
+                <Award className="text-white" size={20} />
+              </div>
+              Đề xuất cho bạn
+            </h3>
+            <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-3 py-1 rounded-full font-semibold">
+              {recommended.length} đề
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar max-h-[400px]">
+            {recommended.map((test, index) => {
+              // Icon mapping for test types
+              const testIcons = {
+                READING: <BookOpen size={20} className="text-blue-500" />,
+                LISTENING: <Headphones size={20} className="text-green-500" />,
+                WRITING: <PenTool size={20} className="text-purple-500" />,
+                SPEAKING: <Mic size={20} className="text-orange-500" />,
+              };
+
+              // Color schemes for test types
+              const testColors = {
+                READING: "from-blue-500 to-cyan-500",
+                LISTENING: "from-green-500 to-emerald-500",
+                WRITING: "from-purple-500 to-pink-500",
+                SPEAKING: "from-orange-500 to-red-500",
+              };
+
+              // Level badge colors
+              const levelColors = {
+                Low: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                Mid: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+                High: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+                Great: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+              };
+
+              return (
+                <div
+                  key={test.idTest}
+                  onClick={() => handleRecommendClick(test)}
+                  className="group relative bg-white dark:bg-slate-700/50 rounded-xl border-2 border-gray-100 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500 transition-all duration-300 cursor-pointer overflow-hidden hover:shadow-xl hover:scale-[1.02] animate-fade-in-up"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  {/* Gradient overlay on hover */}
+                  <div className={`absolute inset-0 bg-gradient-to-r ${testColors[test.testType] || "from-gray-400 to-gray-600"} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
+
+                  <div className="relative p-4 flex gap-4">
+                    {/* Image with badge */}
+                    <div className="relative shrink-0">
+                      <img
+                        src={test.img || getDefaultTestImage(test.testType)}
+                        alt={test.title}
+                        className="w-20 h-20 rounded-lg object-cover ring-2 ring-gray-100 dark:ring-slate-600 group-hover:ring-purple-300 dark:group-hover:ring-purple-500 transition-all duration-300"
+                      />
+                      <div className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full p-1.5 shadow-lg">
+                        {testIcons[test.testType] || <BookOpen size={16} className="text-white" />}
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-bold text-gray-800 dark:text-white line-clamp-2 mb-2 group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors">
+                        {test.title}
+                      </h4>
+
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${levelColors[test.level] || levelColors.Low}`}>
+                          {test.level || "Low"}
+                        </span>
+                        <span className="text-xs bg-gray-100 dark:bg-slate-600 px-2.5 py-1 rounded-full text-gray-700 dark:text-gray-300 font-medium flex items-center gap-1">
+                          <Clock size={12} />
+                          {test.duration}p
+                        </span>
+                      </div>
+
+                      {/* Progress indicator */}
+                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-600 rounded-full overflow-hidden">
+                          <div className={`h-full bg-gradient-to-r ${testColors[test.testType] || "from-gray-400 to-gray-600"} rounded-full transition-all duration-500`} style={{ width: '0%' }}></div>
+                        </div>
+                        <span className="text-xs font-medium whitespace-nowrap">Chưa làm</span>
+                      </div>
+                    </div>
+
+                    {/* Arrow icon */}
+                    <div className="self-center">
+                      <div className="p-1.5 rounded-full bg-gray-100 dark:bg-slate-600 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/50 transition-all duration-300 group-hover:scale-110">
+                        <ChevronRight size={18} className="text-gray-400 dark:text-gray-500 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors" />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {recommended.length === 0 && (
-              <p className="text-center text-gray-400 text-sm mt-10">
-                Chưa có đề xuất nào mới.
-              </p>
+              <div className="text-center py-16">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center">
+                  <Award className="text-gray-400 dark:text-gray-500" size={32} />
+                </div>
+                <p className="text-gray-400 dark:text-gray-500 text-sm font-medium">
+                  Chưa có đề xuất nào mới.
+                </p>
+                <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
+                  Hãy hoàn thành thêm bài thi để nhận gợi ý!
+                </p>
+              </div>
             )}
           </div>
         </div>

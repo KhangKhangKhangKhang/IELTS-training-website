@@ -2,24 +2,23 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import TestNavigationPanel from "./TestNavigationPanel";
+import GradingAnimation from "./GradingAnimation";
+
 import {
   getAllWritingTasksAPI,
-  createWritingSubmissionAPI,
-  getWritingSubmissionAPI,
 } from "@/services/apiWriting";
+
+import {
+  FinishTestWritingAPI,
+} from "@/services/apiDoTest";
 
 import { useAuth } from "@/context/authContext";
 import { cn } from "@/lib/utils";
 
 // UI Libraries
 import { Modal, Tabs, Collapse, Tag, Divider, Spin } from "antd";
+import { ClockCircleOutlined } from "@ant-design/icons";
 import {
   CheckCircle,
   BookOpen,
@@ -157,8 +156,8 @@ const SubmissionResultDetail = ({ data }) => {
                       item.type === "Grammar"
                         ? "red"
                         : item.type === "Lexis"
-                        ? "blue"
-                        : "orange"
+                          ? "blue"
+                          : "orange"
                     }
                   >
                     {item.type}
@@ -177,7 +176,7 @@ const SubmissionResultDetail = ({ data }) => {
                     <span className="font-semibold text-green-700 block mb-1">
                       Correction:
                     </span>
-                    <span className="text-slate-700">{item.correction}</span>
+                    <span className="text-slate-700">{item.correct}</span>
                   </div>
                 </div>
                 <div className="text-xs text-slate-500 italic mt-1 bg-slate-50 p-2 rounded">
@@ -194,7 +193,7 @@ const SubmissionResultDetail = ({ data }) => {
 };
 
 // --- Main Component ---
-const Writing = ({ idTest, duration }) => {
+const Writing = ({ idTest, duration, initialTestResult }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -203,6 +202,9 @@ const Writing = ({ idTest, duration }) => {
   const [currentTask, setCurrentTask] = useState(null);
   const [timeLeft, setTimeLeft] = useState(duration * 60);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Navigation state
+  const [navPanelWidth, setNavPanelWidth] = useState(15); // Navigation panel width for writing
 
   // Loading states
   const [isLoadingTasks, setIsLoadingTasks] = useState(true); // NEW: Loading tasks
@@ -307,6 +309,9 @@ const Writing = ({ idTest, duration }) => {
     if (isSubmitting || isLoadingTasks) return;
     if (!user?.idUser) return alert("User information not found!");
     if (tasks.length === 0) return alert("No tasks to submit!");
+    if (!initialTestResult?.idTestResult) {
+      return alert("Test result ID not found!");
+    }
 
     if (!isAutoSubmit) {
       if (!window.confirm("Are you sure you want to submit your answers?"))
@@ -317,30 +322,35 @@ const Writing = ({ idTest, duration }) => {
     setIsLoadingResults(true);
 
     try {
-      const submissionsPromises = tasks.map((t) =>
-        createWritingSubmissionAPI({
-          idUser: user.idUser,
-          idWritingTask: t.idWritingTask,
-          submission_text: answers[t.idWritingTask] || "",
-        })
+      // Build the writing submissions array in the format expected by the backend
+      const writingSubmissions = tasks.map((task) => ({
+        idWritingTask: task.idWritingTask,
+        submission_text: answers[task.idWritingTask] || "",
+      }));
+
+      // Call the finish test writing API
+      const response = await FinishTestWritingAPI(
+        initialTestResult.idTestResult,
+        user.idUser,
+        { writingSubmissions }
       );
 
-      const responses = await Promise.all(submissionsPromises);
-      const submissionIds = responses
-        .map((res) => res?.data?.idWritingSubmission)
-        .filter(Boolean);
+      // The API returns the complete result with all submissions graded
+      if (response?.status === 200 && response?.data?.submissions) {
+        // Transform the submissions data to match the expected format for the modal
+        const submissionResults = response.data.submissions.map((sub) => ({
+          band_score: sub.score,
+          feedback: sub.feedback ? [sub.feedback] : [],
+          writingTask: {
+            task_type: sub.task_type,
+            title: tasks.find(t => t.idWritingTask === sub.idWritingTask)?.title || "",
+          },
+        }));
 
-      if (submissionIds.length > 0) {
-        const resultsPromises = submissionIds.map((id) =>
-          getWritingSubmissionAPI(id)
-        );
-        const detailedResults = await Promise.all(resultsPromises);
-        const cleanData = detailedResults.map((res) => res.data);
-
-        setSubmissionResults(cleanData);
+        setSubmissionResults(submissionResults);
         setResultModalOpen(true);
       } else {
-        alert("Submitted successfully but feedback is not ready yet.");
+        alert("Test submitted successfully!");
         navigate("/");
       }
     } catch (err) {
@@ -360,42 +370,11 @@ const Writing = ({ idTest, duration }) => {
   // === LOADING UI KHI ĐANG FETCH TASKS ===
   if (isLoadingTasks) {
     return (
-      <div className="p-4 sm:p-6 md:p-8">
-        <Card className="max-w-6xl mx-auto border-slate-200 shadow-sm">
-          <CardHeader className="flex-row items-center justify-between border-b border-slate-100 pb-4">
-            <div className="flex items-center gap-4">
-              <div className="h-8 w-48 bg-slate-200 rounded animate-pulse" />
-              <div className="flex gap-2">
-                <div className="h-10 w-24 bg-slate-200 rounded animate-pulse" />
-                <div className="h-10 w-24 bg-slate-200 rounded animate-pulse" />
-              </div>
-            </div>
-            <div className="h-10 w-28 bg-red-100 rounded animate-pulse" />
-          </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-8 pt-6">
-            <div className="space-y-6">
-              <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
-                <div className="h-7 w-40 bg-slate-300 rounded mb-4 animate-pulse" />
-                <div className="space-y-3">
-                  <div className="h-4 bg-slate-200 rounded animate-pulse" />
-                  <div className="h-4 bg-slate-200 rounded animate-pulse w-11/12" />
-                  <div className="h-4 bg-slate-200 rounded animate-pulse w-10/12" />
-                </div>
-              </div>
-              <div className="h-64 bg-slate-100 rounded-lg animate-pulse" />
-            </div>
-            <div className="space-y-4">
-              <div className="h-96 bg-slate-100 rounded-lg animate-pulse" />
-              <div className="flex justify-between">
-                <div className="h-5 w-32 bg-slate-200 rounded animate-pulse" />
-                <div className="h-5 w-32 bg-slate-200 rounded animate-pulse" />
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter className="border-t border-slate-100 pt-4">
-            <div className="h-12 w-40 bg-slate-900 rounded animate-pulse" />
-          </CardFooter>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Spin size="large" />
+          <p className="mt-4 text-slate-600 dark:text-slate-400">Loading writing tasks...</p>
+        </div>
       </div>
     );
   }
@@ -417,93 +396,134 @@ const Writing = ({ idTest, duration }) => {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4 sm:p-6 md:p-8 transition-colors duration-300">
-      <Card className="max-w-6xl mx-auto border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 backdrop-blur shadow-lg dark:shadow-xl">
-        <CardHeader className="flex-row items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-4">
-          <div className="flex items-center gap-4">
-            <CardTitle className="text-slate-800 dark:text-white flex items-center gap-2">
-              <PenTool className="text-blue-600 dark:text-blue-400" size={24} />
-              Writing Section
-            </CardTitle>
-            {multiTask && (
-              <div className="flex border border-slate-300 dark:border-slate-600 rounded-lg p-1 bg-slate-50 dark:bg-slate-800">
-                {tasks.map((t) => (
-                  <Button
-                    key={t.task_type}
-                    variant={currentTask === t.task_type ? "default" : "ghost"}
-                    onClick={() => setCurrentTask(t.task_type)}
-                    className={cn(
-                      "font-medium transition-all",
-                      currentTask === t.task_type
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700"
-                    )}
-                  >
-                    {t.task_type === "TASK1" ? "Task 1" : "Task 2"}
-                  </Button>
-                ))}
-              </div>
-            )}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
+      {/* Show Grading Animation Overlay when submitting */}
+      {isSubmitting && <GradingAnimation />}
+
+      {/* Fixed Top Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 shadow-lg border-b border-slate-200 dark:border-slate-800 h-[72px] px-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-full bg-blue-600">
+            <PenTool className="text-2xl text-white" />
           </div>
-          <div className={cn(
-            "text-2xl font-bold font-mono px-4 py-2 rounded-lg border transition-colors",
-            timeLeft < 300 
-              ? "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-800" 
-              : "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-slate-800 border-blue-200 dark:border-slate-700"
-          )}>
+          <div>
+            <h1 className="text-lg font-bold truncate max-w-[300px] md:max-w-md m-0 leading-tight text-slate-800 dark:text-white">
+              IELTS Writing Test
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 m-0 hidden md:block font-medium">
+              ✍️ Writing Section
+            </p>
+          </div>
+          {multiTask && (
+            <div className="flex border border-slate-300 dark:border-slate-600 rounded-lg p-1 bg-slate-50 dark:bg-slate-800 ml-4">
+              {tasks.map((t) => (
+                <Button
+                  key={t.task_type}
+                  variant={currentTask === t.task_type ? "default" : "ghost"}
+                  onClick={() => setCurrentTask(t.task_type)}
+                  className={cn(
+                    "font-medium transition-all h-8 px-3",
+                    currentTask === t.task_type
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700"
+                  )}
+                >
+                  {t.task_type === "TASK1" ? "Task 1" : "Task 2"}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          <div
+            className={cn(
+              "flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300",
+              timeLeft < 300
+                ? "bg-red-600 text-white border-red-500 animate-pulse"
+                : timeLeft < 600
+                  ? "bg-orange-600 text-white border-orange-500"
+                  : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
+            )}
+          >
+            <ClockCircleOutlined />
             {formatTime(timeLeft)}
           </div>
-        </CardHeader>
+          <Button
+            onClick={() => handleSubmit(false)}
+            disabled={isSubmitting || isLoadingTasks}
+            className="font-bold shadow-xl hover:scale-105 transition-transform bg-blue-600 hover:bg-blue-700 border-0 h-12 px-6 text-white"
+          >
+            {isSubmitting ? (
+              <>
+                <Spin size="small" className="mr-2 text-white" /> Processing...
+              </>
+            ) : (
+              "🚀 SUBMIT TEST"
+            )}
+          </Button>
+        </div>
+      </div>
 
-        <CardContent className="pt-6">
-          <div ref={containerRef} className="flex h-[calc(100vh-250px)]" style={{ userSelect: isDragging ? 'none' : 'auto' }}>
-            {/* Left: Task Prompt */}
-            <div 
-              className="flex flex-col gap-4 overflow-y-auto pr-4 custom-scrollbar"
-              style={{ width: `${leftPanelWidth}%` }}
-            >
-              <div className="bg-slate-50 dark:bg-slate-800 p-5 rounded-lg border border-slate-200 dark:border-slate-700">
-                <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
-                  {activeTask?.task_type} Prompt
-                </h3>
-                <div className="w-10 h-1 bg-blue-500 rounded-full mb-4"></div>
-                <p className="text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed text-sm md:text-base">
-                  {activeTask?.title}
-                </p>
-              </div>
-
-              {activeTask?.task_type === "TASK1" && activeTask?.image && (
-                <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
-                  <img
-                    src={activeTask.image}
-                    alt="Task 1 Visual"
-                    className="w-full h-auto object-contain"
-                  />
+      {/* Main Content */}
+      <div className="pt-[90px] p-6 max-w-[1400px] mx-auto h-screen flex flex-col">
+        <div ref={containerRef} className="flex flex-1 min-h-0 relative" style={{ userSelect: isDragging ? 'none' : 'auto' }}>
+          {/* Left Panel: Task Prompt */}
+          <div
+            className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden"
+            style={{ width: `${leftPanelWidth}%` }}
+          >
+            <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-white flex justify-between items-center">
+              <span>📝 Task Prompt</span>
+            </div>
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+                    {activeTask?.task_type}
+                  </h3>
+                  <div className="w-10 h-1 bg-blue-500 rounded-full mb-4"></div>
+                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed text-sm md:text-base">
+                    {activeTask?.title}
+                  </p>
                 </div>
-              )}
-            </div>
 
-            {/* Draggable Resizer */}
-            <div
-              onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
-              className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${
-                isDragging ? 'bg-blue-100 dark:bg-blue-600/30' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
-              }`}
-            >
-              <div className="flex flex-col gap-1">
-                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+                {activeTask?.task_type === "TASK1" && activeTask?.image && (
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+                    <img
+                      src={activeTask.image}
+                      alt="Task 1 Visual"
+                      className="w-full h-auto object-contain"
+                    />
+                  </div>
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Right: Writing Area */}
-            <div 
-              className="flex flex-col gap-2 pl-4"
-              style={{ width: `${100 - leftPanelWidth}%` }}
-            >
+          {/* Draggable Resizer */}
+          <div
+            onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
+            className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${isDragging ? 'bg-blue-100 dark:bg-blue-600/30' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+          >
+            <div className="flex flex-col gap-1">
+              <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+              <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+              <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+              <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+              <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+            </div>
+          </div>
+
+          {/* Right Panel: Writing Area */}
+          <div
+            className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden"
+            style={{ width: `${100 - leftPanelWidth}%` }}
+          >
+            <div className="p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-white">
+              <span>✍️ Your Answer</span>
+            </div>
+            <div className="p-5 flex-1 flex flex-col bg-slate-50 dark:bg-slate-800">
               <Textarea
                 placeholder="Start writing your essay here..."
                 value={answers[activeTask?.idWritingTask] || ""}
@@ -513,10 +533,9 @@ const Writing = ({ idTest, duration }) => {
                     [activeTask.idWritingTask]: e.target.value,
                   }))
                 }
-                className="flex-1 min-h-[400px] resize-none text-base p-4 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg font-serif leading-relaxed"
+                className="flex-1 resize-none text-base p-4 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20 rounded-lg font-serif leading-relaxed"
               />
-              <div className="flex justify-between items-center text-sm px-1">
-                <span className="text-slate-500">Auto-saved</span>
+              <div className="flex justify-between items-center text-sm px-1 mt-3">
                 <span
                   className={cn(
                     wordCount < (activeTask?.task_type === "TASK1" ? 150 : 250)
@@ -530,27 +549,8 @@ const Writing = ({ idTest, duration }) => {
               </div>
             </div>
           </div>
-        </CardContent>
-
-        <CardFooter className="flex justify-end border-t border-slate-200 dark:border-slate-700 pt-4">
-          <Button
-            onClick={() => handleSubmit(false)}
-            size="lg"
-            disabled={isSubmitting || isLoadingTasks}
-            className="bg-blue-600 hover:bg-blue-700 text-white min-w-[150px]"
-          >
-            {isSubmitting ? (
-              <>
-                <Spin size="small" className="mr-2 text-white" /> Processing...
-              </>
-            ) : multiTask ? (
-              "Submit All Tasks"
-            ) : (
-              "Submit"
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
 
       {/* RESULT MODAL */}
       <Modal

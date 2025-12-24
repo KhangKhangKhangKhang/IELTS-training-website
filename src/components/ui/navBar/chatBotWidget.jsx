@@ -12,10 +12,17 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { sendChat, chatHistory, clearHistory } from "@/services/apiChatBot";
 import { useAuth } from "@/context/authContext";
+import { useLocation } from "react-router-dom";
 
 const ChatBotWidget = () => {
   const { user, accessToken } = useAuth();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  // Store drag position
+  const [dragPosition, setDragPosition] = useState(() => {
+    const saved = localStorage.getItem('chatbotDragPosition');
+    return saved ? JSON.parse(saved) : { x: 0, y: 0 };
+  });
   const [messages, setMessages] = useState([
     {
       sender: "bot",
@@ -27,6 +34,47 @@ const ChatBotWidget = () => {
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // Check if on test page
+  const isOnTestPage = location.pathname.includes('/doTest');
+
+  // Save drag position to localStorage
+  const handleDragEnd = (event, info) => {
+    const newPosition = {
+      x: info.point.x,
+      y: info.point.y,
+    };
+    setDragPosition(newPosition);
+    localStorage.setItem('chatbotDragPosition', JSON.stringify(newPosition));
+  };
+
+  // Get popup position based on button position
+  const getPopupStyle = () => {
+    const buttonX = dragPosition.x || (window.innerWidth - 90);
+    const buttonY = dragPosition.y || (window.innerHeight - 90);
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+
+    // Determine if popup should be on left or right, top or bottom
+    const isRightSide = buttonX > windowWidth / 2;
+    const isBottomSide = buttonY > windowHeight / 2;
+
+    let style = {};
+
+    if (isRightSide) {
+      style.right = `${windowWidth - buttonX + 10}px`;
+    } else {
+      style.left = `${buttonX + 70}px`;
+    }
+
+    if (isBottomSide) {
+      style.bottom = `${windowHeight - buttonY + 10}px`;
+    } else {
+      style.top = `${buttonY + 70}px`;
+    }
+
+    return style;
+  };
 
   // Auto scroll to bottom
   const scrollToBottom = () => {
@@ -134,6 +182,9 @@ const ChatBotWidget = () => {
   useEffect(() => {
     if (isOpen) loadChatHistory();
   }, [isOpen]);
+
+  // Hide on test pages
+  if (isOnTestPage) return null;
 
   return (
     <>
@@ -263,9 +314,8 @@ const ChatBotWidget = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.1 }}
-                    className={`flex ${
-                      msg.sender === "user" ? "justify-end" : "justify-start"
-                    }`}
+                    className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"
+                      }`}
                   >
                     <div className="flex items-end space-x-2 max-w-[85%]">
                       {msg.sender === "bot" && (
@@ -275,19 +325,17 @@ const ChatBotWidget = () => {
                       )}
                       <div>
                         <div
-                          className={`p-3 rounded-2xl text-sm ${
-                            msg.sender === "user"
-                              ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-none"
-                              : "bg-gray-100 text-gray-800 rounded-bl-none border border-gray-200"
-                          }`}
+                          className={`p-3 rounded-2xl text-sm ${msg.sender === "user"
+                            ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-none"
+                            : "bg-gray-100 text-gray-800 rounded-bl-none border border-gray-200"
+                            }`}
                         >
                           <ReactMarkdown>{msg.text}</ReactMarkdown>
                         </div>
 
                         <div
-                          className={`text-xs text-gray-500 mt-1 ${
-                            msg.sender === "user" ? "text-right" : "text-left"
-                          }`}
+                          className={`text-xs text-gray-500 mt-1 ${msg.sender === "user" ? "text-right" : "text-left"
+                            }`}
                         >
                           {formatTime(msg.timestamp)}
                         </div>

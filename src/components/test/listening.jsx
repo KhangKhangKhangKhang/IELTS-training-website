@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { Button, Spin, message, Result, Card } from "antd";
 import {
   SmileOutlined,
@@ -9,6 +9,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import QuestionRenderer from "./reading/render/QuestionRenderer";
 import SimpleResultModal from "./SimpleResultModal";
+import TestNavigationPanel from "./TestNavigationPanel";
+import GradingAnimation from "./GradingAnimation";
 import {
   getDetailInTestAPI,
   createManyAnswersAPI,
@@ -99,6 +101,7 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
 
   // Timer & Submission
   const [timeLeft, setTimeLeft] = useState((duration || 40) * 60);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
 
   // Resizer state
@@ -240,6 +243,50 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
     loadPartDetail();
   }, [test, activePartIndex, loadedParts]);
 
+  // Flatten all questions from all parts for navigation
+  const allQuestions = useMemo(() => {
+    const flattened = [];
+    if (!test || !test.parts) return flattened;
+
+    test.parts.forEach((part, partIndex) => {
+      const partDetail = loadedParts[part.idPart] || part;
+      const groups = partDetail.groupOfQuestions || [];
+
+      groups.forEach((group) => {
+        const questions = group.question || [];
+        questions.forEach((q) => {
+          flattened.push({
+            question_id: q.idQuestion,
+            question_number: q.numberQuestion,
+            partIndex: partIndex,
+            groupId: group.idGroupOfQuestions,
+          });
+        });
+      });
+    });
+
+    return flattened;
+  }, [test, loadedParts]);
+
+  // Handle jump to question
+  const handleQuestionClick = (questionId, partIndex) => {
+    // Switch to the correct part if needed
+    if (partIndex !== activePartIndex) {
+      setActivePartIndex(partIndex);
+    }
+
+    // Scroll to question after a short delay to allow part switch
+    setTimeout(() => {
+      const questionElement = questionRefs.current[questionId];
+      if (questionElement) {
+        questionElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }
+    }, partIndex !== activePartIndex ? 300 : 0);
+  };
+
   // --- 3. LOGIC XỬ LÝ ĐÁP ÁN ---
   const handleAnswerChange = (
     questionId,
@@ -279,11 +326,13 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
   const handleFinish = async (isAutoSubmit = false) => {
     if (isSubmittingRef.current || !inProgress) return;
     isSubmittingRef.current = true;
+    setIsSubmitting(true);
     const currentTestResultId = testResult?.idTestResult;
 
     if (!user?.idUser || !currentTestResultId) {
       message.error("Lỗi: Không tìm thấy ID bài làm");
       isSubmittingRef.current = false;
+      setIsSubmitting(false);
       return;
     }
 
@@ -381,6 +430,9 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
       console.error(err);
       message.error({ content: "Nộp bài thất bại", key: "submitting" });
       isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -468,6 +520,9 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex flex-col font-sans transition-colors duration-300">
+      {/* Show Grading Animation when submitting */}
+      {isSubmitting && <GradingAnimation testType="LISTENING" />}
+
       {/* 1. TOP BAR */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 shadow-lg border-b border-slate-200 dark:border-slate-800 h-[72px] px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -493,13 +548,12 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${
-                  timeLeft < 300
-                    ? "bg-red-600 text-white border-red-500 animate-pulse"
-                    : timeLeft < 600
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${timeLeft < 300
+                  ? "bg-red-600 text-white border-red-500 animate-pulse"
+                  : timeLeft < 600
                     ? "bg-orange-600 text-white border-orange-500"
                     : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
-                }`}
+                  }`}
               >
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
@@ -544,7 +598,7 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
             controlsList="nodownload"
             className="w-full h-12 outline-none rounded-2xl shadow-xl"
             src={test.audioUrl}
-            style={{ 
+            style={{
               borderRadius: "16px",
               filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1))"
             }}
@@ -562,11 +616,10 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${
-                idx === activePartIndex
-                  ? "bg-blue-600 text-white border-blue-500 scale-105"
-                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
-              }`}
+              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${idx === activePartIndex
+                ? "bg-blue-600 text-white border-blue-500 scale-105"
+                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
             >
               <div className="flex items-center gap-2">
                 <span className={idx === activePartIndex ? "text-xl" : "text-lg"}>
@@ -647,10 +700,10 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
 
               {(!renderPart.groupOfQuestions ||
                 renderPart.groupOfQuestions.length === 0) && (
-                <div className="text-center py-12 text-gray-400">
-                  Chưa có câu hỏi cho phần này.
-                </div>
-              )}
+                  <div className="text-center py-12 text-gray-400">
+                    Chưa có câu hỏi cho phần này.
+                  </div>
+                )}
             </div>
           )}
         </div>
