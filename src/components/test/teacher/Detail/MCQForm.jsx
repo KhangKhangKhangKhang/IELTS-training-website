@@ -7,6 +7,7 @@ import {
   getQuestionsByIdGroupAPI,
   getAnswersByIdQuestionAPI,
 } from "@/services/apiTest";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const MCQForm = ({
   idGroup,
@@ -297,14 +298,13 @@ const MCQForm = ({
   if (hasQuestionsLoaded && loadedQuestions.length > 0 && !isEditMode) {
     const displayQuestions = isMultipleMode
       ? [
-          {
-            ...loadedQuestions[0],
-            numberQuestionDisplay: `${loadedQuestions[0].numberQuestion} - ${
-              loadedQuestions[loadedQuestions.length - 1].numberQuestion
+        {
+          ...loadedQuestions[0],
+          numberQuestionDisplay: `${loadedQuestions[0].numberQuestion} - ${loadedQuestions[loadedQuestions.length - 1].numberQuestion
             }`,
-            options: loadedQuestions[0].options,
-          },
-        ]
+          options: loadedQuestions[0].options,
+        },
+      ]
       : loadedQuestions;
 
     return (
@@ -327,16 +327,15 @@ const MCQForm = ({
             key={q.idQuestion || idx}
             className="border p-4 rounded bg-white"
           >
-            <div className="font-bold mb-2 text-blue-800">
-              Câu {q.numberQuestionDisplay || q.numberQuestion}: {q.content}
-            </div>
+            <div className="font-bold mb-2 text-blue-800"
+              dangerouslySetInnerHTML={{ __html: `Câu ${q.numberQuestionDisplay || q.numberQuestion}: ${q.content}` }}
+            />
             <div className="grid grid-cols-1 gap-2 pl-4">
               {(q.options || []).map((opt, oIdx) => (
                 <div
                   key={oIdx}
-                  className={`p-2 border rounded text-sm flex gap-2 items-center ${
-                    opt.correct ? "bg-green-50 border-green-300" : "bg-gray-50"
-                  }`}
+                  className={`p-2 border rounded text-sm flex gap-2 items-center ${opt.correct ? "bg-green-50 border-green-300" : "bg-gray-50"
+                    }`}
                 >
                   <span className="font-bold min-w-[25px] text-center bg-white border rounded px-1">
                     {String.fromCharCode(65 + oIdx)}
@@ -402,18 +401,16 @@ const MCQForm = ({
           <div className="font-semibold mb-2">
             {isMultipleMode
               ? `Nội dung cho ${groupData.quantity} câu hỏi (Chọn ${groupData.quantity} đáp án đúng)`
-              : `Câu ${
-                  q.numberQuestion ||
-                  questionNumberOffset + loadedQuestions.length + qIndex + 1
-                }`}
+              : `Câu ${q.numberQuestion ||
+              questionNumberOffset + loadedQuestions.length + qIndex + 1
+              }`}
           </div>
 
-          <Input.TextArea
-            rows={2}
-            placeholder="Nội dung câu hỏi..."
+          <RichTextEditor
             value={q.content}
-            onChange={(e) => handleChangeQuestion(qIndex, e.target.value)}
-            className="mb-4"
+            onChange={(html) => handleChangeQuestion(qIndex, html)}
+            placeholder="Nhập nội dung câu hỏi (có thể định dạng text)..."
+            minHeight="80px"
           />
 
           <div className="space-y-2">

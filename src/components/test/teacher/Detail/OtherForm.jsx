@@ -8,6 +8,7 @@ import {
   createManyQuestion,
   updateManyQuestionAPI,
 } from "@/services/apiTest";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const OtherForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   const [loadedQuestions, setLoadedQuestions] = useState([]);
@@ -245,12 +246,12 @@ const OtherForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
           >
             <div className="flex justify-between items-start mb-2">
               <div className="flex-1">
-                <span className="font-semibold">
-                  Câu {q.numberQuestion}: {q.content}
-                </span>
+                <span className="font-semibold" dangerouslySetInnerHTML={{
+                  __html: `Câu ${q.numberQuestion}: ${q.content}`
+                }} />
                 <div className="text-sm text-gray-600 mt-2">
                   <p className="font-medium">Đáp án:</p>
-                  <p className="whitespace-pre-wrap">{q.answer_text}</p>
+                  <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: q.answer_text }} />
                 </div>
               </div>
               <Button
@@ -300,20 +301,20 @@ const OtherForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
               : questionNumberOffset + loadedQuestions.length + qIndex + 1}
           </div>
 
-          <Input.TextArea
-            rows={2}
-            placeholder="Nhập nội dung câu hỏi..."
+          <RichTextEditor
             value={q.content}
-            onChange={(e) => handleChangeQuestion(qIndex, e.target.value)}
+            onChange={(html) => handleChangeQuestion(qIndex, html)}
+            placeholder="Nhập nội dung câu hỏi (có thể định dạng text)..."
+            minHeight="80px"
           />
 
           <div className="mt-3">
             <span className="text-sm text-gray-600 mb-1 block">Đáp án:</span>
-            <Input.TextArea
-              rows={3}
-              placeholder="Nhập đáp án"
+            <RichTextEditor
               value={q.answer_text}
-              onChange={(e) => handleChangeAnswer(qIndex, e.target.value)}
+              onChange={(html) => handleChangeAnswer(qIndex, html)}
+              placeholder="Nhập đáp án (có thể định dạng text)..."
+              minHeight="120px"
             />
           </div>
         </div>

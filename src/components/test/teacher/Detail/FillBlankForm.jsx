@@ -35,6 +35,11 @@ const FillBlankForm = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // View/Edit mode states
+  const [hasQuestionsLoaded, setHasQuestionsLoaded] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [loadedQuestions, setLoadedQuestions] = useState([]);
+
   // Mode: "SENTENCE" | "SUMMARY" | "SUMMARY_BOX" | "TABLE"
   const [mode, setMode] = useState("SENTENCE");
 
@@ -101,6 +106,8 @@ const FillBlankForm = ({
 
       if (!group || !group.question || group.question.length === 0) {
         initFixedForm();
+        setLoadedQuestions([]);
+        setHasQuestionsLoaded(false);
       } else {
         const questionsList = group.question;
 
@@ -125,6 +132,11 @@ const FillBlankForm = ({
           })
         );
 
+        // Store loaded questions for VIEW MODE
+        setLoadedQuestions(fullQuestions);
+        setHasQuestionsLoaded(true);
+
+        // Also populate for potential editing
         detectModeAndFillData(fullQuestions);
       }
     } catch (err) {
@@ -211,9 +223,9 @@ const FillBlankForm = ({
           options.length > 0
             ? options
             : [
-                { key: "A", text: "" },
-                { key: "B", text: "" },
-              ]
+              { key: "A", text: "" },
+              { key: "B", text: "" },
+            ]
         );
         return;
       }
@@ -238,6 +250,21 @@ const FillBlankForm = ({
   };
 
   // --- 2. HANDLERS ---
+
+  const handleEditGroup = () => {
+    // Enter EDIT MODE
+    setIsEditMode(true);
+    setHasQuestionsLoaded(false);
+    // Data already populated by detectModeAndFillData during load
+  };
+
+  const handleCancelEdit = () => {
+    // Exit EDIT MODE, return to VIEW
+    setIsEditMode(false);
+    setHasQuestionsLoaded(true);
+    // Reload to discard changes
+    loadQuestions();
+  };
 
   const handleChangeQuestion = (idx, field, val) => {
     const newQ = [...questions];
@@ -455,6 +482,10 @@ const FillBlankForm = ({
 
       await Promise.all(promises);
       message.success("Đã lưu thành công!");
+
+      // Reset edit mode and show VIEW MODE
+      setIsEditMode(false);
+
       if (onRefresh) onRefresh();
       await loadQuestions();
     } catch (err) {
@@ -472,6 +503,101 @@ const FillBlankForm = ({
       </div>
     );
 
+  // ======== VIEW MODE: Display Loaded Questions ========
+  if (hasQuestionsLoaded && !isEditMode && loadedQuestions.length > 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">
+            Câu hỏi đã tạo ({loadedQuestions.length} câu)
+            <span className="ml-3 text-sm text-gray-500 font-normal">
+              Mode: {mode === "SENTENCE" ? "Từng câu" : mode === "SUMMARY" ? "Summary (Điền từ)" : mode === "SUMMARY_BOX" ? "Summary (Chọn Box)" : "Table"}
+            </span>
+          </h3>
+          <Button type="primary" onClick={handleEditGroup}>
+            ✎ Chỉnh sửa
+          </Button>
+        </div>
+
+        {/* Display based on mode */}
+        {mode === "SENTENCE" && (
+          <div className="space-y-3">
+            {loadedQuestions.map((q, idx) => (
+              <Card key={q.idQuestion || idx} size="small">
+                <div className="font-semibold text-blue-600 mb-2">
+                  Câu {q.numberQuestion}: <span dangerouslySetInnerHTML={{ __html: q.content }} />
+                </div>
+                <div className="text-sm text-gray-600">
+                  Đáp án: <span className="font-medium">{q.answer_text}</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {(mode === "SUMMARY" || mode === "SUMMARY_BOX") && (
+          <div className="space-y-4">
+            <Card title="Đoạn văn Summary" size="small">
+              <div
+                className="prose max-w-none"
+                dangerouslySetInnerHTML={{ __html: summaryText }}
+              />
+            </Card>
+
+            {mode === "SUMMARY_BOX" && boxOptions.length > 0 && (
+              <Card title="Danh sách lựa chọn (The Box)" size="small">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {boxOptions.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-gray-50 p-2 rounded border">
+                      <span className="font-bold text-blue-600 w-8">{opt.key}.</span>
+                      <span className="text-sm">{opt.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            <Card title={`Đáp án (${loadedQuestions.length} câu)`} size="small">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {loadedQuestions.map((q, idx) => (
+                  <div key={q.idQuestion || idx} className="flex items-center gap-2 bg-blue-50 p-2 rounded border border-blue-200">
+                    <span className="font-bold text-blue-600 w-8">{q.numberQuestion}.</span>
+                    <span className="text-sm font-medium">
+                      {mode === "SUMMARY" ? q.answer_text : `${q.selectedBoxKey || "?"}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {mode === "TABLE" && (
+          <div className="space-y-4">
+            <Card title="Bảng biểu (Table)" size="small">
+              <div
+                className="prose max-w-none"
+                dangerouslySetInnerHTML={{ __html: loadedQuestions[0]?.content || "" }}
+              />
+            </Card>
+
+            <Card title={`Đáp án (${loadedQuestions.length} câu)`} size="small">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {loadedQuestions.map((q, idx) => (
+                  <div key={q.idQuestion || idx} className="flex items-center gap-2 bg-blue-50 p-2 rounded border border-blue-200">
+                    <span className="font-bold text-blue-600 w-8">{q.numberQuestion}.</span>
+                    <span className="text-sm font-medium">{q.answer_text}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ======== FORM MODE: Create or Edit ========
   return (
     <div className="space-y-5 pb-4">
       {/* 1. Switch Mode */}
@@ -636,11 +762,10 @@ const FillBlankForm = ({
           {questions.map((q, idx) => (
             <div
               key={idx}
-              className={`p-3 rounded border shadow-sm ${
-                mode === "SENTENCE"
-                  ? "bg-gray-50"
-                  : "bg-white flex items-center gap-2"
-              }`}
+              className={`p-3 rounded border shadow-sm ${mode === "SENTENCE"
+                ? "bg-gray-50"
+                : "bg-white flex items-center gap-2"
+                }`}
             >
               {/* --- CASE: SENTENCE MODE --- */}
               {mode === "SENTENCE" && (
@@ -756,20 +881,28 @@ const FillBlankForm = ({
       </div>
 
       {/* 5. Footer Save */}
-      <div className="pt-4 mt-4 border-t flex justify-end">
-        <Button
-          type="primary"
-          size="large"
-          icon={<SaveOutlined />}
-          loading={saving}
-          onClick={handleSave}
-          className="min-w-[150px]"
-        >
-          Lưu nhóm câu hỏi
-        </Button>
+      <div className="pt-4 mt-4 border-t flex justify-between items-center">
+        {isEditMode && (
+          <Button onClick={handleCancelEdit}>
+            Hủy
+          </Button>
+        )}
+        <div className={!isEditMode ? "w-full flex justify-end" : ""}>
+          <Button
+            type="primary"
+            size="large"
+            icon={<SaveOutlined />}
+            loading={saving}
+            onClick={handleSave}
+            className="min-w-[150px]"
+          >
+            {isEditMode ? "Cập nhật" : "Lưu nhóm câu hỏi"}
+          </Button>
+        </div>
       </div>
     </div>
   );
 };
 
 export default FillBlankForm;
+

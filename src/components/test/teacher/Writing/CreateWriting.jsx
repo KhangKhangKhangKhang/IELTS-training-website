@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 // 1. Thêm import Textarea (nếu bạn dùng shadcn/ui thì thường có sẵn, hoặc dùng thẻ textarea thường)
 import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 import {
   createWritingTaskAPI,
@@ -157,19 +158,19 @@ const CreateWriting = ({ idTest, exam, onExamUpdate }) => {
         [currentTask]: {
           ...(currentTask === "TASK1"
             ? {
-                id: null,
-                title: "",
-                time_limit: "",
-                imageUrl: null,
-                image: null,
-                task_type: "TASK1",
-              }
+              id: null,
+              title: "",
+              time_limit: "",
+              imageUrl: null,
+              image: null,
+              task_type: "TASK1",
+            }
             : {
-                id: null,
-                title: "",
-                time_limit: "",
-                task_type: "TASK2",
-              }),
+              id: null,
+              title: "",
+              time_limit: "",
+              task_type: "TASK2",
+            }),
         },
       }));
       alert("Xoá thành công!");
@@ -191,11 +192,10 @@ const CreateWriting = ({ idTest, exam, onExamUpdate }) => {
             <Button
               key={task}
               onClick={() => setCurrentTask(task)}
-              className={`px-6 py-3 font-medium transition-all ${
-                currentTask === task
+              className={`px-6 py-3 font-medium transition-all ${currentTask === task
                   ? "border-b-4 border-blue-600 bg-blue-50 text-blue-700"
                   : "text-gray-600 hover:bg-gray-50"
-              }`}
+                }`}
             >
               {task.replace("TASK", "Task ")}
             </Button>
@@ -211,12 +211,11 @@ const CreateWriting = ({ idTest, exam, onExamUpdate }) => {
 
             <div>
               <Label className="text-base">Tiêu đề (Đề bài)</Label>
-              {/* 2. Thay Input bằng Textarea */}
-              <Textarea
+              <RichTextEditor
                 value={current.title}
-                onChange={(e) => updateField("title", e.target.value)}
-                placeholder="Nhập tiêu đề đề bài..."
-                className="mt-1 min-h-[150px]" // Tăng chiều cao mặc định
+                onChange={(html) => updateField("title", html)}
+                placeholder="Nhập tiêu đề đề bài (có thể định dạng text)..."
+                minHeight="150px"
               />
             </div>
 
@@ -305,10 +304,12 @@ const CreateWriting = ({ idTest, exam, onExamUpdate }) => {
               Xem trước
             </h3>
             <div className="bg-white p-5 rounded border min-h-48">
-              {/* 3. Thêm class whitespace-pre-wrap để hiển thị xuống dòng */}
-              <p className="text-xl font-medium mb-4 whitespace-pre-wrap">
-                {current.title || "<Chưa có tiêu đề>"}
-              </p>
+              <div
+                className="text-xl font-medium mb-4 prose max-w-none"
+                dangerouslySetInnerHTML={{
+                  __html: current.title || "<span class='text-gray-400'>Chưa có tiêu đề</span>"
+                }}
+              />
               {currentTask === "TASK1" && current.imageUrl && (
                 <img
                   src={current.imageUrl}
@@ -335,8 +336,8 @@ const CreateWriting = ({ idTest, exam, onExamUpdate }) => {
               {tasks.TASK1.title.trim() && tasks.TASK2.title.trim()
                 ? "Sẽ lưu cả 2 tasks"
                 : tasks.TASK1.title.trim() || tasks.TASK2.title.trim()
-                ? "Sẽ lưu 1 task"
-                : "Nhập dữ liệu để lưu"}
+                  ? "Sẽ lưu 1 task"
+                  : "Nhập dữ liệu để lưu"}
             </span>
             <Button
               size="lg"

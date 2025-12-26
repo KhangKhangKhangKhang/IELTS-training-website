@@ -48,6 +48,10 @@ const LabelingForm = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // View/Edit mode states
+  const [hasQuestionsLoaded, setHasQuestionsLoaded] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+
   // Mặc định là ABC
   const [labelType, setLabelType] = useState("ABC");
 
@@ -96,6 +100,7 @@ const LabelingForm = ({
 
       if (!group || !group.question || group.question.length === 0) {
         initDefault();
+        setHasQuestionsLoaded(false);
       } else {
         // Load Options
         const firstQId = group.question[0].idQuestion;
@@ -148,6 +153,9 @@ const LabelingForm = ({
         );
         loadedQuestions.sort((a, b) => a.numberQuestion - b.numberQuestion);
         setQuestions(loadedQuestions);
+
+        // Set VIEW MODE
+        setHasQuestionsLoaded(true);
       }
     } catch (err) {
       console.error(err);
@@ -155,6 +163,18 @@ const LabelingForm = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  // --- EDIT MODE HANDLERS ---
+  const handleEditGroup = () => {
+    setIsEditMode(true);
+    setHasQuestionsLoaded(false);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setHasQuestionsLoaded(true);
+    loadData();
   };
 
   // --- LOGIC TỰ ĐỘNG ĐÁNH SỐ LẠI ---
@@ -264,6 +284,64 @@ const LabelingForm = ({
 
   if (loading) return <Spin className="block mx-auto py-10" />;
 
+  // ======== VIEW MODE: Display Loaded Questions ========
+  if (hasQuestionsLoaded && !isEditMode && questions.length > 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">
+            Câu hỏi đã tạo ({questions.length} câu)
+            <span className="ml-3 text-sm text-gray-500 font-normal">
+              Loại nhãn: {labelType === "ABC" ? "A, B, C" : labelType === "ROMAN" ? "I, II, III" : "1, 2, 3"}
+            </span>
+          </h3>
+          <Button type="primary" onClick={handleEditGroup}>
+            ✎ Chỉnh sửa
+          </Button>
+        </div>
+
+        {/* Display Options Pool */}
+        <Card title="Danh sách nhãn (Labels)" size="small" className="bg-blue-50">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {optionsPool.map((opt, idx) => (
+              <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded border">
+                <span className="font-bold text-blue-600 w-10 text-center bg-blue-100 rounded px-2 py-1">
+                  {opt.key}
+                </span>
+                <span className="text-sm flex-1">{opt.text || "(Không có text)"}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Display Questions with Answers */}
+        <Card title="Đáp án" size="small">
+          <div className="space-y-2">
+            {questions.map((q, idx) => (
+              <div key={q.idQuestion || idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded border">
+                <div className="flex-none w-12 h-10 flex items-center justify-center bg-blue-600 text-white font-bold rounded">
+                  {q.numberQuestion}
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm text-gray-600">
+                    {q.content || "(Không có mô tả)"}
+                  </div>
+                </div>
+                <div className="flex-none">
+                  <span className="text-xs text-gray-500 mr-2">Đáp án:</span>
+                  <span className="font-bold text-blue-600 bg-blue-100 px-3 py-1 rounded">
+                    {q.correctKey || "?"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // ======== FORM MODE: Create or Edit ========
   return (
     <div className="space-y-6 pb-4">
       <Card
@@ -389,6 +467,11 @@ const LabelingForm = ({
       </Card>
 
       <div className="flex justify-end pt-2 border-t">
+        {isEditMode && (
+          <Button onClick={handleCancelEdit} className="mr-2">
+            Hủy
+          </Button>
+        )}
         <Button
           type="primary"
           size="large"
@@ -397,7 +480,7 @@ const LabelingForm = ({
           loading={saving}
           className="min-w-[150px]"
         >
-          Lưu Labeling
+          {isEditMode ? "Cập nhật" : "Lưu Labeling"}
         </Button>
       </div>
     </div>
