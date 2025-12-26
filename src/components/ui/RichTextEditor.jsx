@@ -159,50 +159,74 @@ const RichTextEditor = ({
     };
 
     const FontSizeButton = () => {
+        const [selectedSize, setSelectedSize] = useState("default");
+
+        // Font sizes in pt like Microsoft Word
         const sizes = [
-            { label: "Nhỏ", value: "2" },
-            { label: "Bình thường", value: "3" },
-            { label: "Lớn", value: "5" },
-            { label: "Rất lớn", value: "7" },
+            { label: "8", value: "8pt" },
+            { label: "10", value: "10pt" },
+            { label: "12", value: "12pt" },
+            { label: "14", value: "14pt" },
+            { label: "16", value: "16pt" },
+            { label: "18", value: "18pt" },
+            { label: "20", value: "20pt" },
+            { label: "24", value: "24pt" },
+            { label: "28", value: "28pt" },
+            { label: "36", value: "36pt" },
+            { label: "48", value: "48pt" },
         ];
 
         const handleSizeChange = (e) => {
             const size = e.target.value;
+            setSelectedSize(size);
+
             if (size && size !== "default") {
-                // Focus editor first
+                // Focus editor and execute command with pt value
                 editorRef.current?.focus();
 
-                // Execute command with small delay
-                setTimeout(() => {
-                    execCommand("fontSize", size);
+                // Use style-based font size instead of deprecated font tag
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const selectedText = range.toString();
 
-                    // Reset select to default
-                    e.target.value = "default";
-                }, 10);
+                    if (selectedText) {
+                        const span = document.createElement("span");
+                        span.style.fontSize = size;
+
+                        const contents = range.extractContents();
+                        span.appendChild(contents);
+                        range.insertNode(span);
+
+                        editorRef.current?.focus();
+                        handleInput();
+                    }
+                }
             }
         };
 
         return (
-            <select
-                onChange={handleSizeChange}
-                onMouseDown={(e) => e.preventDefault()}
-                defaultValue="default"
-                className="h-8 px-2 text-xs border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-                <option value="default">Kích thước</option>
-                {sizes.map((size) => (
-                    <option key={size.value} value={size.value}>
-                        {size.label}
-                    </option>
-                ))}
-            </select>
+            <div className="relative z-50">
+                <select
+                    value={selectedSize}
+                    onChange={handleSizeChange}
+                    className="h-8 px-2 text-xs border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                    <option value="default">Size</option>
+                    {sizes.map((size) => (
+                        <option key={size.value} value={size.value}>
+                            {size.label}
+                        </option>
+                    ))}
+                </select>
+            </div>
         );
     };
 
     return (
         <div
             className={cn(
-                "border rounded-lg overflow-hidden transition-all",
+                "border rounded-lg transition-all",
                 isFocused
                     ? "border-blue-500 dark:border-blue-500 ring-2 ring-blue-500/20"
                     : "border-slate-300 dark:border-slate-600",
@@ -210,7 +234,7 @@ const RichTextEditor = ({
             )}
         >
             {/* Toolbar */}
-            <div className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 p-2 flex flex-wrap gap-1">
+            <div className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 p-2 flex flex-wrap gap-1 rounded-t-lg">
                 {/* Text Formatting */}
                 <div className="flex gap-1 pr-2 border-r border-slate-300 dark:border-slate-600">
                     <ToolbarButton
@@ -297,25 +321,6 @@ const RichTextEditor = ({
                     <FontSizeButton />
                     <ColorPicker type="foreColor" />
                 </div>
-
-                {/* Undo/Redo & Clear */}
-                <div className="flex gap-1">
-                    <ToolbarButton
-                        onClick={() => execCommand("undo")}
-                        icon={RotateCcw}
-                        title="Hoàn tác (Ctrl+Z)"
-                    />
-                    <ToolbarButton
-                        onClick={() => execCommand("redo")}
-                        icon={RotateCw}
-                        title="Làm lại (Ctrl+Y)"
-                    />
-                    <ToolbarButton
-                        onClick={() => execCommand("removeFormat")}
-                        icon={RemoveFormatting}
-                        title="Xóa định dạng"
-                    />
-                </div>
             </div>
 
             {/* Editor */}
@@ -326,11 +331,20 @@ const RichTextEditor = ({
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 className={cn(
-                    "p-4 outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 overflow-y-auto",
+                    "p-4 outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 overflow-y-auto rounded-b-lg",
                     "prose dark:prose-invert max-w-none",
-                    "prose-headings:mt-2 prose-headings:mb-2",
-                    "prose-p:my-1",
-                    "prose-ul:my-1 prose-ol:my-1",
+                    // Heading styles with explicit sizes
+                    "[&_h1]:text-3xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2",
+                    "[&_h2]:text-2xl [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2",
+                    "[&_h3]:text-xl [&_h3]:font-bold [&_h3]:mt-2 [&_h3]:mb-1",
+                    // Paragraph and list spacing
+                    "[&_p]:my-1",
+                    "[&_ul]:my-1 [&_ol]:my-1",
+                    // List styles - CRITICAL: Show bullets and numbers
+                    "[&_ul]:list-disc [&_ul]:pl-6",
+                    "[&_ol]:list-decimal [&_ol]:pl-6",
+                    "[&_li]:ml-0",
+                    // Placeholder
                     "[&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-slate-400 [&:empty:before]:dark:text-slate-500"
                 )}
                 style={{ minHeight }}

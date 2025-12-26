@@ -28,8 +28,8 @@ import {
 } from "@ant-design/icons";
 import { updateTestInfoAPI } from "@/services/apiTest";
 import { useNavigate } from "react-router";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
-const { TextArea: AntTextArea } = Input;
 const { Option } = Select;
 
 const TestInfoEditor = ({ exam, onUpdate }) => {
@@ -227,8 +227,14 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
 
         <Row gutter={24}>
           <Col span={14}>
-            <Form.Item name="description" label="Mô tả">
-              <AntTextArea rows={4} showCount maxLength={500} />
+            <Form.Item name="description" label="Mô tả (hỗ trợ định dạng HTML)">
+              <Form.Item
+                name="description"
+                noStyle
+                getValueFromEvent={(html) => html}
+              >
+                <RichTextEditor minHeight="150px" placeholder="Nhập mô tả đề thi..." />
+              </Form.Item>
             </Form.Item>
 
             {/* CHỈ HIỂN THỊ UPLOAD AUDIO NẾU LÀ LISTENING */}
@@ -252,8 +258,8 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
                     {newAudioFile
                       ? "Đổi file khác"
                       : rawAudioSrc
-                      ? "Thay đổi Audio hiện tại"
-                      : "Tải Audio"}
+                        ? "Thay đổi Audio hiện tại"
+                        : "Tải Audio"}
                   </Button>
                 </Upload>
               </div>
