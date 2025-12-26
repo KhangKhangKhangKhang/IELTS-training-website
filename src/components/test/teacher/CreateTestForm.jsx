@@ -3,8 +3,8 @@ import { Input, Select, Upload, Button, message } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { createTestAPI } from "@/services/apiTest";
 import { useAuth } from "@/context/authContext";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
-const { TextArea } = Input;
 const { Option } = Select;
 
 const CreateTestForm = ({ onSuccess }) => {
@@ -72,11 +72,11 @@ const CreateTestForm = ({ onSuccess }) => {
           onChange={(e) => handleChange("title", e.target.value)}
         />
 
-        <TextArea
-          placeholder="Mô tả"
-          rows={3}
+        <RichTextEditor
           value={formData.description}
-          onChange={(e) => handleChange("description", e.target.value)}
+          onChange={(html) => handleChange("description", html)}
+          placeholder="Nhập mô tả đề thi (có thể định dạng text)"
+          minHeight="180px"
         />
 
         <Input

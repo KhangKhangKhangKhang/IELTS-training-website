@@ -7,6 +7,7 @@ import {
   createManyQuestion,
   updateManyQuestionAPI,
 } from "@/services/apiTest";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const { Option } = Select;
 
@@ -226,13 +227,13 @@ const MatchingForm = ({
             </div>
             <div className="flex gap-4 items-start">
               <div className="flex-1">
-                <Input.TextArea
-                  placeholder="Nội dung câu hỏi..."
-                  rows={2}
+                <RichTextEditor
                   value={q.content}
-                  onChange={(e) =>
-                    handleQuestionChange(idx, "content", e.target.value)
+                  onChange={(html) =>
+                    handleQuestionChange(idx, "content", html)
                   }
+                  placeholder="Nhập nội dung câu hỏi (có thể định dạng text)..."
+                  minHeight="80px"
                 />
               </div>
               <div className="w-[200px]">

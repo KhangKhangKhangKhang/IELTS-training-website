@@ -8,6 +8,7 @@ import {
   createManyQuestion,
   updateManyQuestionAPI,
 } from "@/services/apiTest";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const ShortAnswerForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   const [loadedQuestions, setLoadedQuestions] = useState([]);
@@ -245,9 +246,9 @@ const ShortAnswerForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
           >
             <div className="flex justify-between items-start mb-2">
               <div>
-                <span className="font-semibold">
-                  Câu {q.numberQuestion}: {q.content}
-                </span>
+                <span className="font-semibold" dangerouslySetInnerHTML={{
+                  __html: `Câu ${q.numberQuestion}: ${q.content}`
+                }} />
                 <div className="text-sm text-gray-600 mt-1">
                   Đáp án: <span className="font-medium">{q.answer_text}</span>
                 </div>
@@ -299,11 +300,11 @@ const ShortAnswerForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
               : questionNumberOffset + loadedQuestions.length + qIndex + 1}
           </div>
 
-          <Input.TextArea
-            rows={2}
-            placeholder="Nhập nội dung câu hỏi..."
+          <RichTextEditor
             value={q.content}
-            onChange={(e) => handleChangeQuestion(qIndex, e.target.value)}
+            onChange={(html) => handleChangeQuestion(qIndex, html)}
+            placeholder="Nhập nội dung câu hỏi (có thể định dạng text)..."
+            minHeight="80px"
           />
 
           <div className="mt-3 flex items-center gap-3">

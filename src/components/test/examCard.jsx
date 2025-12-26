@@ -82,9 +82,12 @@ const ExamCard = ({ exam, onExamClick }) => {
           {exam.title}
         </h3>
 
-        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 min-h-[40px]">
-          {exam.description || "Làm đề thi để kiểm tra kiến thức của bạn"}
-        </p>
+        <div
+          className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4 min-h-[40px] prose prose-sm dark:prose-invert max-w-none [&>*]:my-0"
+          dangerouslySetInnerHTML={{
+            __html: exam.description || "Làm đề thi để kiểm tra kiến thức của bạn"
+          }}
+        />
 
         {/* Stats */}
         <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">

@@ -625,19 +625,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
               </div>
               <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
                 {renderPart?.passage?.content ? (
-                  <div className="prose max-w-none text-slate-700 dark:text-slate-300 leading-relaxed font-serif text-lg">
-                    {renderPart.passage.content
-                      .split(/\r?\n\r?\n/)
-                      .filter((p) => p.trim())
-                      .map((paragraph, index) => (
-                        <p
-                          key={index}
-                          className="mb-4 text-justify indent-8 first-letter:text-2xl first-letter:font-bold first-letter:text-blue-600 dark:first-letter:text-blue-400"
-                        >
-                          {paragraph.trim()}
-                        </p>
-                      ))}
-                  </div>
+                  <div
+                    className="prose prose-lg max-w-none text-slate-700 dark:text-slate-300 leading-relaxed dark:prose-invert"
+                    dangerouslySetInnerHTML={{ __html: renderPart.passage.content }}
+                  />
                 ) : (
                   !isPartLoading && (
                     <div className="text-center py-10 text-slate-500">
@@ -708,13 +699,18 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                     >
                       <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100 dark:border-slate-700">
                         <div className="flex-1">
-                          <h4 className="font-bold text-gray-800 dark:text-white text-base mb-1">
-                            {mainTitle}
-                          </h4>
+                          <h4
+                            className="font-bold text-gray-800 dark:text-white text-base mb-1 prose prose-sm dark:prose-invert max-w-none"
+                            dangerouslySetInnerHTML={{ __html: mainTitle }}
+                          />
                           {instructions.length > 0 && (
                             <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1 mt-2">
                               {instructions.map((instruction, idx) => (
-                                <p key={idx} className="italic">{instruction}</p>
+                                <div
+                                  key={idx}
+                                  className="italic prose prose-sm dark:prose-invert max-w-none"
+                                  dangerouslySetInnerHTML={{ __html: instruction }}
+                                />
                               ))}
                             </div>
                           )}

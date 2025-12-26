@@ -12,6 +12,7 @@ import {
 } from "antd";
 import { DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import { Textarea } from "@/components/ui/textarea";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 import {
   createPassageAPI,
   updatePassageAPI,
@@ -221,11 +222,11 @@ const ReadingPartPanel = ({
               placeholder="Nhập tiêu đề passage..."
             />
           </div>
-          <Textarea
-            className="w-full h-64 resize-none"
-            placeholder="Nhập nội dung passage..."
+          <RichTextEditor
             value={passageData.content}
-            onChange={(e) => handleContentChange(e.target.value)}
+            onChange={(html) => handleContentChange(html)}
+            placeholder="Nhập nội dung passage (có thể định dạng text)..."
+            minHeight="256px"
           />
           <div className="flex gap-3 mt-3">
             <Button
@@ -255,12 +256,11 @@ const ReadingPartPanel = ({
                 <label className="block text-sm font-medium mb-1">
                   Tiêu đề nhóm
                 </label>
-                <Input.TextArea // SỬA: Dùng Input.TextArea của Antd
-                  placeholder="Questions 1-5... (Có thể xuống dòng)"
+                <RichTextEditor
                   value={groupTitle}
-                  onChange={(e) => setGroupTitle(e.target.value)}
-                  className="w-full"
-                  rows={4} // Cho phép hiển thị nhiều dòng mặc định
+                  onChange={(html) => setGroupTitle(html)}
+                  placeholder="Questions 1-5... (Có thể định dạng text)"
+                  minHeight="120px"
                 />
               </div>
               <div className="flex items-end gap-3">
@@ -315,7 +315,7 @@ const ReadingPartPanel = ({
           </div>
 
           {partDetail?.groupOfQuestions &&
-          partDetail.groupOfQuestions.length > 0 ? (
+            partDetail.groupOfQuestions.length > 0 ? (
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Các nhóm câu hỏi đã tạo</h3>
               {partDetail.groupOfQuestions.map((nhom) => {
@@ -335,9 +335,10 @@ const ReadingPartPanel = ({
                   >
                     <div className="flex justify-between items-center mb-3">
                       <div className="flex flex-col">
-                        <h4 className="font-medium text-blue-600 whitespace-pre-line">
-                          {displayTitle}
-                        </h4>
+                        <h4
+                          className="font-medium text-blue-600 prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: displayTitle }}
+                        />
                         {nhom.typeQuestion === "MCQ" && (
                           <span className="text-xs text-gray-500 mt-1">
                             {nhom.title.startsWith("Multiple")

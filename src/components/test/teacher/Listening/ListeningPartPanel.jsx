@@ -23,6 +23,7 @@ import {
   deleteGroupOfQuestionsAPI,
 } from "@/services/apiTest";
 import QuestionTypeRenderer from "@/components/test/teacher/QuestionRender";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const { TextArea } = Input;
 
@@ -239,15 +240,15 @@ const ListeningPartPanel = ({
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               Tiêu đề / Hướng dẫn <span className="text-red-500">*</span>
             </label>
-            <TextArea
-              rows={2}
+            <RichTextEditor
+              value={groupTitle}
+              onChange={(html) => setGroupTitle(html)}
               placeholder={
                 groupType === "LABELING"
                   ? "VD: Label the map below. Write NO MORE THAN TWO WORDS..."
-                  : "Nhập hướng dẫn làm bài..."
+                  : "Nhập hướng dẫn làm bài (có thể định dạng text)..."
               }
-              value={groupTitle}
-              onChange={(e) => setGroupTitle(e.target.value)}
+              minHeight="100px"
             />
           </div>
 
@@ -282,7 +283,7 @@ const ListeningPartPanel = ({
       {/* --- DANH SÁCH NHÓM CÂU HỎI --- */}
       <div className="space-y-6">
         {partDetail?.groupOfQuestions &&
-        partDetail.groupOfQuestions.length > 0 ? (
+          partDetail.groupOfQuestions.length > 0 ? (
           partDetail.groupOfQuestions.map((group) => {
             const currentGroupStart = runningOffset;
             runningOffset += group.quantity;
@@ -317,9 +318,10 @@ const ListeningPartPanel = ({
 
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-bold text-gray-800">
-                          {displayTitle}
-                        </h3>
+                        <h3
+                          className="text-lg font-bold text-gray-800 prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: displayTitle }}
+                        />
                       </div>
 
                       <div className="flex flex-wrap gap-2 text-xs text-gray-600">
