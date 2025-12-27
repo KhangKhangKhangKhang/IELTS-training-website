@@ -5,11 +5,12 @@ import CreateReading from "@/components/test/teacher/Reading/CreateReading";
 import CreateListening from "@/components/test/teacher/Listening/CreateListening";
 import CreateWriting from "@/components/test/teacher/Writing/CreateWriting";
 import { getDetailInTestAPI } from "@/services/apiDoTest";
+import CreateSpeaking from "@/components/test/teacher/Speaking/CreateSpeaking";
 
 const TestEdit = () => {
   const { idTest } = useParams();
   const locationState = useLocation().state?.exam;
-  
+
   const [exam, setExam] = useState(locationState || null);
   const [loading, setLoading] = useState(!locationState);
 
@@ -17,7 +18,7 @@ const TestEdit = () => {
   useEffect(() => {
     const fetchTestData = async () => {
       if (!idTest) return;
-      
+
       try {
         setLoading(true);
         const res = await getDetailInTestAPI(idTest);
@@ -59,13 +60,43 @@ const TestEdit = () => {
   const renderTestComponent = () => {
     switch (exam.testType) {
       case "READING":
-        return <CreateReading idTest={exam.idTest} exam={exam} onExamUpdate={handleExamUpdate} />;
+        return (
+          <CreateReading
+            idTest={exam.idTest}
+            exam={exam}
+            onExamUpdate={handleExamUpdate}
+          />
+        );
       case "LISTENING":
-        return <CreateListening idTest={exam.idTest} exam={exam} onExamUpdate={handleExamUpdate} />;
+        return (
+          <CreateListening
+            idTest={exam.idTest}
+            exam={exam}
+            onExamUpdate={handleExamUpdate}
+          />
+        );
       case "WRITING":
-        return <CreateWriting idTest={exam.idTest} exam={exam} onExamUpdate={handleExamUpdate} />;
+        return (
+          <CreateWriting
+            idTest={exam.idTest}
+            exam={exam}
+            onExamUpdate={handleExamUpdate}
+          />
+        );
       default:
-        return <p className="text-center py-12">Loại đề không hợp lệ: {exam.testType}</p>;
+      case "SPEAKING":
+        return (
+          <CreateSpeaking
+            idTest={exam.idTest}
+            exam={exam}
+            onExamUpdate={handleExamUpdate}
+          />
+        );
+        return (
+          <p className="text-center py-12">
+            Loại đề không hợp lệ: {exam.testType}
+          </p>
+        );
     }
   };
 
