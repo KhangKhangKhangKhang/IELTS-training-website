@@ -32,13 +32,23 @@ const RichTextEditor = ({
 }) => {
     const editorRef = useRef(null);
     const [isFocused, setIsFocused] = useState(false);
+    const prevValueRef = useRef(value);
 
-    // Set initial content
+    // Set initial content and sync external value changes
     useEffect(() => {
-        if (editorRef.current && !editorRef.current.innerHTML && value) {
-            editorRef.current.innerHTML = value;
+        if (editorRef.current) {
+            // If value was externally reset to empty (e.g., after form submit), clear the editor
+            if (value === "" && prevValueRef.current !== "") {
+                editorRef.current.innerHTML = "";
+            }
+            // Set initial content only if editor is empty and value exists
+            else if (!editorRef.current.innerHTML && value) {
+                editorRef.current.innerHTML = value;
+            }
+            prevValueRef.current = value;
         }
-    }, []);
+    }, [value]);
+
 
     const handleInput = () => {
         if (editorRef.current && onChange) {
@@ -192,7 +202,8 @@ const RichTextEditor = ({
 
                     if (selectedText) {
                         const span = document.createElement("span");
-                        span.style.fontSize = size;
+                        // Use setProperty with 'important' to override Tailwind prose
+                        span.style.setProperty('font-size', size, 'important');
 
                         const contents = range.extractContents();
                         span.appendChild(contents);
@@ -344,6 +355,9 @@ const RichTextEditor = ({
                     "[&_ul]:list-disc [&_ul]:pl-6",
                     "[&_ol]:list-decimal [&_ol]:pl-6",
                     "[&_li]:ml-0",
+                    // CRITICAL: Preserve inline font-size styles
+                    "[&_span[style*='font-size']]:!text-[length:inherit]",
+                    "[&_font[size]]:text-inherit",
                     // Placeholder
                     "[&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-slate-400 [&:empty:before]:dark:text-slate-500"
                 )}
@@ -351,6 +365,19 @@ const RichTextEditor = ({
                 data-placeholder={placeholder}
                 suppressContentEditableWarning
             />
+            {/* Styles to ensure inline font-size works - prose class resets must be overridden */}
+            <style>{`
+                /* Allow inline font-size to work inside contentEditable */
+                [contenteditable] span[style*="font-size"] {
+                    font-size: unset !important;
+                }
+                /* For display outside editor (in prose context) */
+                .prose span[style*="font-size"],
+                .prose-sm span[style*="font-size"],
+                div[dangerouslySetInnerHTML] span[style*="font-size"] {
+                    font-size: unset !important;
+                }
+            `}</style>
         </div>
     );
 };

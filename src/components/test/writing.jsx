@@ -50,7 +50,7 @@ const SubmissionResultDetail = ({ data }) => {
         </span>
       ),
       children: (
-        <p className="text-gray-600 leading-relaxed">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           {feedbackData?.taskResponse}
         </p>
       ),
@@ -63,7 +63,7 @@ const SubmissionResultDetail = ({ data }) => {
         </span>
       ),
       children: (
-        <p className="text-gray-600 leading-relaxed">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           {feedbackData?.coherenceAndCohesion}
         </p>
       ),
@@ -76,7 +76,7 @@ const SubmissionResultDetail = ({ data }) => {
         </span>
       ),
       children: (
-        <p className="text-gray-600 leading-relaxed">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           {feedbackData?.lexicalResource}
         </p>
       ),
@@ -89,7 +89,7 @@ const SubmissionResultDetail = ({ data }) => {
         </span>
       ),
       children: (
-        <p className="text-gray-600 leading-relaxed">
+        <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
           {feedbackData?.grammaticalRangeAndAccuracy}
         </p>
       ),
@@ -97,50 +97,50 @@ const SubmissionResultDetail = ({ data }) => {
   ];
 
   return (
-    <div className="space-y-6 text-slate-900">
+    <div className="space-y-6 text-slate-900 dark:text-slate-100">
       {/* Header Info */}
-      <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-          <h4 className="font-bold text-lg text-slate-800">
+          <h4 className="font-bold text-lg text-slate-800 dark:text-white">
             {writingTask?.task_type}
           </h4>
-          <p className="text-slate-500 text-sm">Title: {writingTask?.title}</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Title: {writingTask?.title}</p>
         </div>
         <div className="flex flex-col items-center">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             Band Score
           </span>
-          <div className="text-4xl font-extrabold text-blue-600">
+          <div className="text-4xl font-extrabold text-blue-600 dark:text-blue-400">
             {band_score || "N/A"}
           </div>
         </div>
       </div>
 
       {/* General Feedback */}
-      <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100">
-        <h5 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+      <div className="bg-blue-50/50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
+        <h5 className="font-bold text-blue-800 dark:text-blue-400 mb-2 flex items-center gap-2">
           <BarChart3 size={18} /> General Feedback
         </h5>
-        <p className="text-slate-700 text-sm leading-relaxed">
+        <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
           {feedbackData?.generalFeedback || "No general feedback provided."}
         </p>
       </div>
 
       {/* Detailed Criteria */}
       <div>
-        <h5 className="font-bold text-slate-800 mb-3">Detailed Evaluation</h5>
+        <h5 className="font-bold text-slate-800 dark:text-white mb-3">Detailed Evaluation</h5>
         <Collapse
           items={collapseItems}
           defaultActiveKey={["1"]}
           ghost
-          className="bg-white"
+          className="bg-white dark:bg-slate-800"
         />
       </div>
 
       {/* Detailed Corrections Table */}
       {feedbackData?.detailedCorrections?.length > 0 && (
         <div className="mt-6">
-          <h5 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+          <h5 className="font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
             <AlertTriangle size={18} className="text-amber-500" /> Improvements
             & Corrections
           </h5>
@@ -148,7 +148,7 @@ const SubmissionResultDetail = ({ data }) => {
             {feedbackData.detailedCorrections.map((item, idx) => (
               <div
                 key={idx}
-                className="border border-slate-200 rounded-md p-3 bg-white shadow-sm hover:shadow-md transition-shadow"
+                className="border border-slate-200 dark:border-slate-700 rounded-md p-3 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex justify-between mb-2">
                   <Tag
@@ -164,22 +164,22 @@ const SubmissionResultDetail = ({ data }) => {
                   </Tag>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4 mb-2">
-                  <div className="bg-red-50 p-2 rounded text-sm">
-                    <span className="font-semibold text-red-700 block mb-1">
+                  <div className="bg-red-50 dark:bg-red-900/30 p-2 rounded text-sm">
+                    <span className="font-semibold text-red-700 dark:text-red-400 block mb-1">
                       Original:
                     </span>
-                    <span className="text-slate-700 line-through decoration-red-400 decoration-2">
+                    <span className="text-slate-700 dark:text-slate-300 line-through decoration-red-400 decoration-2">
                       {item.mistake}
                     </span>
                   </div>
-                  <div className="bg-green-50 p-2 rounded text-sm">
-                    <span className="font-semibold text-green-700 block mb-1">
+                  <div className="bg-green-50 dark:bg-green-900/30 p-2 rounded text-sm">
+                    <span className="font-semibold text-green-700 dark:text-green-400 block mb-1">
                       Correction:
                     </span>
-                    <span className="text-slate-700">{item.correct}</span>
+                    <span className="text-slate-700 dark:text-slate-300">{item.correct}</span>
                   </div>
                 </div>
-                <div className="text-xs text-slate-500 italic mt-1 bg-slate-50 p-2 rounded">
+                <div className="text-xs text-slate-500 dark:text-slate-400 italic mt-1 bg-slate-50 dark:bg-slate-900 p-2 rounded">
                   <span className="font-bold">Explanation: </span>{" "}
                   {item.explanation}
                 </div>

@@ -203,18 +203,18 @@ const ReadingPartPanel = ({
       key: "passage",
       label: "Passage",
       children: (
-        <div className="border rounded-lg p-4 bg-white shadow-sm">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-medium">Passage - {part.namePart}</h3>
+        <div className="border border-gray-200 dark:border-slate-600 rounded-xl p-5 bg-white dark:bg-slate-800 shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Passage - {part.namePart}</h3>
             {existingPassage && (
-              <span className="text-sm text-green-600">✓ Đã có passage</span>
+              <span className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">✓ Đã có passage</span>
             )}
           </div>
-          <div className="mb-3">
-            <label className="block text-sm font-medium mb-1">Tiêu đề</label>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Tiêu đề</label>
             <input
               type="text"
-              className="w-full p-2 border rounded"
+              className="w-full p-3 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={passageData.title}
               onChange={(e) =>
                 setPassageData((prev) => ({ ...prev, title: e.target.value }))
@@ -249,11 +249,11 @@ const ReadingPartPanel = ({
       label: "Câu hỏi",
       children: (
         <div className="space-y-6">
-          <div className="border rounded-lg p-4 bg-white shadow-sm">
-            <h3 className="text-lg font-medium mb-4">Tạo nhóm câu hỏi mới</h3>
+          <div className="border border-gray-200 dark:border-slate-600 rounded-xl p-5 bg-white dark:bg-slate-800 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Tạo nhóm câu hỏi mới</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                   Tiêu đề nhóm
                 </label>
                 <RichTextEditor
@@ -265,7 +265,7 @@ const ReadingPartPanel = ({
               </div>
               <div className="flex items-end gap-3">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                     Loại câu hỏi
                   </label>
                   <Select
@@ -279,12 +279,12 @@ const ReadingPartPanel = ({
                     className="w-full"
                   />
                   {groupType === "MCQ" && (
-                    <div className="mt-2 bg-blue-50 p-2 rounded border border-blue-100">
+                    <div className="mt-2 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
                       <Checkbox
                         checked={isMultipleMCQ}
                         onChange={(e) => setIsMultipleMCQ(e.target.checked)}
                       >
-                        <span className="text-blue-800 font-medium">
+                        <span className="text-blue-800 dark:text-blue-300 font-medium">
                           Cho phép chọn nhiều đáp án (Multiple Choice)
                         </span>
                       </Checkbox>
@@ -292,7 +292,7 @@ const ReadingPartPanel = ({
                   )}
                 </div>
                 <div className="w-24">
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                     Số lượng
                   </label>
                   <InputNumber
@@ -317,7 +317,7 @@ const ReadingPartPanel = ({
           {partDetail?.groupOfQuestions &&
             partDetail.groupOfQuestions.length > 0 ? (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Các nhóm câu hỏi đã tạo</h3>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Các nhóm câu hỏi đã tạo</h3>
               {partDetail.groupOfQuestions.map((nhom) => {
                 const currentGroupStart = runningOffset;
                 runningOffset += nhom.quantity;
@@ -331,16 +331,16 @@ const ReadingPartPanel = ({
                 return (
                   <div
                     key={nhom.idGroupOfQuestions}
-                    className="border rounded-lg p-4 bg-white shadow-sm"
+                    className="border border-gray-200 dark:border-slate-600 rounded-xl p-5 bg-white dark:bg-slate-800 shadow-sm"
                   >
                     <div className="flex justify-between items-center mb-3">
                       <div className="flex flex-col">
                         <h4
-                          className="font-medium text-blue-600 prose prose-sm max-w-none"
+                          className="font-medium text-blue-600 dark:text-blue-400 prose prose-sm dark:prose-invert max-w-none"
                           dangerouslySetInnerHTML={{ __html: displayTitle }}
                         />
                         {nhom.typeQuestion === "MCQ" && (
-                          <span className="text-xs text-gray-500 mt-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             {nhom.title.startsWith("Multiple")
                               ? "(Dạng: Chọn nhiều đáp án - Gộp câu)"
                               : "(Dạng: Chọn 1 đáp án)"}
@@ -375,8 +375,9 @@ const ReadingPartPanel = ({
               })}
             </div>
           ) : (
-            <div className="text-center text-gray-500 py-8 border rounded-lg bg-gray-50">
-              Chưa có nhóm câu hỏi nào.
+            <div className="text-center text-gray-500 dark:text-gray-400 py-12 border border-gray-200 dark:border-slate-600 rounded-xl bg-gray-50 dark:bg-slate-700/50">
+              <p>Chưa có nhóm câu hỏi nào.</p>
+              <p className="text-sm mt-1 opacity-75">Tạo nhóm câu hỏi mới ở phần trên</p>
             </div>
           )}
         </div>

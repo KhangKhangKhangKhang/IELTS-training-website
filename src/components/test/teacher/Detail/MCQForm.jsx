@@ -156,6 +156,14 @@ const MCQForm = ({
       { content: "", options: [{ text: "", correct: false }] },
     ]);
   };
+
+  const handleDeleteFormQuestion = (qIndex) => {
+    if (formQuestions.length <= 1) {
+      return message.warning("Cần có ít nhất 1 câu hỏi");
+    }
+    const updated = formQuestions.filter((_, idx) => idx !== qIndex);
+    setFormQuestions(updated);
+  };
   const handleAddOption = (qIndex) => {
     const updated = [...formQuestions];
     updated[qIndex].options.push({ text: "", correct: false });
@@ -310,10 +318,10 @@ const MCQForm = ({
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="font-bold text-gray-700">
+          <h3 className="font-bold text-gray-700 dark:text-gray-200">
             Danh sách câu hỏi ({loadedQuestions.length})
             {isMultipleMode && (
-              <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+              <span className="ml-2 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2 py-1 rounded">
                 Multiple Choice (Gộp)
               </span>
             )}
@@ -325,24 +333,26 @@ const MCQForm = ({
         {displayQuestions.map((q, idx) => (
           <div
             key={q.idQuestion || idx}
-            className="border p-4 rounded bg-white"
+            className="border border-gray-200 dark:border-slate-600 p-4 rounded-lg bg-white dark:bg-slate-800"
           >
-            <div className="font-bold mb-2 text-blue-800"
+            <div className="font-bold mb-2 text-blue-800 dark:text-blue-400"
               dangerouslySetInnerHTML={{ __html: `Câu ${q.numberQuestionDisplay || q.numberQuestion}: ${q.content}` }}
             />
             <div className="grid grid-cols-1 gap-2 pl-4">
               {(q.options || []).map((opt, oIdx) => (
                 <div
                   key={oIdx}
-                  className={`p-2 border rounded text-sm flex gap-2 items-center ${opt.correct ? "bg-green-50 border-green-300" : "bg-gray-50"
+                  className={`p-2 border rounded text-sm flex gap-2 items-center ${opt.correct
+                    ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700"
+                    : "bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-slate-600"
                     }`}
                 >
-                  <span className="font-bold min-w-[25px] text-center bg-white border rounded px-1">
+                  <span className="font-bold min-w-[25px] text-center bg-white dark:bg-slate-600 border dark:border-slate-500 rounded px-1 text-gray-700 dark:text-gray-200">
                     {String.fromCharCode(65 + oIdx)}
                   </span>
-                  <span className="flex-1">{opt.text}</span>
+                  <span className="flex-1 text-gray-800 dark:text-gray-200">{opt.text}</span>
                   {opt.correct && (
-                    <span className="text-green-600 font-bold ml-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold ml-2">
                       ✓ TRUE
                     </span>
                   )}
@@ -374,7 +384,7 @@ const MCQForm = ({
   return (
     <div className="space-y-6">
       <div className="flex justify-between">
-        <h3 className="font-bold">
+        <h3 className="font-bold text-gray-800 dark:text-white">
           {isEditMode ? "Chỉnh sửa" : "Tạo câu hỏi"}{" "}
           {isMultipleMode
             ? `(Nhập 1 lần cho ${groupData.quantity} câu)`
@@ -396,14 +406,27 @@ const MCQForm = ({
       {formQuestions.map((q, qIndex) => (
         <div
           key={qIndex}
-          className="border p-4 rounded bg-white shadow-sm relative"
+          className="border border-gray-200 dark:border-slate-600 p-4 rounded-lg bg-white dark:bg-slate-800 shadow-sm relative"
         >
-          <div className="font-semibold mb-2">
-            {isMultipleMode
-              ? `Nội dung cho ${groupData.quantity} câu hỏi (Chọn ${groupData.quantity} đáp án đúng)`
-              : `Câu ${q.numberQuestion ||
-              questionNumberOffset + loadedQuestions.length + qIndex + 1
-              }`}
+          <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100 dark:border-slate-700">
+            <div className="font-bold text-blue-600 dark:text-blue-400 text-lg">
+              {isMultipleMode
+                ? `Nội dung chung cho ${groupData.quantity} câu hỏi`
+                : `Câu số ${questionNumberOffset + loadedQuestions.length + qIndex + 1}`}
+            </div>
+
+            {!isMultipleMode && (
+              <Button
+                type="primary"
+                danger
+                ghost
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={() => handleDeleteFormQuestion(qIndex)}
+              >
+                Xóa câu hỏi này
+              </Button>
+            )}
           </div>
 
           <RichTextEditor
@@ -439,7 +462,7 @@ const MCQForm = ({
                     className="w-4 h-4 cursor-pointer text-blue-600 accent-blue-600"
                   />
                 )}
-                <span className="font-bold text-blue-600 w-8 text-center bg-gray-100 rounded py-1">
+                <span className="font-bold text-blue-600 dark:text-blue-400 w-8 text-center bg-gray-100 dark:bg-slate-600 rounded py-1">
                   {String.fromCharCode(65 + oIndex)}
                 </span>
                 <Input

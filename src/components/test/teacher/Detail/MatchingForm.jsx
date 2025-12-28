@@ -129,6 +129,14 @@ const MatchingForm = ({
     setQuestions(newQ);
   };
 
+  const handleRemoveQuestion = (idx) => {
+    if (questions.length <= 1) {
+      return message.warning("Cần có ít nhất 1 câu hỏi");
+    }
+    const newQ = questions.filter((_, i) => i !== idx);
+    setQuestions(newQ);
+  };
+
   // --- SAVE ---
   const handleSave = async () => {
     try {
@@ -222,8 +230,19 @@ const MatchingForm = ({
       <Card title="Bước 2: Câu hỏi & Đáp án đúng" size="small">
         {questions.map((q, idx) => (
           <div key={idx} className="mb-4 pb-4 border-b last:border-0">
-            <div className="font-bold text-gray-600 mb-2">
-              Câu {q.numberQuestion || questionNumberOffset + idx + 1}
+            <div className="flex justify-between items-center mb-2">
+              <div className="font-bold text-gray-600">
+                Câu {q.numberQuestion || questionNumberOffset + idx + 1}
+              </div>
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={() => handleRemoveQuestion(idx)}
+              >
+                Xóa câu hỏi
+              </Button>
             </div>
             <div className="flex gap-4 items-start">
               <div className="flex-1">
@@ -260,6 +279,14 @@ const MatchingForm = ({
             </div>
           </div>
         ))}
+        <Button
+          type="dashed"
+          icon={<PlusOutlined />}
+          onClick={handleAddOption}
+          className="mt-3"
+        >
+          Thêm câu hỏi
+        </Button>
       </Card>
 
       <div className="flex justify-end pt-2">

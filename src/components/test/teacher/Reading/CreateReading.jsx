@@ -89,18 +89,13 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
       setPartDetailsMap((prev) => ({ ...prev, [part.idPart]: partDetail }));
     } catch (err) {
       console.error("Lỗi khi lấy chi tiết part:", err);
-      // message.error("Không thể tải chi tiết part");
     }
   };
 
   // Hàm này được truyền xuống con để gọi khi con thay đổi dữ liệu (thêm/xóa group)
   const refreshCurrentPartData = async () => {
     if (selectedPart) {
-      // 1. Refresh chi tiết part hiện tại (để hiện group mới/xóa group cũ)
       await handleSelectPart(selectedPart, true);
-
-      // 2. Refresh lại toàn bộ map (để tính lại offset cho các part sau nếu cần)
-      // (Optional: Nếu app quá lag thì có thể tối ưu đoạn này, nhưng nên gọi để đảm bảo số câu đúng)
       const res = await getAllPartByIdAPI(idTest);
       if (res?.data) {
         setAllParts(res.data);
@@ -124,7 +119,6 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
       const newPartsList = [...allParts, newPart];
       setAllParts(newPartsList);
 
-      // Chọn ngay part mới tạo và force fetch
       await handleSelectPart(newPart, true);
       message.success("Tạo part thành công");
     } catch (err) {
@@ -138,8 +132,6 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
   const handleRenamePart = async (idPart, newName) => {
     try {
       await updatePartAPI(idPart, { idTest, namePart: newName });
-
-      // Cập nhật UI local ngay lập tức
       const updatedParts = allParts.map((p) =>
         p.idPart === idPart ? { ...p, namePart: newName } : p
       );
@@ -163,7 +155,6 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
       const updatedParts = allParts.filter((p) => p.idPart !== idPart);
       setAllParts(updatedParts);
 
-      // Xóa khỏi map
       const newMap = { ...partDetailsMap };
       delete newMap[idPart];
       setPartDetailsMap(newMap);
@@ -183,7 +174,6 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
     if (!allParts || allParts.length === 0 || !selectedPart) return 0;
 
     let offset = 0;
-    // Sort part theo thứ tự (giả sử id hoặc index, ở đây dùng thứ tự trong mảng allParts)
     for (const p of allParts) {
       if (p.idPart === selectedPart.idPart) break;
 
@@ -198,40 +188,54 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
     return offset;
   };
 
-  if (isLoading) return <Spin className="block mx-auto mt-10" />;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-[90vh] bg-gray-50 rounded-lg shadow">
-      <TestInfoEditor exam={exam} onUpdate={onExamUpdate} />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
+      <div className="flex flex-col h-screen">
+        <TestInfoEditor exam={exam} onUpdate={onExamUpdate} />
 
-      <div className="flex flex-1 overflow-hidden">
-        <PartListSidebar
-          parts={allParts}
-          selectedPart={selectedPart}
-          onSelect={(p) => handleSelectPart(p, false)} // Click thường thì dùng cache nếu có
-          onCreate={handleCreatePart}
-          onRename={handleRenamePart}
-          onDelete={handleDeletePart}
-          creating={creatingPart}
-        />
+        <div className="flex flex-1 overflow-hidden">
+          <PartListSidebar
+            parts={allParts}
+            selectedPart={selectedPart}
+            onSelect={(p) => handleSelectPart(p, false)}
+            onCreate={handleCreatePart}
+            onRename={handleRenamePart}
+            onDelete={handleDeletePart}
+            creating={creatingPart}
+          />
 
-        <div className="flex-1 p-6 overflow-y-auto">
-          {!selectedPart ? (
-            <div className="text-center text-gray-500 mt-20">
-              {allParts.length === 0
-                ? "Chưa có Part nào, hãy tạo mới."
-                : "Chọn một Part để bắt đầu chỉnh sửa."}
-            </div>
-          ) : (
-            <ReadingPartPanel
-              idTest={idTest}
-              part={selectedPart}
-              partDetail={selectedPartDetail}
-              // QUAN TRỌNG: Truyền hàm refresh xuống
-              onPartUpdate={refreshCurrentPartData}
-              questionNumberOffset={calculateOffset()}
-            />
-          )}
+          <div className="flex-1 p-6 overflow-y-auto bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+            {!selectedPart ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                <div className="w-20 h-20 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-lg font-medium">
+                  {allParts.length === 0
+                    ? "Chưa có Part nào, hãy tạo mới."
+                    : "Chọn một Part để bắt đầu chỉnh sửa."}
+                </p>
+              </div>
+            ) : (
+              <ReadingPartPanel
+                idTest={idTest}
+                part={selectedPart}
+                partDetail={selectedPartDetail}
+                onPartUpdate={refreshCurrentPartData}
+                questionNumberOffset={calculateOffset()}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

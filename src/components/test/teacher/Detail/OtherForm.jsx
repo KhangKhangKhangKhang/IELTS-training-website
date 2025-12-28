@@ -85,6 +85,14 @@ const OtherForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
     setFormQuestions([...formQuestions, { content: "", answer_text: "" }]);
   };
 
+  const handleDeleteFormQuestion = (qIndex) => {
+    if (formQuestions.length <= 1) {
+      return message.warning("Cần có ít nhất 1 câu hỏi");
+    }
+    const updated = formQuestions.filter((_, idx) => idx !== qIndex);
+    setFormQuestions(updated);
+  };
+
   const handleChangeQuestion = (qIndex, value) => {
     const updated = [...formQuestions];
     updated[qIndex].content = value;
@@ -234,7 +242,7 @@ const OtherForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Câu hỏi đã có</h3>
+          <h3 className="text-lg font-medium text-gray-800 dark:text-white">Câu hỏi đã có</h3>
           <Button type="primary" onClick={handleEditGroup}>
             ✎ Chỉnh sửa
           </Button>
@@ -242,7 +250,7 @@ const OtherForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
         {loadedQuestions.map((q, index) => (
           <div
             key={q.idQuestion}
-            className="border p-4 rounded bg-white shadow-sm"
+            className="border border-gray-200 dark:border-slate-600 p-4 rounded bg-white dark:bg-slate-800 shadow-sm"
           >
             <div className="flex justify-between items-start mb-2">
               <div className="flex-1">
@@ -277,7 +285,7 @@ const OtherForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">
+        <h3 className="text-lg font-medium text-gray-800 dark:text-white">
           {isEditMode ? "Chỉnh sửa câu hỏi" : "Tạo câu hỏi khác"}
         </h3>
         {isEditMode && (
@@ -293,12 +301,22 @@ const OtherForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
         )}
       </div>
       {formQuestions.map((q, qIndex) => (
-        <div key={qIndex} className="border p-4 rounded bg-white shadow-sm">
-          <div className="font-semibold mb-2">
-            Câu{" "}
-            {isEditMode
-              ? qIndex + 1
-              : questionNumberOffset + loadedQuestions.length + qIndex + 1}
+        <div key={qIndex} className="border border-gray-200 dark:border-slate-600 p-4 rounded bg-white dark:bg-slate-800 shadow-sm">
+          <div className="flex justify-between items-center mb-2">
+            <div className="font-semibold text-gray-800 dark:text-white">
+              Câu {isEditMode ? qIndex + 1 : questionNumberOffset + loadedQuestions.length + qIndex + 1}
+            </div>
+            {formQuestions.length > 1 && (
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={() => handleDeleteFormQuestion(qIndex)}
+              >
+                Xóa câu
+              </Button>
+            )}
           </div>
 
           <RichTextEditor

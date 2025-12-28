@@ -272,6 +272,19 @@ const FillBlankForm = ({
     setQuestions(newQ);
   };
 
+  const handleDeleteQuestion = (idx) => {
+    if (questions.length <= 1) {
+      return message.warning("Cần có ít nhất 1 câu hỏi");
+    }
+    const newQ = questions.filter((_, i) => i !== idx);
+    // Re-number remaining questions
+    const renumbered = newQ.map((q, i) => ({
+      ...q,
+      numberQuestion: questionNumberOffset + i + 1,
+    }));
+    setQuestions(renumbered);
+  };
+
   // -- SUMMARY HANDLER --
   const handleInsertPlaceholderSummary = (numberQuestion) => {
     const placeholder = ` [${numberQuestion}] `;
@@ -508,9 +521,9 @@ const FillBlankForm = ({
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
             Câu hỏi đã tạo ({loadedQuestions.length} câu)
-            <span className="ml-3 text-sm text-gray-500 font-normal">
+            <span className="ml-3 text-sm text-gray-500 dark:text-gray-400 font-normal">
               Mode: {mode === "SENTENCE" ? "Từng câu" : mode === "SUMMARY" ? "Summary (Điền từ)" : mode === "SUMMARY_BOX" ? "Summary (Chọn Box)" : "Table"}
             </span>
           </h3>
@@ -548,7 +561,7 @@ const FillBlankForm = ({
               <Card title="Danh sách lựa chọn (The Box)" size="small">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {boxOptions.map((opt, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-gray-50 p-2 rounded border">
+                    <div key={idx} className="flex items-center gap-2 bg-gray-50 dark:bg-slate-700 p-2 rounded border">
                       <span className="font-bold text-blue-600 w-8">{opt.key}.</span>
                       <span className="text-sm">{opt.text}</span>
                     </div>
@@ -603,7 +616,7 @@ const FillBlankForm = ({
       {/* 1. Switch Mode */}
       <div className="flex flex-col gap-4 border-b pb-3 mb-4">
         <div className="flex items-center justify-between">
-          <span className="font-semibold text-gray-700">Chế độ nhập:</span>
+          <span className="font-semibold text-gray-700 dark:text-gray-200">Chế độ nhập:</span>
           <span className="text-gray-400 text-sm">
             Số lượng: <b>{quantity}</b> (câu {questions[0]?.numberQuestion} -{" "}
             {questions[questions.length - 1]?.numberQuestion})
@@ -731,7 +744,7 @@ const FillBlankForm = ({
       {(mode === "SUMMARY" || mode === "SUMMARY_BOX") && (
         <div className="relative">
           <div className="flex justify-between items-center mb-2">
-            <label className="font-semibold text-gray-700">
+            <label className="font-semibold text-gray-700 dark:text-gray-200">
               Nội dung đoạn văn Summary:
             </label>
             <span className="text-xs text-gray-500">
@@ -751,7 +764,7 @@ const FillBlankForm = ({
       )}
 
       {/* 5. QUESTIONS LIST */}
-      <div className="bg-gray-50 p-4 rounded border">
+      <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded border">
         <h4 className="font-semibold mb-3 text-gray-700">
           {mode === "SENTENCE"
             ? "Nhập câu hỏi & Đáp án:"
@@ -763,15 +776,28 @@ const FillBlankForm = ({
             <div
               key={idx}
               className={`p-3 rounded border shadow-sm ${mode === "SENTENCE"
-                ? "bg-gray-50"
+                ? "bg-gray-50 dark:bg-slate-700"
                 : "bg-white flex items-center gap-2"
                 }`}
             >
               {/* --- CASE: SENTENCE MODE --- */}
               {mode === "SENTENCE" && (
                 <div className="space-y-2">
-                  <div className="font-bold text-gray-700">
-                    Câu {q.numberQuestion}
+                  <div className="flex justify-between items-center">
+                    <div className="font-bold text-gray-700 dark:text-gray-200">
+                      Câu {q.numberQuestion}
+                    </div>
+                    {questions.length > 1 && (
+                      <Button
+                        type="text"
+                        danger
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        onClick={() => handleDeleteQuestion(idx)}
+                      >
+                        Xóa
+                      </Button>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Input.TextArea
@@ -811,7 +837,7 @@ const FillBlankForm = ({
               {mode !== "SENTENCE" && (
                 <>
                   {/* Label số câu */}
-                  <div className="font-bold text-gray-700 w-12 text-center bg-gray-100 rounded py-2 shrink-0">
+                  <div className="font-bold text-gray-700 dark:text-gray-200 w-12 text-center bg-gray-100 dark:bg-slate-600 rounded py-2 shrink-0">
                     {q.numberQuestion}
                   </div>
 
@@ -873,6 +899,18 @@ const FillBlankForm = ({
                       Chèn
                     </Button>
                   </Tooltip>
+
+                  {/* Nút Xóa */}
+                  {questions.length > 1 && (
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleDeleteQuestion(idx)}
+                    >
+                      Xóa
+                    </Button>
+                  )}
                 </>
               )}
             </div>

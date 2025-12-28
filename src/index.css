@@ -4,6 +4,38 @@
 /* Enable class-based dark mode for Tailwind v4 */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ==================== */
+/* Rich Text Editor - Preserve Inline Styles */
+/* ==================== */
+
+/* 
+ * CRITICAL: Make elements with inline style attributes respect those styles
+ * This prevents Tailwind prose classes from overriding inline font-size, color, etc.
+ */
+
+/* Reset prose overrides for spans with inline styles */
+.prose span[style],
+.prose font[style],
+.prose-sm span[style],
+.prose-sm font[style] {
+    font-size: revert !important;
+    color: revert !important;
+    font-weight: revert !important;
+    font-style: revert !important;
+    text-decoration: revert !important;
+}
+
+/* For elements in contentEditable areas */
+[contenteditable="true"] span[style],
+[contenteditable="true"] font[style] {
+    font-size: revert !important;
+}
+
+/* Ensure dangerouslySetInnerHTML areas also respect inline styles */
+div[class*="prose"] span[style] {
+    font-size: revert !important;
+}
+
 /* Ant Design Dark Mode Overrides */
 .dark .ant-input,
 .dark .ant-input-affix-wrapper,
@@ -213,4 +245,150 @@ html.dark .ant-select-item-option-selected:not(.ant-select-item-option-disabled)
 
 html.dark .ant-select-item-option:hover {
     background-color: rgb(51 65 85) !important;
+}
+
+/* ==================== */
+/* Additional Dark Mode for Question Forms */
+/* ==================== */
+
+/* Card Header in dark mode */
+.dark .ant-card-head {
+    background-color: rgb(51 65 85) !important;
+    border-bottom-color: rgb(71 85 105) !important;
+    color: white !important;
+}
+
+.dark .ant-card-head-title {
+    color: white !important;
+}
+
+.dark .ant-card-extra {
+    color: rgb(148 163 184) !important;
+}
+
+/* Fix for bg-white and bg-gray-50 elements in dark mode */
+.dark .bg-white {
+    background-color: rgb(30 41 59) !important;
+}
+
+.dark .bg-gray-50 {
+    background-color: rgb(51 65 85) !important;
+}
+
+.dark .bg-gray-100 {
+    background-color: rgb(71 85 105) !important;
+}
+
+/* Fix text colors in dark mode */
+.dark .text-gray-700,
+.dark .text-gray-600 {
+    color: rgb(203 213 225) !important;
+}
+
+.dark .text-gray-500 {
+    color: rgb(148 163 184) !important;
+}
+
+/* Fix border colors in dark mode */
+.dark .border,
+.dark .border-gray-200,
+.dark .border-gray-300 {
+    border-color: rgb(71 85 105) !important;
+}
+
+/* Form container backgrounds */
+.dark .shadow-sm {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Tabs in dark mode */
+.dark .ant-tabs-nav::before {
+    border-bottom-color: rgb(71 85 105) !important;
+}
+
+.dark .ant-tabs-tab {
+    color: rgb(148 163 184) !important;
+}
+
+.dark .ant-tabs-tab:hover {
+    color: rgb(203 213 225) !important;
+}
+
+.dark .ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: rgb(96 165 250) !important;
+}
+
+.dark .ant-tabs-ink-bar {
+    background-color: rgb(96 165 250) !important;
+}
+
+/* Checkbox and Radio in dark mode */
+.dark .ant-checkbox-wrapper,
+.dark .ant-radio-wrapper {
+    color: rgb(203 213 225) !important;
+}
+
+/* Popconfirm in dark mode */
+.dark .ant-popconfirm-message-title {
+    color: white !important;
+}
+
+.dark .ant-popover-inner {
+    background-color: rgb(30 41 59) !important;
+}
+
+.dark .ant-popover-arrow::before {
+    background-color: rgb(30 41 59) !important;
+}
+
+/* InputNumber in dark mode */
+.dark .ant-input-number {
+    background-color: rgb(51 65 85) !important;
+    border-color: rgb(71 85 105) !important;
+    color: white !important;
+}
+
+.dark .ant-input-number-handler-wrap {
+    background-color: rgb(51 65 85) !important;
+}
+
+.dark .ant-input-number-handler {
+    color: rgb(148 163 184) !important;
+    border-color: rgb(71 85 105) !important;
+}
+
+/* Blue and green backgrounds in dark mode */
+.dark .bg-blue-50 {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+.dark .bg-green-50 {
+    background-color: rgba(34, 197, 94, 0.15) !important;
+}
+
+.dark .border-blue-200,
+.dark .border-blue-100 {
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+.dark .border-green-200,
+.dark .border-green-300 {
+    border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+/* Radio Group Button in dark mode */
+.dark .ant-radio-button-wrapper {
+    background-color: rgb(51 65 85) !important;
+    border-color: rgb(71 85 105) !important;
+    color: rgb(203 213 225) !important;
+}
+
+.dark .ant-radio-button-wrapper:hover {
+    color: rgb(96 165 250) !important;
+}
+
+.dark .ant-radio-button-wrapper-checked {
+    background-color: rgb(59 130 246) !important;
+    border-color: rgb(59 130 246) !important;
+    color: white !important;
 }

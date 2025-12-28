@@ -148,16 +148,16 @@ const RenderWritingSubmission = ({ submission }) => {
   ];
 
   return (
-    <div className="h-full overflow-y-auto p-6 bg-gray-50 custom-scrollbar">
+    <div className="h-full overflow-y-auto p-6 bg-gray-50 dark:bg-slate-900 custom-scrollbar">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header Info */}
-        <Card className="shadow-sm">
+        <Card className="shadow-sm dark:bg-slate-800 dark:border-slate-700">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex-1">
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">
+              <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
                 {writingTask?.task_type || "Writing Task"}
               </h3>
-              <p className="text-gray-600 text-sm">
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
                 {writingTask?.title || "No title"}
               </p>
             </div>
@@ -165,13 +165,13 @@ const RenderWritingSubmission = ({ submission }) => {
         </Card>
 
         {/* Your Submission */}
-        <Card title={<span><EditOutlined /> Your Submission</span>} className="shadow-sm">
-          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+        <Card title={<span className="dark:text-white"><EditOutlined /> Your Submission</span>} className="shadow-sm dark:bg-slate-800 dark:border-slate-700">
+          <div className="bg-gray-50 dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-600">
+            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
               {submission_text || "No submission text"}
             </p>
           </div>
-          <div className="mt-2 text-sm text-gray-500">
+          <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Word count: {submission_text ? submission_text.trim().split(/\s+/).length : 0}
           </div>
         </Card>
@@ -179,24 +179,25 @@ const RenderWritingSubmission = ({ submission }) => {
         {/* General Feedback */}
         {feedbackData?.generalFeedback && (
           <Card
-            className="shadow-sm"
-            style={{ backgroundColor: '#f0f9ff', borderColor: '#0284c7' }}
+            className="shadow-sm dark:bg-slate-800/50 dark:border-blue-500/50"
+            style={{ backgroundColor: 'var(--feedback-bg, #f0f9ff)', borderColor: 'var(--feedback-border, #0284c7)' }}
           >
-            <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+            <h4 className="font-bold text-blue-800 dark:text-blue-400 mb-3 flex items-center gap-2">
               <TrophyOutlined /> General Feedback
             </h4>
-            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
               {feedbackData.generalFeedback}
             </p>
           </Card>
         )}
 
         {/* Detailed Criteria */}
-        <Card title="Detailed Evaluation" className="shadow-sm">
+        <Card title={<span className="dark:text-white">Detailed Evaluation</span>} className="shadow-sm dark:bg-slate-800 dark:border-slate-700">
           <Collapse
             items={collapseItems}
             defaultActiveKey={["1"]}
             ghost
+            className="dark:bg-transparent"
           />
         </Card>
 
@@ -214,7 +215,7 @@ const RenderWritingSubmission = ({ submission }) => {
               {feedbackData.detailedCorrections.map((item, idx) => (
                 <div
                   key={idx}
-                  className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
+                  className="border border-gray-200 dark:border-slate-600 rounded-lg p-4 bg-white dark:bg-slate-800 hover:shadow-md transition-shadow"
                 >
                   <div className="flex justify-between items-start mb-3">
                     <Tag
@@ -231,23 +232,23 @@ const RenderWritingSubmission = ({ submission }) => {
                     </Tag>
                   </div>
                   <div className="grid md:grid-cols-2 gap-4 mb-3">
-                    <div className="bg-red-50 p-3 rounded border border-red-200">
-                      <span className="font-semibold text-red-700 block mb-2 text-sm">
+                    <div className="bg-red-50 dark:bg-red-900/30 p-3 rounded border border-red-200 dark:border-red-800">
+                      <span className="font-semibold text-red-700 dark:text-red-400 block mb-2 text-sm">
                         Original:
                       </span>
-                      <span className="text-gray-700 line-through decoration-red-400 decoration-2">
+                      <span className="text-gray-700 dark:text-gray-300 line-through decoration-red-400 decoration-2">
                         {item.mistake}
                       </span>
                     </div>
-                    <div className="bg-green-50 p-3 rounded border border-green-200">
-                      <span className="font-semibold text-green-700 block mb-2 text-sm">
+                    <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded border border-green-200 dark:border-green-800">
+                      <span className="font-semibold text-green-700 dark:text-green-400 block mb-2 text-sm">
                         Correction:
                       </span>
-                      <span className="text-gray-700">{item.correct}</span>
+                      <span className="text-gray-700 dark:text-gray-300">{item.correct}</span>
                     </div>
                   </div>
-                  <div className="text-sm text-gray-600 italic bg-blue-50 p-3 rounded border border-blue-200">
-                    <span className="font-bold text-blue-700">Explanation: </span>
+                  <div className="text-sm text-gray-600 dark:text-gray-300 italic bg-blue-50 dark:bg-blue-900/30 p-3 rounded border border-blue-200 dark:border-blue-800">
+                    <span className="font-bold text-blue-700 dark:text-blue-400">Explanation: </span>
                     {item.explanation}
                   </div>
                 </div>
@@ -260,6 +261,72 @@ const RenderWritingSubmission = ({ submission }) => {
   );
 };
 
+// Cache configuration
+const CACHE_KEY_PREFIX = "test_result_cache_";
+const CACHE_EXPIRY_DAYS = 7;
+
+// Helper functions for caching
+const getCacheKey = (idTestResult) => `${CACHE_KEY_PREFIX}${idTestResult}`;
+
+const getCachedResult = (idTestResult) => {
+  try {
+    const cacheKey = getCacheKey(idTestResult);
+    const cached = localStorage.getItem(cacheKey);
+    if (!cached) return null;
+
+    const { data, timestamp } = JSON.parse(cached);
+    const expiryTime = CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+
+    // Check if cache is expired
+    if (Date.now() - timestamp > expiryTime) {
+      localStorage.removeItem(cacheKey);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error reading cache:", error);
+    return null;
+  }
+};
+
+const setCachedResult = (idTestResult, data) => {
+  try {
+    const cacheKey = getCacheKey(idTestResult);
+    const cacheData = {
+      data,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+  } catch (error) {
+    console.error("Error saving to cache:", error);
+    // If localStorage is full, try to clear old caches
+    if (error.name === "QuotaExceededError") {
+      clearOldCaches();
+    }
+  }
+};
+
+const clearOldCaches = () => {
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(CACHE_KEY_PREFIX)) {
+        keysToRemove.push(key);
+      }
+    }
+    // Remove oldest caches (keep only last 10)
+    if (keysToRemove.length > 10) {
+      keysToRemove.slice(0, keysToRemove.length - 10).forEach((key) => {
+        localStorage.removeItem(key);
+      });
+    }
+  } catch (error) {
+    console.error("Error clearing old caches:", error);
+  }
+};
+
 const SimpleResultModal = ({ open, onClose, idTestResult }) => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
@@ -267,11 +334,21 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
   useEffect(() => {
     if (open && idTestResult) {
       const fetchData = async () => {
+        // First, check cache
+        const cachedData = getCachedResult(idTestResult);
+        if (cachedData) {
+          setData(cachedData);
+          setLoading(false);
+          return; // Use cached data, no need to fetch
+        }
+
         setLoading(true);
         try {
           const res = await getTestResultAndAnswersAPI(idTestResult);
           if (res && res.data) {
             setData(res.data);
+            // Save to cache for future use
+            setCachedResult(idTestResult, res.data);
           } else {
             message.warning("Không tìm thấy dữ liệu chi tiết.");
           }
@@ -319,15 +396,15 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
       part.passage.content.trim().length > 0;
 
     return (
-      <div className="h-full flex flex-col md:flex-row gap-6 overflow-hidden bg-gray-100 p-4">
+      <div className="h-full flex flex-col md:flex-row gap-6 overflow-hidden bg-gray-100 dark:bg-slate-900 p-4">
         {/* CỘT TRÁI: READING PASSAGE (Chỉ hiện nếu có nội dung) */}
         {hasPassage && (
-          <div className="w-full md:w-1/2 h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-4 bg-gray-50 border-b border-gray-100 font-bold text-gray-700 flex items-center gap-2">
+          <div className="w-full md:w-1/2 h-full flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+            <div className="p-4 bg-gray-50 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700 font-bold text-gray-700 dark:text-white flex items-center gap-2">
               <ReadOutlined /> Reading Passage
             </div>
             <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-              <div className="prose max-w-none text-justify text-gray-800 text-lg leading-8 font-serif">
+              <div className="prose max-w-none text-justify text-gray-800 dark:text-gray-200 text-lg leading-8 font-serif">
                 {part.passage.content.split(/\r?\n\r?\n/).map((para, i) => (
                   <p key={i} className="mb-4 indent-8">
                     {para}
@@ -341,13 +418,13 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
         {/* CỘT PHẢI: QUESTIONS */}
         {/* Nếu không có passage (Listening), cột này sẽ full width và căn giữa */}
         <div
-          className={`h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${hasPassage ? "w-full md:w-1/2" : "w-full max-w-5xl mx-auto"
+          className={`h-full flex flex-col bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden ${hasPassage ? "w-full md:w-1/2" : "w-full max-w-5xl mx-auto"
             }`}
         >
-          <div className="p-4 bg-blue-50 border-b border-blue-100 font-bold text-blue-800 flex items-center gap-2">
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border-b border-blue-100 dark:border-blue-800 font-bold text-blue-800 dark:text-blue-300 flex items-center gap-2">
             <FileTextOutlined /> Questions & Answers
           </div>
-          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-gray-50/30">
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-gray-50/30 dark:bg-slate-900/50">
             {(part.groupOfQuestions || []).map((group) => {
               let displayTitle = group.title || "Group";
               let isMultiple = false;
@@ -362,12 +439,12 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
 
               return (
                 <div key={group.idGroupOfQuestions} className="mb-8">
-                  <div className="mb-3 border-b border-gray-200 pb-2">
-                    <h4 className="font-bold text-gray-800 text-lg">
+                  <div className="mb-3 border-b border-gray-200 dark:border-slate-600 pb-2">
+                    <h4 className="font-bold text-gray-800 dark:text-white text-lg">
                       {displayTitle}
                     </h4>
                     {group.instruction && (
-                      <p className="text-sm text-gray-500 italic mt-1">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">
                         {group.instruction}
                       </p>
                     )}
@@ -384,7 +461,7 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
               );
             })}
             {(!part.groupOfQuestions || part.groupOfQuestions.length === 0) && (
-              <div className="text-center text-gray-400 py-10">
+              <div className="text-center text-gray-400 dark:text-gray-500 py-10">
                 Không có câu hỏi
               </div>
             )}
@@ -431,21 +508,21 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
       closeIcon={<CloseCircleOutlined style={{ fontSize: 25 }} />}
     >
       {loading ? (
-        <div className="flex flex-col justify-center items-center h-full gap-4">
+        <div className="flex flex-col justify-center items-center h-full gap-4 bg-white dark:bg-slate-900">
           <Spin size="large" />
-          <Text>Đang tải lại bài làm của bạn...</Text>
+          <Text className="dark:text-gray-300">Đang tải lại bài làm của bạn...</Text>
         </div>
       ) : data ? (
-        <div className="flex flex-col h-full bg-gray-100">
+        <div className="flex flex-col h-full bg-gray-100 dark:bg-slate-900">
           {/* HEADER */}
-          <div className="bg-white px-6 py-3 border-b shadow-sm flex flex-wrap justify-between items-center gap-4 shrink-0">
+          <div className="bg-white dark:bg-slate-800 px-6 py-3 border-b dark:border-slate-700 shadow-sm flex flex-wrap justify-between items-center gap-4 shrink-0">
             <div>
-              <Title level={4} style={{ margin: 0, color: "#1f2937" }}>
+              <Title level={4} style={{ margin: 0 }} className="dark:text-white text-gray-900">
                 {data.test?.title || "Review Result"}
               </Title>
               <div className="flex items-center gap-2 mt-1">
                 <Tag color="green">FINISHED</Tag>
-                <Text type="secondary" className="text-xs">
+                <Text type="secondary" className="text-xs dark:text-gray-400">
                   ID: {data.idTestResult?.slice(0, 8)}...
                 </Text>
               </div>
@@ -453,7 +530,7 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
 
             <div className="flex gap-6 items-center">
               <Statistic
-                title="Band Score"
+                title={<span className="dark:text-gray-400">Band Score</span>}
                 value={data.band_score}
                 precision={1}
                 valueStyle={{ color: "#2563eb", fontWeight: "bold" }}
@@ -461,21 +538,21 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
               />
               {data.test?.testType === "WRITING" ? (
                 <Statistic
-                  title="Submissions"
+                  title={<span className="dark:text-gray-400">Submissions</span>}
                   value={data.writingSubmission?.length || 0}
                   valueStyle={{ color: "#16a34a", fontWeight: "bold" }}
                   prefix={<FileTextOutlined />}
                 />
               ) : (
                 <Statistic
-                  title="Câu đúng"
+                  title={<span className="dark:text-gray-400">Câu đúng</span>}
                   value={data.total_correct}
                   suffix={`/ ${data.total_questions}`}
                   valueStyle={{ color: "#16a34a", fontWeight: "bold" }}
                   prefix={<CheckCircleOutlined />}
                 />
               )}
-              <div className="h-10 w-px bg-gray-300 mx-2 hidden md:block"></div>
+              <div className="h-10 w-px bg-gray-300 dark:bg-slate-600 mx-2 hidden md:block"></div>
             </div>
           </div>
 
@@ -485,10 +562,9 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
               defaultActiveKey="0"
               items={tabItems}
               type="card"
-              className="h-full custom-result-tabs"
+              className="h-full custom-result-tabs dark-tabs"
               tabBarStyle={{
                 marginBottom: 0,
-                background: "#fff",
                 paddingLeft: 16,
                 paddingTop: 8,
               }}
@@ -496,7 +572,7 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
           </div>
         </div>
       ) : (
-        <div className="flex justify-center items-center h-full text-gray-400">
+        <div className="flex justify-center items-center h-full text-gray-400 dark:text-gray-500 bg-white dark:bg-slate-900">
           Không có dữ liệu
         </div>
       )}
@@ -520,6 +596,32 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: #a8a8a8;
+        }
+        /* Dark mode scrollbar */
+        .dark .custom-scrollbar::-webkit-scrollbar-track {
+          background: #1e293b;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #475569;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #64748b;
+        }
+        /* Dark mode for Ant Design tabs */
+        .dark .dark-tabs .ant-tabs-nav {
+          background: #1e293b !important;
+        }
+        .dark .dark-tabs .ant-tabs-tab {
+          background: #334155 !important;
+          border-color: #475569 !important;
+          color: #94a3b8 !important;
+        }
+        .dark .dark-tabs .ant-tabs-tab-active {
+          background: #0f172a !important;
+          border-bottom-color: #0f172a !important;
+        }
+        .dark .dark-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+          color: #fff !important;
         }
       `}</style>
     </Modal>
