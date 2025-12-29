@@ -5,32 +5,29 @@ import API from "./axios.custom";
 // =============================================================================
 
 // Tạo mới Speaking Task (Có gửi file -> Dùng FormData)
-export const createSpeakingTask = async (formData) => {
-  const res = await API.post("/speaking-task/create-speaking-task", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+export const createSpeakingTask = async (data) => {
+  const res = await API.post("/speaking-task/create-speaking-task", data);
   return res.data;
 };
 
 // Cập nhật Speaking Task (Có gửi file -> Dùng FormData)
-export const updateSpeakingTask = async (idSpeakingTask, formData) => {
+export const updateSpeakingTask = async (idSpeakingTask, data) => {
   const res = await API.patch(
     `/speaking-task/update-speaking-task/${idSpeakingTask}`,
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
+    data
   );
   return res.data;
 };
 
-export const getAllSpeakingTasks = async () => {
-  const res = await API.get("/speaking-task/find-all-speaking-tasks");
+export const getAllSpeakingTasks = async (idTest) => {
+  const res = await API.get(`/speaking-task/find-all-speaking-tasks/${idTest}`);
   return res.data;
+};
+
+export const getSpeakingTask = async (idSpeakingTask) => {
+  const res = await API.get(
+    `/speaking-task/find-speaking-task/${idSpeakingTask}`
+  );
 };
 
 export const deleteSpeakingTask = async (idSpeakingTask) => {
@@ -72,6 +69,21 @@ export const updateSpeakingQuestion = async (idSpeakingQuestion, data) => {
 export const deleteSpeakingQuestion = async (idSpeakingQuestion) => {
   const res = await API.delete(
     `/speaking-question/remove-speaking-question/${idSpeakingQuestion}`
+  );
+  return res.data;
+};
+
+//SPEAKING SUBMISSION
+
+export const userSpeakingSubmission = async (formData) => {
+  const res = await API.post(
+    `/user-speaking-submission/create-speaking-submission`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
   );
   return res.data;
 };
