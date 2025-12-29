@@ -320,7 +320,9 @@ const ReadingPartPanel = ({
               <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Các nhóm câu hỏi đã tạo</h3>
               {partDetail.groupOfQuestions.map((nhom) => {
                 const currentGroupStart = runningOffset;
-                runningOffset += nhom.quantity;
+                // Use actualQuestionCount if available, otherwise fallback to quantity
+                const questionCount = nhom.actualQuestionCount ?? nhom.quantity ?? 0;
+                runningOffset += questionCount;
                 let displayTitle = nhom.title;
                 if (displayTitle.startsWith("Multiple ||| ")) {
                   displayTitle = displayTitle.replace("Multiple ||| ", "");

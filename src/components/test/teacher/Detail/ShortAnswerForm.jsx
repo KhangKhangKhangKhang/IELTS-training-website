@@ -10,7 +10,7 @@ import {
 } from "@/services/apiTest";
 import RichTextEditor from "@/components/ui/RichTextEditor";
 
-const ShortAnswerForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
+const ShortAnswerForm = ({ idGroup, groupData, questionNumberOffset = 0, onRefresh }) => {
   const [loadedQuestions, setLoadedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -23,11 +23,12 @@ const ShortAnswerForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
   // Initialize form questions based on quantity when group is first created
   useEffect(() => {
     if (
-      groupData?.quantity &&
+      (groupData?.actualQuestionCount || groupData?.quantity) &&
       !hasQuestionsLoaded &&
       loadedQuestions.length === 0
     ) {
-      const initialQuestions = Array(groupData.quantity)
+      const count = groupData.actualQuestionCount ?? groupData.quantity ?? 1;
+      const initialQuestions = Array(count)
         .fill(null)
         .map(() => ({
           content: "",
@@ -35,7 +36,7 @@ const ShortAnswerForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
         }));
       setFormQuestions(initialQuestions);
     }
-  }, [groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
+  }, [groupData?.actualQuestionCount, groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
 
   useEffect(() => {
     if (idGroup) {
@@ -145,10 +146,11 @@ const ShortAnswerForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
       }
 
       await createManyQuestion({ questions: questionsPayload });
-      message.success("Đã lưu tất cả câu hỏi trả lời ngắn!");
+      message.success("Đã lưu tất cả câu hỏi SHORT ANSWER!");
 
       setFormQuestions([{ content: "", answer_text: "" }]);
       await loadQuestions();
+      if (onRefresh) await onRefresh();
     } catch (err) {
       console.error(err);
       message.error("Lưu câu hỏi thất bại");
@@ -161,7 +163,8 @@ const ShortAnswerForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
     try {
       const updated = loadedQuestions.filter((_, idx) => idx !== index);
       setLoadedQuestions(updated);
-      message.success("Đã xóa câu hỏi");
+      message.success("Đã xóa câu hỏi (chưa lưu)");
+      if (onRefresh) await onRefresh();
     } catch (err) {
       console.error(err);
       message.error("Xóa câu hỏi thất bại");
@@ -217,11 +220,12 @@ const ShortAnswerForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
       }
 
       await updateManyQuestionAPI({ questions: questionsPayload });
-      message.success("Đã cập nhật câu hỏi!");
+      message.success("Đã cập nhật câu hỏi SHORT ANSWER!");
 
       setIsEditMode(false);
       setFormQuestions([{ content: "", answer_text: "" }]);
       await loadQuestions();
+      if (onRefresh) await onRefresh();
     } catch (err) {
       console.error(err);
       message.error("Cập nhật câu hỏi thất bại");

@@ -130,6 +130,11 @@ export const deleteGroupOfQuestionsAPI = async (idGroupOfQuestions) => {
   return res.data;
 };
 
+export const deleteQuestionAPI = async (idQuestion) => {
+  const res = await API.delete(`/question/delete-question/${idQuestion}`);
+  return res.data;
+};
+
 //get
 export const getAllPartByIdAPI = async (idTest) => {
   const res = await API.get(`/part/get-all-part-by-idTest/${idTest}`);

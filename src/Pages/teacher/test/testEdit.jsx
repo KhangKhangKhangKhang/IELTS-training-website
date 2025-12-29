@@ -5,7 +5,7 @@ import CreateReading from "@/components/test/teacher/Reading/CreateReading";
 import CreateListening from "@/components/test/teacher/Listening/CreateListening";
 import CreateWriting from "@/components/test/teacher/Writing/CreateWriting";
 import { getDetailInTestAPI } from "@/services/apiDoTest";
-import CreateSpeaking from "@/components/test/teacher/Speaking/CreateSpeaking";
+//import CreateSpeaking from "@/components/test/teacher/Speaking/CreateSpeaking";
 
 const TestEdit = () => {
   const { idTest } = useParams();

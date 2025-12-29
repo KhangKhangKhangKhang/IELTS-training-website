@@ -14,6 +14,7 @@ const QuestionTypeRenderer = ({
   idGroup,
   groupData,
   questionNumberOffset,
+  onRefresh,
 }) => {
   if (!type || !idGroup)
     return (
@@ -26,6 +27,7 @@ const QuestionTypeRenderer = ({
     idGroup,
     groupData,
     questionNumberOffset,
+    onRefresh,
   };
 
   switch (type) {

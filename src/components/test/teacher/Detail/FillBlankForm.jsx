@@ -63,7 +63,7 @@ const FillBlankForm = ({
   const [focusedCell, setFocusedCell] = useState({ r: 0, c: 0 });
 
   const textAreaRef = useRef(null);
-  const quantity = groupData?.quantity || 1;
+  const quantity = (groupData?.actualQuestionCount ?? groupData?.quantity) || 1;
 
   useEffect(() => {
     if (idGroup) loadQuestions();

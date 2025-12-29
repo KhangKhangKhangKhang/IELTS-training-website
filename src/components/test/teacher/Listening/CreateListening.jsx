@@ -156,8 +156,9 @@ const CreateListening = ({ idTest, exam, onExamUpdate }) => {
       if (p.idPart === selectedPart.idPart) break;
       const d = partDetailsMap[p.idPart];
       if (d?.groupOfQuestions) {
+        // ✅ Use actualQuestionCount if available, fallback to quantity
         offset += d.groupOfQuestions.reduce(
-          (sum, g) => sum + (g.quantity || 0),
+          (sum, g) => sum + ((g.actualQuestionCount ?? g.quantity) || 0),
           0
         );
       }

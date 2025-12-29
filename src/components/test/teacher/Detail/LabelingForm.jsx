@@ -68,28 +68,27 @@ const LabelingForm = ({
   }, [idGroup]);
 
   const initDefault = () => {
-    if (groupData?.quantity) {
-      const defaultOptionsCount = groupData.quantity + 3;
-      const defaultOptions = Array.from(
-        { length: defaultOptionsCount },
-        (_, i) => ({
-          key: getLabelByKeyType(i, "ABC"),
-          text: "",
-        })
-      );
-      setOptionsPool(defaultOptions);
+    const count = (groupData?.actualQuestionCount ?? groupData?.quantity) || 1;
+    const defaultOptionsCount = count + 3;
+    const defaultOptions = Array.from(
+      { length: defaultOptionsCount },
+      (_, i) => ({
+        key: getLabelByKeyType(i, "ABC"),
+        text: "",
+      })
+    );
+    setOptionsPool(defaultOptions);
 
-      const defaultQuestions = Array.from(
-        { length: groupData.quantity },
-        (_, i) => ({
-          idQuestion: null,
-          numberQuestion: questionNumberOffset + i + 1,
-          content: "",
-          correctKey: undefined,
-        })
-      );
-      setQuestions(defaultQuestions);
-    }
+    const defaultQuestions = Array.from(
+      { length: count },
+      (_, i) => ({
+        idQuestion: null,
+        numberQuestion: questionNumberOffset + i + 1,
+        content: "",
+        correctKey: undefined,
+      })
+    );
+    setQuestions(defaultQuestions);
   };
 
   const loadData = async () => {

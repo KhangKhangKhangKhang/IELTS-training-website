@@ -36,12 +36,13 @@ const MatchingForm = ({
   // Khởi tạo mặc định khi tạo mới
   useEffect(() => {
     if (
-      groupData?.quantity &&
+      (groupData?.actualQuestionCount || groupData?.quantity) &&
       questions.length === 0 &&
       optionsPool.length === 0
     ) {
+      const count = groupData.actualQuestionCount ?? groupData.quantity ?? 1;
       // Tạo options mặc định A, B, C...
-      const defaultOptions = Array(groupData.quantity)
+      const defaultOptions = Array(count)
         .fill(null)
         .map((_, i) => ({
           key: String.fromCharCode(65 + i),
@@ -50,7 +51,7 @@ const MatchingForm = ({
       setOptionsPool(defaultOptions);
 
       // Tạo câu hỏi rỗng
-      const defaultQuestions = Array(groupData.quantity)
+      const defaultQuestions = Array(count)
         .fill(null)
         .map(() => ({
           content: "",

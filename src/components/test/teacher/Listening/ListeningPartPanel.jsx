@@ -286,7 +286,9 @@ const ListeningPartPanel = ({
           partDetail.groupOfQuestions.length > 0 ? (
           partDetail.groupOfQuestions.map((group) => {
             const currentGroupStart = runningOffset;
-            runningOffset += group.quantity;
+            // Use actualQuestionCount if available, fallback to quantity
+            const questionCount = group.actualQuestionCount ?? group.quantity ?? 0;
+            runningOffset += questionCount;
 
             // Clean title
             let displayTitle = group.title || "";
@@ -331,7 +333,7 @@ const ListeningPartPanel = ({
                           )?.label || group.typeQuestion}
                         </span>
                         <span className="bg-gray-100 px-2 py-1 rounded border">
-                          {group.quantity} câu hỏi
+                          {group.actualQuestionCount ?? group.quantity} câu hỏi
                         </span>
                       </div>
                     </div>

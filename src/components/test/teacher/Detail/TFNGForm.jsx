@@ -12,7 +12,7 @@ import RichTextEditor from "@/components/ui/RichTextEditor";
 
 const { Option } = Select;
 
-const TFNGForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
+const TFNGForm = ({ idGroup, groupData, questionNumberOffset = 0, onRefresh }) => {
   const [loadedQuestions, setLoadedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -22,14 +22,16 @@ const TFNGForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
     { content: "", answer_text: "" },
   ]);
 
-  // Initialize form questions based on quantity when group is first created
+  // Initialize form questions based on actualQuestionCount when group is first created
   useEffect(() => {
     if (
-      groupData?.quantity &&
+      (groupData?.actualQuestionCount || groupData?.quantity) &&
       !hasQuestionsLoaded &&
       loadedQuestions.length === 0
     ) {
-      const initialQuestions = Array(groupData.quantity)
+      // Use actualQuestionCount if available, otherwise fallback to quantity
+      const count = groupData.actualQuestionCount ?? groupData.quantity ?? 1;
+      const initialQuestions = Array(count)
         .fill(null)
         .map(() => ({
           content: "",
@@ -37,7 +39,7 @@ const TFNGForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
         }));
       setFormQuestions(initialQuestions);
     }
-  }, [groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
+  }, [groupData?.actualQuestionCount, groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
 
   useEffect(() => {
     if (idGroup) {
@@ -154,6 +156,7 @@ const TFNGForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
 
       setFormQuestions([{ content: "", answer_text: "" }]);
       await loadQuestions();
+      if (onRefresh) await onRefresh();
     } catch (err) {
       console.error(err);
       message.error("Lưu câu hỏi thất bại");
@@ -162,12 +165,16 @@ const TFNGForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
     }
   };
 
-  // ======== DELETE QUESTION ========
+  // ======== DELETE QUESTION (SOFT DELETE - UI ONLY) ========
   const handleDeleteQuestion = async (idQuestion, index) => {
     try {
+      // Only update local state (soft delete)
       const updated = loadedQuestions.filter((_, idx) => idx !== index);
       setLoadedQuestions(updated);
-      message.success("Đã xóa câu hỏi");
+      message.success("Đã xóa câu hỏi (chưa lưu)");
+
+      // Trigger parent refresh to recalculate question numbers in other groups
+      if (onRefresh) await onRefresh();
     } catch (err) {
       console.error(err);
       message.error("Xóa câu hỏi thất bại");
@@ -228,6 +235,7 @@ const TFNGForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
       setIsEditMode(false);
       setFormQuestions([{ content: "", answer_text: "" }]);
       await loadQuestions();
+      if (onRefresh) await onRefresh();
     } catch (err) {
       console.error(err);
       message.error("Cập nhật câu hỏi thất bại");
@@ -279,11 +287,11 @@ const TFNGForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
           </div>
         ))}
 
-        <div className="flex gap-2 pt-4 border-t">
-          <Button type="primary" onClick={() => setHasQuestionsLoaded(false)}>
+        {/* <div className="flex gap-3 justify-end">
+          <Button onClick={() => setHasQuestionsLoaded(false)}>
             + Thêm câu hỏi
           </Button>
-        </div>
+        </div> */}
       </div>
     );
   }
@@ -311,7 +319,11 @@ const TFNGForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
         <div key={qIndex} className="border border-gray-200 dark:border-slate-600 p-4 rounded bg-white dark:bg-slate-800 shadow-sm">
           <div className="flex justify-between items-center mb-2">
             <div className="font-semibold text-gray-800 dark:text-white">
-              Câu {isEditMode ? qIndex + 1 : questionNumberOffset + loadedQuestions.length + qIndex + 1}
+              Câu {isEditMode
+                ? qIndex + 1
+                : loadedQuestions.length > 0
+                  ? questionNumberOffset + loadedQuestions.length + qIndex + 1
+                  : questionNumberOffset + qIndex + 1}
             </div>
             {formQuestions.length > 1 && (
               <Button
@@ -349,14 +361,14 @@ const TFNGForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
         </div>
       ))}
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 justify-end">
         <Button onClick={handleAddQuestion}>+ Thêm câu hỏi</Button>
         <Button
           type="primary"
           onClick={isEditMode ? handleSaveEdit : handleSaveAll}
           loading={saving}
         >
-          {isEditMode ? "Cập nhật" : "Lưu"}
+          {isEditMode ? "Cập nhật tất cả" : "Cập nhập tất cả"}
         </Button>
       </div>
     </div>

@@ -39,12 +39,13 @@ const MCQForm = ({
 
     // Nếu chưa load và chưa có idGroup (trường hợp hiếm), init form
     if (
-      groupData?.quantity &&
+      (groupData?.actualQuestionCount || groupData?.quantity) &&
       !hasQuestionsLoaded &&
       loadedQuestions.length === 0 &&
       !idGroup
     ) {
-      initEmptyForms(_isMultiple, groupData.quantity);
+      const count = groupData.actualQuestionCount ?? groupData.quantity;
+      initEmptyForms(_isMultiple, count);
     }
   }, [groupData, hasQuestionsLoaded, loadedQuestions.length, idGroup]);
 
@@ -153,7 +154,15 @@ const MCQForm = ({
   const handleAddQuestion = () => {
     setFormQuestions([
       ...formQuestions,
-      { content: "", options: [{ text: "", correct: false }] },
+      {
+        content: "",
+        options: [
+          { text: "", correct: false },
+          { text: "", correct: false },
+          { text: "", correct: false },
+          { text: "", correct: false },
+        ]
+      },
     ]);
   };
 
@@ -195,9 +204,11 @@ const MCQForm = ({
       const masterQ = questions[0];
       const correctCount = masterQ.options.filter((opt) => opt.correct).length;
 
-      if (correctCount !== groupData.quantity) {
+      // ✅ Use actualQuestionCount if available
+      const expectedCount = groupData.actualQuestionCount ?? groupData.quantity;
+      if (correctCount !== expectedCount) {
         message.warning(
-          `Bạn cần chọn đúng ${groupData.quantity} đáp án ĐÚNG cho nhóm câu hỏi này.`
+          `Bạn cần chọn đúng ${expectedCount} đáp án ĐÚNG cho nhóm câu hỏi này.`
         );
         throw new Error("Invalid selection count");
       }
@@ -207,7 +218,7 @@ const MCQForm = ({
         ? loadedQuestions[0].numberQuestion
         : questionNumberOffset + loadedQuestions.length + 1;
 
-      for (let i = 0; i < groupData.quantity; i++) {
+      for (let i = 0; i < expectedCount; i++) {
         const answersPayload = masterQ.options.map((opt, oIdx) => ({
           answer_text: opt.text || "",
           matching_key: String.fromCharCode(65 + oIdx),
@@ -361,21 +372,31 @@ const MCQForm = ({
             </div>
           </div>
         ))}
-        {!isEditMode && !isMultipleMode && (
+        {/* Nút thêm câu hỏi - Hiển thị cho cả Single và Multiple mode */}
+        {/* {!isEditMode && (
           <Button
             block
             type="dashed"
             onClick={() => {
               setHasQuestionsLoaded(false);
               setIsEditMode(false);
+              // Tạo 4 options mặc định cho câu hỏi mới
               setFormQuestions([
-                { content: "", options: [{ text: "", correct: false }] },
+                {
+                  content: "",
+                  options: [
+                    { text: "", correct: false },
+                    { text: "", correct: false },
+                    { text: "", correct: false },
+                    { text: "", correct: false },
+                  ]
+                },
               ]);
             }}
           >
             + Thêm câu hỏi mới vào nhóm này
           </Button>
-        )}
+        )} */}
       </div>
     );
   }
@@ -387,7 +408,7 @@ const MCQForm = ({
         <h3 className="font-bold text-gray-800 dark:text-white">
           {isEditMode ? "Chỉnh sửa" : "Tạo câu hỏi"}{" "}
           {isMultipleMode
-            ? `(Nhập 1 lần cho ${groupData.quantity} câu)`
+            ? `(Nhập 1 lần cho ${groupData.actualQuestionCount ?? groupData.quantity} câu)`
             : "(Từng câu)"}
         </h3>
         {(isEditMode || hasQuestionsLoaded) && (
@@ -411,8 +432,10 @@ const MCQForm = ({
           <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100 dark:border-slate-700">
             <div className="font-bold text-blue-600 dark:text-blue-400 text-lg">
               {isMultipleMode
-                ? `Nội dung chung cho ${groupData.quantity} câu hỏi`
-                : `Câu số ${questionNumberOffset + loadedQuestions.length + qIndex + 1}`}
+                ? `Nội dung chung cho ${groupData.actualQuestionCount ?? groupData.quantity} câu hỏi`
+                : isEditMode
+                  ? `Câu số ${formQuestions[qIndex]?.numberQuestion || qIndex + 1}`
+                  : `Câu số ${questionNumberOffset + loadedQuestions.length + qIndex + 1}`}
             </div>
 
             {!isMultipleMode && (
@@ -493,7 +516,8 @@ const MCQForm = ({
       ))}
 
       <div className="flex gap-3 justify-end">
-        {!isEditMode && !isMultipleMode && (
+        {/* Hiện nút Thêm câu hỏi cho Single MCQ (cả create và edit mode) */}
+        {!isMultipleMode && (
           <Button onClick={handleAddQuestion}>+ Thêm câu hỏi</Button>
         )}
         <Button

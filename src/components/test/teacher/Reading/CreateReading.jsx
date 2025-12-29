@@ -179,8 +179,9 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
 
       const d = partDetailsMap[p.idPart];
       if (d && d.groupOfQuestions && d.groupOfQuestions.length) {
+        // ✅ Use actualQuestionCount if available, fallback to quantity
         offset += d.groupOfQuestions.reduce(
-          (sum, g) => sum + (g.quantity || 0),
+          (sum, g) => sum + ((g.actualQuestionCount ?? g.quantity) || 0),
           0
         );
       }

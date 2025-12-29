@@ -16,6 +16,7 @@ const YesNoNotGivenForm = ({
   idGroup,
   groupData,
   questionNumberOffset = 0,
+  onRefresh,
 }) => {
   const [loadedQuestions, setLoadedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -24,14 +25,15 @@ const YesNoNotGivenForm = ({
   const [isEditMode, setIsEditMode] = useState(false);
   const [formQuestions, setFormQuestions] = useState([]);
 
-  // Initialize form questions based on quantity when group is first created
+  // Initialize form questions based on actualQuestionCount when group is first created
   useEffect(() => {
     if (
-      groupData?.quantity &&
+      (groupData?.actualQuestionCount || groupData?.quantity) &&
       !hasQuestionsLoaded &&
       loadedQuestions.length === 0
     ) {
-      const initialQuestions = Array(groupData.quantity)
+      const count = groupData.actualQuestionCount ?? groupData.quantity ?? 1;
+      const initialQuestions = Array(count)
         .fill(null)
         .map(() => ({
           content: "",
@@ -39,7 +41,7 @@ const YesNoNotGivenForm = ({
         }));
       setFormQuestions(initialQuestions);
     }
-  }, [groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
+  }, [groupData?.actualQuestionCount, groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
 
   useEffect(() => {
     if (idGroup) {
@@ -153,6 +155,7 @@ const YesNoNotGivenForm = ({
 
       setFormQuestions([]);
       await loadQuestions();
+      if (onRefresh) await onRefresh();
     } catch (err) {
       console.error(err);
       message.error("Lưu câu hỏi thất bại");
@@ -165,7 +168,8 @@ const YesNoNotGivenForm = ({
     try {
       const updated = loadedQuestions.filter((_, idx) => idx !== index);
       setLoadedQuestions(updated);
-      message.success("Đã xóa câu hỏi");
+      message.success("Đã xóa câu hỏi (chưa lưu)");
+      if (onRefresh) await onRefresh();
     } catch (err) {
       console.error(err);
       message.error("Xóa câu hỏi thất bại");
@@ -226,6 +230,7 @@ const YesNoNotGivenForm = ({
       setIsEditMode(false);
       setFormQuestions([]);
       await loadQuestions();
+      if (onRefresh) await onRefresh();
     } catch (err) {
       console.error(err);
       message.error("Cập nhật câu hỏi thất bại");
