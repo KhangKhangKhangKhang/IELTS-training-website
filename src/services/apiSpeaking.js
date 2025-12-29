@@ -72,3 +72,18 @@ export const deleteSpeakingQuestion = async (idSpeakingQuestion) => {
   );
   return res.data;
 };
+
+//SPEAKING SUBMISSION
+
+export const userSpeakingSubmission = async (formData) => {
+  const res = await API.post(
+    `/user-speaking-submission/create-speaking-submission`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return res.data;
+};

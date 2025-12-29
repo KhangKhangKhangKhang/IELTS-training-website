@@ -26,83 +26,70 @@ import {
 } from "@/services/apiSpeaking";
 
 const { TextArea } = Input;
-const { Panel } = Collapse;
 
 const SpeakingPartPanel = ({ task, onUpdate }) => {
-  // task.questions là danh sách phẳng.
-  // Chúng ta cần gom nhóm theo Topic.
-  const groupedQuestions = useMemo(() => {
-    const groups = {};
-    const list = task.questions || [];
-
-    // Sắp xếp theo thứ tự trước khi group
-    list.sort((a, b) => (a.order || 0) - (b.order || 0));
-
-    list.forEach((q) => {
-      const topicName = q.topic || "Không có chủ đề (General)";
-      if (!groups[topicName]) {
-        groups[topicName] = [];
-      }
-      groups[topicName].push(q);
-    });
-    return groups;
-  }, [task.questions]);
-
   // --- STATE ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("CREATE_TOPIC"); // 'CREATE_TOPIC' | 'ADD_TO_TOPIC' | 'EDIT_QUESTION'
 
   // Dữ liệu Form
   const [topicName, setTopicName] = useState("");
-  const [prepTime, setPrepTime] = useState(0); // Dùng cho cấp độ Topic khi tạo mới
-
-  // Dùng cho Mode Create/Add (Mảng các câu hỏi mới)
+  const [prepTime, setPrepTime] = useState(0);
   const [newQuestions, setNewQuestions] = useState([]);
 
-  // Dùng cho Mode Edit (Object 1 câu hỏi cũ)
+  // Dùng cho Mode Edit
   const [editingQuestionId, setEditingQuestionId] = useState(null);
   const [singleQuestionData, setSingleQuestionData] = useState({});
+
+  // --- MEMO: Group Questions by Topic ---
+  const groupedQuestions = useMemo(() => {
+    const groups = {};
+    const list = task.questions || [];
+    list.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    list.forEach((q) => {
+      const topicName = q.topic || "General";
+      if (!groups[topicName]) groups[topicName] = [];
+      groups[topicName].push(q);
+    });
+    return groups;
+  }, [task.questions]);
 
   // --- HELPER: Init Form ---
   const initCreateForm = (initialTopic = "") => {
     setTopicName(initialTopic);
     setPrepTime(0);
-    // Mặc định có 1 dòng câu hỏi trống
     setNewQuestions([{ prompt: "", subPrompts: [""], speakingTime: 60 }]);
   };
 
   // --- ACTIONS: Open Modals ---
-
-  // 1. Tạo Topic mới (Tạo 1 nhóm mới hoàn toàn)
   const handleOpenCreateTopic = () => {
     setModalMode("CREATE_TOPIC");
     initCreateForm("");
     setIsModalOpen(true);
   };
 
-  // 2. Thêm câu hỏi vào Topic có sẵn
   const handleOpenAddToTopic = (topic, currentQuestions) => {
     setModalMode("ADD_TO_TOPIC");
-    // Lấy thời gian chuẩn bị của câu đầu tiên trong nhóm để làm gợi ý (nếu cần)
     const refTime =
       currentQuestions.length > 0 ? currentQuestions[0].preparationTime : 0;
-
-    setTopicName(topic); // Khóa cứng hoặc disable trường này
+    setTopicName(topic);
     setPrepTime(refTime);
     setNewQuestions([{ prompt: "", subPrompts: [""], speakingTime: 60 }]);
     setIsModalOpen(true);
   };
 
-  // 3. Sửa 1 câu hỏi cụ thể
   const handleOpenEditQuestion = (q) => {
     setModalMode("EDIT_QUESTION");
     setEditingQuestionId(q.idSpeakingQuestion);
     setSingleQuestionData({
-      topic: q.topic, // Cho phép sửa topic để chuyển nhóm
+      idSpeakingTask: task.idSpeakingTask,
+      topic: q.topic,
       prompt: q.prompt,
       subPrompts: q.subPrompts || [""],
       preparationTime: q.preparationTime || 0,
       speakingTime: q.speakingTime || 60,
+      order: q.order || 1, // Lưu order để gửi lại khi update
     });
     setIsModalOpen(true);
   };
@@ -145,24 +132,32 @@ const SpeakingPartPanel = ({ task, onUpdate }) => {
     setNewQuestions(newQuestions.filter((_, i) => i !== idx));
   };
 
-  // --- SUBMIT LOGIC ---
+  // =================================================================
+  // === LOGIC SUBMIT (ĐÃ SỬA LẠI PHẦN UPDATE) ===
+  // =================================================================
   const handleSubmit = async () => {
     try {
       if (modalMode === "EDIT_QUESTION") {
-        // --- LOGIC UPDATE 1 CÂU ---
-        const payload = {
+        // --- TRƯỜNG HỢP: UPDATE (Cấu trúc phẳng - Flat Object) ---
+        // Payload khớp với body mẫu bạn cung cấp
+        const updatePayload = {
+          idSpeakingTask: task.idSpeakingTask,
           topic: singleQuestionData.topic,
           prompt: singleQuestionData.prompt,
           subPrompts: singleQuestionData.subPrompts.filter(
             (s) => s.trim() !== ""
           ),
           preparationTime: Number(singleQuestionData.preparationTime),
+          // Hai trường này phải nằm ở root object, không nằm trong mảng questions
           speakingTime: Number(singleQuestionData.speakingTime),
+          order: Number(singleQuestionData.order),
         };
-        await updateSpeakingQuestion(editingQuestionId, payload);
+
+        // Gọi API Update
+        await updateSpeakingQuestion(editingQuestionId, updatePayload);
         message.success("Cập nhật câu hỏi thành công");
       } else {
-        // --- LOGIC CREATE / ADD TO TOPIC (Gửi mảng) ---
+        // --- TRƯỜNG HỢP: CREATE / ADD (Cấu trúc mảng - Nested Questions) ---
         // Validate
         if (!topicName.trim()) {
           message.error("Vui lòng nhập tên Topic");
@@ -176,19 +171,22 @@ const SpeakingPartPanel = ({ task, onUpdate }) => {
           return;
         }
 
-        const payload = {
+        const currentMaxOrder = task.questions?.length || 0;
+
+        const createPayload = {
           idSpeakingTask: task.idSpeakingTask,
           topic: topicName,
-          preparationTime: Number(prepTime), // Thời gian chuẩn bị chung cho đợt post này
+          preparationTime: Number(prepTime),
           questions: validQuestions.map((q, idx) => ({
             prompt: q.prompt,
             subPrompts: q.subPrompts.filter((s) => s.trim() !== ""),
             speakingTime: Number(q.speakingTime),
-            order: (task.questions?.length || 0) + idx + 1, // Tính toán order đơn giản
+            order: currentMaxOrder + idx + 1,
           })),
         };
 
-        await createSpeakingQuestion(payload);
+        // Gọi API Create
+        await createSpeakingQuestion(createPayload);
         message.success(
           modalMode === "CREATE_TOPIC"
             ? "Tạo chủ đề mới thành công"
@@ -196,15 +194,22 @@ const SpeakingPartPanel = ({ task, onUpdate }) => {
         );
       }
 
+      // 3. Kết thúc
       setIsModalOpen(false);
-      onUpdate(); // Refresh data từ cha
+      onUpdate(); // Refresh lại danh sách từ component cha
     } catch (error) {
-      console.error(error);
-      message.error("Có lỗi xảy ra");
+      console.error("Lỗi submit:", error);
+      // Hiển thị lỗi chi tiết nếu server trả về
+      const errorMsg = error.response?.data?.message
+        ? Array.isArray(error.response.data.message)
+          ? error.response.data.message.join(", ")
+          : error.response.data.message
+        : "Có lỗi xảy ra khi lưu dữ liệu";
+      message.error(errorMsg);
     }
   };
 
-  // Delete
+  // Delete Handler
   const handleDelete = async (id) => {
     try {
       await deleteSpeakingQuestion(id);
@@ -382,7 +387,7 @@ const SpeakingPartPanel = ({ task, onUpdate }) => {
                     });
                   else setTopicName(val);
                 }}
-                disabled={modalMode === "ADD_TO_TOPIC"} // Khóa khi thêm vào topic cũ
+                disabled={modalMode === "ADD_TO_TOPIC"}
                 placeholder="Ví dụ: Hometown, Work..."
               />
             </div>
@@ -504,7 +509,6 @@ const SpeakingPartPanel = ({ task, onUpdate }) => {
                   key={idx}
                   className="border p-4 rounded-lg bg-gray-50 relative group"
                 >
-                  {/* Nút xóa dòng câu hỏi này */}
                   {newQuestions.length > 1 && (
                     <Button
                       className="absolute top-2 right-2 opacity-50 hover:opacity-100"
@@ -549,7 +553,6 @@ const SpeakingPartPanel = ({ task, onUpdate }) => {
                     </div>
                   </div>
 
-                  {/* Sub Prompts */}
                   <div className="mt-3">
                     <label className="text-xs font-bold text-gray-400 uppercase">
                       Gợi ý trả lời

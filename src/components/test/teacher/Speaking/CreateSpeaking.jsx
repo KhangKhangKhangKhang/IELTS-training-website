@@ -87,7 +87,7 @@ const CreateSpeaking = ({ idTest, exam, onExamUpdate }) => {
     try {
       setCreatingPart(true);
       const nextPartNumber = allParts.length + 1;
-      const partName = `PART ${nextPartNumber}`;
+      const partName = `PART${nextPartNumber}`;
 
       const payload = {
         idTest: idTest,
