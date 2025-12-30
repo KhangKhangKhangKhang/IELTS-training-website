@@ -21,6 +21,9 @@ import {
   LinkOutlined,
   CheckSquareOutlined,
   AlertOutlined,
+  AudioOutlined,
+  CommentOutlined,
+  PlayCircleOutlined, // Thêm icon này cho player
 } from "@ant-design/icons";
 
 import QuestionRenderer from "./reading/render/QuestionRenderer";
@@ -28,6 +31,7 @@ import { getTestResultAndAnswersAPI } from "@/services/apiDoTest";
 
 const { Title, Text } = Typography;
 
+// --- CONSTANTS & HELPERS ---
 const TYPE_MAPPING = {
   YES_NO_NOTGIVEN: "YES_NO_NOTGIVEN",
   TFNG: "TFNG",
@@ -39,7 +43,6 @@ const TYPE_MAPPING = {
   OTHER: "OTHER",
 };
 
-// Helper function mapGroupForReview như cũ
 function mapGroupForReview(apiGroup) {
   const type_question =
     TYPE_MAPPING[apiGroup.typeQuestion] || apiGroup.typeQuestion;
@@ -78,20 +81,262 @@ function mapGroupForReview(apiGroup) {
     title: apiGroup.title,
     quantity: apiGroup.quantity,
     type_question,
-    img: apiGroup.img, // Mapping thêm ảnh cho dạng Labeling
+    img: apiGroup.img,
     instruction: apiGroup.instruction || "",
     questions,
   };
 }
 
-// --- COMPONENT: Render Writing Submission ---
+// --- COMPONENT: Render Speaking Submission (ĐÃ FIX LOGIC LẤY DATA) ---
+const RenderSpeakingSubmission = ({ submission }) => {
+  if (!submission) return null;
+
+  // 1. Lấy audio và feedback object
+  const { audioUrl, feedback, status } = submission;
+
+  // 2. Nếu chưa có feedback (chưa chấm hoặc đang xử lý)
+  if (!feedback) {
+    return (
+      <div className="p-10 text-center bg-gray-50 h-full">
+        <Spin tip="Đang tải kết quả..." />
+        <div className="mt-4 text-gray-500">
+          Trạng thái bài làm: <Tag color="orange">{status || "PENDING"}</Tag>
+        </div>
+        {audioUrl && (
+          <div className="mt-6 max-w-md mx-auto bg-white p-4 rounded shadow-sm">
+            <div className="text-xs font-bold text-gray-400 uppercase mb-2">
+              Bài nói của bạn
+            </div>
+            <audio controls className="w-full h-8" src={audioUrl} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 3. Destructure dữ liệu TỪ BÊN TRONG feedback
+  const {
+    scoreFluency,
+    scoreLexical,
+    scoreGrammar,
+    scorePronunciation,
+    overallScore,
+    commentFluency,
+    commentLexical,
+    commentGrammar,
+    commentPronunciation,
+    generalFeedback,
+    detailedCorrections,
+  } = feedback;
+
+  // Helper render header panel kèm điểm
+  const renderPanelHeader = (title, score, icon) => (
+    <div className="flex justify-between items-center w-full pr-4">
+      <span className="font-semibold flex items-center gap-2">
+        {icon} {title}
+      </span>
+      {score !== undefined && (
+        <Tag color="geekblue" className="text-sm font-bold ml-2">
+          {score} / 9.0
+        </Tag>
+      )}
+    </div>
+  );
+
+  const collapseItems = [
+    {
+      key: "1",
+      label: renderPanelHeader(
+        "Fluency & Coherence",
+        scoreFluency,
+        <CommentOutlined />
+      ),
+      children: (
+        <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+          {commentFluency || "No comment available"}
+        </p>
+      ),
+    },
+    {
+      key: "2",
+      label: renderPanelHeader(
+        "Lexical Resource",
+        scoreLexical,
+        <BookOutlined />
+      ),
+      children: (
+        <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+          {commentLexical || "No comment available"}
+        </p>
+      ),
+    },
+    {
+      key: "3",
+      label: renderPanelHeader(
+        "Grammatical Range",
+        scoreGrammar,
+        <CheckSquareOutlined />
+      ),
+      children: (
+        <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+          {commentGrammar || "No comment available"}
+        </p>
+      ),
+    },
+    {
+      key: "4",
+      label: renderPanelHeader(
+        "Pronunciation",
+        scorePronunciation,
+        <AudioOutlined />
+      ),
+      children: (
+        <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+          {commentPronunciation || "No comment available"}
+        </p>
+      ),
+    },
+  ];
+
+  return (
+    <div className="h-full overflow-y-auto p-6 bg-gray-50 custom-scrollbar">
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* AUDIO PLAYER */}
+        {audioUrl && (
+          <Card className="shadow-sm border border-blue-100 bg-white">
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-50 p-3 rounded-full text-blue-600">
+                <PlayCircleOutlined style={{ fontSize: "24px" }} />
+              </div>
+              <div className="flex-1">
+                <div className="text-xs font-bold text-gray-500 uppercase mb-1">
+                  Your Recording
+                </div>
+                <audio controls className="w-full h-8" src={audioUrl} />
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Score Overview Card */}
+        <Card className="shadow-sm border-t-4 border-t-blue-600">
+          <div className="text-center">
+            <h3 className="text-gray-500 mb-1 uppercase text-xs font-bold tracking-wider">
+              Overall Speaking Score
+            </h3>
+            <div className="text-5xl font-extrabold text-blue-600">
+              {overallScore || 0}
+            </div>
+            <div className="mt-4 flex justify-center gap-4 flex-wrap">
+              {/* Mini stats */}
+              <div className="bg-gray-100 px-3 py-1 rounded text-xs text-gray-600">
+                Fluency: <b>{scoreFluency}</b>
+              </div>
+              <div className="bg-gray-100 px-3 py-1 rounded text-xs text-gray-600">
+                Lexical: <b>{scoreLexical}</b>
+              </div>
+              <div className="bg-gray-100 px-3 py-1 rounded text-xs text-gray-600">
+                Grammar: <b>{scoreGrammar}</b>
+              </div>
+              <div className="bg-gray-100 px-3 py-1 rounded text-xs text-gray-600">
+                Pronun: <b>{scorePronunciation}</b>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* General Feedback */}
+        {generalFeedback && (
+          <Card
+            className="shadow-sm"
+            style={{ backgroundColor: "#f0f9ff", borderColor: "#0284c7" }}
+          >
+            <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+              <TrophyOutlined /> General Feedback
+            </h4>
+            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+              {generalFeedback}
+            </p>
+          </Card>
+        )}
+
+        {/* Detailed Criteria */}
+        <Card title="Detailed Evaluation Criteria" className="shadow-sm">
+          <Collapse
+            items={collapseItems}
+            defaultActiveKey={["1", "2", "3", "4"]}
+            ghost
+          />
+        </Card>
+
+        {/* Detailed Corrections */}
+        {detailedCorrections &&
+          Array.isArray(detailedCorrections) &&
+          detailedCorrections.length > 0 && (
+            <Card
+              title={
+                <span className="flex items-center gap-2">
+                  <AlertOutlined className="text-amber-500" /> Improvements &
+                  Corrections
+                </span>
+              }
+              className="shadow-sm"
+            >
+              <div className="grid gap-4">
+                {detailedCorrections.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <Tag
+                        color={item.type === "Grammar" ? "red" : "blue"}
+                        className="font-semibold"
+                      >
+                        {item.type}
+                      </Tag>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4 mb-3">
+                      <div className="bg-red-50 p-3 rounded border border-red-200">
+                        <span className="font-semibold text-red-700 block mb-2 text-sm">
+                          Mistake:
+                        </span>
+                        <span className="text-gray-700 line-through decoration-red-400 decoration-2">
+                          {item.mistake}
+                        </span>
+                      </div>
+                      <div className="bg-green-50 p-3 rounded border border-green-200">
+                        <span className="font-semibold text-green-700 block mb-2 text-sm">
+                          Better Version:
+                        </span>
+                        <span className="text-gray-700">{item.correct}</span>
+                      </div>
+                    </div>
+                    {item.explanation && (
+                      <div className="text-sm text-gray-600 italic bg-blue-50 p-3 rounded border border-blue-200">
+                        <span className="font-bold text-blue-700">
+                          Explanation:{" "}
+                        </span>
+                        {item.explanation}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+      </div>
+    </div>
+  );
+};
+
+// --- COMPONENT: Render Writing Submission (Giữ nguyên) ---
 const RenderWritingSubmission = ({ submission }) => {
   if (!submission) return null;
 
   const { submission_text, writingTask, feedback } = submission;
   const feedbackData = feedback && feedback.length > 0 ? feedback[0] : null;
 
-  // Collapse items for detailed feedback
   const collapseItems = [
     {
       key: "1",
@@ -101,7 +346,7 @@ const RenderWritingSubmission = ({ submission }) => {
         </span>
       ),
       children: (
-        <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+        <p className="text-gray-600 whitespace-pre-wrap">
           {feedbackData?.taskResponse || "No feedback available"}
         </p>
       ),
@@ -114,7 +359,7 @@ const RenderWritingSubmission = ({ submission }) => {
         </span>
       ),
       children: (
-        <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+        <p className="text-gray-600 whitespace-pre-wrap">
           {feedbackData?.coherenceAndCohesion || "No feedback available"}
         </p>
       ),
@@ -127,7 +372,7 @@ const RenderWritingSubmission = ({ submission }) => {
         </span>
       ),
       children: (
-        <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+        <p className="text-gray-600 whitespace-pre-wrap">
           {feedbackData?.lexicalResource || "No feedback available"}
         </p>
       ),
@@ -140,7 +385,7 @@ const RenderWritingSubmission = ({ submission }) => {
         </span>
       ),
       children: (
-        <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+        <p className="text-gray-600 whitespace-pre-wrap">
           {feedbackData?.grammaticalRangeAndAccuracy || "No feedback available"}
         </p>
       ),
@@ -150,7 +395,6 @@ const RenderWritingSubmission = ({ submission }) => {
   return (
     <div className="h-full overflow-y-auto p-6 bg-gray-50 custom-scrollbar">
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* Header Info */}
         <Card className="shadow-sm">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex-1">
@@ -163,24 +407,24 @@ const RenderWritingSubmission = ({ submission }) => {
             </div>
           </div>
         </Card>
-
-        {/* Your Submission */}
-        <Card title={<span><EditOutlined /> Your Submission</span>} className="shadow-sm">
+        <Card
+          title={
+            <span>
+              <EditOutlined /> Your Submission
+            </span>
+          }
+          className="shadow-sm"
+        >
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
             <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
               {submission_text || "No submission text"}
             </p>
           </div>
-          <div className="mt-2 text-sm text-gray-500">
-            Word count: {submission_text ? submission_text.trim().split(/\s+/).length : 0}
-          </div>
         </Card>
-
-        {/* General Feedback */}
         {feedbackData?.generalFeedback && (
           <Card
             className="shadow-sm"
-            style={{ backgroundColor: '#f0f9ff', borderColor: '#0284c7' }}
+            style={{ backgroundColor: "#f0f9ff", borderColor: "#0284c7" }}
           >
             <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
               <TrophyOutlined /> General Feedback
@@ -190,76 +434,51 @@ const RenderWritingSubmission = ({ submission }) => {
             </p>
           </Card>
         )}
-
-        {/* Detailed Criteria */}
         <Card title="Detailed Evaluation" className="shadow-sm">
-          <Collapse
-            items={collapseItems}
-            defaultActiveKey={["1"]}
-            ghost
-          />
+          <Collapse items={collapseItems} defaultActiveKey={["1"]} ghost />
         </Card>
-
-        {/* Detailed Corrections */}
-        {feedbackData?.detailedCorrections && Array.isArray(feedbackData.detailedCorrections) && feedbackData.detailedCorrections.length > 0 && (
-          <Card
-            title={
-              <span className="flex items-center gap-2">
-                <AlertOutlined className="text-amber-500" /> Improvements & Corrections
-              </span>
-            }
-            className="shadow-sm"
-          >
-            <div className="grid gap-4">
-              {feedbackData.detailedCorrections.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <Tag
-                      color={
-                        item.type === "Grammar"
-                          ? "red"
-                          : item.type === "Lexis"
-                            ? "blue"
-                            : "orange"
-                      }
-                      className="font-semibold"
-                    >
+        {feedbackData?.detailedCorrections &&
+          Array.isArray(feedbackData.detailedCorrections) &&
+          feedbackData.detailedCorrections.length > 0 && (
+            <Card
+              title={
+                <span className="flex items-center gap-2">
+                  <AlertOutlined className="text-amber-500" /> Improvements
+                </span>
+              }
+              className="shadow-sm"
+            >
+              <div className="grid gap-4">
+                {feedbackData.detailedCorrections.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="border border-gray-200 rounded-lg p-4 bg-white"
+                  >
+                    <Tag color="red" className="mb-2">
                       {item.type}
                     </Tag>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4 mb-3">
-                    <div className="bg-red-50 p-3 rounded border border-red-200">
-                      <span className="font-semibold text-red-700 block mb-2 text-sm">
-                        Original:
-                      </span>
-                      <span className="text-gray-700 line-through decoration-red-400 decoration-2">
+                    <div className="grid md:grid-cols-2 gap-4 mb-2">
+                      <div className="bg-red-50 p-2 rounded text-gray-600 line-through decoration-red-400">
                         {item.mistake}
-                      </span>
+                      </div>
+                      <div className="bg-green-50 p-2 rounded text-gray-800">
+                        {item.correct}
+                      </div>
                     </div>
-                    <div className="bg-green-50 p-3 rounded border border-green-200">
-                      <span className="font-semibold text-green-700 block mb-2 text-sm">
-                        Correction:
-                      </span>
-                      <span className="text-gray-700">{item.correct}</span>
+                    <div className="text-sm text-gray-500 italic">
+                      {item.explanation}
                     </div>
                   </div>
-                  <div className="text-sm text-gray-600 italic bg-blue-50 p-3 rounded border border-blue-200">
-                    <span className="font-bold text-blue-700">Explanation: </span>
-                    {item.explanation}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
+                ))}
+              </div>
+            </Card>
+          )}
       </div>
     </div>
   );
 };
 
+// --- MAIN MODAL COMPONENT ---
 const SimpleResultModal = ({ open, onClose, idTestResult }) => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
@@ -302,25 +521,18 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
       ) {
         val = ua.matching_value;
       }
-      map[ua.idQuestion] = {
-        value: val,
-        isCorrect: ua.isCorrect,
-      };
+      map[ua.idQuestion] = { value: val, isCorrect: ua.isCorrect };
     });
     return map;
   }, [data]);
 
-  // --- COMPONENT RENDER PART ---
   const RenderPartTab = ({ part }) => {
-    // KIỂM TRA XEM CÓ BÀI ĐỌC KHÔNG
     const hasPassage =
       part.passage &&
       part.passage.content &&
       part.passage.content.trim().length > 0;
-
     return (
       <div className="h-full flex flex-col md:flex-row gap-6 overflow-hidden bg-gray-100 p-4">
-        {/* CỘT TRÁI: READING PASSAGE (Chỉ hiện nếu có nội dung) */}
         {hasPassage && (
           <div className="w-full md:w-1/2 h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-4 bg-gray-50 border-b border-gray-100 font-bold text-gray-700 flex items-center gap-2">
@@ -337,12 +549,10 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
             </div>
           </div>
         )}
-
-        {/* CỘT PHẢI: QUESTIONS */}
-        {/* Nếu không có passage (Listening), cột này sẽ full width và căn giữa */}
         <div
-          className={`h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${hasPassage ? "w-full md:w-1/2" : "w-full max-w-5xl mx-auto"
-            }`}
+          className={`h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${
+            hasPassage ? "w-full md:w-1/2" : "w-full max-w-5xl mx-auto"
+          }`}
         >
           <div className="p-4 bg-blue-50 border-b border-blue-100 font-bold text-blue-800 flex items-center gap-2">
             <FileTextOutlined /> Questions & Answers
@@ -350,16 +560,11 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
           <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-gray-50/30">
             {(part.groupOfQuestions || []).map((group) => {
               let displayTitle = group.title || "Group";
-              let isMultiple = false;
-              if (displayTitle.startsWith("Multiple ||| ")) {
-                displayTitle = displayTitle.replace("Multiple ||| ", "");
-                isMultiple = true;
-              } else if (displayTitle.startsWith("Single ||| ")) {
-                displayTitle = displayTitle.replace("Single ||| ", "");
-              }
-
+              let isMultiple = displayTitle.startsWith("Multiple ||| ");
+              displayTitle = displayTitle
+                .replace("Multiple ||| ", "")
+                .replace("Single ||| ", "");
               const mappedGroup = mapGroupForReview(group);
-
               return (
                 <div key={group.idGroupOfQuestions} className="mb-8">
                   <div className="mb-3 border-b border-gray-200 pb-2">
@@ -372,13 +577,12 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                       </p>
                     )}
                   </div>
-
                   <QuestionRenderer
                     group={mappedGroup}
                     userAnswers={normalizedUserAnswers}
                     isReviewMode={true}
                     isMultiple={isMultiple}
-                    onAnswerChange={() => { }}
+                    onAnswerChange={() => {}}
                   />
                 </div>
               );
@@ -395,22 +599,47 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
   };
 
   const tabItems = useMemo(() => {
-    // Check if this is a Writing test
-    if (data?.test?.testType === "WRITING" && data?.writingSubmission) {
-      // Create tabs from writing submissions
-      return data.writingSubmission.map((submission, index) => ({
-        key: submission.idWritingSubmission || String(index),
-        label: submission.writingTask?.task_type === "TASK1"
-          ? "Task 1"
-          : submission.writingTask?.task_type === "TASK2"
+    if (!data) return [];
+
+    // --- LOGIC MỚI: Tự động tìm dữ liệu ở mọi nơi ---
+    const submissionList =
+      data.writingSubmission ||
+      data.speakingSubmission ||
+      data.submissions ||
+      [];
+
+    if (submissionList.length > 0) {
+      return submissionList.map((submission, index) => {
+        // KIỂM TRA: Dựa vào JSON bạn cung cấp để phân biệt
+        // Speaking có 'idSpeakingSubmission' hoặc 'audioUrl'
+        const isSpeaking =
+          submission.idSpeakingSubmission ||
+          submission.audioUrl ||
+          data.test?.testType === "SPEAKING";
+
+        return {
+          key:
+            submission.idWritingSubmission ||
+            submission.idSpeakingSubmission ||
+            String(index),
+          label: isSpeaking
+            ? `Speaking Part ${index + 1}`
+            : submission.writingTask?.task_type === "TASK1"
+            ? "Task 1"
+            : submission.writingTask?.task_type === "TASK2"
             ? "Task 2"
             : `Task ${index + 1}`,
-        children: <RenderWritingSubmission submission={submission} />,
-      }));
+          children: isSpeaking ? (
+            <RenderSpeakingSubmission submission={submission} />
+          ) : (
+            <RenderWritingSubmission submission={submission} />
+          ),
+        };
+      });
     }
 
-    // Default: Reading/Listening tests with parts
-    if (!data?.test?.parts) return [];
+    // Default: Reading/Listening
+    if (!data.test?.parts) return [];
     return data.test.parts.map((part, index) => ({
       key: part.idPart || String(index),
       label: `Part ${index + 1}`,
@@ -459,10 +688,12 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                 valueStyle={{ color: "#2563eb", fontWeight: "bold" }}
                 prefix={<TrophyOutlined />}
               />
-              {data.test?.testType === "WRITING" ? (
+              {/* Logic hiển thị thống kê Header */}
+              {data.test?.testType === "WRITING" ||
+              data.test?.testType === "SPEAKING" ? (
                 <Statistic
-                  title="Submissions"
-                  value={data.writingSubmission?.length || 0}
+                  title="Parts"
+                  value={tabItems.length}
                   valueStyle={{ color: "#16a34a", fontWeight: "bold" }}
                   prefix={<FileTextOutlined />}
                 />
