@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Listening from "@/components/test/listening";
 import Reading from "@/components/test/reading";
 import Writing from "@/components/test/writing";
+import Speaking from "@/components/test/speaking";
 import { useState, useEffect } from "react";
 import { Spin } from "antd";
 
@@ -9,6 +10,7 @@ const testComponents = {
   LISTENING: Listening,
   READING: Reading,
   WRITING: Writing,
+  SPEAKING: Speaking,
 };
 
 const TestDetail = () => {

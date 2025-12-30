@@ -87,3 +87,17 @@ export const userSpeakingSubmission = async (formData) => {
   );
   return res.data;
 };
+
+export const finishSpeakingTest = async (idTestResult, idUser, formData) => {
+  // Dùng post hay put tùy backend của bạn
+  const res = await API.patch(
+    `/user-test-result/finish-test-speaking/${idTestResult}/${idUser}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return res.data;
+};
