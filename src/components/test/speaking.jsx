@@ -20,6 +20,7 @@ import { finishSpeakingTest } from "@/services/apiSpeaking";
 // --- IMPORTS COMPONENT ---
 import GradingAnimation from "./GradingAnimation";
 import SimpleResultModal from "./SimpleResultModal"; // <--- IMPORT COMPONENT KẾT QUẢ MỚI
+import TextToSpeech from "@/components/common/TextToSpeech";
 
 // (Đã xóa SpeakingResultDetail cũ vì không dùng nữa)
 
@@ -173,8 +174,7 @@ const Speaking = ({ idTest, initialTestResult }) => {
 
         setForceUpdate({});
         console.log(
-          `💾 Recorded Q${currentQuestionIndex + 1}. Blob size: ${
-            audioBlob.size
+          `💾 Recorded Q${currentQuestionIndex + 1}. Blob size: ${audioBlob.size
           }`
         );
 
@@ -293,19 +293,23 @@ const Speaking = ({ idTest, initialTestResult }) => {
     navigate("/");
   };
 
-  // --- RENDER (GIỮ NGUYÊN GIAO DIỆN) ---
+  // --- RENDER ---
   if (loading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-slate-50">
-        <Spin size="large" />
-        <p className="mt-4 text-slate-500">Đang tải đề thi Speaking...</p>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors duration-300">
+        <div className="text-center">
+          <Spin size="large" />
+          <p className="mt-4 text-slate-600 dark:text-slate-400">Đang tải đề thi Speaking...</p>
+        </div>
       </div>
     );
   }
 
   if (tasks.length === 0) {
     return (
-      <div className="p-10 text-center">Đề thi không có dữ liệu Speaking.</div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors duration-300">
+        <div className="p-10 text-center text-slate-600 dark:text-slate-400">Đề thi không có dữ liệu Speaking.</div>
+      </div>
     );
   }
 
@@ -321,18 +325,17 @@ const Speaking = ({ idTest, initialTestResult }) => {
       {isSubmitting && <GradingAnimation testType="SPEAKING" />}
 
       {/* HEADER */}
-      <div className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 px-6 h-16 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <div className="bg-blue-100 p-2 rounded-full text-blue-600 font-bold">
-            <SoundOutlined />
+      <div className="bg-white dark:bg-slate-900 shadow-lg border-b border-slate-200 dark:border-slate-800 px-6 h-[72px] flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-full bg-blue-600">
+            <SoundOutlined className="text-2xl text-white" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-slate-700 dark:text-white uppercase">
+            <h1 className="text-lg font-bold text-slate-800 dark:text-white uppercase tracking-tight">
               {currentTask?.part || `Part ${currentTaskIndex + 1}`}
             </h1>
-            <p className="text-xs text-slate-500">
-              Question {currentQuestionIndex + 1} /{" "}
-              {currentTask?.questions?.length || 0}
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Question {currentQuestionIndex + 1} / {currentTask?.questions?.length || 0}
             </p>
           </div>
         </div>
@@ -340,12 +343,12 @@ const Speaking = ({ idTest, initialTestResult }) => {
         {(step === "RECORDING" || step === "PREP") && (
           <div
             className={cn(
-              "flex items-center gap-2 text-2xl font-mono font-bold px-4 py-1 rounded border-2 transition-all",
+              "flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300",
               step === "PREP"
-                ? "border-amber-400 text-amber-500 bg-amber-50"
+                ? "bg-amber-600 text-white border-amber-500"
                 : timeLeft < 10
-                ? "border-red-500 text-red-500 bg-red-50 animate-pulse"
-                : "border-blue-500 text-blue-600 bg-blue-50"
+                  ? "bg-red-600 text-white border-red-500 animate-pulse"
+                  : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
             )}
           >
             <ClockCircleOutlined /> {formatTime(timeLeft)}
@@ -354,32 +357,34 @@ const Speaking = ({ idTest, initialTestResult }) => {
       </div>
 
       {/* BODY */}
-      <div className="flex-1 max-w-4xl mx-auto w-full p-6 flex flex-col justify-center">
+      <div className="flex-1 max-w-5xl mx-auto w-full p-6 flex flex-col justify-center">
         {step === "INTRO_PART" && (
-          <Card className="text-center py-10 shadow-lg border-t-4 border-t-blue-600">
-            <SoundOutlined className="text-6xl text-blue-200 mb-6" />
-            <h2 className="text-3xl font-bold text-slate-800 mb-2">
+          <Card className="text-center py-12 shadow-xl border-0 bg-white dark:bg-slate-800 rounded-2xl overflow-hidden animate-fade-in">
+            <div className="bg-blue-600 dark:bg-blue-700 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <SoundOutlined className="text-4xl text-white" />
+            </div>
+            <h2 className="text-4xl font-bold text-slate-800 dark:text-white mb-3">
               {currentTask?.part || `Speaking Part ${currentTaskIndex + 1}`}
             </h2>
-            <p className="text-slate-500 text-lg mb-8 max-w-lg mx-auto">
+            <p className="text-slate-600 dark:text-slate-300 text-lg mb-10 max-w-lg mx-auto leading-relaxed">
               {currentTask?.title} <br /> Bạn sẽ trả lời lần lượt từng câu hỏi.
             </p>
             <Button
               type="primary"
               size="large"
               onClick={handleStartPart}
-              className="h-12 px-8 text-lg bg-blue-600 hover:bg-blue-700"
+              className="h-14 px-10 text-lg bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 border-0 shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 rounded-xl"
             >
-              Bắt đầu Part {currentTaskIndex + 1} <RightOutlined />
+              🎤 Bắt đầu Part {currentTaskIndex + 1} <RightOutlined />
             </Button>
           </Card>
         )}
 
         {step === "PREP" && (
-          <div className="animate-fade-in">
+          <div className="animate-fade-in space-y-6">
             <Alert
               message={
-                isRealPrep ? "Thời gian chuẩn bị" : "Thời gian đọc câu hỏi"
+                isRealPrep ? "⏱️ Thời gian chuẩn bị" : "📖 Thời gian đọc câu hỏi"
               }
               description={
                 isRealPrep
@@ -388,47 +393,66 @@ const Speaking = ({ idTest, initialTestResult }) => {
               }
               type={isRealPrep ? "warning" : "info"}
               showIcon
-              className="mb-6"
+              className="rounded-xl border-0 shadow-lg"
             />
             <Card
               className={cn(
-                "shadow-md border-amber-200",
-                isRealPrep ? "bg-amber-50/30" : "bg-white"
+                "shadow-xl border-0 rounded-2xl",
+                isRealPrep
+                  ? "bg-amber-50 dark:bg-slate-800"
+                  : "bg-white dark:bg-slate-800"
               )}
             >
               {currentQuestion?.topic && (
-                <h3 className="text-xl font-bold text-slate-800 mb-4 border-b pb-2">
-                  Topic: {currentQuestion.topic}
-                </h3>
+                <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Topic</span>
+                  <h3 className="text-2xl font-bold text-slate-800 dark:text-white mt-1">
+                    {currentQuestion.topic}
+                  </h3>
+                </div>
               )}
-              <div className="text-2xl font-medium text-slate-800 mb-4 leading-relaxed">
-                {currentQuestion?.prompt}
+              <div className="flex items-start gap-3 mb-6">
+                <div className="text-2xl font-semibold text-slate-800 dark:text-white leading-relaxed flex-1">
+                  {currentQuestion?.prompt}
+                </div>
+                <TextToSpeech
+                  text={currentQuestion?.prompt}
+                  size="large"
+                  type="primary"
+                  className="flex-shrink-0"
+                  autoPlay={true}
+                />
               </div>
               {hasSubPrompts && (
-                <ul className="list-disc list-inside space-y-2 text-slate-600 bg-white p-4 rounded-lg border border-slate-200">
-                  {currentQuestion.subPrompts.map((sub, i) =>
-                    sub && sub.trim() !== "" ? <li key={i}>{sub}</li> : null
-                  )}
-                </ul>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Key Points to Cover:</p>
+                  <ul className="list-disc list-inside space-y-2.5 text-slate-700 dark:text-slate-300">
+                    {currentQuestion.subPrompts.map((sub, i) =>
+                      sub && sub.trim() !== "" ? <li key={i} className="leading-relaxed">{sub}</li> : null
+                    )}
+                  </ul>
+                </div>
               )}
               {isPart2 && (
                 <div className="mt-6 animate-fade-in-up">
-                  <label className="text-sm font-bold text-slate-500 mb-1 block">
-                    📝 Notes (Nháp):
+                  <label className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 block flex items-center gap-2">
+                    📝 Notes (Nháp)
                   </label>
                   <textarea
-                    className="w-full h-32 p-3 border rounded-md focus:ring-2 ring-amber-300 outline-none resize-none"
+                    className="w-full h-36 p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 ring-amber-400 dark:ring-amber-500 outline-none resize-none bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all"
                     placeholder="Ghi chú ý tưởng của bạn tại đây..."
                   ></textarea>
                 </div>
               )}
             </Card>
-            <div className="text-center mt-8">
-              <p className="text-slate-500 text-sm mb-2">
-                Thời gian đọc đề của bạn còn:
+            <div className="text-center mt-10">
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-3 font-medium">
+                ⏱️ Thời gian đọc đề của bạn còn:
               </p>
-              <div className="text-4xl font-mono font-bold text-blue-600">
-                {formatTime(timeLeft)}
+              <div className="inline-block px-8 py-4 bg-blue-600 dark:bg-blue-700 rounded-2xl shadow-xl">
+                <div className="text-5xl font-mono font-bold text-white">
+                  {formatTime(timeLeft)}
+                </div>
               </div>
             </div>
           </div>
@@ -436,21 +460,30 @@ const Speaking = ({ idTest, initialTestResult }) => {
 
         {step === "RECORDING" && (
           <div className="animate-fade-in">
-            <Card className="shadow-lg border-t-4 border-t-red-500 text-center py-8">
-              <div className="mb-6">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-600 text-xs font-bold animate-pulse">
-                  <span className="w-2 h-2 rounded-full bg-red-600"></span>{" "}
-                  RECORDING
+            <Card className="shadow-2xl border-0 bg-white dark:bg-slate-800 text-center py-10 rounded-2xl overflow-hidden">
+              <div className="mb-8">
+                <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-600 dark:bg-red-700 text-white text-sm font-bold animate-pulse shadow-lg">
+                  <span className="w-3 h-3 rounded-full bg-white animate-ping"></span>
+                  🎙️ RECORDING
                 </span>
               </div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-6 px-4">
-                {currentQuestion?.prompt}
-              </h3>
+              <div className="flex items-center justify-center gap-4 mb-8 px-4">
+                <h3 className="text-3xl font-bold text-slate-800 dark:text-white">
+                  {currentQuestion?.prompt}
+                </h3>
+                <TextToSpeech
+                  text={currentQuestion?.prompt}
+                  size="large"
+                  type="primary"
+                  autoPlay={false}
+                />
+              </div>
               {hasSubPrompts && (
-                <div className="text-left max-w-md mx-auto bg-slate-50 p-4 rounded mb-6 text-slate-600 text-sm">
-                  <ul className="list-disc list-inside">
+                <div className="text-left max-w-md mx-auto bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl mb-8 border border-slate-200 dark:border-slate-700">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Remember to mention:</p>
+                  <ul className="list-disc list-inside space-y-2 text-slate-700 dark:text-slate-300 text-sm">
                     {currentQuestion.subPrompts.map(
-                      (s, i) => s && <li key={i}>{s}</li>
+                      (s, i) => s && <li key={i} className="leading-relaxed">{s}</li>
                     )}
                   </ul>
                 </div>
@@ -475,13 +508,15 @@ const Speaking = ({ idTest, initialTestResult }) => {
                 size="large"
                 icon={<StopOutlined />}
                 onClick={stopRecording}
-                className="h-14 px-10 text-lg rounded-full shadow-red-200 shadow-xl"
+                className="h-16 px-12 text-lg rounded-2xl shadow-2xl hover:scale-105 transition-all duration-300 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 border-0"
               >
-                Dừng & Câu tiếp theo
+                ⏹️ Dừng & Câu tiếp theo
               </Button>
-              <p className="mt-4 text-slate-400 text-sm">
-                Thời gian còn lại: {formatTime(timeLeft)}
-              </p>
+              <div className="mt-6 inline-block px-6 py-3 bg-slate-100 dark:bg-slate-900 rounded-xl">
+                <p className="text-slate-600 dark:text-slate-300 text-sm font-medium">
+                  ⏱️ Thời gian còn lại: <span className="font-bold text-lg">{formatTime(timeLeft)}</span>
+                </p>
+              </div>
             </Card>
           </div>
         )}

@@ -24,6 +24,7 @@ import {
   updateSpeakingQuestion,
   deleteSpeakingQuestion,
 } from "@/services/apiSpeaking";
+import TextToSpeech from "@/components/common/TextToSpeech";
 
 const { TextArea } = Input;
 
@@ -287,9 +288,16 @@ const SpeakingPartPanel = ({ task, onUpdate }) => {
 
                     {/* Nội dung câu hỏi */}
                     <div className="flex-1">
-                      <p className="text-gray-800 font-medium text-base mb-2">
-                        {q.prompt}
-                      </p>
+                      <div className="flex items-start gap-2 mb-2">
+                        <p className="text-gray-800 font-medium text-base flex-1">
+                          {q.prompt}
+                        </p>
+                        <TextToSpeech
+                          text={q.prompt}
+                          size="small"
+                          className="flex-shrink-0"
+                        />
+                      </div>
                       {q.subPrompts && q.subPrompts.length > 0 && (
                         <div className="pl-4 border-l-2 border-gray-300">
                           {q.subPrompts.map((sub, sIdx) => (
@@ -354,8 +362,8 @@ const SpeakingPartPanel = ({ task, onUpdate }) => {
           modalMode === "CREATE_TOPIC"
             ? "Tạo Chủ Đề Mới & Câu Hỏi"
             : modalMode === "ADD_TO_TOPIC"
-            ? `Thêm câu hỏi vào: ${topicName}`
-            : "Chỉnh sửa câu hỏi"
+              ? `Thêm câu hỏi vào: ${topicName}`
+              : "Chỉnh sửa câu hỏi"
         }
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
