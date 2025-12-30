@@ -33,7 +33,6 @@ API.interceptors.response.use(
         return Promise.reject(err);
       }
       try {
-        const refreshToken = Cookies.get("refreshToken");
         const res = await refreshTokenAPI(refreshToken);
         const Token = res?.data?.access_token || {};
         Cookies.set("accessToken", Token);

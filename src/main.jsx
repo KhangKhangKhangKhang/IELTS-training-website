@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 
@@ -7,25 +7,43 @@ import { ThemeProvider } from "./context/themeContext";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import ProtectedRoute from "./context/auth/protectedRoute";
 import Navbar from "./components/ui/navBar/navBar";
-import HomePage from "./Pages/client/homePage";
-import Statistic from "./Pages/client/statistic";
-import Vocabulary from "./Pages/client/vocabulary";
 import NavbarTeacher from "./components/ui/navBar/navBarTeacher";
-import Profile from "./Pages/client/profile";
-import UserList from "./Pages/teacher/userList";
-import Login from "./Pages/client/auth/login";
-import SignUp from "./Pages/client/auth/signUp";
-import OTP from "./Pages/client/auth/OTP";
-import NewPassword from "./Pages/client/auth/newPassword";
-import ForgetPassword from "./Pages/client/auth/forgetPassword";
-import LandingPage from "./Pages/landingPage";
-import Test from "./Pages/client/test/testReview";
-import TestDetail from "./Pages/client/test/testDetail";
-import StartingPage from "./Pages/StartingPage";
-import TestManager from "./Pages/teacher/test/testManager";
-import TestCreate from "./Pages/teacher/test/testCreate";
-import TestEdit from "./Pages/teacher/test/testEdit";
-import Grammar from "./Pages/client/grammar/grammar";
+import { Spin } from "antd";
+
+// ✅ OPTIMIZED: Lazy load all page components for better performance
+const HomePage = lazy(() => import("./Pages/client/homePage"));
+const Statistic = lazy(() => import("./Pages/client/statistic"));
+const Vocabulary = lazy(() => import("./Pages/client/vocabulary"));
+const Profile = lazy(() => import("./Pages/client/profile"));
+const UserList = lazy(() => import("./Pages/teacher/userList"));
+const Login = lazy(() => import("./Pages/client/auth/login"));
+const SignUp = lazy(() => import("./Pages/client/auth/signUp"));
+const OTP = lazy(() => import("./Pages/client/auth/OTP"));
+const NewPassword = lazy(() => import("./Pages/client/auth/newPassword"));
+const ForgetPassword = lazy(() => import("./Pages/client/auth/forgetPassword"));
+const LandingPage = lazy(() => import("./Pages/landingPage"));
+const Test = lazy(() => import("./Pages/client/test/testReview"));
+const TestDetail = lazy(() => import("./Pages/client/test/testDetail"));
+const StartingPage = lazy(() => import("./Pages/StartingPage"));
+const TestManager = lazy(() => import("./Pages/teacher/test/testManager"));
+const TestCreate = lazy(() => import("./Pages/teacher/test/testCreate"));
+const TestEdit = lazy(() => import("./Pages/teacher/test/testEdit"));
+const Grammar = lazy(() => import("./Pages/client/grammar/grammar"));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <Spin size="large" />
+  </div>
+);
+
+// Wrapper component with Suspense
+const LazyRoute = ({ Component }) => (
+  <Suspense fallback={<LoadingFallback />}>
+    <Component />
+  </Suspense>
+);
+
 const router = createBrowserRouter([
   // --- User Routes ---
   {
@@ -36,15 +54,15 @@ const router = createBrowserRouter([
         path: "/",
         element: <Navbar />,
         children: [
-          { index: true, element: <HomePage /> },
-          { path: "homepage", element: <HomePage /> },
-          { path: "statistic", element: <Statistic /> },
-          { path: "vocabulary", element: <Vocabulary /> }, // match /vocabulary
-          { path: "test", element: <Test /> },
-          { path: "doTest", element: <TestDetail /> },
-          { path: "profile", element: <Profile /> },
-          { path: "startingPage", element: <StartingPage /> },
-          { path: "grammar", element: <Grammar /> },
+          { index: true, element: <LazyRoute Component={HomePage} /> },
+          { path: "homepage", element: <LazyRoute Component={HomePage} /> },
+          { path: "statistic", element: <LazyRoute Component={Statistic} /> },
+          { path: "vocabulary", element: <LazyRoute Component={Vocabulary} /> },
+          { path: "test", element: <LazyRoute Component={Test} /> },
+          { path: "doTest", element: <LazyRoute Component={TestDetail} /> },
+          { path: "profile", element: <LazyRoute Component={Profile} /> },
+          { path: "startingPage", element: <LazyRoute Component={StartingPage} /> },
+          { path: "grammar", element: <LazyRoute Component={Grammar} /> },
         ],
       },
     ],
@@ -59,20 +77,20 @@ const router = createBrowserRouter([
         path: "/teacher",
         element: <NavbarTeacher />,
         children: [
-          { index: true, element: <HomePage /> },
-          { path: "homepage", element: <HomePage /> },
-          { path: "statistic", element: <Statistic /> },
-          { path: "vocabulary", element: <Vocabulary /> }, // match /teacher/vocabulary
-          { path: "test", element: <Test /> },
-          { path: "profile", element: <Profile /> },
-          { path: "userList", element: <UserList /> },
-          { path: "doTest", element: <TestDetail /> },
-          { path: "testManager", element: <TestManager /> },
-          { path: "testManager/testCreate", element: <TestCreate /> },
-          { path: "testManager/testEdit/:id", element: <TestEdit /> },
-          { path: "testManager/testDetail/:id", element: <TestDetail /> },
-          { path: "startingPage", element: <StartingPage /> },
-          { path: "grammar", element: <Grammar /> },
+          { index: true, element: <LazyRoute Component={HomePage} /> },
+          { path: "homepage", element: <LazyRoute Component={HomePage} /> },
+          { path: "statistic", element: <LazyRoute Component={Statistic} /> },
+          { path: "vocabulary", element: <LazyRoute Component={Vocabulary} /> },
+          { path: "test", element: <LazyRoute Component={Test} /> },
+          { path: "profile", element: <LazyRoute Component={Profile} /> },
+          { path: "userList", element: <LazyRoute Component={UserList} /> },
+          { path: "doTest", element: <LazyRoute Component={TestDetail} /> },
+          { path: "testManager", element: <LazyRoute Component={TestManager} /> },
+          { path: "testManager/testCreate", element: <LazyRoute Component={TestCreate} /> },
+          { path: "testManager/testEdit/:id", element: <LazyRoute Component={TestEdit} /> },
+          { path: "testManager/testDetail/:id", element: <LazyRoute Component={TestDetail} /> },
+          { path: "startingPage", element: <LazyRoute Component={StartingPage} /> },
+          { path: "grammar", element: <LazyRoute Component={Grammar} /> },
         ],
       },
     ],
@@ -86,28 +104,28 @@ const router = createBrowserRouter([
         path: "/admin",
         element: <NavbarTeacher />,
         children: [
-          { index: true, element: <HomePage /> },
-          { path: "homepage", element: <HomePage /> },
-          { path: "statistic", element: <Statistic /> },
-          { path: "vocabulary", element: <Vocabulary /> }, // match /teacher/vocabulary
-          { path: "test", element: <Test /> },
-          { path: "profile", element: <Profile /> },
-          { path: "userList", element: <UserList /> },
-          { path: "doTest", element: <TestDetail /> },
-          { path: "testManager/testCreate", element: <TestCreate /> },
-          { path: "testManager/testEdit/:id", element: <TestEdit /> },
-          { path: "testManager", element: <TestManager /> },
-          { path: "grammar", element: <Grammar /> },
+          { index: true, element: <LazyRoute Component={HomePage} /> },
+          { path: "homepage", element: <LazyRoute Component={HomePage} /> },
+          { path: "statistic", element: <LazyRoute Component={Statistic} /> },
+          { path: "vocabulary", element: <LazyRoute Component={Vocabulary} /> },
+          { path: "test", element: <LazyRoute Component={Test} /> },
+          { path: "profile", element: <LazyRoute Component={Profile} /> },
+          { path: "userList", element: <LazyRoute Component={UserList} /> },
+          { path: "doTest", element: <LazyRoute Component={TestDetail} /> },
+          { path: "testManager/testCreate", element: <LazyRoute Component={TestCreate} /> },
+          { path: "testManager/testEdit/:id", element: <LazyRoute Component={TestEdit} /> },
+          { path: "testManager", element: <LazyRoute Component={TestManager} /> },
+          { path: "grammar", element: <LazyRoute Component={Grammar} /> },
         ],
       },
     ],
   },
-  { path: "login", element: <Login /> },
-  { path: "signup", element: <SignUp /> },
-  { path: "OTP", element: <OTP /> },
-  { path: "newPassword", element: <NewPassword /> },
-  { path: "forgetPassword", element: <ForgetPassword /> },
-  { path: "landingPage", element: <LandingPage /> },
+  { path: "login", element: <LazyRoute Component={Login} /> },
+  { path: "signup", element: <LazyRoute Component={SignUp} /> },
+  { path: "OTP", element: <LazyRoute Component={OTP} /> },
+  { path: "newPassword", element: <LazyRoute Component={NewPassword} /> },
+  { path: "forgetPassword", element: <LazyRoute Component={ForgetPassword} /> },
+  { path: "landingPage", element: <LazyRoute Component={LandingPage} /> },
 ]);
 createRoot(document.getElementById("root")).render(
   <StrictMode>
