@@ -31,6 +31,7 @@ import {
   Clock,
   ChevronRight,
   Filter,
+  ChevronLeft, // Import thêm icon cho pagination
 } from "lucide-react";
 import { useAuth } from "@/context/authContext";
 
@@ -123,10 +124,15 @@ const HomePage = () => {
   const [selectedExamToStart, setSelectedExamToStart] = useState(null);
   const [startingTest, setStartingTest] = useState(false);
 
-  // --- FILTER STATES ---
+  // --- FILTER CHART STATES ---
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [selectedSkillType, setSelectedSkillType] = useState("ALL");
+
+  // --- FILTER & PAGINATION HISTORY STATES ---
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyFilter, setHistoryFilter] = useState("ALL");
+  const ITEMS_PER_PAGE = 5;
 
   // --- API CALLS ---
   useEffect(() => {
@@ -241,6 +247,25 @@ const HomePage = () => {
       return matchYear && d.getMonth() + 1 === parseInt(filterMonth);
     });
   }, [chartData, filterMonth, filterYear]);
+
+  // --- LOGIC 4: Xử lý Filter & Pagination History ---
+  const filteredHistory = useMemo(() => {
+    if (!history) return [];
+    if (historyFilter === "ALL") return history;
+    return history.filter((item) => item.test?.testType === historyFilter);
+  }, [history, historyFilter]);
+
+  const totalPages = Math.ceil(filteredHistory.length / ITEMS_PER_PAGE);
+
+  const paginatedHistory = useMemo(() => {
+    const startIndex = (historyPage - 1) * ITEMS_PER_PAGE;
+    return filteredHistory.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredHistory, historyPage]);
+
+  // Reset page về 1 khi đổi filter
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [historyFilter]);
 
   const getSkillScore = (type) =>
     overall?.details?.find((d) => d.type === type)?.avg || 0;
@@ -536,7 +561,6 @@ const HomePage = () => {
           </div>
           <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar max-h-[400px]">
             {recommended.map((test, index) => {
-              // --- UPDATE 1: Đổi icon thành màu trắng để nổi bật trên nền màu ---
               const testIcons = {
                 READING: <BookOpen size={20} className="text-white" />,
                 LISTENING: <Headphones size={20} className="text-white" />,
@@ -544,7 +568,6 @@ const HomePage = () => {
                 SPEAKING: <Mic size={20} className="text-white" />,
               };
 
-              // Color schemes for test types
               const testColors = {
                 READING: "from-blue-500 to-cyan-500",
                 LISTENING: "from-green-500 to-emerald-500",
@@ -552,7 +575,6 @@ const HomePage = () => {
                 SPEAKING: "from-orange-500 to-red-500",
               };
 
-              // Level badge colors
               const levelColors = {
                 Low: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
                 Mid: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
@@ -568,7 +590,6 @@ const HomePage = () => {
                   className="group relative bg-white dark:bg-slate-700/50 rounded-xl border-2 border-gray-100 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500 transition-all duration-300 cursor-pointer overflow-hidden hover:shadow-xl hover:scale-[1.02] animate-fade-in-up"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  {/* Gradient overlay on hover */}
                   <div
                     className={`absolute inset-0 bg-gradient-to-r ${
                       testColors[test.testType] || "from-gray-400 to-gray-600"
@@ -576,14 +597,12 @@ const HomePage = () => {
                   ></div>
 
                   <div className="relative p-4 flex gap-4">
-                    {/* Image with badge */}
                     <div className="relative shrink-0">
                       <img
                         src={test.img || getDefaultTestImage(test.testType)}
                         alt={test.title}
                         className="w-20 h-20 rounded-lg object-cover ring-2 ring-gray-100 dark:ring-slate-600 group-hover:ring-purple-300 dark:group-hover:ring-purple-500 transition-all duration-300"
                       />
-                      {/* --- UPDATE 2: Background của icon lấy theo màu test (testColors) --- */}
                       <div
                         className={`absolute -top-2 -right-2 bg-gradient-to-r ${
                           testColors[test.testType] ||
@@ -596,7 +615,6 @@ const HomePage = () => {
                       </div>
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-bold text-gray-800 dark:text-white line-clamp-2 mb-2 group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors">
                         {test.title}
@@ -616,7 +634,6 @@ const HomePage = () => {
                         </span>
                       </div>
 
-                      {/* Progress indicator */}
                       <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                         <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-600 rounded-full overflow-hidden">
                           <div
@@ -633,7 +650,6 @@ const HomePage = () => {
                       </div>
                     </div>
 
-                    {/* Arrow icon */}
                     <div className="self-center">
                       <div className="p-1.5 rounded-full bg-gray-100 dark:bg-slate-600 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/50 transition-all duration-300 group-hover:scale-110">
                         <ChevronRight
@@ -666,53 +682,178 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* Bảng Lịch sử */}
+      {/* --- BẢNG LỊCH SỬ (Updated with Pagination & Filter) --- */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-        <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">
-          Lịch sử làm bài
-        </h3>
-        <div className="overflow-x-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+            Lịch sử làm bài
+          </h3>
+          {/* History Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Lọc theo:
+            </span>
+            <select
+              className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-sm text-gray-800 dark:text-white rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800"
+              value={historyFilter}
+              onChange={(e) => setHistoryFilter(e.target.value)}
+            >
+              <option value="ALL">Tất cả đề thi</option>
+              <option value="READING">Reading</option>
+              <option value="LISTENING">Listening</option>
+              <option value="WRITING">Writing</option>
+              <option value="SPEAKING">Speaking</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto min-h-[300px]">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-gray-300 font-semibold uppercase">
               <tr>
-                <th className="p-3">Bài thi</th>
+                <th className="p-3 rounded-tl-lg">Bài thi</th>
                 <th className="p-3">Kỹ năng</th>
                 <th className="p-3">Điểm</th>
                 <th className="p-3">Ngày</th>
-                <th className="p-3 text-right"></th>
+                <th className="p-3 text-right rounded-tr-lg"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {history.map((item) => (
-                <tr
-                  key={item.idTestResult}
-                  className="hover:bg-purple-50 dark:hover:bg-slate-700"
-                >
-                  <td className="p-3 font-medium max-w-[200px] truncate">
-                    {item.test?.title}
-                  </td>
-                  <td className="p-3">
-                    <span className="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                      {item.test?.testType}
-                    </span>
-                  </td>
-                  <td className="p-3 font-bold">{item.band_score}</td>
-                  <td className="p-3 text-gray-500">
-                    {new Date(item.createdAt).toLocaleDateString("vi-VN")}
-                  </td>
-                  <td className="p-3 text-right">
-                    <button
-                      onClick={() => setSelectedTestDetail(item)}
-                      className="text-purple-600 font-bold text-xs flex items-center justify-end gap-1 ml-auto"
-                    >
-                      Chi tiết <ChevronRight size={14} />
-                    </button>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {paginatedHistory.length > 0 ? (
+                paginatedHistory.map((item) => (
+                  <tr
+                    key={item.idTestResult}
+                    className="hover:bg-purple-50 dark:hover:bg-slate-700/50 transition-colors"
+                  >
+                    <td className="p-3 font-medium max-w-[200px] truncate">
+                      <span className="text-gray-800 dark:text-gray-200">
+                        {item.test?.title || "Unknown Test"}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <span
+                        className={`text-xs font-semibold px-2 py-1 rounded ${
+                          item.test?.testType === "READING"
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                            : item.test?.testType === "LISTENING"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : item.test?.testType === "WRITING"
+                            ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        }`}
+                      >
+                        {item.test?.testType}
+                      </span>
+                    </td>
+                    <td className="p-3 font-bold text-gray-800 dark:text-gray-100">
+                      {item.band_score}
+                    </td>
+                    <td className="p-3 text-gray-500 dark:text-gray-400">
+                      {new Date(item.createdAt).toLocaleDateString("vi-VN", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td className="p-3 text-right">
+                      <button
+                        onClick={() => setSelectedTestDetail(item)}
+                        className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 font-bold text-xs flex items-center justify-end gap-1 ml-auto"
+                      >
+                        Chi tiết <ChevronRight size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="p-8 text-center text-gray-400 dark:text-gray-500 italic"
+                  >
+                    Không tìm thấy lịch sử làm bài nào.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {filteredHistory.length > 0 && (
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Hiển thị{" "}
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {(historyPage - 1) * ITEMS_PER_PAGE + 1}
+              </span>{" "}
+              -{" "}
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {Math.min(historyPage * ITEMS_PER_PAGE, filteredHistory.length)}
+              </span>{" "}
+              trên tổng số{" "}
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {filteredHistory.length}
+              </span>
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                disabled={historyPage === 1}
+                className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => {
+                    // Logic hiển thị nút trang rút gọn (đơn giản)
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= historyPage - 1 && page <= historyPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setHistoryPage(page)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
+                            historyPage === page
+                              ? "bg-purple-600 text-white shadow-sm"
+                              : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    } else if (
+                      page === historyPage - 2 ||
+                      page === historyPage + 2
+                    ) {
+                      return (
+                        <span key={page} className="text-gray-400 text-xs px-1">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  }
+                )}
+              </div>
+              <button
+                onClick={() =>
+                  setHistoryPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={historyPage === totalPages}
+                className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* --- CÁC POPUP/MODAL --- */}
