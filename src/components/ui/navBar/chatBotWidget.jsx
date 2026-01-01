@@ -8,6 +8,7 @@ import {
   Bot,
   User,
   Loader2,
+  ArrowLeftRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendChat, chatHistory, clearHistory } from "@/services/apiChatBot";
@@ -18,11 +19,19 @@ const ChatBotWidget = () => {
   const { user, accessToken } = useAuth();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  // Store drag position
-  const [dragPosition, setDragPosition] = useState(() => {
-    const saved = localStorage.getItem('chatbotDragPosition');
-    return saved ? JSON.parse(saved) : { x: 0, y: 0 };
+  const messagesEndRef = useRef(null);
+
+  // --- LOGIC VỊ TRÍ (CHỈ TRÁI HOẶC PHẢI) ---
+  const [isRightSide, setIsRightSide] = useState(() => {
+    const saved = localStorage.getItem("chatbotSide");
+    return saved !== null ? JSON.parse(saved) : true;
   });
+
+  useEffect(() => {
+    localStorage.setItem("chatbotSide", JSON.stringify(isRightSide));
+  }, [isRightSide]);
+
+  // --- LOGIC CHAT ---
   const [messages, setMessages] = useState([
     {
       sender: "bot",
@@ -33,50 +42,10 @@ const ChatBotWidget = () => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
 
-  // Check if on test page
-  const isOnTestPage = location.pathname.includes('/doTest');
+  // Ẩn chatbot khi đang làm bài test
+  const isOnTestPage = location.pathname.includes("/doTest");
 
-  // Save drag position to localStorage
-  const handleDragEnd = (event, info) => {
-    const newPosition = {
-      x: info.point.x,
-      y: info.point.y,
-    };
-    setDragPosition(newPosition);
-    localStorage.setItem('chatbotDragPosition', JSON.stringify(newPosition));
-  };
-
-  // Get popup position based on button position
-  const getPopupStyle = () => {
-    const buttonX = dragPosition.x || (window.innerWidth - 90);
-    const buttonY = dragPosition.y || (window.innerHeight - 90);
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-
-    // Determine if popup should be on left or right, top or bottom
-    const isRightSide = buttonX > windowWidth / 2;
-    const isBottomSide = buttonY > windowHeight / 2;
-
-    let style = {};
-
-    if (isRightSide) {
-      style.right = `${windowWidth - buttonX + 10}px`;
-    } else {
-      style.left = `${buttonX + 70}px`;
-    }
-
-    if (isBottomSide) {
-      style.bottom = `${windowHeight - buttonY + 10}px`;
-    } else {
-      style.top = `${buttonY + 70}px`;
-    }
-
-    return style;
-  };
-
-  // Auto scroll to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -85,7 +54,6 @@ const ChatBotWidget = () => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  // Load chat history
   const loadChatHistory = async () => {
     if (!user?.idUser) return;
     try {
@@ -99,11 +67,10 @@ const ChatBotWidget = () => {
         setMessages(mapped);
       }
     } catch (err) {
-      console.error("Không thể tải lịch sử chat:", err.response?.data || err);
+      console.error("Lỗi tải lịch sử:", err);
     }
   };
 
-  // Clear chat history
   const handleClear = async () => {
     if (!user?.idUser) return;
     try {
@@ -116,19 +83,14 @@ const ChatBotWidget = () => {
         },
       ]);
     } catch (err) {
-      console.error("Không thể xóa lịch sử chat:", err);
+      console.error("Lỗi xoá lịch sử:", err);
     }
   };
 
-  // Send message
   const handleSend = async () => {
     if (!input.trim() || !user?.idUser || loading) return;
 
-    const newMessage = {
-      sender: "user",
-      text: input,
-      timestamp: new Date(),
-    };
+    const newMessage = { sender: "user", text: input, timestamp: new Date() };
     setMessages((prev) => [...prev, newMessage]);
     setInput("");
     setLoading(true);
@@ -138,21 +100,19 @@ const ChatBotWidget = () => {
         { idUser: user.idUser, message: input },
         accessToken
       );
-
-      // Simulate typing effect
       setIsTyping(true);
       setTimeout(() => {
         setMessages((prev) => [
           ...prev,
           {
             sender: "bot",
-            text: res.reply || "Xin lỗi, tôi chưa hiểu câu hỏi của bạn.",
+            text: res.reply || "Tôi chưa hiểu ý bạn.",
             timestamp: new Date(),
           },
         ]);
         setLoading(false);
         setIsTyping(false);
-      }, 1500 + Math.random() * 1000);
+      }, 1000 + Math.random() * 1000);
     } catch (err) {
       setIsTyping(true);
       setTimeout(() => {
@@ -160,7 +120,7 @@ const ChatBotWidget = () => {
           ...prev,
           {
             sender: "bot",
-            text: "Xin lỗi, có lỗi xảy ra 😢 Vui lòng thử lại sau.",
+            text: "Lỗi kết nối 😢 Vui lòng thử lại.",
             timestamp: new Date(),
           },
         ]);
@@ -170,7 +130,6 @@ const ChatBotWidget = () => {
     }
   };
 
-  // Format time
   const formatTime = (date) => {
     return date.toLocaleTimeString("vi-VN", {
       hour: "2-digit",
@@ -178,54 +137,57 @@ const ChatBotWidget = () => {
     });
   };
 
-  // Load history when opening
   useEffect(() => {
     if (isOpen) loadChatHistory();
   }, [isOpen]);
 
-  // Hide on test pages
+  // Xử lý kéo thả đổi bên
+  const handleDragEnd = (event, info) => {
+    const screenWidth = window.innerWidth;
+    const dragX = info.point.x;
+    if (dragX > screenWidth / 2) {
+      setIsRightSide(true);
+    } else {
+      setIsRightSide(false);
+    }
+  };
+
   if (isOnTestPage) return null;
 
   return (
     <>
-      {/* Floating Chat Button */}
+      {/* NÚT CHAT FLOATING */}
       <motion.button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300 z-[9999] group"
-        whileHover={{
-          scale: 1.1,
-          rotate: [0, -5, 5, -5, 0],
-        }}
-        whileTap={{ scale: 0.9 }}
-        animate={{
-          y: isOpen ? 0 : [0, -8, 0],
-        }}
+        key={isRightSide ? "right-btn" : "left-btn"} // Reset component để tránh lỗi vị trí
+        drag="x" // Chỉ kéo ngang
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.2}
+        onDragEnd={handleDragEnd}
+        onClick={() => !loading && setIsOpen(!isOpen)}
+        className={`fixed bottom-6 ${
+          isRightSide ? "right-6" : "left-6"
+        } bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-2xl z-[9999] cursor-grab active:cursor-grabbing group`}
+        initial={{ scale: 0, rotate: -180 }}
+        animate={{ scale: 1, rotate: 0, y: isOpen ? 0 : [0, -5, 0] }}
         transition={{
-          y: {
-            duration: 2,
-            repeat: isOpen ? 0 : Infinity,
-            repeatType: "loop",
-          },
+          y: { duration: 2, repeat: Infinity, repeatType: "loop" },
         }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
       >
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.3 }}
-        >
+        <motion.div animate={{ rotate: isOpen ? 90 : 0 }}>
           {isOpen ? <X size={24} /> : <MessageCircle size={24} />}
         </motion.div>
 
-        {/* Pulsing dot */}
         {!isOpen && (
-          <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"
-          />
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500 border-2 border-white"></span>
+          </span>
         )}
       </motion.button>
 
-      {/* Chat Popup */}
+      {/* CỬA SỔ CHAT */}
       <AnimatePresence>
         {isOpen && (
           <>
@@ -238,158 +200,142 @@ const ChatBotWidget = () => {
               className="fixed inset-0 z-[9998]"
             />
 
-            {/* Chat Container */}
+            {/* Main Chat Box */}
             <motion.div
               initial={{
                 opacity: 0,
-                scale: 0.8,
+                scale: 0.9,
                 y: 20,
+                x: isRightSide ? 20 : -20,
               }}
-              animate={{
-                opacity: 1,
-                scale: 1,
-                y: 0,
-              }}
+              animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
               exit={{
                 opacity: 0,
-                scale: 0.8,
+                scale: 0.9,
                 y: 20,
+                x: isRightSide ? 20 : -20,
               }}
-              transition={{
-                type: "spring",
-                damping: 25,
-                stiffness: 300,
-              }}
-              className="fixed bottom-20 right-6 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden z-[9999]"
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className={`fixed bottom-24 ${
+                isRightSide
+                  ? "right-4 sm:right-6 origin-bottom-right"
+                  : "left-4 sm:left-6 origin-bottom-left"
+              } w-[90vw] sm:w-96 h-[500px] max-h-[80vh] bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden z-[9999]`}
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <motion.div
-                      animate={{
-                        rotate: [0, 10, -10, 0],
-                        scale: [1, 1.1, 1],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        repeatDelay: 5,
-                      }}
-                      className="relative"
-                    >
-                      <Bot size={28} />
-                    </motion.div>
+                    <div className="bg-white bg-opacity-20 p-2 rounded-lg">
+                      <Bot size={24} />
+                    </div>
                     <div>
-                      <h3 className="font-bold text-lg">IELTS Assistant</h3>
-                      <div className="flex items-center space-x-1 text-sm text-blue-100">
-                        <motion.div
-                          animate={{ opacity: [1, 0.5, 1] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className="w-2 h-2 bg-green-400 rounded-full"
-                        />
-                        <span>Online</span>
+                      <h3 className="font-bold text-md">IELTS Assistant</h3>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                        <span className="text-xs text-blue-100">
+                          Sẵn sàng hỗ trợ
+                        </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => setIsRightSide(!isRightSide)}
+                      title="Đổi phía hiển thị"
+                      className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
+                    >
+                      <ArrowLeftRight size={18} />
+                    </button>
+                    <button
                       onClick={handleClear}
                       title="Xoá lịch sử chat"
                       className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
                     >
                       <Trash2 size={18} />
-                    </motion.button>
+                    </button>
+                    <button
+                      onClick={() => setIsOpen(false)}
+                      className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors sm:hidden"
+                    >
+                      <X size={18} />
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* Messages Container */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-4 max-h-80 bg-gradient-to-b from-gray-50 to-white">
+              {/* Message List */}
+              <div className="flex-1 p-4 overflow-y-auto bg-gray-50 scroll-smooth">
+                {messages.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-2 opacity-50">
+                    <MessageCircle size={48} strokeWidth={1} />
+                    <span className="text-sm">Chưa có tin nhắn nào</span>
+                  </div>
+                )}
                 {messages.map((msg, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: i * 0.1 }}
-                    className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"
-                      }`}
+                    className={`flex mb-4 ${
+                      msg.sender === "user" ? "justify-end" : "justify-start"
+                    }`}
                   >
-                    <div className="flex items-end space-x-2 max-w-[85%]">
-                      {msg.sender === "bot" && (
-                        <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                          <Bot size={12} className="text-white" />
-                        </div>
-                      )}
-                      <div>
+                    <div
+                      className={`flex max-w-[85%] ${
+                        msg.sender === "user" ? "flex-row-reverse" : "flex-row"
+                      }`}
+                    >
+                      <div
+                        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs ${
+                          msg.sender === "user"
+                            ? "bg-gray-600 ml-2"
+                            : "bg-gradient-to-br from-blue-500 to-purple-600 mr-2"
+                        }`}
+                      >
+                        {msg.sender === "user" ? (
+                          <User size={14} />
+                        ) : (
+                          <Bot size={14} />
+                        )}
+                      </div>
+
+                      <div
+                        className={`p-3 text-sm shadow-sm overflow-hidden ${
+                          msg.sender === "user"
+                            ? "bg-blue-600 text-white rounded-2xl rounded-tr-none"
+                            : "bg-white text-gray-800 rounded-2xl rounded-tl-none border border-gray-100"
+                        }`}
+                      >
+                        {/* --- SỬA LỖI Ở ĐÂY --- */}
+                        {/* Đưa className ra thẻ div bọc ngoài, không để trong ReactMarkdown */}
                         <div
-                          className={`p-3 rounded-2xl text-sm ${msg.sender === "user"
-                            ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-none"
-                            : "bg-gray-100 text-gray-800 rounded-bl-none border border-gray-200"
-                            }`}
+                          className={`prose prose-sm max-w-none break-words ${
+                            msg.sender === "user" ? "prose-invert" : ""
+                          }`}
                         >
                           <ReactMarkdown>{msg.text}</ReactMarkdown>
                         </div>
-
-                        <div
-                          className={`text-xs text-gray-500 mt-1 ${msg.sender === "user" ? "text-right" : "text-left"
-                            }`}
-                        >
-                          {formatTime(msg.timestamp)}
-                        </div>
+                        {/* ------------------- */}
                       </div>
-                      {msg.sender === "user" && (
-                        <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full flex items-center justify-center">
-                          <User size={12} className="text-white" />
-                        </div>
-                      )}
                     </div>
                   </motion.div>
                 ))}
 
-                {/* Typing Indicator */}
                 {isTyping && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex justify-start"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex justify-start mb-4"
                   >
-                    <div className="flex items-end space-x-2">
-                      <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                        <Bot size={12} className="text-white" />
+                    <div className="flex items-end">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mr-2 flex items-center justify-center">
+                        <Bot size={14} className="text-white" />
                       </div>
-                      <div className="bg-gray-100 text-gray-800 p-3 rounded-2xl rounded-bl-none border border-gray-200">
-                        <div className="flex space-x-1">
-                          <motion.div
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{
-                              duration: 1,
-                              repeat: Infinity,
-                              delay: 0,
-                            }}
-                            className="w-2 h-2 bg-gray-400 rounded-full"
-                          />
-                          <motion.div
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{
-                              duration: 1,
-                              repeat: Infinity,
-                              delay: 0.2,
-                            }}
-                            className="w-2 h-2 bg-gray-400 rounded-full"
-                          />
-                          <motion.div
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{
-                              duration: 1,
-                              repeat: Infinity,
-                              delay: 0.4,
-                            }}
-                            className="w-2 h-2 bg-gray-400 rounded-full"
-                          />
-                        </div>
+                      <div className="bg-white border border-gray-100 p-3 rounded-2xl rounded-tl-none shadow-sm flex space-x-1">
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-75" />
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-150" />
                       </div>
                     </div>
                   </motion.div>
@@ -398,33 +344,30 @@ const ChatBotWidget = () => {
               </div>
 
               {/* Input Area */}
-              <div className="p-4 border-t border-gray-200 bg-white">
-                <div className="flex space-x-2">
-                  <motion.input
-                    whileFocus={{ scale: 1.02 }}
-                    className="flex-1 border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
-                    placeholder="Nhập câu hỏi của bạn..."
+              <div className="p-3 bg-white border-t border-gray-100">
+                <div className="relative flex items-center">
+                  <input
+                    className="w-full bg-gray-100 text-sm rounded-full pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                    placeholder="Nhập câu hỏi IELTS..."
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSend()}
                     disabled={loading}
                   />
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                  <button
                     onClick={handleSend}
                     disabled={!input.trim() || loading}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 rounded-xl hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center"
+                    className="absolute right-2 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors"
                   >
                     {loading ? (
-                      <Loader2 size={18} className="animate-spin" />
+                      <Loader2 size={16} className="animate-spin" />
                     ) : (
-                      <Send size={18} />
+                      <Send size={16} />
                     )}
-                  </motion.button>
+                  </button>
                 </div>
-                <div className="text-xs text-gray-500 text-center mt-2">
-                  Nhấn Enter để gửi • Trợ lý ảo IELTS
+                <div className="text-[10px] text-center text-gray-400 mt-2">
+                  Powered by IELTS AI • Double check information
                 </div>
               </div>
             </motion.div>
