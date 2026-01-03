@@ -2,16 +2,12 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import TestNavigationPanel from "./TestNavigationPanel";
-import GradingAnimation from "./GradingAnimation";
+import TestNavigationPanel from "../TestNavigationPanel";
+import GradingAnimation from "../GradingAnimation";
 
-import {
-  getAllWritingTasksAPI,
-} from "@/services/apiWriting";
+import { getAllWritingTasksAPI } from "@/services/apiWriting";
 
-import {
-  FinishTestWritingAPI,
-} from "@/services/apiDoTest";
+import { FinishTestWritingAPI } from "@/services/apiDoTest";
 
 import { useAuth } from "@/context/authContext";
 import { cn } from "@/lib/utils";
@@ -156,8 +152,8 @@ const SubmissionResultDetail = ({ data }) => {
                       item.type === "Grammar"
                         ? "red"
                         : item.type === "Lexis"
-                          ? "blue"
-                          : "orange"
+                        ? "blue"
+                        : "orange"
                     }
                   >
                     {item.type}
@@ -230,12 +226,12 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
     const handleMouseUp = () => setIsDragging(false);
 
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
     }
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDragging]);
 
@@ -343,7 +339,9 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
           feedback: sub.feedback ? [sub.feedback] : [],
           writingTask: {
             task_type: sub.task_type,
-            title: tasks.find(t => t.idWritingTask === sub.idWritingTask)?.title || "",
+            title:
+              tasks.find((t) => t.idWritingTask === sub.idWritingTask)?.title ||
+              "",
           },
         }));
 
@@ -373,7 +371,9 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <Spin size="large" />
-          <p className="mt-4 text-slate-600 dark:text-slate-400">Loading writing tasks...</p>
+          <p className="mt-4 text-slate-600 dark:text-slate-400">
+            Loading writing tasks...
+          </p>
         </div>
       </div>
     );
@@ -441,8 +441,8 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
               timeLeft < 300
                 ? "bg-red-600 text-white border-red-500 animate-pulse"
                 : timeLeft < 600
-                  ? "bg-orange-600 text-white border-orange-500"
-                  : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
+                ? "bg-orange-600 text-white border-orange-500"
+                : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
             )}
           >
             <ClockCircleOutlined />
@@ -466,7 +466,11 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
 
       {/* Main Content */}
       <div className="pt-[90px] p-6 max-w-[1400px] mx-auto h-screen flex flex-col">
-        <div ref={containerRef} className="flex flex-1 min-h-0 relative" style={{ userSelect: isDragging ? 'none' : 'auto' }}>
+        <div
+          ref={containerRef}
+          className="flex flex-1 min-h-0 relative"
+          style={{ userSelect: isDragging ? "none" : "auto" }}
+        >
           {/* Left Panel: Task Prompt */}
           <div
             className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden"
@@ -502,16 +506,52 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
 
           {/* Draggable Resizer */}
           <div
-            onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
-            className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${isDragging ? 'bg-blue-100 dark:bg-blue-600/30' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
-              }`}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${
+              isDragging
+                ? "bg-blue-100 dark:bg-blue-600/30"
+                : "hover:bg-slate-100 dark:hover:bg-slate-700"
+            }`}
           >
             <div className="flex flex-col gap-1">
-              <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-              <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-              <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-              <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-              <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+              <div
+                className={`w-1 h-1 rounded-full transition-colors ${
+                  isDragging
+                    ? "bg-blue-600 dark:bg-blue-400"
+                    : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                }`}
+              ></div>
+              <div
+                className={`w-1 h-1 rounded-full transition-colors ${
+                  isDragging
+                    ? "bg-blue-600 dark:bg-blue-400"
+                    : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                }`}
+              ></div>
+              <div
+                className={`w-1 h-1 rounded-full transition-colors ${
+                  isDragging
+                    ? "bg-blue-600 dark:bg-blue-400"
+                    : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                }`}
+              ></div>
+              <div
+                className={`w-1 h-1 rounded-full transition-colors ${
+                  isDragging
+                    ? "bg-blue-600 dark:bg-blue-400"
+                    : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                }`}
+              ></div>
+              <div
+                className={`w-1 h-1 rounded-full transition-colors ${
+                  isDragging
+                    ? "bg-blue-600 dark:bg-blue-400"
+                    : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                }`}
+              ></div>
             </div>
           </div>
 
@@ -544,7 +584,8 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
                     "font-medium"
                   )}
                 >
-                  {wordCount} / {activeTask?.task_type === "TASK1" ? "150" : "250"} words
+                  {wordCount} /{" "}
+                  {activeTask?.task_type === "TASK1" ? "150" : "250"} words
                 </span>
               </div>
             </div>

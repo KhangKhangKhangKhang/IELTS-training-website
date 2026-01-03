@@ -7,10 +7,10 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import QuestionRenderer from "./reading/render/QuestionRenderer";
-import SimpleResultModal from "./SimpleResultModal";
-import TestNavigationPanel from "./TestNavigationPanel";
-import GradingAnimation from "./GradingAnimation";
+import QuestionRenderer from "../detail/QuestionRenderer";
+import SimpleResultModal from "../SimpleResultModal";
+import TestNavigationPanel from "../TestNavigationPanel";
+import GradingAnimation from "../GradingAnimation";
 import {
   getDetailInTestAPI,
   createManyAnswersAPI,
@@ -121,12 +121,12 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
     const handleMouseUp = () => setIsDragging(false);
 
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
     }
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDragging]);
 
@@ -276,15 +276,18 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
     }
 
     // Scroll to question after a short delay to allow part switch
-    setTimeout(() => {
-      const questionElement = questionRefs.current[questionId];
-      if (questionElement) {
-        questionElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }
-    }, partIndex !== activePartIndex ? 300 : 0);
+    setTimeout(
+      () => {
+        const questionElement = questionRefs.current[questionId];
+        if (questionElement) {
+          questionElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      },
+      partIndex !== activePartIndex ? 300 : 0
+    );
   };
 
   // --- 3. LOGIC XỬ LÝ ĐÁP ÁN ---
@@ -540,7 +543,9 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
             >
               {test.title}
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 m-0 font-medium">🎧 IELTS Listening Test</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 m-0 font-medium">
+              🎧 IELTS Listening Test
+            </p>
           </div>
         </div>
 
@@ -548,12 +553,13 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${timeLeft < 300
-                  ? "bg-red-600 text-white border-red-500 animate-pulse"
-                  : timeLeft < 600
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${
+                  timeLeft < 300
+                    ? "bg-red-600 text-white border-red-500 animate-pulse"
+                    : timeLeft < 600
                     ? "bg-orange-600 text-white border-orange-500"
                     : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
-                  }`}
+                }`}
               >
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
@@ -591,7 +597,9 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
             <div className="bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md uppercase tracking-wider shrink-0">
               🎵 Audio Source
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Listen carefully - audio plays only once!</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Listen carefully - audio plays only once!
+            </div>
           </div>
           <audio
             controls
@@ -600,7 +608,7 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
             src={test.audioUrl}
             style={{
               borderRadius: "16px",
-              filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1))"
+              filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.1))",
             }}
           >
             Your browser does not support audio.
@@ -616,14 +624,23 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${idx === activePartIndex
-                ? "bg-blue-600 text-white border-blue-500 scale-105"
-                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
-                }`}
+              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${
+                idx === activePartIndex
+                  ? "bg-blue-600 text-white border-blue-500 scale-105"
+                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+              }`}
             >
               <div className="flex items-center gap-2">
-                <span className={idx === activePartIndex ? "text-xl" : "text-lg"}>
-                  {idx === 0 ? "🎧" : idx === 1 ? "🎵" : idx === 2 ? "🎼" : "🎹"}
+                <span
+                  className={idx === activePartIndex ? "text-xl" : "text-lg"}
+                >
+                  {idx === 0
+                    ? "🎧"
+                    : idx === 1
+                    ? "🎵"
+                    : idx === 2
+                    ? "🎼"
+                    : "🎹"}
                 </span>
                 <span>{p.namePart || `Part ${idx + 1}`}</span>
                 {idx === activePartIndex && (
@@ -700,10 +717,10 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
 
               {(!renderPart.groupOfQuestions ||
                 renderPart.groupOfQuestions.length === 0) && (
-                  <div className="text-center py-12 text-gray-400">
-                    Chưa có câu hỏi cho phần này.
-                  </div>
-                )}
+                <div className="text-center py-12 text-gray-400">
+                  Chưa có câu hỏi cho phần này.
+                </div>
+              )}
             </div>
           )}
         </div>

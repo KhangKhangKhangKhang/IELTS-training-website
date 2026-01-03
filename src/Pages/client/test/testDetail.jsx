@@ -1,8 +1,8 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import Listening from "@/components/test/listening";
-import Reading from "@/components/test/reading";
-import Writing from "@/components/test/writing";
-import Speaking from "@/components/test/speaking";
+import Listening from "@/components/test/type/listening";
+import Reading from "@/components/test/type/reading";
+import Writing from "@/components/test/type/writing";
+import Speaking from "@/components/test/type/speaking";
 import { useState, useEffect } from "react";
 import { Spin } from "antd";
 

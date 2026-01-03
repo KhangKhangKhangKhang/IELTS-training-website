@@ -26,7 +26,7 @@ import {
   PlayCircleOutlined, // Thêm icon này cho player
 } from "@ant-design/icons";
 
-import QuestionRenderer from "./reading/render/QuestionRenderer";
+import QuestionRenderer from "./detail/QuestionRenderer";
 import { getTestResultAndAnswersAPI } from "@/services/apiDoTest";
 
 const { Title, Text } = Typography;
