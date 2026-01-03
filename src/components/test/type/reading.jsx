@@ -7,10 +7,10 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import QuestionRenderer from "./reading/render/QuestionRenderer";
-import SimpleResultModal from "./SimpleResultModal";
-import TestNavigationPanel from "./TestNavigationPanel";
-import GradingAnimation from "./GradingAnimation";
+import QuestionRenderer from "../detail/QuestionRenderer";
+import SimpleResultModal from "../SimpleResultModal";
+import TestNavigationPanel from "../TestNavigationPanel";
+import GradingAnimation from "../GradingAnimation";
 import {
   getDetailInTestAPI,
   createManyAnswersAPI,
@@ -114,12 +114,12 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     const handleMouseUp = () => setIsDragging(false);
 
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
     }
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDragging]);
 
@@ -268,15 +268,18 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     }
 
     // Scroll to question after a short delay to allow part switch
-    setTimeout(() => {
-      const questionElement = questionRefs.current[questionId];
-      if (questionElement) {
-        questionElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }
-    }, partIndex !== activePartIndex ? 300 : 0);
+    setTimeout(
+      () => {
+        const questionElement = questionRefs.current[questionId];
+        if (questionElement) {
+          questionElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      },
+      partIndex !== activePartIndex ? 300 : 0
+    );
   };
 
   const handleAnswerChange = (
@@ -520,7 +523,9 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
             >
               {test.title}{" "}
               {isReviewMode && (
-                <span className="text-blue-600 dark:text-blue-400">(Review Mode)</span>
+                <span className="text-blue-600 dark:text-blue-400">
+                  (Review Mode)
+                </span>
               )}
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 m-0 hidden md:block font-medium">
@@ -532,12 +537,13 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${timeLeft < 300
-                  ? "bg-red-600 text-white border-red-500 animate-pulse"
-                  : timeLeft < 600
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${
+                  timeLeft < 300
+                    ? "bg-red-600 text-white border-red-500 animate-pulse"
+                    : timeLeft < 600
                     ? "bg-orange-600 text-white border-orange-500"
                     : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
-                  }`}
+                }`}
               >
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
@@ -574,13 +580,16 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${idx === activePartIndex
-                ? "bg-blue-600 text-white border-blue-500 scale-105"
-                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
-                }`}
+              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${
+                idx === activePartIndex
+                  ? "bg-blue-600 text-white border-blue-500 scale-105"
+                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+              }`}
             >
               <div className="flex items-center gap-2">
-                <span className={idx === activePartIndex ? "text-xl" : "text-lg"}>
+                <span
+                  className={idx === activePartIndex ? "text-xl" : "text-lg"}
+                >
                   {idx === 0 ? "📖" : idx === 1 ? "📚" : "📕"}
                 </span>
                 <span>{p.namePart || `Part ${idx + 1}`}</span>
@@ -593,11 +602,19 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
         </div>
 
         {part && (
-          <div ref={containerRef} className="flex flex-1 min-h-0 relative gap-3" style={{ userSelect: isDragging ? 'none' : 'auto' }}>
+          <div
+            ref={containerRef}
+            className="flex flex-1 min-h-0 relative gap-3"
+            style={{ userSelect: isDragging ? "none" : "auto" }}
+          >
             {/* Navigation Panel */}
             <div
               className="shrink-0"
-              style={{ width: `${navPanelWidth}%`, minWidth: '200px', maxWidth: '300px' }}
+              style={{
+                width: `${navPanelWidth}%`,
+                minWidth: "200px",
+                maxWidth: "300px",
+              }}
             >
               <TestNavigationPanel
                 parts={test.parts}
@@ -627,7 +644,9 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                 {renderPart?.passage?.content ? (
                   <div
                     className="prose prose-lg max-w-none text-slate-700 dark:text-slate-300 leading-relaxed dark:prose-invert"
-                    dangerouslySetInnerHTML={{ __html: renderPart.passage.content }}
+                    dangerouslySetInnerHTML={{
+                      __html: renderPart.passage.content,
+                    }}
                   />
                 ) : (
                   !isPartLoading && (
@@ -641,16 +660,52 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
 
             {/* Draggable Resizer */}
             <div
-              onMouseDown={(e) => { e.preventDefault(); setIsDragging(true); }}
-              className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${isDragging ? 'bg-blue-100 dark:bg-blue-600/30' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
-                }`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${
+                isDragging
+                  ? "bg-blue-100 dark:bg-blue-600/30"
+                  : "hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
             >
               <div className="flex flex-col gap-1">
-                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
-                <div className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400'}`}></div>
+                <div
+                  className={`w-1 h-1 rounded-full transition-colors ${
+                    isDragging
+                      ? "bg-blue-600 dark:bg-blue-400"
+                      : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                  }`}
+                ></div>
+                <div
+                  className={`w-1 h-1 rounded-full transition-colors ${
+                    isDragging
+                      ? "bg-blue-600 dark:bg-blue-400"
+                      : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                  }`}
+                ></div>
+                <div
+                  className={`w-1 h-1 rounded-full transition-colors ${
+                    isDragging
+                      ? "bg-blue-600 dark:bg-blue-400"
+                      : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                  }`}
+                ></div>
+                <div
+                  className={`w-1 h-1 rounded-full transition-colors ${
+                    isDragging
+                      ? "bg-blue-600 dark:bg-blue-400"
+                      : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                  }`}
+                ></div>
+                <div
+                  className={`w-1 h-1 rounded-full transition-colors ${
+                    isDragging
+                      ? "bg-blue-600 dark:bg-blue-400"
+                      : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                  }`}
+                ></div>
               </div>
             </div>
 
@@ -660,10 +715,11 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
               style={{ width: `${100 - leftPanelWidth}%` }}
             >
               <div
-                className={`p-4 border-b border-slate-200 dark:border-slate-700 font-semibold sticky top-0 z-10 ${isReviewMode
-                  ? "bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-400"
-                  : "bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white"
-                  }`}
+                className={`p-4 border-b border-slate-200 dark:border-slate-700 font-semibold sticky top-0 z-10 ${
+                  isReviewMode
+                    ? "bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-400"
+                    : "bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white"
+                }`}
               >
                 <span>✍️ Questions</span>
               </div>
@@ -688,7 +744,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                   }
 
                   // Split title by ||| to separate main title from instructions
-                  const titleParts = displayTitle.split(' ||| ');
+                  const titleParts = displayTitle.split(" ||| ");
                   const mainTitle = titleParts[0]; // "Questions 1-6"
                   const instructions = titleParts.slice(1); // ["The Reading Passage...", "Choose...", ...]
 
@@ -709,7 +765,9 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                                 <div
                                   key={idx}
                                   className="italic prose prose-sm dark:prose-invert max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: instruction }}
+                                  dangerouslySetInnerHTML={{
+                                    __html: instruction,
+                                  }}
                                 />
                               ))}
                             </div>
@@ -724,7 +782,9 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                         {(group.question || []).map((q) => (
                           <div
                             key={q.idQuestion}
-                            ref={(el) => (questionRefs.current[q.idQuestion] = el)}
+                            ref={(el) =>
+                              (questionRefs.current[q.idQuestion] = el)
+                            }
                           >
                             {/* Question content will be rendered by QuestionRenderer */}
                           </div>

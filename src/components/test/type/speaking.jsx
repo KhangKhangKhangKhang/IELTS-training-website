@@ -18,8 +18,8 @@ import { getDetailInTestAPI } from "@/services/apiDoTest";
 import { finishSpeakingTest } from "@/services/apiSpeaking";
 
 // --- IMPORTS COMPONENT ---
-import GradingAnimation from "./GradingAnimation";
-import SimpleResultModal from "./SimpleResultModal"; // <--- IMPORT COMPONENT KẾT QUẢ MỚI
+import GradingAnimation from "../GradingAnimation";
+import SimpleResultModal from "../SimpleResultModal"; // <--- IMPORT COMPONENT KẾT QUẢ MỚI
 import TextToSpeech from "@/components/common/TextToSpeech";
 
 // (Đã xóa SpeakingResultDetail cũ vì không dùng nữa)
@@ -174,7 +174,8 @@ const Speaking = ({ idTest, initialTestResult }) => {
 
         setForceUpdate({});
         console.log(
-          `💾 Recorded Q${currentQuestionIndex + 1}. Blob size: ${audioBlob.size
+          `💾 Recorded Q${currentQuestionIndex + 1}. Blob size: ${
+            audioBlob.size
           }`
         );
 
@@ -299,7 +300,9 @@ const Speaking = ({ idTest, initialTestResult }) => {
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors duration-300">
         <div className="text-center">
           <Spin size="large" />
-          <p className="mt-4 text-slate-600 dark:text-slate-400">Đang tải đề thi Speaking...</p>
+          <p className="mt-4 text-slate-600 dark:text-slate-400">
+            Đang tải đề thi Speaking...
+          </p>
         </div>
       </div>
     );
@@ -308,7 +311,9 @@ const Speaking = ({ idTest, initialTestResult }) => {
   if (tasks.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors duration-300">
-        <div className="p-10 text-center text-slate-600 dark:text-slate-400">Đề thi không có dữ liệu Speaking.</div>
+        <div className="p-10 text-center text-slate-600 dark:text-slate-400">
+          Đề thi không có dữ liệu Speaking.
+        </div>
       </div>
     );
   }
@@ -335,7 +340,8 @@ const Speaking = ({ idTest, initialTestResult }) => {
               {currentTask?.part || `Part ${currentTaskIndex + 1}`}
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              Question {currentQuestionIndex + 1} / {currentTask?.questions?.length || 0}
+              Question {currentQuestionIndex + 1} /{" "}
+              {currentTask?.questions?.length || 0}
             </p>
           </div>
         </div>
@@ -347,8 +353,8 @@ const Speaking = ({ idTest, initialTestResult }) => {
               step === "PREP"
                 ? "bg-amber-600 text-white border-amber-500"
                 : timeLeft < 10
-                  ? "bg-red-600 text-white border-red-500 animate-pulse"
-                  : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
+                ? "bg-red-600 text-white border-red-500 animate-pulse"
+                : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
             )}
           >
             <ClockCircleOutlined /> {formatTime(timeLeft)}
@@ -384,7 +390,9 @@ const Speaking = ({ idTest, initialTestResult }) => {
           <div className="animate-fade-in space-y-6">
             <Alert
               message={
-                isRealPrep ? "⏱️ Thời gian chuẩn bị" : "📖 Thời gian đọc câu hỏi"
+                isRealPrep
+                  ? "⏱️ Thời gian chuẩn bị"
+                  : "📖 Thời gian đọc câu hỏi"
               }
               description={
                 isRealPrep
@@ -405,7 +413,9 @@ const Speaking = ({ idTest, initialTestResult }) => {
             >
               {currentQuestion?.topic && (
                 <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
-                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Topic</span>
+                  <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    Topic
+                  </span>
                   <h3 className="text-2xl font-bold text-slate-800 dark:text-white mt-1">
                     {currentQuestion.topic}
                   </h3>
@@ -425,10 +435,16 @@ const Speaking = ({ idTest, initialTestResult }) => {
               </div>
               {hasSubPrompts && (
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Key Points to Cover:</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                    Key Points to Cover:
+                  </p>
                   <ul className="list-disc list-inside space-y-2.5 text-slate-700 dark:text-slate-300">
                     {currentQuestion.subPrompts.map((sub, i) =>
-                      sub && sub.trim() !== "" ? <li key={i} className="leading-relaxed">{sub}</li> : null
+                      sub && sub.trim() !== "" ? (
+                        <li key={i} className="leading-relaxed">
+                          {sub}
+                        </li>
+                      ) : null
                     )}
                   </ul>
                 </div>
@@ -480,10 +496,17 @@ const Speaking = ({ idTest, initialTestResult }) => {
               </div>
               {hasSubPrompts && (
                 <div className="text-left max-w-md mx-auto bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl mb-8 border border-slate-200 dark:border-slate-700">
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Remember to mention:</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                    Remember to mention:
+                  </p>
                   <ul className="list-disc list-inside space-y-2 text-slate-700 dark:text-slate-300 text-sm">
                     {currentQuestion.subPrompts.map(
-                      (s, i) => s && <li key={i} className="leading-relaxed">{s}</li>
+                      (s, i) =>
+                        s && (
+                          <li key={i} className="leading-relaxed">
+                            {s}
+                          </li>
+                        )
                     )}
                   </ul>
                 </div>
@@ -514,7 +537,10 @@ const Speaking = ({ idTest, initialTestResult }) => {
               </Button>
               <div className="mt-6 inline-block px-6 py-3 bg-slate-100 dark:bg-slate-900 rounded-xl">
                 <p className="text-slate-600 dark:text-slate-300 text-sm font-medium">
-                  ⏱️ Thời gian còn lại: <span className="font-bold text-lg">{formatTime(timeLeft)}</span>
+                  ⏱️ Thời gian còn lại:{" "}
+                  <span className="font-bold text-lg">
+                    {formatTime(timeLeft)}
+                  </span>
                 </p>
               </div>
             </Card>
