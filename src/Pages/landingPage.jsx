@@ -10,14 +10,20 @@ import {
   Star,
   Users,
   Target,
+  Zap,
+  BrainCircuit,
+  Award,
 } from "lucide-react";
 import { Button, Card } from "antd";
 import FloatingWords from "@/components/landingPage/FloatingWords";
-import StatsSection from "@/components/landingPage/StatsSection";
 import { useNavigate } from "react-router";
+
+// Lưu ý: Đã bỏ StatsSection import vì mình sẽ tích hợp các chỉ số chung vào Hero để mạch lạc hơn
+// Nếu bạn muốn tách riêng thì có thể giữ lại component đó.
+
 const LandingPage = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 overflow-x-hidden">
       {/* Navigation */}
       <Navbar />
 
@@ -26,9 +32,6 @@ const LandingPage = () => {
 
       {/* Features Section */}
       <FeaturesSection />
-
-      {/* Statistics Section */}
-      <StatsSection />
 
       {/* Vocabulary Section */}
       <VocabularySection />
@@ -39,23 +42,30 @@ const LandingPage = () => {
   );
 };
 
-// Component Navbar cho Landing Page
+// Component Navbar
 const Navbar = () => {
   const navigate = useNavigate();
   return (
-    <nav className="fixed w-full bg-slate-900/80 backdrop-blur-md z-50 border-b border-slate-700">
+    <nav className="fixed w-full bg-slate-900/80 backdrop-blur-md z-50 border-b border-slate-700/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 "
           >
-            <BookOpen className="h-8 w-8 text-blue-400" />
+            <div className="relative">
+              <BookOpen className="h-8 w-8 text-blue-500" />
+              <span className="absolute -top-1 -right-1 flex h-3 w-3"></span>
+            </div>
             <div className="flex flex-col">
-              <span className="text-2xl font-bold text-blue-400">AIELTS</span>
-              <span className="text-sm text-gray-300">IELTS cho mọi người</span>
+              <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">
+                AIELTS
+              </span>
+              <span className="text-xs text-slate-400 tracking-wider uppercase">
+                Future of Learning
+              </span>
             </div>
           </motion.div>
 
@@ -63,21 +73,21 @@ const Navbar = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex space-x-4"
+            className="flex space-x-3"
           >
             <Button
               ghost
-              className="text-white border-slate-600 !mr-4"
+              className="!text-slate-300 !border-slate-600 hover:!text-white hover:!border-white hidden sm:block"
               onClick={() => navigate("/login")}
             >
-              Login
+              Đăng nhập
             </Button>
             <Button
               type="primary"
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 border-none shadow-lg shadow-blue-900/20"
               onClick={() => navigate("/signup")}
             >
-              Sign up
+              Đăng ký ngay
             </Button>
           </motion.div>
         </div>
@@ -90,55 +100,96 @@ const Navbar = () => {
 const HeroSection = () => {
   const navigate = useNavigate();
   return (
-    <section id="giới-thiệu" className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto  text-center">
+    <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      {/* Background decoration elements */}
+      <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl -z-10 animate-pulse"></div>
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl -z-10"></div>
+
+      <div className="max-w-7xl mx-auto text-center relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <div className="flex justify-center items-center mb-7">
-            <span className="text-blue-400 text-9xl">AI</span>
-            <div className="flex-col text-left justify-between items-start">
-              <div className="text-white text-6xl">ELTS</div>
-              <div className="text-slate-500 text-4xl">
-                cũng có thể học được
+          <div className="flex flex-col md:flex-row justify-center items-center mb-8 gap-4">
+            <span className="text-8xl md:text-9xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-300 leading-none tracking-tighter">
+              AI
+            </span>
+            <div className="flex flex-col items-center md:items-start text-center md:text-left">
+              <div className="text-5xl md:text-6xl font-bold text-white tracking-tight">
+                ELTS
+              </div>
+              <div className="text-slate-400 text-xl md:text-2xl mt-2 font-light">
+                Cũng có thể học được
               </div>
             </div>
           </div>
+
+          <p className="max-w-2xl mx-auto text-lg text-slate-300 mb-10 leading-relaxed">
+            Hệ thống tối ưu hóa lộ trình học tập dựa trên năng lực cá nhân.
+            Không chỉ là luyện thi, chúng tôi giúp bạn nhìn thấy sự
+            <span className="text-blue-400 font-semibold">
+              {" "}
+              tăng trưởng kỹ năng{" "}
+            </span>
+            rõ rệt qua từng bài học.
+          </p>
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
-              size="Large"
-              onClick={() => {
-                navigate("/_test");
-              }}
+              size="large"
+              onClick={() => navigate("/signup")}
+              className="!h-14 !px-8 !text-lg !rounded-full bg-blue-600 hover:bg-blue-500 border-none shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] transition-all duration-300"
               type="primary"
             >
-              Bắt đầu học ngay
-              <ArrowRight className="ml-2" />
+              Khám phá năng lực ngay
+              <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </div>
         </motion.div>
 
-        {/* Stats Preview */}
+        {/* Generic Stats Preview - Thay số cụ thể bằng giá trị định tính */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-4xl mx-auto"
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20 max-w-5xl mx-auto"
         >
           {[
-            { icon: Users, value: "10,000+", label: "Học viên" },
-            { icon: Star, value: "4.9/5", label: "Đánh giá" },
-            { icon: Target, value: "7.0+", label: "Điểm trung bình" },
+            {
+              icon: TrendingUp,
+              title: "Tiến bộ liên tục",
+              desc: "Cải thiện điểm số qua từng bài test",
+              color: "text-green-400",
+            },
+            {
+              icon: BrainCircuit,
+              title: "Lộ trình thông minh",
+              desc: "Cá nhân hóa theo điểm mạnh & yếu",
+              color: "text-blue-400",
+            },
+            {
+              icon: Award,
+              title: "Kết quả thực tế",
+              desc: "Hàng ngàn học viên đạt mục tiêu",
+              color: "text-yellow-400",
+            },
           ].map((stat, index) => (
             <div
               key={index}
-              className="text-center p-6 bg-slate-800/50 rounded-xl"
+              className="p-6 bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl hover:border-slate-600 transition-all duration-300 group"
             >
-              <stat.icon className="h-8 w-8 text-blue-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
-              <div className="text-slate-400">{stat.label}</div>
+              <div className="flex justify-center mb-4">
+                <div
+                  className={`p-3 rounded-full bg-slate-900 group-hover:scale-110 transition-transform duration-300 ${stat.color}`}
+                >
+                  <stat.icon className="h-6 w-6" />
+                </div>
+              </div>
+              <div className="text-xl font-bold text-white mb-2">
+                {stat.title}
+              </div>
+              <div className="text-slate-400 text-sm">{stat.desc}</div>
             </div>
           ))}
         </motion.div>
@@ -151,44 +202,52 @@ const HeroSection = () => {
 const FeaturesSection = () => {
   const features = [
     {
-      icon: BookOpen,
-      title: "Luyện đề toàn diện",
+      icon: Target,
+      title: "Luyện tập đúng trọng tâm",
       description:
-        "Hệ thống đề thi đa dạng với 3 kỹ năng chính: Listening, Reading, Writing",
-      skills: ["Listening", "Reading", "Writing"],
+        "Hệ thống tự động phân tích và đề xuất các bài tập tập trung vào kỹ năng bạn còn yếu, giúp tối ưu thời gian học.",
+      tags: ["Tối ưu thời gian", "Đúng trình độ"],
       color: "blue",
     },
     {
-      icon: TrendingUp,
-      title: "Theo dõi tiến độ",
+      icon: Zap,
+      title: "Phản hồi tức thì",
       description:
-        "Phân tích chi tiết quá trình học tập và đưa ra đề xuất cải thiện",
-      color: "green",
+        "Nhận kết quả và phân tích chi tiết ngay sau khi nộp bài. Hiểu rõ lỗi sai để khắc phục ngay lập tức.",
+      tags: ["Chấm điểm AI", "Giải thích chi tiết"],
+      color: "yellow",
     },
     {
       icon: BookMarked,
-      title: "Kho từ vựng thông minh",
-      description: "Hệ thống ghi nhớ và ôn tập từ vựng theo ngữ cảnh IELTS",
+      title: "Kho tài liệu không giới hạn",
+      description:
+        "Tiếp cận nguồn đề thi phong phú và cập nhật liên tục, sát với xu hướng ra đề mới nhất.",
+      tags: ["Đa dạng", "Cập nhật"],
       color: "purple",
     },
   ];
 
   return (
-    <section
-      id="tính-năng"
-      className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-800/30"
-    >
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-900 relative">
+      {/* Decorative divider */}
+      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
+
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl font-bold text-white mb-4">
-            Tính năng nổi bật
+          <span className="text-blue-400 font-semibold tracking-wide uppercase text-sm">
+            Tại sao chọn chúng tôi?
+          </span>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mt-2 mb-4">
+            Công nghệ kiến tạo tri thức
           </h2>
-          <p className="text-xl text-slate-300">
-            Mọi thứ bạn cần để chinh phục IELTS
+          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+            Chúng tôi không chỉ cung cấp đề thi, chúng tôi cung cấp giải pháp để
+            bạn học tập hiệu quả hơn mỗi ngày.
           </p>
         </motion.div>
 
@@ -198,35 +257,49 @@ const FeaturesSection = () => {
               key={index}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
               transition={{ delay: index * 0.2 }}
-              whileHover={{ y: -5 }}
+              whileHover={{ y: -8 }}
             >
+              {/* SỬA LỖI Ở ĐÂY: Thêm !bg-slate-800 và !border-slate-700 để ép màu nền tối */}
               <Card
-                className="h-full bg-slate-800/50 border-slate-700 hover:border-blue-500 transition-all duration-300"
-                style={{ padding: "2rem" }}
+                bordered={false}
+                className="h-full !bg-slate-800 !border !border-slate-700 hover:!border-blue-500/50 hover:!shadow-2xl hover:!shadow-blue-900/20 transition-all duration-300"
+                styles={{
+                  body: {
+                    padding: "2.5rem",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                  },
+                }}
               >
-                <feature.icon
-                  className={`h-12 w-12 text-${feature.color}-400 mb-4`}
-                />
-                <h3 className="text-xl font-bold text-slate-700 mb-2">
+                <div
+                  className={`w-14 h-14 rounded-xl bg-slate-900 flex items-center justify-center mb-6 text-${feature.color}-400 shadow-inner ring-1 ring-slate-700`}
+                >
+                  <feature.icon className="h-7 w-7" />
+                </div>
+
+                {/* Tiêu đề chắc chắn hiển thị màu trắng */}
+                <h3 className="text-xl font-bold !text-white mb-3">
                   {feature.title}
                 </h3>
-                <p className="text-slate-500 font-medium mb-4">
+
+                {/* Nội dung màu xám sáng để dễ đọc trên nền tối */}
+                <p className="!text-slate-400 leading-relaxed mb-6 flex-grow text-base">
                   {feature.description}
                 </p>
 
-                {feature.skills && (
-                  <div className="flex flex-wrap gap-2">
-                    {feature.skills.map((skill, skillIndex) => (
-                      <span
-                        key={skillIndex}
-                        className="px-3 py-1 bg-slate-700 rounded-full text-sm text-slate-300"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2 mt-auto">
+                  {feature.tags.map((tag, tagIndex) => (
+                    <span
+                      key={tagIndex}
+                      className="px-3 py-1 bg-slate-700/50 border border-slate-600 rounded-full text-xs text-slate-300"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </Card>
             </motion.div>
           ))}
@@ -239,56 +312,96 @@ const FeaturesSection = () => {
 // Vocabulary Section Component
 const VocabularySection = () => {
   return (
-    <section
-      id="từ-vựng"
-      className="py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
-    >
+    <section className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-slate-900">
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800/30 to-slate-900"></div>
+
+      {/* Component này giữ nguyên vì hiệu ứng đẹp */}
       <FloatingWords />
 
       <div className="max-w-7xl mx-auto relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <BookMarked className="h-16 w-16 text-blue-400 mx-auto mb-4" />
-          <h2 className="text-4xl font-bold text-white mb-4">
-            Hệ thống từ vựng thông minh
-          </h2>
-          <p className="text-xl text-slate-300 mb-8 max-w-3xl mx-auto">
-            Ghi nhớ từ vựng theo phương pháp khoa học, ôn tập đúng lúc bạn sắp
-            quên
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div className="text-left">
-              <ul className="space-y-4">
-                {[
-                  "Học từ vựng theo ngữ cảnh IELTS thực tế",
-                  "Nhắc nhở ôn tập theo thuật toán spaced repetition",
-                  "Hệ thống flashcard thông minh",
-                  "Theo dõi tiến độ ghi nhớ từ vựng",
-                ].map((item, index) => (
-                  <li key={index} className="flex items-center text-slate-300">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full mr-3" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="text-left"
+          >
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm mb-6">
+              <BookOpen className="w-4 h-4" />
+              <span>Phương pháp học tập mới</span>
             </div>
+            <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
+              Mở rộng vốn từ <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+                Tự nhiên & Bền vững
+              </span>
+            </h2>
+            <p className="text-lg text-slate-300 mb-8 leading-relaxed">
+              Quên đi cách học vẹt truyền thống. Hệ thống giúp bạn nạp từ vựng
+              thông qua ngữ cảnh bài học, giúp nhớ lâu hơn và vận dụng linh hoạt
+              hơn.
+            </p>
 
-            <motion.div
-              initial={{ scale: 0.9 }}
-              whileInView={{ scale: 1 }}
-              className="bg-slate-800/50 p-8 rounded-xl"
-            >
-              <div className="text-white text-center">
-                <div className="text-3xl font-bold mb-2">5,000+</div>
-                <div className="text-slate-400">Từ vựng IELTS thông dụng</div>
+            <ul className="space-y-5">
+              {[
+                "Học từ vựng qua ngữ cảnh IELTS thực tế",
+                "Thuật toán nhắc lại ngắt quãng (Spaced Repetition)",
+                "Theo dõi biểu đồ tăng trưởng vốn từ",
+                "Gợi ý từ vựng theo chủ đề bạn quan tâm",
+              ].map((item, index) => (
+                <motion.li
+                  key={index}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-center text-slate-300 group"
+                >
+                  <div className="w-6 h-6 rounded-full bg-green-500/10 flex items-center justify-center mr-4 group-hover:bg-green-500/20 transition-colors">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                  </div>
+                  {item}
+                </motion.li>
+              ))}
+            </ul>
+
+            <div className="mt-10">
+              <Button className="!bg-slate-800 !border-slate-600 !text-white hover:!bg-slate-700 hover:!border-slate-500 !px-6 !h-12 !rounded-lg">
+                Trải nghiệm học từ vựng
+              </Button>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="relative"
+          >
+            <div className="absolute inset-0 bg-blue-500/20 blur-[100px] rounded-full"></div>
+            <div className="relative bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl border border-slate-700 shadow-2xl">
+              <div className="text-white text-center py-10">
+                <BookMarked className="h-16 w-16 text-blue-400 mx-auto mb-6 opacity-80" />
+                <div className="text-4xl md:text-5xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white to-slate-400">
+                  Không giới hạn
+                </div>
+                <div className="text-slate-400 font-medium text-lg">
+                  Khả năng tiếp thu của bạn
+                </div>
+                <div className="mt-6 pt-6 border-t border-slate-700/50 flex justify-center space-x-8 text-sm text-slate-500">
+                  <div className="flex flex-col items-center">
+                    <span className="text-white font-bold text-lg">∞</span>
+                    <span>Từ vựng</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-white font-bold text-lg">24/7</span>
+                    <span>Truy cập</span>
+                  </div>
+                </div>
               </div>
-            </motion.div>
-          </div>
-        </motion.div>
+            </div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );
@@ -297,17 +410,37 @@ const VocabularySection = () => {
 // Footer Component
 const Footer = () => {
   return (
-    <footer className="bg-slate-900 border-t border-slate-800 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto text-center">
-        <div className="flex items-center justify-center space-x-2 mb-4">
-          <BookOpen className="h-6 w-6 text-blue-400" />
-          <span className="text-xl font-bold text-white">AIELTS</span>
+    <footer className="bg-slate-950 border-t border-slate-800/50 pt-16 pb-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto flex flex-col items-center text-center">
+        <div className="flex items-center space-x-2 mb-6">
+          <BookOpen className="h-8 w-8 text-blue-500" />
+          <span className="text-2xl font-bold text-white tracking-tight">
+            AIELTS
+          </span>
         </div>
-        <p className="text-slate-400 mb-4">
-          AI cũng học được - Chinh phục IELTS cùng công nghệ AI
+
+        <p className="text-slate-400 mb-8 max-w-md mx-auto leading-relaxed">
+          Nền tảng luyện thi IELTS thông minh, giúp bạn bứt phá giới hạn và chạm
+          tới ước mơ du học.
         </p>
-        <div className="text-slate-500 text-sm">
-          © 2024 AIELTS. Tất cả các quyền được bảo lưu.
+
+        <div className="flex space-x-6 mb-8">
+          {/* Social placeholders */}
+          {["Facebook", "Twitter", "Instagram", "LinkedIn"].map((social) => (
+            <a
+              key={social}
+              href="#"
+              className="text-slate-500 hover:text-blue-400 transition-colors"
+            >
+              {social}
+            </a>
+          ))}
+        </div>
+
+        <div className="w-full h-px bg-slate-800/50 mb-8"></div>
+
+        <div className="text-slate-600 text-sm">
+          © {new Date().getFullYear()} AIELTS. Kiến tạo tương lai cùng AI.
         </div>
       </div>
     </footer>
