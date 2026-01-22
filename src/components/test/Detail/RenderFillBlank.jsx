@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, XCircle } from "lucide-react";
-import { Tooltip } from "antd"; // Dùng Tooltip của Antd cho đẹp và không bị lỗi layout
+import { Tooltip } from "antd";
 
 // --- 1. SUB-COMPONENT: Inline Input ---
 const InlineInput = ({
@@ -10,6 +10,7 @@ const InlineInput = ({
   onAnswerChange,
   isReviewMode,
   boxOptions = [],
+  answerKeyData = {}, // NEW: Injected answer key for review mode
 }) => {
   const userValue =
     typeof userAnswerData === "object" ? userAnswerData?.value : userAnswerData;
@@ -35,25 +36,24 @@ const InlineInput = ({
   let isCorrect = false;
 
   if (isReviewMode) {
-    // Nếu server đã chấm (có resultIsCorrect) thì dùng luôn
+    // Use server-graded result
     isCorrect = serverIsCorrect;
 
-    // Lấy text đáp án đúng để hiển thị
-    if (isBoxMode) {
-      // Dạng Box: Lấy Key đúng (A, B...)
-      const correctOpt = question.answers?.find(
-        (a) => a.matching_value === "CORRECT"
-      );
-      correctAnswerDisplay = correctOpt?.matching_key || "N/A";
-    } else {
-      // Dạng điền từ: Lấy text đáp án đầu tiên trong list correct_answers
-      const correctObj = question.correct_answers?.[0];
-      correctAnswerDisplay =
-        correctObj?.answer_text || correctObj?.matching_key || "N/A";
+    // Get correct answer display from answerKeyData (injected in review mode)
+    const keyData = answerKeyData[question.question_id];
 
-      // Fallback: Nếu không có correct_answers riêng, lấy answer đầu tiên trong list answers
-      if (correctAnswerDisplay === "N/A" && question.answers?.length > 0) {
-        correctAnswerDisplay = question.answers[0].answer_text;
+    if (isBoxMode) {
+      // Box mode: Show correct key(s)
+      const correctKeys = keyData?.correctKeys || [];
+      correctAnswerDisplay = correctKeys.length > 0 ? correctKeys.join(" / ") : "N/A";
+    } else {
+      // Text input mode: Show ALL accepted answers joined with ' / '
+      const acceptedAnswers = keyData?.acceptedAnswers || [];
+      if (acceptedAnswers.length > 0) {
+        correctAnswerDisplay = acceptedAnswers.join(" / ");
+      } else {
+        // Fallback if answerKeyData not available
+        correctAnswerDisplay = question.answers?.[0]?.answer_text || "N/A";
       }
     }
   }
@@ -138,6 +138,7 @@ const SentenceItem = ({
   userAnswerData,
   onAnswerChange,
   isReviewMode,
+  answerKeyData = {}, // NEW: Injected answer key for review mode
 }) => {
   const userValue =
     typeof userAnswerData === "object" ? userAnswerData?.value : userAnswerData;
@@ -149,20 +150,22 @@ const SentenceItem = ({
   const handleChange = (e) =>
     onAnswerChange(question.question_id, e.target.value);
 
-  const correctAnswerText =
-    question.correct_answers?.[0]?.answer_text ||
-    question.answers?.[0]?.answer_text;
+  // Get ALL accepted answers from answerKeyData (joined with ' / ')
+  const keyData = answerKeyData[question.question_id];
+  const acceptedAnswers = keyData?.acceptedAnswers || [];
+  const correctAnswerText = acceptedAnswers.length > 0
+    ? acceptedAnswers.join(" / ")
+    : question.answers?.[0]?.answer_text || "N/A";
   const isCorrect = isReviewMode ? serverIsCorrect : false;
 
   return (
     <div
-      className={`mb-4 p-4 border rounded-xl transition-all ${
-        isReviewMode
-          ? isCorrect
-            ? "bg-green-50/50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-            : "bg-red-50/50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-          : "bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
-      }`}
+      className={`mb-4 p-4 border rounded-xl transition-all ${isReviewMode
+        ? isCorrect
+          ? "bg-green-50/50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+          : "bg-red-50/50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+        : "bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
+        }`}
     >
       <div className="flex justify-between items-start mb-3">
         <div className="flex gap-4 w-full">
@@ -210,6 +213,7 @@ const HtmlTableParser = ({
   onAnswerChange,
   isReviewMode,
   boxOptions,
+  answerKeyData = {}, // NEW: Injected answer key for review mode
 }) => {
   const getQuestionByNumber = (num) =>
     questions.find((q) => q.question_number === parseInt(num));
@@ -235,6 +239,7 @@ const HtmlTableParser = ({
                 onAnswerChange={onAnswerChange}
                 isReviewMode={isReviewMode}
                 boxOptions={boxOptions}
+                answerKeyData={answerKeyData}
               />
             );
           }
@@ -294,6 +299,7 @@ const RenderFillBlank = ({
   userAnswers = {},
   onAnswerChange,
   isReviewMode,
+  answerKeyData = {}, // NEW: Injected answer key for review mode
 }) => {
   const getUserData = (qId) => userAnswers[qId] || "";
 
@@ -365,6 +371,7 @@ const RenderFillBlank = ({
             onAnswerChange={onAnswerChange}
             isReviewMode={isReviewMode}
             boxOptions={boxOptions}
+            answerKeyData={answerKeyData}
           />
         </div>
       </div>
@@ -380,6 +387,7 @@ const RenderFillBlank = ({
           userAnswerData={getUserData(q.question_id)}
           onAnswerChange={onAnswerChange}
           isReviewMode={isReviewMode}
+          answerKeyData={answerKeyData}
         />
       ))}
     </div>

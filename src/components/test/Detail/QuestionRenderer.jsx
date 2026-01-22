@@ -7,14 +7,26 @@ import RenderYesNoNotGiven from "./RenderYesNoNotGiven";
 import RenderShortAnswer from "./RenderShortAnswer";
 import RenderLabeling from "./RenderLabeling";
 
+/**
+ * QuestionRenderer - Orchestrates rendering of different question types
+ *
+ * @param {Object} props
+ * @param {Object} props.group - Question group data
+ * @param {Function} props.onAnswerChange - Callback when answer changes
+ * @param {Object} props.userAnswers - Map of questionId -> user answer data
+ * @param {boolean} props.isReviewMode - Whether in review mode (shows correct/incorrect)
+ * @param {boolean} props.isMultiple - Whether MCQ allows multiple selections
+ * @param {Object} props.answerKeyData - Map of questionId -> { correctKeys, acceptedAnswers } (Review mode only)
+ */
 const QuestionRenderer = ({
   group,
   onAnswerChange,
   userAnswers = {},
   isReviewMode = false,
   isMultiple = false,
+  answerKeyData = {}, // NEW: Injected answer key data for review mode
 }) => {
-  // Helper lấy data cho Single Question
+  // Helper: Get user data for a single question
   const getUserData = (qId) => {
     const data = userAnswers[qId];
     if (!data) return { value: "", resultIsCorrect: false };
@@ -28,7 +40,7 @@ const QuestionRenderer = ({
     return { value: data, resultIsCorrect: false };
   };
 
-  // Helper lấy data cho Merged Question: Gom tất cả value từ các câu con
+  // Helper: Get merged user values for grouped questions
   const getMergedUserValues = (subQuestions) => {
     const values = [];
     subQuestions.forEach((subQ) => {
@@ -37,70 +49,71 @@ const QuestionRenderer = ({
         values.push(data.value);
       }
     });
-    return values; // VD: ["A", "C"]
+    return values;
+  };
+
+  // Helper: Get correct keys from answerKeyData (Review mode only)
+  const getCorrectKeysForQuestion = (questionId) => {
+    if (!isReviewMode || !answerKeyData[questionId]) return [];
+    return answerKeyData[questionId].correctKeys || [];
+  };
+
+  // Helper: Get all correct keys for a group of questions (Merged MCQ)
+  const getAllCorrectKeysForGroup = (questions) => {
+    if (!isReviewMode) return [];
+    const allKeys = [];
+    questions.forEach((q) => {
+      const keys = getCorrectKeysForQuestion(q.question_id);
+      allKeys.push(...keys);
+    });
+    return allKeys;
   };
 
   const commonProps = {
     onAnswerChange,
     isReviewMode,
+    answerKeyData, // Pass down to child components
   };
 
-  // --- [QUAN TRỌNG] LOGIC GỘP CÂU HỎI (MULTIPLE CHOICE) ---
-  // Nếu là MCQ và cờ isMultiple bật -> Render 1 component duy nhất
+  // --- [MERGED MCQ] Logic for grouped multiple choice ---
   if (group.type_question === "MCQ" && isMultiple) {
     const firstQ = group.questions[0];
     const lastQ = group.questions[group.questions.length - 1];
 
-    // Tạo object câu hỏi ảo đại diện cho cả nhóm
+    // Create virtual merged question
     const mergedQuestion = {
       ...firstQ,
-      question_id: `merged_${firstQ.question_id}`, // ID ảo
-      question_number: `${firstQ.question_number} - ${lastQ.question_number}`, // VD: 17 - 18
-      quantity: group.questions.length, // Số lượng câu hỏi (2 câu)
+      question_id: `merged_${firstQ.question_id}`,
+      question_number: `${firstQ.question_number} - ${lastQ.question_number}`,
+      quantity: group.questions.length,
     };
 
-    // Lấy đáp án hiện tại user đã chọn cho các câu con
+    // Get current user selections
     const currentValues = getMergedUserValues(group.questions);
 
-    // Tính toán đúng/sai cho nhóm gộp (Review mode)
-    // Tạm tính: Nếu tất cả câu con đều đúng -> Gộp đúng
+    // Calculate correctness for merged group (all sub-questions must be correct)
     const allCorrect = group.questions.every((q) => {
       const { resultIsCorrect } = getUserData(q.question_id);
       return resultIsCorrect;
     });
 
-    // --- [FIX] TỔNG HỢP TẤT CẢ KEY ĐÚNG TỪ CÁC CÂU HỎI CON ---
-    // Duyệt qua từng câu hỏi con, lấy TOÀN BỘ matching_key trong mảng correct_answers
-    const allCorrectKeys = group.questions.reduce((acc, q) => {
-      if (Array.isArray(q.correct_answers)) {
-        q.correct_answers.forEach((ans) => {
-          if (ans.matching_key) {
-            acc.push(ans.matching_key);
-          }
-        });
-      }
-      return acc;
-    }, []);
-    // ---------------------------------------------------------
+    // Get ALL correct keys from answerKeyData for the group (Review mode)
+    const allCorrectKeys = getAllCorrectKeysForGroup(group.questions);
 
     return (
       <RenderMCQ
         key={firstQ.question_id}
         question={mergedQuestion}
-        userAnswer={currentValues} // Truyền mảng ["A", "B"]
+        userAnswer={currentValues}
         isMultiple={true}
         resultIsCorrect={allCorrect}
         isReviewMode={isReviewMode}
-        correctKeysList={allCorrectKeys} // <--- TRUYỀN LIST KEY ĐÚNG ĐẦY ĐỦ
-        // --- LOGIC PHÂN PHỐI (REVERSE MAPPING) ---
+        correctKeysList={allCorrectKeys}
         onAnswerChange={(fakeId, newValuesArray) => {
-          // newValuesArray = ["B", "A"] -> Sort thành ["A", "B"] để điền tuần tự
+          // Sort values and assign sequentially to sub-questions
           const sortedValues = [...newValuesArray].sort();
-
           group.questions.forEach((subQ, idx) => {
-            const val = sortedValues[idx] || null; // null nếu user bỏ chọn bớt
-            // Gọi hàm update gốc cho từng ID câu hỏi thật
-            // VD: Câu 17 nhận 'A', Câu 18 nhận 'B'
+            const val = sortedValues[idx] || null;
             onAnswerChange(subQ.question_id, val, null);
           });
         }}
@@ -108,16 +121,13 @@ const QuestionRenderer = ({
     );
   }
 
-  // --- SWITCH CASE CÁC DẠNG CÂU HỎI KHÁC ---
+  // --- SWITCH CASE for different question types ---
   switch (group.type_question) {
     case "MCQ":
       return group.questions.map((q) => {
         const { value, resultIsCorrect } = getUserData(q.question_id);
-
-        // Với Single MCQ, lấy tất cả key đúng (thường chỉ có 1, nhưng cứ map cho chắc)
-        const singleCorrectKeys = (q.correct_answers || []).map(
-          (a) => a.matching_key
-        );
+        // Get correct keys from answerKeyData instead of question.correct_answers
+        const correctKeys = getCorrectKeysForQuestion(q.question_id);
 
         return (
           <RenderMCQ
@@ -125,8 +135,8 @@ const QuestionRenderer = ({
             question={q}
             userAnswer={value}
             resultIsCorrect={resultIsCorrect}
-            isMultiple={false} // Force false cho single MCQ
-            correctKeysList={singleCorrectKeys} // <--- TRUYỀN LIST KEY ĐÚNG
+            isMultiple={false}
+            correctKeysList={correctKeys}
             {...commonProps}
           />
         );
@@ -140,6 +150,7 @@ const QuestionRenderer = ({
           {...commonProps}
         />
       );
+
     case "MATCHING":
       return (
         <RenderMatching
@@ -148,32 +159,39 @@ const QuestionRenderer = ({
           {...commonProps}
         />
       );
+
     case "TFNG":
       return group.questions.map((q) => {
         const { value, resultIsCorrect } = getUserData(q.question_id);
+        const correctKeys = getCorrectKeysForQuestion(q.question_id);
         return (
           <RenderTFNG
             key={q.question_id}
             question={q}
             userAnswer={value}
             resultIsCorrect={resultIsCorrect}
+            correctKeysList={correctKeys}
             {...commonProps}
           />
         );
       });
+
     case "YES_NO_NOTGIVEN":
       return group.questions.map((q) => {
         const { value, resultIsCorrect } = getUserData(q.question_id);
+        const correctKeys = getCorrectKeysForQuestion(q.question_id);
         return (
           <RenderYesNoNotGiven
             key={q.question_id}
             question={q}
             userAnswer={value}
             resultIsCorrect={resultIsCorrect}
+            correctKeysList={correctKeys}
             {...commonProps}
           />
         );
       });
+
     case "SHORT_ANSWER":
       return group.questions.map((q) => {
         const { value, resultIsCorrect } = getUserData(q.question_id);
@@ -187,14 +205,16 @@ const QuestionRenderer = ({
           />
         );
       });
+
     case "LABELING":
       return (
         <RenderLabeling
-          group={group} // Truyền nguyên group để render Map + Options
+          group={group}
           userAnswers={userAnswers}
           {...commonProps}
         />
       );
+
     default:
       return (
         <div className="text-red-500">Unknown type: {group.type_question}</div>
@@ -203,3 +223,4 @@ const QuestionRenderer = ({
 };
 
 export default QuestionRenderer;
+

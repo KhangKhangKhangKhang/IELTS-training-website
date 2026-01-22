@@ -23,6 +23,7 @@ import {
   getAnswersByIdQuestionAPI,
 } from "@/services/apiTest";
 import { useAuth } from "@/context/authContext";
+import { buildAnswerKeyData } from "@/utils/testHelpers"; // NEW: Import helper
 
 const TYPE_MAPPING = {
   YES_NO_NOTGIVEN: "YES_NO_NOTGIVEN",
@@ -92,6 +93,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const [timeLeft, setTimeLeft] = useState((duration || 60) * 60);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
+  const [answerKeyData, setAnswerKeyData] = useState({}); // NEW: Answer key for review mode
 
   // Navigation state
   const questionRefs = useRef({});
@@ -155,6 +157,9 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
             setBandScore(res.data.band_score);
             setTest(res.data.test);
             setInProgress(false);
+            // NEW: Build answer key data for review mode
+            const keyData = buildAnswerKeyData(res.data);
+            setAnswerKeyData(keyData);
             if (res.data.test?.parts) {
               const initialCache = {};
               res.data.test.parts.forEach((p) => {
@@ -537,13 +542,12 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${
-                  timeLeft < 300
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${timeLeft < 300
                     ? "bg-red-600 text-white border-red-500 animate-pulse"
                     : timeLeft < 600
-                    ? "bg-orange-600 text-white border-orange-500"
-                    : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
-                }`}
+                      ? "bg-orange-600 text-white border-orange-500"
+                      : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
+                  }`}
               >
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
@@ -580,11 +584,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${
-                idx === activePartIndex
+              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${idx === activePartIndex
                   ? "bg-blue-600 text-white border-blue-500 scale-105"
                   : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
-              }`}
+                }`}
             >
               <div className="flex items-center gap-2">
                 <span
@@ -664,47 +667,41 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                 e.preventDefault();
                 setIsDragging(true);
               }}
-              className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${
-                isDragging
+              className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${isDragging
                   ? "bg-blue-100 dark:bg-blue-600/30"
                   : "hover:bg-slate-100 dark:hover:bg-slate-700"
-              }`}
+                }`}
             >
               <div className="flex flex-col gap-1">
                 <div
-                  className={`w-1 h-1 rounded-full transition-colors ${
-                    isDragging
+                  className={`w-1 h-1 rounded-full transition-colors ${isDragging
                       ? "bg-blue-600 dark:bg-blue-400"
                       : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
-                  }`}
+                    }`}
                 ></div>
                 <div
-                  className={`w-1 h-1 rounded-full transition-colors ${
-                    isDragging
+                  className={`w-1 h-1 rounded-full transition-colors ${isDragging
                       ? "bg-blue-600 dark:bg-blue-400"
                       : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
-                  }`}
+                    }`}
                 ></div>
                 <div
-                  className={`w-1 h-1 rounded-full transition-colors ${
-                    isDragging
+                  className={`w-1 h-1 rounded-full transition-colors ${isDragging
                       ? "bg-blue-600 dark:bg-blue-400"
                       : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
-                  }`}
+                    }`}
                 ></div>
                 <div
-                  className={`w-1 h-1 rounded-full transition-colors ${
-                    isDragging
+                  className={`w-1 h-1 rounded-full transition-colors ${isDragging
                       ? "bg-blue-600 dark:bg-blue-400"
                       : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
-                  }`}
+                    }`}
                 ></div>
                 <div
-                  className={`w-1 h-1 rounded-full transition-colors ${
-                    isDragging
+                  className={`w-1 h-1 rounded-full transition-colors ${isDragging
                       ? "bg-blue-600 dark:bg-blue-400"
                       : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
-                  }`}
+                    }`}
                 ></div>
               </div>
             </div>
@@ -715,11 +712,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
               style={{ width: `${100 - leftPanelWidth}%` }}
             >
               <div
-                className={`p-4 border-b border-slate-200 dark:border-slate-700 font-semibold sticky top-0 z-10 ${
-                  isReviewMode
+                className={`p-4 border-b border-slate-200 dark:border-slate-700 font-semibold sticky top-0 z-10 ${isReviewMode
                     ? "bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-400"
                     : "bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white"
-                }`}
+                  }`}
               >
                 <span>✍️ Questions</span>
               </div>
@@ -798,6 +794,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                           userAnswers={answers}
                           isReviewMode={isReviewMode}
                           isMultiple={isMultiple}
+                          answerKeyData={answerKeyData} // NEW: Pass answer key data
                         />
                       </div>
                     </div>

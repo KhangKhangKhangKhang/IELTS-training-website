@@ -23,6 +23,7 @@ import {
   getAnswersByIdQuestionAPI,
 } from "@/services/apiTest";
 import { useAuth } from "@/context/authContext";
+import { buildAnswerKeyData } from "@/utils/testHelpers"; // NEW: Import helper
 
 const TYPE_MAPPING = {
   YES_NO_NOTGIVEN: "YES_NO_NOTGIVEN",
@@ -98,7 +99,7 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
   const [bandScore, setBandScore] = useState(
     initialTestResult?.band_score || null
   );
-
+  const [answerKeyData, setAnswerKeyData] = useState({}); // NEW: Answer key for review mode
   // Timer & Submission
   const [timeLeft, setTimeLeft] = useState((duration || 40) * 60);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -162,6 +163,9 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
             setBandScore(res.data.band_score);
             setTest(res.data.test);
             setInProgress(false);
+            // NEW: Build answer key data for review mode
+            const keyData = buildAnswerKeyData(res.data);
+            setAnswerKeyData(keyData);
             if (res.data.test?.parts) {
               const initialCache = {};
               res.data.test.parts.forEach((p) => {
@@ -553,13 +557,12 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${
-                  timeLeft < 300
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${timeLeft < 300
                     ? "bg-red-600 text-white border-red-500 animate-pulse"
                     : timeLeft < 600
-                    ? "bg-orange-600 text-white border-orange-500"
-                    : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
-                }`}
+                      ? "bg-orange-600 text-white border-orange-500"
+                      : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
+                  }`}
               >
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
@@ -624,11 +627,10 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${
-                idx === activePartIndex
+              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${idx === activePartIndex
                   ? "bg-blue-600 text-white border-blue-500 scale-105"
                   : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
-              }`}
+                }`}
             >
               <div className="flex items-center gap-2">
                 <span
@@ -637,10 +639,10 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
                   {idx === 0
                     ? "🎧"
                     : idx === 1
-                    ? "🎵"
-                    : idx === 2
-                    ? "🎼"
-                    : "🎹"}
+                      ? "🎵"
+                      : idx === 2
+                        ? "🎼"
+                        : "🎹"}
                 </span>
                 <span>{p.namePart || `Part ${idx + 1}`}</span>
                 {idx === activePartIndex && (
@@ -697,7 +699,6 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
                         </div>
                       </div>
 
-                      {/* Questions Body */}
                       <div className="p-6">
                         <QuestionRenderer
                           group={mapGroup(group)}
@@ -708,6 +709,7 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
                           userAnswers={answers}
                           isReviewMode={isReviewMode}
                           isMultiple={isMultiple}
+                          answerKeyData={answerKeyData} // NEW: Pass answer key data
                         />
                       </div>
                     </div>
@@ -717,10 +719,10 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
 
               {(!renderPart.groupOfQuestions ||
                 renderPart.groupOfQuestions.length === 0) && (
-                <div className="text-center py-12 text-gray-400">
-                  Chưa có câu hỏi cho phần này.
-                </div>
-              )}
+                  <div className="text-center py-12 text-gray-400">
+                    Chưa có câu hỏi cho phần này.
+                  </div>
+                )}
             </div>
           )}
         </div>
