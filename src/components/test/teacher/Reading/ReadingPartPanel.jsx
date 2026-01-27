@@ -6,12 +6,11 @@ import {
   message,
   Tabs,
   Popconfirm,
-  Upload,
   Checkbox,
-  Input,
+  Spin,
+  Input
 } from "antd";
-import { DeleteOutlined, UploadOutlined } from "@ant-design/icons";
-import { Textarea } from "@/components/ui/textarea";
+import { DeleteOutlined } from "@ant-design/icons";
 import RichTextEditor from "@/components/ui/RichTextEditor";
 import {
   createPassageAPI,
@@ -38,7 +37,9 @@ const ReadingPartPanel = ({
   partDetail,
   onPartUpdate,
   questionNumberOffset = 0,
+  isLoading = false,
 }) => {
+  // State cho Passage
   const [passageData, setPassageData] = useState({
     content: "",
     title: "",
@@ -49,27 +50,36 @@ const ReadingPartPanel = ({
   const [existingPassage, setExistingPassage] = useState(null);
   const [savingPassage, setSavingPassage] = useState(false);
 
+  // State cho Group Questions
   const [groupType, setGroupType] = useState(null);
   const [groupTitle, setGroupTitle] = useState("");
   const [groupQuantity, setGroupQuantity] = useState(3);
-  const [groupImage, setGroupImage] = useState(null);
-  const [groupImagePreview, setGroupImagePreview] = useState(null);
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [isMultipleMCQ, setIsMultipleMCQ] = useState(false);
+  
+  // State cho Tabs
   const [activeTab, setActiveTab] = useState("passage");
 
+  // --- EFFECT: Xử lý dữ liệu khi partDetail thay đổi ---
   useEffect(() => {
-    if (partDetail?.passage) {
-      const passage = partDetail.passage;
-      setExistingPassage(passage);
+    if (!partDetail) return;
+
+    // Kiểm tra xem Part này đã có Passage chưa
+    if (partDetail.passage && partDetail.passage.idPassage) {
+      const p = partDetail.passage;
+      console.log("Đã tìm thấy Passage:", p); // Debug log
+
+      setExistingPassage(p);
       setPassageData({
-        content: passage.content || "",
-        title: passage.title || `Passage - ${part.namePart}`,
-        description: passage.description || "",
-        numberParagraph: passage.numberParagraph || 0,
-        image: passage.image || null,
+        content: p.content || "", // Đảm bảo không bị undefined
+        title: p.title || `Passage - ${part.namePart}`,
+        description: p.description || "",
+        numberParagraph: p.numberParagraph || 0,
+        image: p.image || null,
       });
     } else {
+      // Part này chưa có Passage -> Reset form
+      console.log("Part chưa có Passage, reset form");
       setExistingPassage(null);
       setPassageData({
         content: "",
@@ -81,6 +91,7 @@ const ReadingPartPanel = ({
     }
   }, [partDetail, part.namePart, part.idPart]);
 
+  // --- HANDLERS: Passage ---
   const handleSavePassage = async () => {
     try {
       setSavingPassage(true);
@@ -88,11 +99,8 @@ const ReadingPartPanel = ({
       formData.append("idPart", part.idPart);
       formData.append("title", passageData.title);
       formData.append("content", passageData.content);
-      formData.append("description", passageData.description);
-      formData.append(
-        "numberParagraph",
-        passageData.numberParagraph.toString()
-      );
+      formData.append("description", passageData.description || "");
+      formData.append("numberParagraph", passageData.numberParagraph.toString());
 
       if (passageData.image && typeof passageData.image !== "string") {
         formData.append("image", passageData.image);
@@ -105,6 +113,7 @@ const ReadingPartPanel = ({
         await createPassageAPI(formData);
         message.success("Tạo passage thành công");
       }
+      // Gọi callback để load lại dữ liệu mới nhất
       if (onPartUpdate) await onPartUpdate();
     } catch (err) {
       console.error(err);
@@ -114,6 +123,17 @@ const ReadingPartPanel = ({
     }
   };
 
+  const handleContentChange = (content) => {
+    let count = 0;
+    if (content && content.trim()) {
+      // Đếm số đoạn văn (đơn giản)
+      count = content.split("</p>").length - 1; 
+      if (count < 0) count = 0;
+    }
+    setPassageData((prev) => ({ ...prev, content, numberParagraph: count }));
+  };
+
+  // --- HANDLERS: Group Questions ---
   const handleCreateGroup = async () => {
     if (!groupType) return message.warning("Chọn loại câu hỏi trước");
     if (!groupTitle.trim()) return message.warning("Nhập tiêu đề nhóm câu hỏi");
@@ -123,10 +143,7 @@ const ReadingPartPanel = ({
       let finalTitle = groupTitle;
       if (groupType === "MCQ") {
         const prefix = isMultipleMCQ ? "Multiple ||| " : "Single ||| ";
-        if (
-          !groupTitle.startsWith("Multiple |||") &&
-          !groupTitle.startsWith("Single |||")
-        ) {
+        if (!groupTitle.startsWith("Multiple |||") && !groupTitle.startsWith("Single |||")) {
           finalTitle = prefix + groupTitle;
         }
       }
@@ -139,38 +156,23 @@ const ReadingPartPanel = ({
         quantity: groupQuantity,
       };
 
-      if (groupImage) {
-        payload.avatar = groupImage;
-      }
-
       await createGroupOfQuestionsAPI(payload);
       message.success("Tạo nhóm câu hỏi thành công");
-
+      
+      // Reset form
       setGroupType(null);
       setGroupTitle("");
       setGroupQuantity(3);
-      setGroupImage(null);
-      setGroupImagePreview(null);
       setIsMultipleMCQ(false);
+      
       if (onPartUpdate) await onPartUpdate();
-      setActiveTab("questions");
+      setActiveTab("questions"); // Chuyển sang tab câu hỏi
     } catch (err) {
       console.error(err);
       message.error("Tạo nhóm thất bại");
     } finally {
       setCreatingGroup(false);
     }
-  };
-
-  const handleGroupImageChange = (file) => {
-    setGroupImage(file);
-    setGroupImagePreview(URL.createObjectURL(file));
-    return false;
-  };
-
-  const handleRemoveGroupImage = () => {
-    setGroupImage(null);
-    setGroupImagePreview(null);
   };
 
   const handleDeleteGroup = async (idGroupOfQuestions) => {
@@ -184,61 +186,155 @@ const ReadingPartPanel = ({
     }
   };
 
-  const handleContentChange = (content) => {
-    let count = 0;
-    if (content.trim()) {
-      count = content.split("\n").filter((p) => p.trim() !== "").length;
-    }
-    setPassageData((prev) => ({
-      ...prev,
-      content,
-      numberParagraph: count,
-    }));
-  };
+  // Nếu đang loading từ cha truyền vào
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Spin size="large" tip="Đang tải dữ liệu..." />
+      </div>
+    );
+  }
 
-  let runningOffset = questionNumberOffset;
+  // Render nội dung Tab Câu Hỏi
+  const renderQuestionsTab = () => {
+    const groups = partDetail?.groupOfQuestions || [];
+    let runningOffset = questionNumberOffset;
+
+    return (
+      <div className="space-y-6">
+        {/* Form tạo nhóm mới */}
+        <div className="border rounded-lg p-4 bg-white shadow-sm">
+          <h3 className="text-lg font-medium mb-4">Tạo nhóm câu hỏi mới</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Tiêu đề nhóm (VD: Questions 1-5)</label>
+              <RichTextEditor
+                key={`create-group-${part.idPart}`} // Reset editor khi đổi part
+                value={groupTitle}
+                onChange={setGroupTitle}
+                placeholder="Nhập hướng dẫn làm bài..."
+                minHeight="100px"
+              />
+            </div>
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-1">Loại câu hỏi</label>
+                <Select
+                  placeholder="Chọn loại câu hỏi"
+                  value={groupType}
+                  onChange={(val) => {
+                    setGroupType(val);
+                    if (val !== "MCQ") setIsMultipleMCQ(false);
+                  }}
+                  options={loaiCauHoiOptions}
+                  className="w-full"
+                />
+                {groupType === "MCQ" && (
+                  <div className="mt-2">
+                    <Checkbox checked={isMultipleMCQ} onChange={(e) => setIsMultipleMCQ(e.target.checked)}>
+                      <span className="text-blue-700">Cho phép chọn nhiều đáp án (Multiple Choice)</span>
+                    </Checkbox>
+                  </div>
+                )}
+              </div>
+              <div className="w-24">
+                <label className="block text-sm font-medium mb-1">Số câu</label>
+                <InputNumber min={1} max={50} value={groupQuantity} onChange={setGroupQuantity} className="w-full" />
+              </div>
+              <Button type="primary" onClick={handleCreateGroup} loading={creatingGroup}>
+                Thêm nhóm
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Danh sách nhóm đã tạo */}
+        {groups.length > 0 ? (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Danh sách câu hỏi</h3>
+            {groups.map((nhom) => {
+              const currentGroupStart = runningOffset;
+              runningOffset += nhom.quantity;
+              
+              let displayTitle = nhom.title;
+              if (displayTitle.startsWith("Multiple ||| ")) displayTitle = displayTitle.replace("Multiple ||| ", "");
+              else if (displayTitle.startsWith("Single ||| ")) displayTitle = displayTitle.replace("Single ||| ", "");
+
+              return (
+                <div key={nhom.idGroupOfQuestions} className="border rounded-lg p-4 bg-white shadow-sm">
+                  <div className="flex justify-between items-start mb-3 border-b pb-2">
+                    <div>
+                      <div className="font-medium text-blue-800 prose prose-sm max-w-none mb-1"
+                           dangerouslySetInnerHTML={{ __html: displayTitle }} />
+                      <div className="text-xs text-gray-500 bg-gray-100 inline-block px-2 py-1 rounded">
+                        Loại: {nhom.typeQuestion} • Số lượng: {nhom.quantity} câu
+                      </div>
+                    </div>
+                    <Popconfirm title="Bạn có chắc muốn xóa nhóm này?" onConfirm={() => handleDeleteGroup(nhom.idGroupOfQuestions)}>
+                      <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  </div>
+                  
+                  {/* Render chi tiết từng câu hỏi */}
+                  <QuestionTypeRenderer
+                    type={nhom.typeQuestion}
+                    idGroup={nhom.idGroupOfQuestions}
+                    groupData={nhom}
+                    questionNumberOffset={currentGroupStart}
+                    onRefresh={onPartUpdate}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center text-gray-400 py-8 bg-gray-50 rounded border border-dashed">
+            Chưa có câu hỏi nào trong Part này.
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const items = [
     {
       key: "passage",
-      label: "Passage",
+      label: "Nội dung bài đọc (Passage)",
       children: (
         <div className="border rounded-lg p-4 bg-white shadow-sm">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-medium">Passage - {part.namePart}</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium text-gray-700">Soạn thảo bài đọc</h3>
             {existingPassage && (
-              <span className="text-sm text-green-600">✓ Đã có passage</span>
+              <span className="bg-green-100 text-green-700 px-3 py-1 rounded text-sm font-medium">
+                ✓ Đã lưu dữ liệu
+              </span>
             )}
           </div>
-          <div className="mb-3">
-            <label className="block text-sm font-medium mb-1">Tiêu đề</label>
-            <input
-              type="text"
-              className="w-full p-2 border rounded"
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1 text-gray-600">Tiêu đề bài đọc</label>
+            <Input
               value={passageData.title}
-              onChange={(e) =>
-                setPassageData((prev) => ({ ...prev, title: e.target.value }))
-              }
-              placeholder="Nhập tiêu đề passage..."
+              onChange={(e) => setPassageData((prev) => ({ ...prev, title: e.target.value }))}
+              placeholder="Ví dụ: The History of Tea..."
             />
           </div>
-          <RichTextEditor
-            value={passageData.content}
-            onChange={(html) => handleContentChange(html)}
-            placeholder="Nhập nội dung passage (có thể định dạng text)..."
-            minHeight="256px"
-          />
-          <div className="flex gap-3 mt-3">
-            <Button
-              type="primary"
-              onClick={handleSavePassage}
-              loading={savingPassage}
-              disabled={!passageData.content.trim()}
-            >
-              {existingPassage ? "Cập nhật passage" : "Lưu passage"}
-            </Button>
-            <Button onClick={() => handleContentChange("")}>
-              Xóa nội dung
+
+          <div className="mb-4">
+             <label className="block text-sm font-medium mb-1 text-gray-600">Nội dung chi tiết</label>
+             {/* QUAN TRỌNG: Thêm key để force re-render khi idPassage thay đổi */}
+             <RichTextEditor
+               key={existingPassage?.idPassage || `new-passage-${part.idPart}`} 
+               value={passageData.content}
+               onChange={handleContentChange}
+               placeholder="Nhập nội dung bài đọc ở đây..."
+               minHeight="450px"
+             />
+          </div>
+
+          <div className="flex gap-3 pt-2 border-t">
+            <Button type="primary" onClick={handleSavePassage} loading={savingPassage} className="min-w-[120px]">
+              {existingPassage ? "Cập nhật bài đọc" : "Lưu bài đọc mới"}
             </Button>
           </div>
         </div>
@@ -246,149 +342,12 @@ const ReadingPartPanel = ({
     },
     {
       key: "questions",
-      label: "Câu hỏi",
-      children: (
-        <div className="space-y-6">
-          <div className="border rounded-lg p-4 bg-white shadow-sm">
-            <h3 className="text-lg font-medium mb-4">Tạo nhóm câu hỏi mới</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Tiêu đề nhóm
-                </label>
-                <RichTextEditor
-                  value={groupTitle}
-                  onChange={(html) => setGroupTitle(html)}
-                  placeholder="Questions 1-5... (Có thể định dạng text)"
-                  minHeight="120px"
-                />
-              </div>
-              <div className="flex items-end gap-3">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-1">
-                    Loại câu hỏi
-                  </label>
-                  <Select
-                    placeholder="Chọn loại câu hỏi"
-                    value={groupType}
-                    onChange={(val) => {
-                      setGroupType(val);
-                      if (val !== "MCQ") setIsMultipleMCQ(false);
-                    }}
-                    options={loaiCauHoiOptions}
-                    className="w-full"
-                  />
-                  {groupType === "MCQ" && (
-                    <div className="mt-2 bg-blue-50 p-2 rounded border border-blue-100">
-                      <Checkbox
-                        checked={isMultipleMCQ}
-                        onChange={(e) => setIsMultipleMCQ(e.target.checked)}
-                      >
-                        <span className="text-blue-800 font-medium">
-                          Cho phép chọn nhiều đáp án (Multiple Choice)
-                        </span>
-                      </Checkbox>
-                    </div>
-                  )}
-                </div>
-                <div className="w-24">
-                  <label className="block text-sm font-medium mb-1">
-                    Số lượng
-                  </label>
-                  <InputNumber
-                    min={1}
-                    max={100}
-                    value={groupQuantity}
-                    onChange={setGroupQuantity}
-                    className="w-full"
-                  />
-                </div>
-                <Button
-                  type="primary"
-                  onClick={handleCreateGroup}
-                  loading={creatingGroup}
-                >
-                  Tạo nhóm
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {partDetail?.groupOfQuestions &&
-            partDetail.groupOfQuestions.length > 0 ? (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Các nhóm câu hỏi đã tạo</h3>
-              {partDetail.groupOfQuestions.map((nhom) => {
-                const currentGroupStart = runningOffset;
-                runningOffset += nhom.quantity;
-                let displayTitle = nhom.title;
-                if (displayTitle.startsWith("Multiple ||| ")) {
-                  displayTitle = displayTitle.replace("Multiple ||| ", "");
-                } else if (displayTitle.startsWith("Single ||| ")) {
-                  displayTitle = displayTitle.replace("Single ||| ", "");
-                }
-
-                return (
-                  <div
-                    key={nhom.idGroupOfQuestions}
-                    className="border rounded-lg p-4 bg-white shadow-sm"
-                  >
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex flex-col">
-                        <h4
-                          className="font-medium text-blue-600 prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: displayTitle }}
-                        />
-                        {nhom.typeQuestion === "MCQ" && (
-                          <span className="text-xs text-gray-500 mt-1">
-                            {nhom.title.startsWith("Multiple")
-                              ? "(Dạng: Chọn nhiều đáp án - Gộp câu)"
-                              : "(Dạng: Chọn 1 đáp án)"}
-                          </span>
-                        )}
-                      </div>
-                      <Popconfirm
-                        title="Xóa nhóm câu hỏi"
-                        onConfirm={() =>
-                          handleDeleteGroup(nhom.idGroupOfQuestions)
-                        }
-                        okText="Xóa"
-                        cancelText="Hủy"
-                      >
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<DeleteOutlined />}
-                        />
-                      </Popconfirm>
-                    </div>
-                    <QuestionTypeRenderer
-                      type={nhom.typeQuestion}
-                      idGroup={nhom.idGroupOfQuestions}
-                      groupData={nhom}
-                      questionNumberOffset={currentGroupStart}
-                      onRefresh={onPartUpdate}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center text-gray-500 py-8 border rounded-lg bg-gray-50">
-              Chưa có nhóm câu hỏi nào.
-            </div>
-          )}
-        </div>
-      ),
+      label: "Quản lý câu hỏi",
+      children: renderQuestionsTab(),
     },
   ];
 
-  return (
-    <div>
-      <Tabs activeKey={activeTab} onChange={setActiveTab} items={items} />
-    </div>
-  );
+  return <Tabs activeKey={activeTab} onChange={setActiveTab} items={items} className="w-full" destroyInactiveTabPane={true} />;
 };
 
 export default ReadingPartPanel;

@@ -28,7 +28,7 @@ const StartingPage = lazy(() => import("./Pages/StartingPage"));
 const TestManager = lazy(() => import("./Pages/teacher/test/testManager"));
 const TestCreate = lazy(() => import("./Pages/teacher/test/testCreate"));
 const TestEdit = lazy(() => import("./Pages/teacher/test/testEdit"));
-const Grammar = lazy(() => import("./Pages/client/grammar/grammar"));
+const Grammar = lazy(() => import("./Pages/client/grammar"));
 
 // Loading fallback component
 const LoadingFallback = () => (

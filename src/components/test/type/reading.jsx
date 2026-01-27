@@ -235,7 +235,6 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
     loadPartDetail();
   }, [test, activePartIndex, loadedParts]);
 
-  // Flatten all questions from all parts for navigation
   const allQuestions = useMemo(() => {
     const flattened = [];
     if (!test || !test.parts) return flattened;

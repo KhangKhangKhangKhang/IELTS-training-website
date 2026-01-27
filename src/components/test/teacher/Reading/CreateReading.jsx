@@ -18,8 +18,8 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
   const [partDetailsMap, setPartDetailsMap] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [creatingPart, setCreatingPart] = useState(false);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false); // Thêm state loading riêng cho detail
 
-  // Lấy danh sách part ban đầu
   useEffect(() => {
     if (!idTest) {
       setIsLoading(false);
@@ -35,11 +35,11 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
       const parts = res?.data || [];
       setAllParts(parts);
 
-      // Pre-load chi tiết để tính toán số câu hỏi chính xác
+      // Pre-load chi tiết (nếu cần tính offset)
       await fetchAllDetails(parts);
 
-      // Nếu chưa chọn part nào, chọn cái đầu tiên
       if (parts.length > 0 && !selectedPart) {
+        // Chọn part đầu tiên nhưng gọi hàm chuẩn để load detail
         handleSelectPart(parts[0]);
       }
     } catch (err) {
@@ -50,7 +50,6 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
     }
   };
 
-  // Hàm tải chi tiết cho tất cả parts (để tính offset chính xác)
   const fetchAllDetails = async (parts) => {
     const details = await Promise.all(
       parts.map(async (p) => {
@@ -69,47 +68,47 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
     setPartDetailsMap(map);
   };
 
-  // Xử lý chọn part - forceUpdate = true sẽ bỏ qua cache và gọi API
   const handleSelectPart = async (part, forceUpdate = false) => {
     try {
       setSelectedPart(part);
-
-      // Nếu có cache và không bắt buộc update thì dùng cache cho nhanh
+      
+      // QUAN TRỌNG: Reset detail về null ngay lập tức để UI không hiện dữ liệu cũ
+      // Nếu có cache và không forceUpdate thì set luôn, ngược lại thì null để hiện loading
       if (!forceUpdate && partDetailsMap[part.idPart]) {
         setSelectedPartDetail(partDetailsMap[part.idPart]);
-        return;
+        return; 
+      } else {
+        setSelectedPartDetail(null); 
+        setIsLoadingDetail(true);
       }
 
-      // Gọi API lấy chi tiết part mới nhất
       const resDetail = await getPartByIdAPI(part.idPart);
+      // API trả về data là mảng 1 phần tử, ta lấy phần tử đầu tiên
       const partDetail = resDetail?.data?.[0];
 
-      // Cập nhật State và Map
       setSelectedPartDetail(partDetail);
       setPartDetailsMap((prev) => ({ ...prev, [part.idPart]: partDetail }));
     } catch (err) {
       console.error("Lỗi khi lấy chi tiết part:", err);
-      // message.error("Không thể tải chi tiết part");
+    } finally {
+      setIsLoadingDetail(false);
     }
   };
 
-  // Hàm này được truyền xuống con để gọi khi con thay đổi dữ liệu (thêm/xóa group)
   const refreshCurrentPartData = async () => {
     if (selectedPart) {
-      // 1. Refresh chi tiết part hiện tại (để hiện group mới/xóa group cũ)
       await handleSelectPart(selectedPart, true);
-
-      // 2. Refresh lại toàn bộ map (để tính lại offset cho các part sau nếu cần)
-      // (Optional: Nếu app quá lag thì có thể tối ưu đoạn này, nhưng nên gọi để đảm bảo số câu đúng)
+      // Update lại danh sách tổng để đảm bảo đồng bộ
       const res = await getAllPartByIdAPI(idTest);
       if (res?.data) {
         setAllParts(res.data);
-        await fetchAllDetails(res.data);
+        // Không cần await fetchAllDetails ở đây nếu thấy chậm, 
+        // chỉ cần update cái map của part hiện tại là đủ cho offset kế tiếp
+        await fetchAllDetails(res.data); 
       }
     }
   };
 
-  // Tạo part
   const handleCreatePart = async () => {
     try {
       setCreatingPart(true);
@@ -119,17 +118,14 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
       };
       const res = await createPartAPI(payload);
       const newPart = res?.data;
-      if (!newPart?.idPart) throw new Error("API không trả về idPart");
+      if (!newPart?.idPart) throw new Error("API lỗi");
 
       const newPartsList = [...allParts, newPart];
       setAllParts(newPartsList);
-
-      // Chọn ngay part mới tạo và force fetch
       await handleSelectPart(newPart, true);
       message.success("Tạo part thành công");
     } catch (err) {
       message.error("Tạo part thất bại");
-      console.error(err);
     } finally {
       setCreatingPart(false);
     }
@@ -138,20 +134,14 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
   const handleRenamePart = async (idPart, newName) => {
     try {
       await updatePartAPI(idPart, { idTest, namePart: newName });
-
-      // Cập nhật UI local ngay lập tức
       const updatedParts = allParts.map((p) =>
         p.idPart === idPart ? { ...p, namePart: newName } : p
       );
       setAllParts(updatedParts);
-
       if (selectedPart?.idPart === idPart) {
         setSelectedPart({ ...selectedPart, namePart: newName });
-        if (selectedPartDetail) {
-          setSelectedPartDetail({ ...selectedPartDetail, namePart: newName });
-        }
       }
-      message.success("Đã cập nhật tên part");
+      message.success("Đã cập nhật tên");
     } catch (err) {
       message.error("Sửa tên thất bại");
     }
@@ -162,8 +152,6 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
       await deletePartAPI(idPart);
       const updatedParts = allParts.filter((p) => p.idPart !== idPart);
       setAllParts(updatedParts);
-
-      // Xóa khỏi map
       const newMap = { ...partDetailsMap };
       delete newMap[idPart];
       setPartDetailsMap(newMap);
@@ -178,21 +166,14 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
     }
   };
 
-  // Tính toán questionOffset dựa trên Map đã được update
   const calculateOffset = () => {
     if (!allParts || allParts.length === 0 || !selectedPart) return 0;
-
     let offset = 0;
-    // Sort part theo thứ tự (giả sử id hoặc index, ở đây dùng thứ tự trong mảng allParts)
     for (const p of allParts) {
       if (p.idPart === selectedPart.idPart) break;
-
       const d = partDetailsMap[p.idPart];
-      if (d && d.groupOfQuestions && d.groupOfQuestions.length) {
-        offset += d.groupOfQuestions.reduce(
-          (sum, g) => sum + (g.quantity || 0),
-          0
-        );
+      if (d && d.groupOfQuestions) {
+        offset += d.groupOfQuestions.reduce((sum, g) => sum + (g.quantity || 0), 0);
       }
     }
     return offset;
@@ -208,7 +189,7 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
         <PartListSidebar
           parts={allParts}
           selectedPart={selectedPart}
-          onSelect={(p) => handleSelectPart(p, false)} // Click thường thì dùng cache nếu có
+          onSelect={(p) => handleSelectPart(p, false)}
           onCreate={handleCreatePart}
           onRename={handleRenamePart}
           onDelete={handleDeletePart}
@@ -223,11 +204,15 @@ const CreateReading = ({ idTest, exam, onExamUpdate }) => {
                 : "Chọn một Part để bắt đầu chỉnh sửa."}
             </div>
           ) : (
+            // QUAN TRỌNG: Thêm key={selectedPart.idPart}
+            // Việc này ép React phải hủy component cũ và tạo mới hoàn toàn
+            // -> State bên trong ReadingPartPanel sẽ được reset sạch sẽ
             <ReadingPartPanel
+              key={selectedPart.idPart} 
               idTest={idTest}
               part={selectedPart}
               partDetail={selectedPartDetail}
-              // QUAN TRỌNG: Truyền hàm refresh xuống
+              isLoading={isLoadingDetail} // Truyền thêm props loading
               onPartUpdate={refreshCurrentPartData}
               questionNumberOffset={calculateOffset()}
             />
