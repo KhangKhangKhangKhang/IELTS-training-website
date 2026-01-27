@@ -7,7 +7,7 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import QuestionRenderer from "../detail/QuestionRenderer";
+import QuestionRenderer from "../Detail/QuestionRenderer";
 import SimpleResultModal from "../SimpleResultModal";
 import TestNavigationPanel from "../TestNavigationPanel";
 import GradingAnimation from "../GradingAnimation";
