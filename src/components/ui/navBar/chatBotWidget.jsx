@@ -9,6 +9,8 @@ import {
   User,
   Loader2,
   ArrowLeftRight,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendChat, chatHistory, clearHistory } from "@/services/apiChatBot";
@@ -19,6 +21,7 @@ const ChatBotWidget = () => {
   const { user, accessToken } = useAuth();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const messagesEndRef = useRef(null);
 
   // --- LOGIC VỊ TRÍ (CHỈ TRÁI HOẶC PHẢI) ---
@@ -164,9 +167,8 @@ const ChatBotWidget = () => {
         dragElastic={0.2}
         onDragEnd={handleDragEnd}
         onClick={() => !loading && setIsOpen(!isOpen)}
-        className={`fixed bottom-6 ${
-          isRightSide ? "right-6" : "left-6"
-        } bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-2xl z-[9999] cursor-grab active:cursor-grabbing group`}
+        className={`fixed bottom-6 ${isRightSide ? "right-6" : "left-6"
+          } bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-2xl z-[9999] cursor-grab active:cursor-grabbing group`}
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0, y: isOpen ? 0 : [0, -5, 0] }}
         transition={{
@@ -204,23 +206,25 @@ const ChatBotWidget = () => {
             <motion.div
               initial={{
                 opacity: 0,
-                scale: 0.9,
-                y: 20,
-                x: isRightSide ? 20 : -20,
+                scale: isFullscreen ? 1 : 0.9,
+                y: isFullscreen ? 0 : 20,
+                x: isFullscreen ? 0 : (isRightSide ? 20 : -20),
               }}
               animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
               exit={{
                 opacity: 0,
-                scale: 0.9,
-                y: 20,
-                x: isRightSide ? 20 : -20,
+                scale: isFullscreen ? 1 : 0.9,
+                y: isFullscreen ? 0 : 20,
+                x: isFullscreen ? 0 : (isRightSide ? 20 : -20),
               }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className={`fixed bottom-24 ${
-                isRightSide
+              className={`fixed ${isFullscreen
+                ? "inset-4 sm:inset-8"
+                : `bottom-24 ${isRightSide
                   ? "right-4 sm:right-6 origin-bottom-right"
                   : "left-4 sm:left-6 origin-bottom-left"
-              } w-[90vw] sm:w-96 h-[500px] max-h-[80vh] bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden z-[9999]`}
+                } w-[90vw] sm:w-96 h-[500px] max-h-[80vh]`
+                } bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col overflow-hidden z-[9999]`}
             >
               {/* Header */}
               <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 shrink-0">
@@ -241,12 +245,21 @@ const ChatBotWidget = () => {
                   </div>
                   <div className="flex items-center space-x-1">
                     <button
-                      onClick={() => setIsRightSide(!isRightSide)}
-                      title="Đổi phía hiển thị"
+                      onClick={() => setIsFullscreen(!isFullscreen)}
+                      title={isFullscreen ? "Thu nhỏ" : "Phóng to"}
                       className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
                     >
-                      <ArrowLeftRight size={18} />
+                      {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                     </button>
+                    {!isFullscreen && (
+                      <button
+                        onClick={() => setIsRightSide(!isRightSide)}
+                        title="Đổi phía hiển thị"
+                        className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
+                      >
+                        <ArrowLeftRight size={18} />
+                      </button>
+                    )}
                     <button
                       onClick={handleClear}
                       title="Xoá lịch sử chat"
@@ -277,21 +290,18 @@ const ChatBotWidget = () => {
                     key={i}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`flex mb-4 ${
-                      msg.sender === "user" ? "justify-end" : "justify-start"
-                    }`}
+                    className={`flex mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"
+                      }`}
                   >
                     <div
-                      className={`flex max-w-[85%] ${
-                        msg.sender === "user" ? "flex-row-reverse" : "flex-row"
-                      }`}
+                      className={`flex max-w-[85%] ${msg.sender === "user" ? "flex-row-reverse" : "flex-row"
+                        }`}
                     >
                       <div
-                        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs ${
-                          msg.sender === "user"
-                            ? "bg-gray-600 ml-2"
-                            : "bg-gradient-to-br from-blue-500 to-purple-600 mr-2"
-                        }`}
+                        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs ${msg.sender === "user"
+                          ? "bg-gray-600 ml-2"
+                          : "bg-gradient-to-br from-blue-500 to-purple-600 mr-2"
+                          }`}
                       >
                         {msg.sender === "user" ? (
                           <User size={14} />
@@ -301,18 +311,16 @@ const ChatBotWidget = () => {
                       </div>
 
                       <div
-                        className={`p-3 text-sm shadow-sm overflow-hidden ${
-                          msg.sender === "user"
-                            ? "bg-blue-600 text-white rounded-2xl rounded-tr-none"
-                            : "bg-white text-gray-800 rounded-2xl rounded-tl-none border border-gray-100"
-                        }`}
+                        className={`p-3 text-sm shadow-sm overflow-hidden ${msg.sender === "user"
+                          ? "bg-blue-600 text-white rounded-2xl rounded-tr-none"
+                          : "bg-white text-gray-800 rounded-2xl rounded-tl-none border border-gray-100"
+                          }`}
                       >
                         {/* --- SỬA LỖI Ở ĐÂY --- */}
                         {/* Đưa className ra thẻ div bọc ngoài, không để trong ReactMarkdown */}
                         <div
-                          className={`prose prose-sm max-w-none break-words ${
-                            msg.sender === "user" ? "prose-invert" : ""
-                          }`}
+                          className={`prose prose-sm max-w-none break-words ${msg.sender === "user" ? "prose-invert" : ""
+                            }`}
                         >
                           <ReactMarkdown>{msg.text}</ReactMarkdown>
                         </div>

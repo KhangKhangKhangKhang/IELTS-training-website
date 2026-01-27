@@ -5,6 +5,8 @@ import {
   ClockCircleOutlined,
   CustomerServiceOutlined,
   EyeOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import QuestionRenderer from "../Detail/QuestionRenderer";
@@ -108,6 +110,10 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
   const [leftPanelWidth, setLeftPanelWidth] = useState(55);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
+
+  // Navigation panel state
+  const questionRefs = useRef({});
+  const [isNavCollapsed, setIsNavCollapsed] = useState(false);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -553,13 +559,12 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${
-                  timeLeft < 300
-                    ? "bg-red-600 text-white border-red-500 animate-pulse"
-                    : timeLeft < 600
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${timeLeft < 300
+                  ? "bg-red-600 text-white border-red-500 animate-pulse"
+                  : timeLeft < 600
                     ? "bg-orange-600 text-white border-orange-500"
                     : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
-                }`}
+                  }`}
               >
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
@@ -617,18 +622,17 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
       </div>
 
       {/* 3. MAIN CONTENT */}
-      <div className="pt-[140px] pb-20 px-4 md:px-8 max-w-5xl mx-auto w-full flex-1 flex flex-col">
+      <div className="pt-[140px] pb-20 px-4 md:px-8 w-full">
         {/* Tab Navigation */}
         <div className="flex gap-2 overflow-x-auto mb-6 pb-2 shrink-0 justify-center">
           {test.parts.map((p, idx) => (
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${
-                idx === activePartIndex
-                  ? "bg-blue-600 text-white border-blue-500 scale-105"
-                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
-              }`}
+              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${idx === activePartIndex
+                ? "bg-blue-600 text-white border-blue-500 scale-105"
+                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
             >
               <div className="flex items-center gap-2">
                 <span
@@ -637,10 +641,10 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
                   {idx === 0
                     ? "🎧"
                     : idx === 1
-                    ? "🎵"
-                    : idx === 2
-                    ? "🎼"
-                    : "🎹"}
+                      ? "🎵"
+                      : idx === 2
+                        ? "🎼"
+                        : "🎹"}
                 </span>
                 <span>{p.namePart || `Part ${idx + 1}`}</span>
                 {idx === activePartIndex && (
@@ -651,78 +655,151 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
           ))}
         </div>
 
-        {/* Part Content */}
-        <div className="relative min-h-[400px]">
-          {isPartLoading && !cachedPart && (
-            <div className="absolute inset-0 z-10 bg-slate-900/60 backdrop-blur-[1px] flex items-start justify-center pt-20">
-              <Spin size="large" tip="Đang tải câu hỏi..." />
+        {/* Main Content Area with Navigation Panel */}
+        <div className="max-w-7xl mx-auto flex relative gap-4">
+
+          {/* Toggle Button for Navigation Panel */}
+          <button
+            onClick={() => setIsNavCollapsed(!isNavCollapsed)}
+            className="absolute left-2 top-2 z-20 p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200"
+            title={isNavCollapsed ? "Mở Navigation" : "Thu gọn Navigation"}
+          >
+            {isNavCollapsed ? (
+              <MenuUnfoldOutlined className="text-lg text-blue-600 dark:text-blue-400" />
+            ) : (
+              <MenuFoldOutlined className="text-lg text-slate-600 dark:text-slate-400" />
+            )}
+          </button>
+
+          {/* Desktop Navigation Panel - In Layout, Sticky */}
+          <div
+            className={`shrink-0 transition-all duration-300 ease-in-out ${isNavCollapsed ? 'w-0 opacity-0' : 'opacity-100 w-[280px]'
+              }`}
+          >
+            <div
+              className="sticky overflow-y-auto"
+              style={{
+                top: '160px',
+                height: 'calc(100vh - 180px)',
+                maxHeight: 'calc(100vh - 180px)'
+              }}
+            >
+              <TestNavigationPanel
+                parts={test.parts}
+                activePartIndex={activePartIndex}
+                onPartChange={setActivePartIndex}
+                answers={answers}
+                allQuestions={allQuestions}
+                onQuestionClick={handleQuestionClick}
+                testType="listening"
+              />
             </div>
-          )}
+          </div>
 
-          {renderPart && (
-            <div className="space-y-8 animate-fadeIn">
-              {(renderPart.groupOfQuestions || part.groupOfQuestions || []).map(
-                (group) => {
-                  const rawType = group.typeQuestion;
-                  const finalType = TYPE_MAPPING[rawType] || "SHORT_ANSWER";
+          {/* Part Content - Expands when nav is collapsed */}
+          <div className={`flex-1 relative min-h-[400px] transition-all duration-300`}>
+            {isPartLoading && !cachedPart && (
+              <div className="absolute inset-0 z-10 bg-slate-900/60 backdrop-blur-[1px] flex items-start justify-center pt-20">
+                <Spin size="large" tip="Đang tải câu hỏi..." />
+              </div>
+            )}
 
-                  let displayTitle = group.title || "Question Group";
-                  let isMultiple = false;
+            {renderPart && (
+              <div className="space-y-8 animate-fadeIn">
+                {(renderPart.groupOfQuestions || part.groupOfQuestions || []).map(
+                  (group) => {
+                    const rawType = group.typeQuestion;
+                    const finalType = TYPE_MAPPING[rawType] || "SHORT_ANSWER";
 
-                  if (displayTitle.startsWith("Multiple ||| ")) {
-                    displayTitle = displayTitle.replace("Multiple ||| ", "");
-                    isMultiple = true;
-                  } else if (displayTitle.startsWith("Single ||| ")) {
-                    displayTitle = displayTitle.replace("Single ||| ", "");
-                    isMultiple = false;
-                  }
+                    let displayTitle = group.title || "Question Group";
+                    let isMultiple = false;
 
-                  return (
-                    <div
-                      key={group.idGroupOfQuestions}
-                      className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
-                    >
-                      {/* Header Group */}
-                      <div className="bg-slate-50 dark:bg-slate-900 px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-4">
-                        <h3 className="font-bold text-slate-800 dark:text-white text-lg">
-                          {displayTitle}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-white bg-slate-500 dark:bg-slate-600 px-2 py-1 rounded">
-                            {finalType}
-                          </span>
-                          <span className="text-xs font-medium bg-blue-600 text-white px-2 py-1 rounded">
-                            {group.quantity} Questions
-                          </span>
+                    if (displayTitle.startsWith("Multiple ||| ")) {
+                      displayTitle = displayTitle.replace("Multiple ||| ", "");
+                      isMultiple = true;
+                    } else if (displayTitle.startsWith("Single ||| ")) {
+                      displayTitle = displayTitle.replace("Single ||| ", "");
+                      isMultiple = false;
+                    }
+
+                    // Split title by ||| to separate main title from instructions
+                    const titleParts = displayTitle.split(" ||| ");
+                    const mainTitle = titleParts[0];
+                    const instructions = titleParts.slice(1);
+
+                    // Get first question ID for group ref
+                    const firstQuestionId = group.question?.[0]?.idQuestion;
+
+                    return (
+                      <div
+                        key={group.idGroupOfQuestions}
+                        className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden scroll-mt-20"
+                        ref={(el) => {
+                          // Set ref for first question in group
+                          if (el && firstQuestionId) {
+                            questionRefs.current[firstQuestionId] = el;
+                          }
+                        }}
+                      >
+                        {/* Header Group */}
+                        <div className="bg-slate-50 dark:bg-slate-900 px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                          <div className="flex flex-wrap justify-between items-start gap-4">
+                            <div className="flex-1">
+                              <h3
+                                className="font-bold text-slate-800 dark:text-white text-lg prose prose-sm dark:prose-invert max-w-none"
+                                dangerouslySetInnerHTML={{ __html: mainTitle }}
+                              />
+                              {instructions.length > 0 && (
+                                <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1 mt-2">
+                                  {instructions.map((instruction, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="italic prose prose-sm dark:prose-invert max-w-none"
+                                      dangerouslySetInnerHTML={{ __html: instruction }}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-xs font-bold text-white bg-slate-500 dark:bg-slate-600 px-2 py-1 rounded">
+                                {finalType}
+                              </span>
+                              <span className="text-xs font-medium bg-blue-600 text-white px-2 py-1 rounded">
+                                {group.quantity} Questions
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Questions Body */}
+                        <div className="p-6">
+                          <QuestionRenderer
+                            group={mapGroup(group)}
+                            onAnswerChange={(qId, val, text) =>
+                              !isReviewMode &&
+                              handleAnswerChange(qId, val, finalType, text)
+                            }
+                            userAnswers={answers}
+                            isReviewMode={isReviewMode}
+                            isMultiple={isMultiple}
+                            questionRefs={questionRefs}
+                          />
                         </div>
                       </div>
+                    );
+                  }
+                )}
 
-                      {/* Questions Body */}
-                      <div className="p-6">
-                        <QuestionRenderer
-                          group={mapGroup(group)}
-                          onAnswerChange={(qId, val, text) =>
-                            !isReviewMode &&
-                            handleAnswerChange(qId, val, finalType, text)
-                          }
-                          userAnswers={answers}
-                          isReviewMode={isReviewMode}
-                          isMultiple={isMultiple}
-                        />
-                      </div>
+                {(!renderPart.groupOfQuestions ||
+                  renderPart.groupOfQuestions.length === 0) && (
+                    <div className="text-center py-12 text-gray-400">
+                      Chưa có câu hỏi cho phần này.
                     </div>
-                  );
-                }
-              )}
-
-              {(!renderPart.groupOfQuestions ||
-                renderPart.groupOfQuestions.length === 0) && (
-                <div className="text-center py-12 text-gray-400">
-                  Chưa có câu hỏi cho phần này.
-                </div>
-              )}
-            </div>
-          )}
+                  )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -730,3 +807,5 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
 };
 
 export default Listening;
+
+

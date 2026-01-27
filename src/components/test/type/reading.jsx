@@ -5,6 +5,8 @@ import {
   ClockCircleOutlined,
   FormOutlined,
   EyeOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import QuestionRenderer from "../Detail/QuestionRenderer";
@@ -96,6 +98,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   // Navigation state
   const questionRefs = useRef({});
   const [navPanelWidth, setNavPanelWidth] = useState(20); // Navigation panel width
+  const [isNavCollapsed, setIsNavCollapsed] = useState(false); // Collapse state for nav panel
 
   // Resizer state
   const [leftPanelWidth, setLeftPanelWidth] = useState(45);
@@ -536,13 +539,12 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
           {!isReviewMode ? (
             <>
               <div
-                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${
-                  timeLeft < 300
-                    ? "bg-red-600 text-white border-red-500 animate-pulse"
-                    : timeLeft < 600
+                className={`flex items-center gap-2 text-xl font-mono font-bold px-5 py-2 rounded-xl border-2 shadow-lg transition-all duration-300 ${timeLeft < 300
+                  ? "bg-red-600 text-white border-red-500 animate-pulse"
+                  : timeLeft < 600
                     ? "bg-orange-600 text-white border-orange-500"
                     : "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
-                }`}
+                  }`}
               >
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
@@ -579,11 +581,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
             <button
               key={p.idPart}
               onClick={() => setActivePartIndex(idx)}
-              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${
-                idx === activePartIndex
-                  ? "bg-blue-600 text-white border-blue-500 scale-105"
-                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
-              }`}
+              className={`group px-6 py-3 rounded-xl border-2 text-sm font-bold transition-all shadow-md hover:shadow-lg whitespace-nowrap ${idx === activePartIndex
+                ? "bg-blue-600 text-white border-blue-500 scale-105"
+                : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
             >
               <div className="flex items-center gap-2">
                 <span
@@ -606,13 +607,27 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
             className="flex flex-1 min-h-0 relative gap-3"
             style={{ userSelect: isDragging ? "none" : "auto" }}
           >
+            {/* Toggle Button for Navigation Panel */}
+            <button
+              onClick={() => setIsNavCollapsed(!isNavCollapsed)}
+              className="absolute left-2 top-2 z-20 p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200"
+              title={isNavCollapsed ? "Mở rộng Navigation" : "Thu gọn Navigation"}
+            >
+              {isNavCollapsed ? (
+                <MenuUnfoldOutlined className="text-lg text-blue-600 dark:text-blue-400" />
+              ) : (
+                <MenuFoldOutlined className="text-lg text-slate-600 dark:text-slate-400" />
+              )}
+            </button>
+
             {/* Navigation Panel */}
             <div
-              className="shrink-0"
+              className={`shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${isNavCollapsed ? 'w-0 opacity-0' : 'opacity-100'
+                }`}
               style={{
-                width: `${navPanelWidth}%`,
-                minWidth: "200px",
-                maxWidth: "300px",
+                width: isNavCollapsed ? '0' : `${navPanelWidth}%`,
+                minWidth: isNavCollapsed ? '0' : '200px',
+                maxWidth: isNavCollapsed ? '0' : '300px',
               }}
             >
               <TestNavigationPanel
@@ -640,6 +655,13 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                 <span>📖 Passage Content</span>
               </div>
               <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                {/* Passage Title */}
+                {renderPart?.passage?.title && (
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 pb-3 border-b-2 border-slate-200 dark:border-slate-700">
+                    {renderPart.passage.title}
+                  </h2>
+                )}
+
                 {renderPart?.passage?.content ? (
                   <div
                     className="prose prose-lg max-w-none text-slate-700 dark:text-slate-300 leading-relaxed dark:prose-invert"
@@ -663,47 +685,41 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                 e.preventDefault();
                 setIsDragging(true);
               }}
-              className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${
-                isDragging
-                  ? "bg-blue-100 dark:bg-blue-600/30"
-                  : "hover:bg-slate-100 dark:hover:bg-slate-700"
-              }`}
+              className={`flex-shrink-0 w-2 cursor-col-resize flex items-center justify-center group transition-colors mx-1 rounded ${isDragging
+                ? "bg-blue-100 dark:bg-blue-600/30"
+                : "hover:bg-slate-100 dark:hover:bg-slate-700"
+                }`}
             >
               <div className="flex flex-col gap-1">
                 <div
-                  className={`w-1 h-1 rounded-full transition-colors ${
-                    isDragging
-                      ? "bg-blue-600 dark:bg-blue-400"
-                      : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
-                  }`}
+                  className={`w-1 h-1 rounded-full transition-colors ${isDragging
+                    ? "bg-blue-600 dark:bg-blue-400"
+                    : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                    }`}
                 ></div>
                 <div
-                  className={`w-1 h-1 rounded-full transition-colors ${
-                    isDragging
-                      ? "bg-blue-600 dark:bg-blue-400"
-                      : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
-                  }`}
+                  className={`w-1 h-1 rounded-full transition-colors ${isDragging
+                    ? "bg-blue-600 dark:bg-blue-400"
+                    : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                    }`}
                 ></div>
                 <div
-                  className={`w-1 h-1 rounded-full transition-colors ${
-                    isDragging
-                      ? "bg-blue-600 dark:bg-blue-400"
-                      : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
-                  }`}
+                  className={`w-1 h-1 rounded-full transition-colors ${isDragging
+                    ? "bg-blue-600 dark:bg-blue-400"
+                    : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                    }`}
                 ></div>
                 <div
-                  className={`w-1 h-1 rounded-full transition-colors ${
-                    isDragging
-                      ? "bg-blue-600 dark:bg-blue-400"
-                      : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
-                  }`}
+                  className={`w-1 h-1 rounded-full transition-colors ${isDragging
+                    ? "bg-blue-600 dark:bg-blue-400"
+                    : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                    }`}
                 ></div>
                 <div
-                  className={`w-1 h-1 rounded-full transition-colors ${
-                    isDragging
-                      ? "bg-blue-600 dark:bg-blue-400"
-                      : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
-                  }`}
+                  className={`w-1 h-1 rounded-full transition-colors ${isDragging
+                    ? "bg-blue-600 dark:bg-blue-400"
+                    : "bg-slate-400 dark:bg-slate-600 group-hover:bg-blue-600 dark:group-hover:bg-blue-400"
+                    }`}
                 ></div>
               </div>
             </div>
@@ -714,11 +730,10 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
               style={{ width: `${100 - leftPanelWidth}%` }}
             >
               <div
-                className={`p-4 border-b border-slate-200 dark:border-slate-700 font-semibold sticky top-0 z-10 ${
-                  isReviewMode
-                    ? "bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-400"
-                    : "bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white"
-                }`}
+                className={`p-4 border-b border-slate-200 dark:border-slate-700 font-semibold sticky top-0 z-10 ${isReviewMode
+                  ? "bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-400"
+                  : "bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white"
+                  }`}
               >
                 <span>✍️ Questions</span>
               </div>

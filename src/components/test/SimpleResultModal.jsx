@@ -570,24 +570,18 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                             <ReadOutlined /> Reading Passage
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                            <div className="prose max-w-none text-justify text-gray-800 text-lg leading-8 font-serif">
-                                {part.passage.content
-                                    .split(/\r?\n\r?\n/)
-                                    .map((para, i) => (
-                                        <p key={i} className="mb-4 indent-8">
-                                            {para}
-                                        </p>
-                                    ))}
-                            </div>
+                            <div
+                                className="prose max-w-none text-justify text-gray-800 text-lg leading-8 font-serif"
+                                dangerouslySetInnerHTML={{ __html: part.passage.content }}
+                            />
                         </div>
                     </div>
                 )}
                 <div
-                    className={`h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${
-                        hasPassage
-                            ? 'w-full md:w-1/2'
-                            : 'w-full max-w-5xl mx-auto'
-                    }`}
+                    className={`h-full flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${hasPassage
+                        ? 'w-full md:w-1/2'
+                        : 'w-full max-w-5xl mx-auto'
+                        }`}
                 >
                     <div className="p-4 bg-blue-50 border-b border-blue-100 font-bold text-blue-800 flex items-center gap-2">
                         <FileTextOutlined /> Questions & Answers
@@ -607,13 +601,15 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                                     className="mb-8"
                                 >
                                     <div className="mb-3 border-b border-gray-200 pb-2">
-                                        <h4 className="font-bold text-gray-800 text-lg">
-                                            {displayTitle}
-                                        </h4>
+                                        <h4
+                                            className="font-bold text-gray-800 text-lg"
+                                            dangerouslySetInnerHTML={{ __html: displayTitle }}
+                                        />
                                         {group.instruction && (
-                                            <p className="text-sm text-gray-500 italic mt-1">
-                                                {group.instruction}
-                                            </p>
+                                            <p
+                                                className="text-sm text-gray-500 italic mt-1"
+                                                dangerouslySetInnerHTML={{ __html: group.instruction }}
+                                            />
                                         )}
                                     </div>
                                     <QuestionRenderer
@@ -621,17 +617,17 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                                         userAnswers={normalizedUserAnswers}
                                         isReviewMode={true}
                                         isMultiple={isMultiple}
-                                        onAnswerChange={() => {}}
+                                        onAnswerChange={() => { }}
                                     />
                                 </div>
                             );
                         })}
                         {(!part.groupOfQuestions ||
                             part.groupOfQuestions.length === 0) && (
-                            <div className="text-center text-gray-400 py-10">
-                                Không có câu hỏi
-                            </div>
-                        )}
+                                <div className="text-center text-gray-400 py-10">
+                                    Không có câu hỏi
+                                </div>
+                            )}
                     </div>
                 </div>
             </div>
@@ -665,10 +661,10 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                     label: isSpeaking
                         ? `Speaking Part ${index + 1}`
                         : submission.writingTask?.task_type === 'TASK1'
-                          ? 'Task 1'
-                          : submission.writingTask?.task_type === 'TASK2'
-                            ? 'Task 2'
-                            : `Task ${index + 1}`,
+                            ? 'Task 1'
+                            : submission.writingTask?.task_type === 'TASK2'
+                                ? 'Task 2'
+                                : `Task ${index + 1}`,
                     children: isSpeaking ? (
                         <RenderSpeakingSubmission submission={submission} />
                     ) : (
@@ -736,7 +732,7 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                             />
                             {/* Logic hiển thị thống kê Header */}
                             {data.test?.testType === 'WRITING' ||
-                            data.test?.testType === 'SPEAKING' ? (
+                                data.test?.testType === 'SPEAKING' ? (
                                 <Statistic
                                     title="Parts"
                                     value={tabItems.length}
