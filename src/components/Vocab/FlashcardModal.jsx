@@ -87,7 +87,7 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
     let oldLevel = null;
     try {
       const userRes = await userProfileAPI(user?.idUser);
-      oldLevel = userRes?.data?.level;
+      oldLevel = userRes?.level;
     } catch (e) {
       console.error("Failed to get current level:", e);
     }
@@ -106,7 +106,7 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
       window.dispatchEvent(new Event("streak-update"));
 
       // 3. Kiểm tra xem có lên level không
-      const newLevel = response?.data?.level;
+      const newLevel = response?.level;
       if (oldLevel && newLevel && oldLevel !== newLevel) {
         // Hiển thị modal chúc mừng lên level!
         setLevelUpData({ oldLevel, newLevel });

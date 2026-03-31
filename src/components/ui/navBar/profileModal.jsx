@@ -34,8 +34,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen && user?.idUser) {
       userProfileAPI(user.idUser)
-        .then((res) => {
-          const data = res.data;
+        .then((data) => {
           setFormData((prev) => ({
             ...prev,
             fullName: data.nameUser || "",

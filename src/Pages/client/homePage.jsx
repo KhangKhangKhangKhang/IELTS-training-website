@@ -137,10 +137,15 @@ const HomePage = () => {
   // --- API CALLS ---
   useEffect(() => {
     const fetchData = async () => {
+      if (!idUser) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const [resOverall, resChart, resHistory, resRec, resTarget] =
-          await Promise.all([
+          await Promise.allSettled([
             getOverallScroreAPI(idUser),
             getAvgScoreByDayAPI(idUser),
             getTestResultByIdUserAPI(idUser),
@@ -148,16 +153,58 @@ const HomePage = () => {
             getTargetScoresAPI(idUser),
           ]);
 
-        if (resOverall) setOverall(resOverall);
-        if (resChart?.data) setChartData(resChart.data);
-        if (resHistory?.data) setHistory(resHistory.data);
-        if (resRec) setRecommended(resRec);
-        if (resTarget?.data) {
-          setTarget(resTarget.data);
-          setTempTarget(resTarget.data);
+        const failedBlocks = [];
+
+        if (resOverall.status === "fulfilled") {
+          setOverall(resOverall.value || { overall: 0, details: [] });
+        } else {
+          setOverall({ overall: 0, details: [] });
+          failedBlocks.push("điểm tổng quan");
+        }
+
+        if (resChart.status === "fulfilled") {
+          setChartData(Array.isArray(resChart.value) ? resChart.value : []);
+        } else {
+          setChartData([]);
+          failedBlocks.push("biểu đồ tiến độ");
+        }
+
+        if (resHistory.status === "fulfilled") {
+          setHistory(Array.isArray(resHistory.value) ? resHistory.value : []);
+        } else {
+          setHistory([]);
+          failedBlocks.push("lịch sử làm bài");
+        }
+
+        if (resRec.status === "fulfilled") {
+          setRecommended(Array.isArray(resRec.value) ? resRec.value : []);
+        } else {
+          setRecommended([]);
+          failedBlocks.push("đề xuất bài thi");
+        }
+
+        if (resTarget.status === "fulfilled") {
+          const safeTarget = resTarget.value || {
+            targetBandScore: 0,
+            targetExamDate: null,
+          };
+          setTarget(safeTarget);
+          setTempTarget(safeTarget);
+        } else {
+          const fallbackTarget = { targetBandScore: 0, targetExamDate: null };
+          setTarget(fallbackTarget);
+          setTempTarget(fallbackTarget);
+          failedBlocks.push("mục tiêu");
+        }
+
+        if (failedBlocks.length > 0) {
+          message.warning(
+            `Một số dữ liệu chưa tải được: ${failedBlocks.join(", ")}.`
+          );
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+        message.error("Không thể tải dữ liệu dashboard.");
       } finally {
         setLoading(false);
       }
@@ -193,6 +240,7 @@ const HomePage = () => {
       await updateTargetScoresAPI(idUser, tempTarget);
       setTarget(tempTarget);
       setIsEditingTarget(false);
+      message.success("Cập nhật mục tiêu thành công");
     } catch (e) {
       console.error(e);
       message.error("Cập nhật mục tiêu thất bại");
@@ -201,6 +249,10 @@ const HomePage = () => {
 
   // --- LOGIC 2: Xử lý Start Test ---
   const handleRecommendClick = (test) => {
+    if (!test?.idTest) {
+      message.warning("Đề thi này chưa sẵn sàng để bắt đầu.");
+      return;
+    }
     setSelectedExamToStart(test);
     setConfirmStartOpen(true);
   };

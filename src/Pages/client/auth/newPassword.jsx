@@ -7,7 +7,7 @@ import { useNavigate, useLocation } from "react-router";
 import { Button } from "@/components/ui/button";
 
 const NewPassword = () => {
-  const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const navigate = useNavigate();
@@ -17,11 +17,18 @@ const NewPassword = () => {
 
   const handleNewPassword = async (e) => {
     e.preventDefault();
-    if (!password || !confirmPassword) {
+
+    if (!email || !otp) {
+      alert("Phiên đặt lại mật khẩu không hợp lệ. Vui lòng yêu cầu OTP lại.");
+      navigate("/forgetPassword");
+      return;
+    }
+
+    if (!newPassword || !confirmPassword) {
       alert("Vui lòng nhập đầy đủ thông tin");
       return;
     }
-    if (password !== confirmPassword) {
+    if (newPassword !== confirmPassword) {
       alert("Mật khẩu không khớp");
       return;
     }
@@ -29,7 +36,7 @@ const NewPassword = () => {
       const res = await resetPasswordAPI({
         email,
         otp,
-        password,
+        newPassword,
         confirmPassword,
       });
       if (res) {
@@ -88,8 +95,8 @@ const NewPassword = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <Input
                   type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Nhập mật khẩu mới"
                   className="pl-10 pr-10 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20"
                   required
