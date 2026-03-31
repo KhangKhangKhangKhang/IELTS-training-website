@@ -3,10 +3,18 @@ import { introspectAPI } from "@/services/apiAuth";
 import Cookies from "js-cookie";
 const AuthContext = createContext(null);
 
+const parseUserCookie = () => {
+  try {
+    const rawUser = Cookies.get("user");
+    return rawUser ? JSON.parse(rawUser) : null;
+  } catch (error) {
+    Cookies.remove("user");
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(
-    Cookies.get("user") ? JSON.parse(Cookies.get("user")) : ""
-  );
+  const [user, setUser] = useState(parseUserCookie());
   const [isAuth, setIsAuth] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -21,21 +29,25 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const res = await introspectAPI(token);
-        if (res?.data?.active) {
-          const storedUser = Cookies.get("user");
+        const isActive =
+          res?.data?.active ?? res?.active ?? res?.data?.data?.active;
+
+        if (isActive) {
           setIsAuth(true);
-          setUser(storedUser ? JSON.parse(storedUser) : null);
+          setUser(parseUserCookie());
         } else {
           setIsAuth(false);
           setUser(null);
           Cookies.remove("accessToken");
           Cookies.remove("user");
+          Cookies.remove("refreshToken");
         }
       } catch (error) {
         setIsAuth(false);
         setUser(null);
         Cookies.remove("accessToken");
         Cookies.remove("user");
+        Cookies.remove("refreshToken");
       } finally {
         setLoading(false);
       }

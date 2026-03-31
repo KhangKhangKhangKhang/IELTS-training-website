@@ -1,6 +1,4 @@
 import { Navigate, Outlet, Link, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { introspectAPI } from "@/services/apiAuth";
 import { useAuth } from "../authContext";
 import { Button, Result, Spin } from "antd";
 
@@ -28,7 +26,7 @@ const ProtectedRoute = () => {
       return <Navigate to="/admin/homepage" replace />;
     }
   }
-  if (isAuth === null) {
+  if (loading || isAuth === null) {
     return (
       <div className="text-center py-12">
         <Spin size="large" />

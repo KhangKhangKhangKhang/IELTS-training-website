@@ -32,7 +32,7 @@ export const resetPasswordAPI = async (data) => {
 
 export const introspectAPI = async (data) => {
   const res = await API.post("/auth/introspect", { token: data });
-  return res.data; // { active: true/false, ... }
+  return res.data;
 };
 
 export const resetPasswordOTP = async (data) => {
@@ -42,5 +42,12 @@ export const resetPasswordOTP = async (data) => {
 
 export const refreshTokenAPI = async (token) => {
   const res = await API.post("/auth/reset-token", { token });
-  return res.data;
+  const payload = res?.data || {};
+  return {
+    ...payload,
+    access_token:
+      payload?.access_token ||
+      payload?.data?.access_token ||
+      payload?.data?.data?.access_token,
+  };
 };

@@ -41,7 +41,7 @@ export const updateVocabAPI = async (idVocab, payload) => {
 };
 
 export const addVocabToTopic = async (data) => {
-  const res = await API.post(`/vocabulary/add-vocabulary-to-topic`);
+  const res = await API.post(`/vocabulary/add-vocabulary-to-topic`, data);
   return res.data;
 };
 
