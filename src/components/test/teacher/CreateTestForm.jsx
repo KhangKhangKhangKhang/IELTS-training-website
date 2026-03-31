@@ -13,12 +13,12 @@ const CreateTestForm = ({ onSuccess }) => {
 
   const [formData, setFormData] = useState({
     idUser: user?.idUser || "",
-    testType: " Loại đề",
+    testType: "LISTENING",
     title: "",
     description: "",
     duration: "",
     numberQuestion: "",
-    level: "Độ khó",
+    level: "Low",
     img: null,
     audioUrl: null,
   });
@@ -99,6 +99,7 @@ const CreateTestForm = ({ onSuccess }) => {
           <Option value="Low">Dễ</Option>
           <Option value="Mid">Trung bình</Option>
           <Option value="High">Khó</Option>
+          <Option value="Great">Rất khó</Option>
         </Select>
 
         <Upload

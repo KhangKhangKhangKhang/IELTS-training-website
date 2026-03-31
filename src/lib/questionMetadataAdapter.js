@@ -58,6 +58,12 @@ const getAnswerOptions = (answers = []) =>
       text: String(answer.answer_text || "").trim(),
     }));
 
+const normalizeAnswerToken = (value = "") =>
+  String(value)
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_");
+
 const inferFillBlankSubtype = (question, answers) => {
   const content = String(question.content || "").trim();
   const hasWordBankKeys = answers.some((answer) => answer.matching_key);
@@ -119,7 +125,13 @@ const buildMetadata = (questionType, question) => {
     }
 
     case "TRUE_FALSE_NOT_GIVEN": {
-      const correctAnswer = String(firstCorrect?.answer_text || "").toUpperCase();
+      const candidate =
+        firstCorrect?.answer_text ||
+        firstCorrect?.matching_value ||
+        answers[0]?.answer_text ||
+        answers[0]?.matching_value ||
+        "";
+      const correctAnswer = normalizeAnswerToken(candidate);
       ensureNonEmpty(statement, "TFNG requires a statement.");
       if (!["TRUE", "FALSE", "NOT_GIVEN"].includes(correctAnswer)) {
         throw new Error("TFNG correct answer must be TRUE, FALSE, or NOT_GIVEN.");
@@ -133,7 +145,13 @@ const buildMetadata = (questionType, question) => {
     }
 
     case "YES_NO_NOT_GIVEN": {
-      const correctAnswer = String(firstCorrect?.answer_text || "").toUpperCase();
+      const candidate =
+        firstCorrect?.answer_text ||
+        firstCorrect?.matching_value ||
+        answers[0]?.answer_text ||
+        answers[0]?.matching_value ||
+        "";
+      const correctAnswer = normalizeAnswerToken(candidate);
       ensureNonEmpty(statement, "YES/NO/NOT GIVEN requires a statement.");
       if (!["YES", "NO", "NOT_GIVEN"].includes(correctAnswer)) {
         throw new Error("YES/NO/NOT GIVEN correct answer must be YES, NO, or NOT_GIVEN.");
@@ -329,8 +347,12 @@ const getGroupTypeFromApi = async (apiClient, idGroup, cache) => {
   }
 
   try {
-    const response = await apiClient.get(`/group-of-questions/get-by-id/${idGroup}`);
+    const response = await apiClient.get(`/question-group/get-by-id/${idGroup}`);
     const typeQuestion =
+      response?.data?.data?.[0]?.questionType ||
+      response?.data?.data?.questionType ||
+      response?.data?.[0]?.questionType ||
+      response?.data?.questionType ||
       response?.data?.data?.[0]?.typeQuestion ||
       response?.data?.data?.typeQuestion ||
       response?.data?.[0]?.typeQuestion ||

@@ -55,7 +55,7 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
       form.setFieldsValue({
         title: exam.title,
         description: exam.description,
-        level: exam.level || "EASY",
+        level: exam.level || "Low",
         duration: exam.duration,
         numberQuestion: exam.numberQuestion,
       });
@@ -271,9 +271,10 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
                 <Col span={12}>
                   <Form.Item name="level" label="Độ khó">
                     <Select>
-                      <Option value="EASY">Easy</Option>
-                      <Option value="MEDIUM">Medium</Option>
-                      <Option value="HARD">Hard</Option>
+                      <Option value="Low">Easy</Option>
+                      <Option value="Mid">Medium</Option>
+                      <Option value="High">Hard</Option>
+                      <Option value="Great">Great</Option>
                     </Select>
                   </Form.Item>
                 </Col>

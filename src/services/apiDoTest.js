@@ -9,6 +9,7 @@ import {
   saveDraftAnswers,
   withLegacyBandScore,
 } from "@/lib/testAnswerAdapter";
+import { mapTestToLegacyShape } from "@/lib/testApiContractAdapter";
 
 export const createManyAnswersAPI = async (idUser, idTestResult, data) => {
   const legacyAnswers = normalizeLegacyAnswers(data);
@@ -83,7 +84,10 @@ export const getManyAnswersAPI = async (idTestResult, _idUser) => {
 
 export const getDetailInTestAPI = async (idTest) => {
   const res = await API.get(`/test/get-detail-in-test/${idTest}`);
-  return res.data;
+  return {
+    ...res.data,
+    data: mapTestToLegacyShape(res?.data?.data || {}),
+  };
 };
 
 export const ResetTestAPI = async (_idUser, idTestResult) => {
@@ -108,7 +112,10 @@ export const getTestResultByIdAPI = async (idTestResult) => {
 
 export const getTestAnswerAPI = async (idTest) => {
   const res = await API.get(`/test/get-answers-in-test/${idTest}`);
-  return res.data;
+  return {
+    ...res.data,
+    data: mapTestToLegacyShape(res?.data?.data || {}),
+  };
 };
 
 export const getTestResultAndAnswersAPI = async (idTestResult) => {
@@ -117,6 +124,10 @@ export const getTestResultAndAnswersAPI = async (idTestResult) => {
   );
 
   const payload = res.data;
+
+  if (payload?.data?.test) {
+    payload.data.test = mapTestToLegacyShape(payload.data.test);
+  }
 
   if (Array.isArray(payload?.data?.userAnswers) && !payload?.data?.userAnswer) {
     payload.data.userAnswer = payload.data.userAnswers.map(
