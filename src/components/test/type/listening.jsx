@@ -25,17 +25,8 @@ import {
   getAnswersByIdQuestionAPI,
 } from "@/services/apiTest";
 import { useAuth } from "@/context/authContext";
-
-const TYPE_MAPPING = {
-  YES_NO_NOTGIVEN: "YES_NO_NOTGIVEN",
-  TFNG: "TFNG",
-  MCQ: "MCQ",
-  FILL_BLANK: "FILL_BLANK",
-  LABELING: "LABELING",
-  MATCHING: "MATCHING",
-  SHORT_ANSWER: "SHORT_ANSWER",
-  OTHER: "OTHER",
-};
+import { mapBackendTypeToRendererType } from "@/lib/questionTypeMapper";
+import { clearActiveTestSession } from "@/lib/testSessionStorage";
 
 const formatTime = (seconds) => {
   const m = Math.floor(seconds / 60);
@@ -45,8 +36,7 @@ const formatTime = (seconds) => {
 
 // Helper: Map API data to Component data
 function mapGroup(apiGroup) {
-  const type_question =
-    TYPE_MAPPING[apiGroup.typeQuestion] || apiGroup.typeQuestion;
+  const type_question = mapBackendTypeToRendererType(apiGroup.typeQuestion);
 
   const questions = (apiGroup.question || []).map((q) => {
     const answers = (q.answers || []).map((a) => ({
@@ -102,7 +92,8 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
   );
 
   // Timer & Submission
-  const [timeLeft, setTimeLeft] = useState((duration || 40) * 60);
+  const totalDurationSeconds = (duration || 40) * 60;
+  const [timeLeft, setTimeLeft] = useState(totalDurationSeconds);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
 
@@ -427,7 +418,14 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
         );
       }
 
-      const res = await FinistTestAPI(currentTestResultId, user.idUser, {});
+      const durationSpent = Math.max(
+        0,
+        Math.min(totalDurationSeconds, totalDurationSeconds - timeLeft)
+      );
+
+      const res = await FinistTestAPI(currentTestResultId, user.idUser, {
+        duration: durationSpent,
+      });
       const score = res?.band_score ?? res?.data?.band_score ?? 0;
       setBandScore(score);
       setInProgress(false);
@@ -451,6 +449,11 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
       return;
     }
     setIsResultModalOpen(true);
+  };
+
+  const handleBackHome = () => {
+    clearActiveTestSession();
+    navigate("/homepage");
   };
 
   // Timer Countdown
@@ -499,7 +502,7 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
                 type="primary"
                 key="home"
                 size="large"
-                onClick={() => navigate("/homepage")}
+                onClick={handleBackHome}
               >
                 Về trang chủ
               </Button>,
@@ -709,7 +712,7 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
                 {(renderPart.groupOfQuestions || part.groupOfQuestions || []).map(
                   (group) => {
                     const rawType = group.typeQuestion;
-                    const finalType = TYPE_MAPPING[rawType] || "SHORT_ANSWER";
+                    const finalType = mapBackendTypeToRendererType(rawType);
 
                     let displayTitle = group.title || "Question Group";
                     let isMultiple = false;

@@ -16,12 +16,12 @@ import CreateComment from "./CreateComment";
 import CommentList from "./CommentList";
 import { useAuth } from "@/context/authContext";
 import EditPostModal from "./Modal/EditPostModal";
+import { hasTeacherPrivileges } from "@/lib/roleUtils";
 
 const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   const { user } = useAuth();
   const isOwner =
-    user?.role === "ADMIN" ||
-    user?.role === "TEACHER" ||
+    hasTeacherPrivileges(user?.role) ||
     (user && post?.idUser === user.idUser);
 
   const [liked, setLiked] = useState(post.isLikedByCurrentUser);

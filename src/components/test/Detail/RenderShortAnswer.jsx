@@ -7,6 +7,7 @@ const RenderShortAnswer = ({
   onAnswerChange,
   userAnswer,
   isReviewMode,
+  resultIsCorrect,
 }) => {
   // 1. Local State
   const [localAnswer, setLocalAnswer] = useState(userAnswer || "");
@@ -23,10 +24,7 @@ const RenderShortAnswer = ({
   };
 
   const correctAnswerText = question.correct_answers?.[0]?.answer_text;
-  const isCorrect =
-    isReviewMode &&
-    localAnswer?.trim().toLowerCase() ===
-      correctAnswerText?.trim().toLowerCase();
+  const isCorrect = isReviewMode && resultIsCorrect === true;
 
   // Styles
   let containerClass = "mb-4 p-4 border rounded-xl transition-all duration-200 ";

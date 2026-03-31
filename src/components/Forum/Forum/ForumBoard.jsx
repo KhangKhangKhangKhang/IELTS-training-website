@@ -18,10 +18,10 @@ const ForumBoard = ({ idForumThreads }) => {
     setLoading(true);
     try {
       const threadRes = await getThreadByIdAPI(idForumThreads);
-      setThread(threadRes.data);
+      setThread(threadRes?.data ?? threadRes ?? null);
 
       const postRes = await getPostByThreadAPI(idForumThreads, user?.idUser);
-      setPosts(postRes.data);
+      setPosts(postRes?.data ?? postRes ?? []);
     } catch (error) {
       console.error("Error loading forum board:", error);
     } finally {
@@ -30,8 +30,9 @@ const ForumBoard = ({ idForumThreads }) => {
   };
 
   useEffect(() => {
+    if (!idForumThreads || !user?.idUser) return;
     loadData();
-  }, [idForumThreads]);
+  }, [idForumThreads, user?.idUser]);
 
   if (loading) {
     return (

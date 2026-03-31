@@ -17,7 +17,7 @@ const ThreadSidebar = ({ onSelect, threads, setThreads }) => {
   const loadThreads = async () => {
     try {
       const res = await getAllThreadAPI();
-      setThreads(res.data);
+      setThreads(res?.data ?? res ?? []);
     } finally {
       setLoading(false);
     }

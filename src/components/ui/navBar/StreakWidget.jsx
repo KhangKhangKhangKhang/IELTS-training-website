@@ -33,10 +33,10 @@ const StreakWidget = () => {
     }
 
     try {
-      const res = await getStreakAPI(user.idUser);
+      const streak = await getStreakAPI(user.idUser);
 
-      if (res && res.data) {
-        const { lastStudiedAt, currentStreak, longestStreak } = res.data;
+      if (streak) {
+        const { lastStudiedAt, currentStreak, longestStreak } = streak;
 
         // Logic so sánh ngày (bỏ qua giờ phút)
         const lastStudyDate = lastStudiedAt
@@ -46,8 +46,8 @@ const StreakWidget = () => {
         const isStudiedToday = lastStudyDate === today;
 
         setStreakData({
-          currentStreak: currentStreak || 0,
-          longestStreak: longestStreak || 0,
+          currentStreak: Number(currentStreak) || 0,
+          longestStreak: Number(longestStreak) || 0,
           isActive: isStudiedToday,
           loading: false,
         });

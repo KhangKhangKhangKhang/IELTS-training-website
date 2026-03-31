@@ -21,6 +21,7 @@ import { finishSpeakingTest } from "@/services/apiSpeaking";
 import GradingAnimation from "../GradingAnimation";
 import SimpleResultModal from "../SimpleResultModal"; // <--- IMPORT COMPONENT KẾT QUẢ MỚI
 import TextToSpeech from "@/components/common/TextToSpeech";
+import { clearActiveTestSession } from "@/lib/testSessionStorage";
 
 // (Đã xóa SpeakingResultDetail cũ vì không dùng nữa)
 
@@ -248,7 +249,6 @@ const Speaking = ({ idTest, initialTestResult }) => {
       processAndSavePartAudio(currentTaskIndex);
 
       const formData = new FormData();
-      formData.append("idSpeakingTask", idTest);
 
       Object.keys(finalPartsRef.current).forEach((key) => {
         const index = Number(key);
@@ -290,6 +290,7 @@ const Speaking = ({ idTest, initialTestResult }) => {
   };
 
   const handleCloseResult = () => {
+    clearActiveTestSession();
     setShowResultModal(false);
     navigate("/");
   };

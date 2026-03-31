@@ -82,10 +82,8 @@ const UserList = () => {
   const fetchUser = async () => {
     setLoading(true);
     try {
-      const res = await getAllUserAPI();
-      if (res && res.data) {
-        setDataSource(res.data);
-      }
+      const users = await getAllUserAPI();
+      setDataSource(Array.isArray(users) ? users : []);
     } catch (error) {
       console.log(error);
       message.error("Lấy danh sách người dùng thất bại");
@@ -107,12 +105,19 @@ const UserList = () => {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      const payload = new FormData();
+
+      Object.entries(values).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          payload.append(key, value);
+        }
+      });
 
       if (editingUser) {
-        await updateUserAPI(editingUser.idUser, values);
+        await updateUserAPI(editingUser.idUser, payload);
         message.success("Cập nhật người dùng thành công");
       } else {
-        await createUserAPI(values);
+        await createUserAPI(payload);
         message.success("Thêm người dùng thành công");
       }
       setOpen(false);

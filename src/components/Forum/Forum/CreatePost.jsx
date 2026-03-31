@@ -3,7 +3,6 @@ import { useState } from "react";
 import { createPostAPI } from "@/services/apiForum";
 import { Input, Button, message, Upload, Avatar, Tooltip, Popover } from "antd";
 import {
-  PaperClipOutlined,
   PictureOutlined,
   SmileOutlined,
   SendOutlined,
@@ -22,6 +21,14 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
+  const validateImageFile = (selectedFile) => {
+    if (!selectedFile?.type?.startsWith("image/")) {
+      message.error("Chỉ hỗ trợ tệp ảnh (jpg, png, ...)");
+      return false;
+    }
+    return true;
+  };
+
   const handlePost = async () => {
     if (!content.trim()) {
       return message.error("Vui lòng nhập nội dung");
@@ -39,7 +46,7 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
       message.success("Đăng bài thành công!");
       setContent("");
       setFile(null);
-      onSuccess(res.data);
+      onSuccess(res?.data ?? res);
     } catch (error) {
       message.error("Đăng bài thất bại!");
     } finally {
@@ -136,29 +143,16 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
             <div className="flex gap-1">
               <Upload
                 beforeUpload={(f) => {
+                  if (!validateImageFile(f)) return Upload.LIST_IGNORE;
                   setFile(f);
                   return false;
                 }}
                 showUploadList={false}
-                accept="image/*,video/*"
+                accept="image/*"
               >
-                <Tooltip title="Thêm ảnh/video">
+                <Tooltip title="Thêm ảnh">
                   <button className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-all duration-200">
                     <PictureOutlined className="text-xl" />
-                  </button>
-                </Tooltip>
-              </Upload>
-
-              <Upload
-                beforeUpload={(f) => {
-                  setFile(f);
-                  return false;
-                }}
-                showUploadList={false}
-              >
-                <Tooltip title="Đính kèm file">
-                  <button className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-all duration-200">
-                    <PaperClipOutlined className="text-xl" />
                   </button>
                 </Tooltip>
               </Upload>

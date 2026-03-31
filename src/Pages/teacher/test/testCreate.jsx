@@ -42,7 +42,7 @@ const TestCreate = () => {
                   key="parts"
                   size="large"
                   onClick={() =>
-                    navigate(`/teacher/testEdit/${createdTest.idTest}`)
+                    navigate(`/teacher/testManager/testEdit/${createdTest.idTest}`)
                   }
                   icon={<ArrowRightOutlined />}
                 >

@@ -10,10 +10,23 @@ export const createWritingTaskAPI = async (formdata) => {
   return res.data; // { id, title, description, ... }
 };
 
-export const createWritingSubmissionAPI = async (data) => {
+export const createWritingSubmissionAPI = async (data, idTestResult) => {
+  const resolvedTestResultId =
+    idTestResult || data?.idTestResult || data?.id_test_result;
+
+  if (!resolvedTestResultId) {
+    throw new Error(
+      "createWritingSubmissionAPI requires idTestResult as argument or in payload"
+    );
+  }
+
+  const payload = { ...(data || {}) };
+  delete payload.idTestResult;
+  delete payload.id_test_result;
+
   const res = await API.post(
-    "/user-writing-submission/create-writing-submission",
-    data
+    `/user-writing-submission/create-writing-submission/${resolvedTestResultId}`,
+    payload
   );
   return res.data; // { id, taskId, userId, content, ... }
 };

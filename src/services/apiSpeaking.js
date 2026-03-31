@@ -20,7 +20,9 @@ export const updateSpeakingTask = async (idSpeakingTask, data) => {
 };
 
 export const getAllSpeakingTasks = async (idTest) => {
-  const res = await API.get(`/speaking-task/find-all-speaking-tasks/${idTest}`);
+  const res = await API.get(
+    `/speaking-task/find-all-speaking-tasks-in-test/${idTest}`
+  );
   return res.data;
 };
 
@@ -28,6 +30,7 @@ export const getSpeakingTask = async (idSpeakingTask) => {
   const res = await API.get(
     `/speaking-task/find-speaking-task/${idSpeakingTask}`
   );
+  return res.data;
 };
 
 export const deleteSpeakingTask = async (idSpeakingTask) => {

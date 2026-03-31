@@ -4,6 +4,7 @@ import ForumBoard from "@/components/Forum/Forum/ForumBoard";
 import { Button } from "antd";
 import CreateThread from "@/components/Forum/Forum/CreateThread";
 import { useAuth } from "@/context/authContext";
+import { hasTeacherPrivileges } from "@/lib/roleUtils";
 
 const Statistic = () => {
   const [selectedThread, setSelectedThread] = useState(null);
@@ -37,7 +38,7 @@ const Statistic = () => {
                   </p>
                 </div>
 
-                {(user?.role === "ADMIN" || user?.role === "TEACHER") && (
+                {hasTeacherPrivileges(user?.role) && (
                   <Button
                     type="primary"
                     size="large"

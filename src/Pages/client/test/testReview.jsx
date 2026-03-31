@@ -7,6 +7,7 @@ import { getAPITest } from "@/services/apiTest";
 import { StartTestAPI } from "@/services/apiDoTest"; // Import API Start
 import { useNavigate } from "react-router";
 import { useAuth } from "@/context/authContext";
+import { saveActiveTestSession } from "@/lib/testSessionStorage";
 
 const TestPage = () => {
   const [testType, setTestType] = useState("Tất cả");
@@ -81,6 +82,13 @@ const TestPage = () => {
       if (testResultData?.idTestResult) {
         message.success("Bắt đầu làm bài!");
         setConfirmModalOpen(false);
+
+        saveActiveTestSession({
+          idTest: selectedExam.idTest,
+          testType: selectedExam.testType,
+          duration: selectedExam.duration,
+          initialTestResult: testResultData,
+        });
 
         // Navigate và truyền idTestResult qua state
         navigate("/doTest", {

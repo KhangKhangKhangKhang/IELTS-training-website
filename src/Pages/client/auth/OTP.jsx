@@ -19,6 +19,12 @@ const OTP = () => {
   const navigate = useNavigate();
 
   const handleVerifyOtp = async () => {
+    if (!email) {
+      alert("Không tìm thấy email xác thực. Vui lòng thử lại từ đầu.");
+      navigate("/forgetPassword");
+      return;
+    }
+
     if (otp.length !== 6) {
       alert("Vui lòng nhập đủ 6 số OTP");
       return;
@@ -46,12 +52,17 @@ const OTP = () => {
   };
 
   const handleResendOtp = async () => {
+    if (!email) {
+      alert("Không tìm thấy email để gửi lại OTP.");
+      return;
+    }
+
     setIsResending(true);
     try {
       if (mode === "OTP") {
-        await resendOtpAPI({ email });
+        await resendOtpAPI({ email, type: "OTP" });
       } else {
-        await resendOtpAPI({ email, type: "RESET_PASSWORD" });
+        await resendOtpAPI({ email, type: "RESET_LINK" });
       }
       alert("Đã gửi lại mã OTP!");
     } catch (error) {

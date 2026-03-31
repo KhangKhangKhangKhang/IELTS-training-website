@@ -29,6 +29,7 @@ import {
   createGrammarWithoutCategoryAPI,
 } from "@/services/apiGrammar";
 import { useAuth } from "@/context/authContext";
+import { hasTeacherPrivileges } from "@/lib/roleUtils";
 
 const Grammar = () => {
   const { user } = useAuth();
@@ -70,7 +71,7 @@ const Grammar = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("user");
 
-  const isAdminOrTeacher = user?.role === "ADMIN" || user?.role === "TEACHER";
+  const isAdminOrTeacher = hasTeacherPrivileges(user?.role);
 
   const getTypeColor = (type) => {
     const colors = {

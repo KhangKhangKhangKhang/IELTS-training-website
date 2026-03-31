@@ -28,13 +28,23 @@ const Login = () => {
     const refreshToken = urlParams.get("refreshToken");
 
     if (token && userParam) {
-      const user = JSON.parse(decodeURIComponent(userParam));
-      Cookies.set("accessToken", token);
-      Cookies.set("user", JSON.stringify(user));
-      Cookies.set("refreshToken", refreshToken);
-      setUser(user);
-      setIsAuth(true);
-      navigate("/");
+      try {
+        const user = JSON.parse(decodeURIComponent(userParam));
+        Cookies.set("accessToken", token);
+        Cookies.set("user", JSON.stringify(user));
+
+        if (refreshToken) {
+          Cookies.set("refreshToken", refreshToken);
+        } else {
+          Cookies.remove("refreshToken");
+        }
+
+        setUser(user);
+        setIsAuth(true);
+        navigate("/");
+      } catch (error) {
+        console.error("Invalid Google login callback payload", error);
+      }
     }
   }, []);
 

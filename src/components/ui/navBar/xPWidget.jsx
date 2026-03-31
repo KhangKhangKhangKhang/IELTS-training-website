@@ -33,14 +33,14 @@ const XpWidget = () => {
         }
 
         try {
-            const res = await userProfileAPI(user.idUser);
+            const profile = await userProfileAPI(user.idUser);
 
-            if (res && res.data) {
-                const { xp, xpToNext, level } = res.data;
+            if (profile) {
+                const { xp, xpToNext, level } = profile;
 
                 setXpData({
-                    xp: xp || 0,
-                    xpToNext: xpToNext || 100,
+                    xp: Number(xp) || 0,
+                    xpToNext: Number(xpToNext) || 100,
                     level: level || "Low",
                     loading: false,
                 });
@@ -74,7 +74,7 @@ const XpWidget = () => {
     // Tính phần trăm XP
     const xpPercentage = Math.min(
         100,
-        Math.round((xpData.xp / xpData.xpToNext) * 100)
+        Math.round((xpData.xp / Math.max(1, xpData.xpToNext)) * 100)
     );
 
     // Level colors

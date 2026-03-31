@@ -16,7 +16,11 @@ export const verifyOtpAPI = async (data) => {
 };
 
 export const resendOtpAPI = async (data) => {
-  const res = await API.post("/auth/resend-otp", data);
+  const payload = {
+    email: data?.email,
+    type: data?.type === "RESET_LINK" ? "RESET_LINK" : "OTP",
+  };
+  const res = await API.post("/auth/resend-otp", payload);
   return res.data; // { message: "OTP resent" }
 };
 
@@ -31,8 +35,8 @@ export const resetPasswordAPI = async (data) => {
 };
 
 export const introspectAPI = async (data) => {
-  const res = await API.post("/auth/introspect", { token: data });
-  return res.data; // { active: true/false, ... }
+  const res = await API.post("/auth/introspect", { token: data || "" });
+  return res.data;
 };
 
 export const resetPasswordOTP = async (data) => {
@@ -42,5 +46,12 @@ export const resetPasswordOTP = async (data) => {
 
 export const refreshTokenAPI = async (token) => {
   const res = await API.post("/auth/reset-token", { token });
-  return res.data;
+  const payload = res?.data || {};
+  return {
+    ...payload,
+    access_token:
+      payload?.access_token ||
+      payload?.data?.access_token ||
+      payload?.data?.data?.access_token,
+  };
 };

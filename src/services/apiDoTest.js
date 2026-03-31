@@ -1,9 +1,30 @@
 import API from "./axios.custom";
+import {
+  clearDraftAnswers,
+  convertLegacyAnswersToModern,
+  getDraftAnswers,
+  getQuestionTypeMap,
+  mapModernUserAnswerToLegacy,
+  normalizeLegacyAnswers,
+  saveDraftAnswers,
+  withLegacyBandScore,
+} from "@/lib/testAnswerAdapter";
+import { mapTestToLegacyShape } from "@/lib/testApiContractAdapter";
 
 export const createManyAnswersAPI = async (idUser, idTestResult, data) => {
+  const legacyAnswers = normalizeLegacyAnswers(data);
+  const questionTypeMap = await getQuestionTypeMap(
+    API,
+    idTestResult,
+    legacyAnswers
+  );
+  const modernAnswers = convertLegacyAnswersToModern(legacyAnswers, questionTypeMap);
+
+  saveDraftAnswers(idTestResult, legacyAnswers);
+
   const res = await API.post(
-    `/user-answer/create-many-user-answers/${idUser}/${idTestResult}`,
-    data
+    `/user-answer/save-progress/${idUser}/${idTestResult}`,
+    { answers: modernAnswers }
   );
   return res.data;
 };
@@ -15,12 +36,35 @@ export const StartTestAPI = async (idUser, idTest, data) => {
   return res.data;
 };
 
-export const FinistTestAPI = async (idUser, idTestResult, data) => {
-  const res = await API.patch(
-    `/user-test-result/finish-test/${idUser}/${idTestResult}`,
-    data
+export const FinistTestAPI = async (idTestResult, idUser, data = {}) => {
+  const legacyAnswers =
+    normalizeLegacyAnswers(data).length > 0
+      ? normalizeLegacyAnswers(data)
+      : getDraftAnswers(idTestResult);
+  const questionTypeMap = await getQuestionTypeMap(
+    API,
+    idTestResult,
+    legacyAnswers
   );
-  return res.data;
+  const modernAnswers = convertLegacyAnswersToModern(legacyAnswers, questionTypeMap);
+
+  const payload = {
+    idTestResult,
+    answers: modernAnswers,
+  };
+
+  if (typeof data?.duration === "number") {
+    payload.duration = data.duration;
+  }
+
+  const res = await API.post(
+    `/user-test-result/submit-reading-listening/${idUser}`,
+    payload
+  );
+
+  clearDraftAnswers(idTestResult);
+
+  return withLegacyBandScore(res.data);
 };
 
 export const FinishTestWritingAPI = async (idTestResult, idUser, data) => {
@@ -31,22 +75,24 @@ export const FinishTestWritingAPI = async (idTestResult, idUser, data) => {
   return res.data;
 };
 
-export const getManyAnswersAPI = async (idTestResult, idUser) => {
+export const getManyAnswersAPI = async (idTestResult, _idUser) => {
   const res = await API.get(
-    `/user-answer/get-all-user-answers-by-idUser-and-idTestResult/${idTestResult}/${idUser}`
+    `/user-test-result/get-test-result-and-answers/${idTestResult}`
   );
   return res.data;
 };
 
 export const getDetailInTestAPI = async (idTest) => {
   const res = await API.get(`/test/get-detail-in-test/${idTest}`);
-  return res.data;
+  return {
+    ...res.data,
+    data: mapTestToLegacyShape(res?.data?.data || {}),
+  };
 };
 
-export const ResetTestAPI = async (idUser, idTestResult) => {
-  const res = await API.delete(
-    `/user-test-result/reset-test/${idUser}/${idTestResult}`
-  );
+export const ResetTestAPI = async (_idUser, idTestResult) => {
+  const res = await API.delete(`/user-test-result/reset-test/${idTestResult}`);
+  clearDraftAnswers(idTestResult);
   return res.data;
 };
 
@@ -66,12 +112,28 @@ export const getTestResultByIdAPI = async (idTestResult) => {
 
 export const getTestAnswerAPI = async (idTest) => {
   const res = await API.get(`/test/get-answers-in-test/${idTest}`);
-  return res.data;
+  return {
+    ...res.data,
+    data: mapTestToLegacyShape(res?.data?.data || {}),
+  };
 };
 
 export const getTestResultAndAnswersAPI = async (idTestResult) => {
   const res = await API.get(
     `/user-test-result/get-test-result-and-answers/${idTestResult}`
   );
-  return res.data;
+
+  const payload = res.data;
+
+  if (payload?.data?.test) {
+    payload.data.test = mapTestToLegacyShape(payload.data.test);
+  }
+
+  if (Array.isArray(payload?.data?.userAnswers) && !payload?.data?.userAnswer) {
+    payload.data.userAnswer = payload.data.userAnswers.map(
+      mapModernUserAnswerToLegacy
+    );
+  }
+
+  return payload;
 };

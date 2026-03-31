@@ -8,7 +8,7 @@ import { getDetailInTestAPI } from "@/services/apiDoTest";
 import CreateSpeaking from "@/components/test/teacher/Speaking/CreateSpeaking";
 
 const TestEdit = () => {
-  const { idTest } = useParams();
+  const { id } = useParams();
   const locationState = useLocation().state?.exam;
 
   const [exam, setExam] = useState(locationState || null);
@@ -17,11 +17,11 @@ const TestEdit = () => {
   // Fetch fresh data từ API khi component mount hoặc idTest thay đổi
   useEffect(() => {
     const fetchTestData = async () => {
-      if (!idTest) return;
+      if (!id) return;
 
       try {
         setLoading(true);
-        const res = await getDetailInTestAPI(idTest);
+        const res = await getDetailInTestAPI(id);
         if (res?.data) {
           setExam(res.data);
         } else {
@@ -39,7 +39,7 @@ const TestEdit = () => {
     };
 
     fetchTestData();
-  }, [idTest]);
+  }, [id, locationState]);
 
   // Callback để cập nhật exam state khi TestInfoEditor save thành công
   const handleExamUpdate = (updatedExam) => {
@@ -91,11 +91,6 @@ const TestEdit = () => {
             exam={exam}
             onExamUpdate={handleExamUpdate}
           />
-        );
-        return (
-          <p className="text-center py-12">
-            Loại đề không hợp lệ: {exam.testType}
-          </p>
         );
     }
   };

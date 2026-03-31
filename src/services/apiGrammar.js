@@ -46,7 +46,7 @@ export const deleteGrammarCategoriesAPI = async (
 
 //grammar
 export const createGrammarAPI = async (data, idUser) => {
-  const res = await API.post(`/grammar/create-grammar/${idUser}`, data);
+  const res = await API.post(`/grammar/create-grammar-alone/${idUser}`, data);
   return res.data;
 };
 

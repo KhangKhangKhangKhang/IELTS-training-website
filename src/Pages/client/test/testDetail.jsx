@@ -5,6 +5,10 @@ import Writing from "@/components/test/type/writing";
 import Speaking from "@/components/test/type/speaking";
 import { useState, useEffect } from "react";
 import { Spin } from "antd";
+import {
+  getActiveTestSession,
+  saveActiveTestSession,
+} from "@/lib/testSessionStorage";
 
 const testComponents = {
   LISTENING: Listening,
@@ -16,22 +20,39 @@ const testComponents = {
 const TestDetail = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  // Lấy thêm initialTestResult
-  const { idTest, testType, duration, initialTestResult } =
-    location.state || {};
+  const locationState = location.state || null;
+  const hasValidLocationState = !!(
+    locationState?.idTest && locationState?.testType
+  );
+  const restoredSession =
+    hasValidLocationState ? null : getActiveTestSession();
+  const resolvedState = hasValidLocationState
+    ? locationState
+    : restoredSession || {};
+
+  const { idTest, testType, duration, initialTestResult } = resolvedState;
   const [timedOut, setTimedOut] = useState(false);
 
   const Comp = testComponents[testType?.toUpperCase()];
 
   useEffect(() => {
+    if (idTest && testType) {
+      saveActiveTestSession({
+        idTest,
+        testType,
+        duration,
+        initialTestResult,
+      });
+    }
+  }, [idTest, testType, duration, initialTestResult]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
-      // Nếu không có idTest hoặc không có kết quả khởi tạo (người dùng cố tình paste link)
-      // thì đá về trang chủ
       if (!idTest || !testType) {
         setTimedOut(true);
         navigate("/test", { replace: true });
       }
-    }, 5000);
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [idTest, testType, navigate]);
