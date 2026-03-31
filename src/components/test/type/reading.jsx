@@ -26,6 +26,7 @@ import {
 } from "@/services/apiTest";
 import { useAuth } from "@/context/authContext";
 import { mapBackendTypeToRendererType } from "@/lib/questionTypeMapper";
+import { clearActiveTestSession } from "@/lib/testSessionStorage";
 
 const formatTime = (seconds) => {
   const m = Math.floor(seconds / 60);
@@ -80,7 +81,8 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
   const [bandScore, setBandScore] = useState(
     initialTestResult?.band_score || null
   );
-  const [timeLeft, setTimeLeft] = useState((duration || 60) * 60);
+  const totalDurationSeconds = (duration || 60) * 60;
+  const [timeLeft, setTimeLeft] = useState(totalDurationSeconds);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
 
@@ -392,7 +394,14 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
         );
       }
 
-      const res = await FinistTestAPI(currentTestResultId, user.idUser, {});
+      const durationSpent = Math.max(
+        0,
+        Math.min(totalDurationSeconds, totalDurationSeconds - timeLeft)
+      );
+
+      const res = await FinistTestAPI(currentTestResultId, user.idUser, {
+        duration: durationSpent,
+      });
       const score = res?.band_score ?? res?.data?.band_score ?? 0;
       setBandScore(score);
       setInProgress(false);
@@ -416,6 +425,11 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
       return;
     }
     setIsResultModalOpen(true);
+  };
+
+  const handleBackHome = () => {
+    clearActiveTestSession();
+    navigate("/homepage");
   };
 
   useEffect(() => {
@@ -465,7 +479,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                 type="primary"
                 key="home"
                 size="large"
-                onClick={() => navigate("/homepage")}
+                onClick={handleBackHome}
               >
                 Quay về trang chủ
               </Button>,

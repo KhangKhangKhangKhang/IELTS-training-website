@@ -11,6 +11,7 @@ import { FinishTestWritingAPI } from "@/services/apiDoTest";
 
 import { useAuth } from "@/context/authContext";
 import { cn } from "@/lib/utils";
+import { clearActiveTestSession } from "@/lib/testSessionStorage";
 
 // UI Libraries
 import { Modal, Tabs, Collapse, Tag, Divider, Spin } from "antd";
@@ -321,7 +322,7 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
       // Build the writing submissions array in the format expected by the backend
       const writingSubmissions = tasks.map((task) => ({
         idWritingTask: task.idWritingTask,
-        submission_text: answers[task.idWritingTask] || "",
+        submissionText: answers[task.idWritingTask] || "",
       }));
 
       // Call the finish test writing API
@@ -331,21 +332,46 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
         { writingSubmissions }
       );
 
-      // The API returns the complete result with all submissions graded
-      if (response?.status === 200 && response?.data?.submissions) {
-        // Transform the submissions data to match the expected format for the modal
-        const submissionResults = response.data.submissions.map((sub) => ({
-          band_score: sub.score,
-          feedback: sub.feedback ? [sub.feedback] : [],
-          writingTask: {
-            task_type: sub.task_type,
-            title:
-              tasks.find((t) => t.idWritingTask === sub.idWritingTask)?.title ||
-              "",
-          },
-        }));
+      const backendSubmissions = response?.data?.submissions || [];
 
-        setSubmissionResults(submissionResults);
+      if (response?.status === 200 && backendSubmissions.length > 0) {
+        const mappedResults = backendSubmissions.map((sub) => {
+          const taskId = sub.idWritingTask || sub.id_writing_task;
+          const fallbackTask = tasks.find((t) => t.idWritingTask === taskId);
+
+          const feedbackArray = Array.isArray(sub.feedback)
+            ? sub.feedback
+            : sub.aiDetailedFeedback
+            ? [sub.aiDetailedFeedback]
+            : sub.feedback
+            ? [sub.feedback]
+            : [];
+
+          const taskType =
+            sub.writingTask?.task_type ||
+            sub.writingTask?.taskType ||
+            sub.task_type ||
+            sub.taskType ||
+            fallbackTask?.task_type ||
+            fallbackTask?.taskType ||
+            "TASK1";
+
+          return {
+            band_score: sub.score ?? sub.band_score ?? sub.aiOverallScore ?? null,
+            feedback: feedbackArray,
+            submission_text:
+              sub.submission_text ??
+              sub.submissionText ??
+              (taskId ? answers[taskId] : "") ??
+              "",
+            writingTask: {
+              task_type: taskType,
+              title: fallbackTask?.title || sub.writingTask?.title || "",
+            },
+          };
+        });
+
+        setSubmissionResults(mappedResults);
         setResultModalOpen(true);
       } else {
         alert("Test submitted successfully!");
@@ -361,6 +387,7 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
   };
 
   const handleCloseModal = () => {
+    clearActiveTestSession();
     setResultModalOpen(false);
     navigate("/");
   };

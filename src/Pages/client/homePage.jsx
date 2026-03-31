@@ -34,6 +34,7 @@ import {
   ChevronLeft, // Import thêm icon cho pagination
 } from "lucide-react";
 import { useAuth } from "@/context/authContext";
+import { saveActiveTestSession } from "@/lib/testSessionStorage";
 
 // --- IMPORT COMPONENT REVIEW MỚI ---
 import SimpleResultModal from "@/components/test/SimpleResultModal";
@@ -268,6 +269,14 @@ const HomePage = () => {
       if (testResultData?.idTestResult) {
         message.success("Bắt đầu làm bài!");
         setConfirmStartOpen(false);
+
+        saveActiveTestSession({
+          idTest: selectedExamToStart.idTest,
+          testType: selectedExamToStart.testType,
+          duration: selectedExamToStart.duration,
+          initialTestResult: testResultData,
+        });
+
         navigate("/doTest", {
           state: {
             idTest: selectedExamToStart.idTest,

@@ -80,8 +80,9 @@ function mapGroupForReview(apiGroup) {
 const RenderSpeakingSubmission = ({ submission }) => {
     if (!submission) return null;
 
-    // 1. Lấy audio và feedback object
-    const { audioUrl, feedback, status } = submission;
+    const audioUrl = submission.audioUrl || submission.audio_url;
+    const feedback = submission.feedback || submission.aiDetailedFeedback || null;
+    const status = submission.status || submission.aiGradingStatus;
 
     // 2. Nếu chưa có feedback (chưa chấm hoặc đang xử lý)
     if (!feedback) {
@@ -105,19 +106,23 @@ const RenderSpeakingSubmission = ({ submission }) => {
     }
 
     // 3. Destructure dữ liệu TỪ BÊN TRONG feedback
-    const {
-        scoreFluency,
-        scoreLexical,
-        scoreGrammar,
-        scorePronunciation,
-        overallScore,
-        commentFluency,
-        commentLexical,
-        commentGrammar,
-        commentPronunciation,
-        generalFeedback,
-        detailedCorrections,
-    } = feedback;
+    const scoreFluency = feedback.scoreFluency ?? feedback.score_fluency;
+    const scoreLexical = feedback.scoreLexical ?? feedback.score_lexical;
+    const scoreGrammar = feedback.scoreGrammar ?? feedback.score_grammar;
+    const scorePronunciation =
+        feedback.scorePronunciation ?? feedback.score_pronunciation;
+    const overallScore =
+        feedback.overallScore ?? feedback.overall_score ?? submission.aiOverallScore ?? 0;
+    const commentFluency =
+        feedback.commentFluency ?? feedback.comment_fluency;
+    const commentLexical = feedback.commentLexical ?? feedback.comment_lexical;
+    const commentGrammar = feedback.commentGrammar ?? feedback.comment_grammar;
+    const commentPronunciation =
+        feedback.commentPronunciation ?? feedback.comment_pronunciation;
+    const generalFeedback =
+        feedback.generalFeedback ?? feedback.general_feedback;
+    const detailedCorrections =
+        feedback.detailedCorrections ?? feedback.detailed_corrections;
 
     // Helper render header panel kèm điểm
     const renderPanelHeader = (title, score, icon) => (
@@ -342,8 +347,33 @@ const RenderSpeakingSubmission = ({ submission }) => {
 const RenderWritingSubmission = ({ submission }) => {
     if (!submission) return null;
 
-    const { submission_text, writingTask, feedback } = submission;
-    const feedbackData = feedback && feedback.length > 0 ? feedback[0] : null;
+    const submissionText =
+        submission.submission_text ?? submission.submissionText ?? '';
+    const writingTask = submission.writingTask || submission.writing_task || null;
+
+    const rawFeedback = Array.isArray(submission.feedback)
+        ? submission.feedback[0]
+        : submission.feedback || submission.aiDetailedFeedback || null;
+
+    const feedbackData = rawFeedback
+        ? {
+            taskResponse: rawFeedback.taskResponse ?? rawFeedback.task_response,
+            coherenceAndCohesion:
+                rawFeedback.coherenceAndCohesion ??
+                rawFeedback.coherence_and_cohesion,
+            lexicalResource:
+                rawFeedback.lexicalResource ?? rawFeedback.lexical_resource,
+            grammaticalRangeAndAccuracy:
+                rawFeedback.grammaticalRangeAndAccuracy ??
+                rawFeedback.grammatical_range_and_accuracy,
+            generalFeedback:
+                rawFeedback.generalFeedback ?? rawFeedback.general_feedback,
+            detailedCorrections:
+                rawFeedback.detailedCorrections ??
+                rawFeedback.detailed_corrections ??
+                [],
+        }
+        : null;
 
     const collapseItems = [
         {
@@ -409,7 +439,9 @@ const RenderWritingSubmission = ({ submission }) => {
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div className="flex-1">
                             <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                                {writingTask?.task_type || 'Writing Task'}
+                                {writingTask?.task_type ||
+                                    writingTask?.taskType ||
+                                    'Writing Task'}
                             </h3>
                             <p className="text-gray-600 text-sm">
                                 {writingTask?.title || 'No title'}
@@ -427,7 +459,7 @@ const RenderWritingSubmission = ({ submission }) => {
                 >
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                            {submission_text || 'No submission text'}
+                            {submissionText || 'No submission text'}
                         </p>
                     </div>
                 </Card>
@@ -626,38 +658,74 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
     const tabItems = useMemo(() => {
         if (!data) return [];
 
-        // --- LOGIC MỚI: Tự động tìm dữ liệu ở mọi nơi ---
+        const submissionListCandidates = [
+            data.writingSubmissions,
+            data.speakingSubmissions,
+            data.writingSubmission,
+            data.speakingSubmission,
+            data.submissions,
+        ];
+
         const submissionList =
-            data.writingSubmission ||
-            data.speakingSubmission ||
-            data.submissions ||
-            [];
+            submissionListCandidates.find(
+                (list) => Array.isArray(list) && list.length > 0,
+            ) || [];
+
+        const writingTaskMap = new Map(
+            (data.test?.writingTasks || []).map((task) => [task.idWritingTask, task]),
+        );
 
         if (submissionList.length > 0) {
             return submissionList.map((submission, index) => {
-                // KIỂM TRA: Dựa vào JSON bạn cung cấp để phân biệt
-                // Speaking có 'idSpeakingSubmission' hoặc 'audioUrl'
                 const isSpeaking =
                     submission.idSpeakingSubmission ||
                     submission.audioUrl ||
+                    submission.audio_url ||
                     data.test?.testType === 'SPEAKING';
+
+                const taskFromTest = writingTaskMap.get(submission.idWritingTask);
+                const normalizedSubmission = isSpeaking
+                    ? submission
+                    : {
+                        ...submission,
+                        submission_text:
+                            submission.submission_text ??
+                            submission.submissionText ??
+                            '',
+                        feedback: Array.isArray(submission.feedback)
+                            ? submission.feedback
+                            : submission.aiDetailedFeedback
+                                ? [submission.aiDetailedFeedback]
+                                : submission.feedback
+                                    ? [submission.feedback]
+                                    : [],
+                        writingTask:
+                            submission.writingTask ||
+                            submission.writing_task ||
+                            taskFromTest ||
+                            null,
+                    };
+
+                const taskType =
+                    normalizedSubmission.writingTask?.task_type ||
+                    normalizedSubmission.writingTask?.taskType;
 
                 return {
                     key:
-                        submission.idWritingSubmission ||
-                        submission.idSpeakingSubmission ||
+                        normalizedSubmission.idWritingSubmission ||
+                        normalizedSubmission.idSpeakingSubmission ||
                         String(index),
                     label: isSpeaking
                         ? `Speaking Part ${index + 1}`
-                        : submission.writingTask?.task_type === 'TASK1'
+                        : taskType === 'TASK1'
                             ? 'Task 1'
-                            : submission.writingTask?.task_type === 'TASK2'
+                            : taskType === 'TASK2'
                                 ? 'Task 2'
                                 : `Task ${index + 1}`,
                     children: isSpeaking ? (
-                        <RenderSpeakingSubmission submission={submission} />
+                        <RenderSpeakingSubmission submission={normalizedSubmission} />
                     ) : (
-                        <RenderWritingSubmission submission={submission} />
+                        <RenderWritingSubmission submission={normalizedSubmission} />
                     ),
                 };
             });
