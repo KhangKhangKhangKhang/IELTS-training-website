@@ -25,17 +25,7 @@ import {
   getAnswersByIdQuestionAPI,
 } from "@/services/apiTest";
 import { useAuth } from "@/context/authContext";
-
-const TYPE_MAPPING = {
-  YES_NO_NOTGIVEN: "YES_NO_NOTGIVEN",
-  TFNG: "TFNG",
-  MCQ: "MCQ",
-  FILL_BLANK: "FILL_BLANK",
-  LABELING: "LABELING",
-  MATCHING: "MATCHING",
-  SHORT_ANSWER: "SHORT_ANSWER",
-  OTHER: "OTHER",
-};
+import { mapBackendTypeToRendererType } from "@/lib/questionTypeMapper";
 
 const formatTime = (seconds) => {
   const m = Math.floor(seconds / 60);
@@ -45,8 +35,7 @@ const formatTime = (seconds) => {
 
 // Helper: Map API data to Component data
 function mapGroup(apiGroup) {
-  const type_question =
-    TYPE_MAPPING[apiGroup.typeQuestion] || apiGroup.typeQuestion;
+  const type_question = mapBackendTypeToRendererType(apiGroup.typeQuestion);
 
   const questions = (apiGroup.question || []).map((q) => {
     const answers = (q.answers || []).map((a) => ({
@@ -709,7 +698,7 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
                 {(renderPart.groupOfQuestions || part.groupOfQuestions || []).map(
                   (group) => {
                     const rawType = group.typeQuestion;
-                    const finalType = TYPE_MAPPING[rawType] || "SHORT_ANSWER";
+                    const finalType = mapBackendTypeToRendererType(rawType);
 
                     let displayTitle = group.title || "Question Group";
                     let isMultiple = false;

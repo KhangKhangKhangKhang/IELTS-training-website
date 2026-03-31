@@ -1,5 +1,9 @@
 import API from "./axios.custom";
 import axios from "axios";
+import {
+  adaptQuestionsToMetadataPayload,
+  adaptSingleQuestionToMetadataPayload,
+} from "@/lib/questionMetadataAdapter";
 
 export const getAPITest = async () => {
   const res = await API.get("/test/get-all-test");
@@ -85,7 +89,8 @@ export const createGroupOfQuestionsAPI = async (data) => {
 };
 
 export const createQuestion = async (data) => {
-  const res = await API.post("/question/create-question", data);
+  const payload = await adaptSingleQuestionToMetadataPayload(API, data);
+  const res = await API.post("/question/create-question", payload);
   return res.data;
 };
 
@@ -113,7 +118,8 @@ export const createUserTestResult = async (idUser, idTest, data) => {
 };
 
 export const createManyQuestion = async (data) => {
-  const res = await API.post(`/question/create-many-questions`, data);
+  const payload = await adaptQuestionsToMetadataPayload(API, data);
+  const res = await API.post(`/question/create-many-questions`, payload);
   return res.data;
 };
 
@@ -176,11 +182,13 @@ export const updateAnswerAPI = async (idAnswer, data) => {
   return res.data;
 };
 export const updateQuestionAPI = async (idQuestion, data) => {
-  const res = await API.patch(`/question/update-question/${idQuestion}`, data);
+  const payload = await adaptSingleQuestionToMetadataPayload(API, data);
+  const res = await API.patch(`/question/update-question/${idQuestion}`, payload);
   return res.data;
 };
 
 export const updateManyQuestionAPI = async (data) => {
-  const res = await API.patch(`/question/update-many-questions`, data);
+  const payload = await adaptQuestionsToMetadataPayload(API, data);
+  const res = await API.patch(`/question/update-many-questions`, payload);
   return res.data;
 };

@@ -25,17 +25,7 @@ import {
   getAnswersByIdQuestionAPI,
 } from "@/services/apiTest";
 import { useAuth } from "@/context/authContext";
-
-const TYPE_MAPPING = {
-  YES_NO_NOTGIVEN: "YES_NO_NOTGIVEN",
-  TFNG: "TFNG",
-  MCQ: "MCQ",
-  FILL_BLANK: "FILL_BLANK",
-  LABELING: "LABELING",
-  MATCHING: "MATCHING",
-  SHORT_ANSWER: "SHORT_ANSWER",
-  OTHER: "OTHER",
-};
+import { mapBackendTypeToRendererType } from "@/lib/questionTypeMapper";
 
 const formatTime = (seconds) => {
   const m = Math.floor(seconds / 60);
@@ -44,8 +34,7 @@ const formatTime = (seconds) => {
 };
 
 function mapGroup(apiGroup) {
-  const type_question =
-    TYPE_MAPPING[apiGroup.typeQuestion] || apiGroup.typeQuestion;
+  const type_question = mapBackendTypeToRendererType(apiGroup.typeQuestion);
 
   const questions = (apiGroup.question || []).map((q) => {
     const answers = (q.answers || []).map((a) => ({
@@ -744,7 +733,7 @@ const Reading = ({ idTest, initialTestResult, duration }) => {
                   []
                 ).map((group) => {
                   const rawType = group.typeQuestion;
-                  const finalType = TYPE_MAPPING[rawType] || "SHORT_ANSWER";
+                  const finalType = mapBackendTypeToRendererType(rawType);
 
                   let displayTitle = group.title || "Group";
                   let isMultiple = false;

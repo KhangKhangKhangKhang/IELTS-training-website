@@ -28,24 +28,13 @@ import {
 
 import QuestionRenderer from './Detail/QuestionRenderer';
 import { getTestResultAndAnswersAPI } from '@/services/apiDoTest';
+import { mapBackendTypeToRendererType } from '@/lib/questionTypeMapper';
 
 const { Title, Text } = Typography;
 
 // --- CONSTANTS & HELPERS ---
-const TYPE_MAPPING = {
-    YES_NO_NOTGIVEN: 'YES_NO_NOTGIVEN',
-    TFNG: 'TFNG',
-    MCQ: 'MCQ',
-    FILL_BLANK: 'FILL_BLANK',
-    LABELING: 'LABELING',
-    MATCHING: 'MATCHING',
-    SHORT_ANSWER: 'SHORT_ANSWER',
-    OTHER: 'OTHER',
-};
-
 function mapGroupForReview(apiGroup) {
-    const type_question =
-        TYPE_MAPPING[apiGroup.typeQuestion] || apiGroup.typeQuestion;
+    const type_question = mapBackendTypeToRendererType(apiGroup.typeQuestion);
 
     const questions = (apiGroup.question || []).map((q) => {
         const answers = (q.answers || []).map((a) => ({
