@@ -2,14 +2,20 @@
 import { Modal, Input, Upload, Button, message } from "antd";
 import { useState } from "react";
 import { updatePostAPI } from "@/services/apiForum";
-import { UploadOutlined, EditOutlined, PictureOutlined } from "@ant-design/icons";
-import { useAuth } from "@/context/authContext";
+import { EditOutlined, PictureOutlined } from "@ant-design/icons";
 
 const EditPostModal = ({ post, open, onClose, onUpdated }) => {
-  const { user } = useAuth();
   const [content, setContent] = useState(post.content);
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const validateImageFile = (selectedFile) => {
+    if (!selectedFile?.type?.startsWith("image/")) {
+      message.error("Chỉ hỗ trợ tệp ảnh (jpg, png, webp, ...)");
+      return false;
+    }
+    return true;
+  };
 
   const handleSave = async () => {
     if (!content.trim()) {
@@ -26,7 +32,7 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
 
       const res = await updatePostAPI(post.idForumPost, form);
       message.success("Cập nhật thành công");
-      onUpdated(res.data);
+      onUpdated(res?.data ?? res);
       onClose();
     } catch (err) {
       message.error("Cập nhật thất bại");
@@ -86,9 +92,11 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
 
         <Upload
           beforeUpload={(file) => {
+            if (!validateImageFile(file)) return Upload.LIST_IGNORE;
             setFile(file);
             return false;
           }}
+          accept="image/*"
           maxCount={1}
           className="w-full"
         >
@@ -96,7 +104,7 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
             icon={<PictureOutlined />}
             className="w-full border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 rounded-xl h-10"
           >
-            Chọn ảnh/video mới
+            Chọn ảnh mới
           </Button>
         </Upload>
 

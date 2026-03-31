@@ -26,7 +26,7 @@ const CreateComment = ({ idForumPost, onCommentCreated }) => {
       });
       setContent("");
       message.success("Đã bình luận");
-      if (onCommentCreated) onCommentCreated(res.data);
+      if (onCommentCreated) onCommentCreated(res?.data ?? res);
     } catch (error) {
       message.error("Lỗi khi bình luận");
     } finally {

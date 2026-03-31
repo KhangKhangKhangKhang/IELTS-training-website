@@ -61,6 +61,6 @@ export const suggestVocabAPI = async (word) => {
     return response.data;
   } catch (error) {
     console.error("Error suggesting vocabulary:", error);
-    throw error;
+    return null;
   }
 };

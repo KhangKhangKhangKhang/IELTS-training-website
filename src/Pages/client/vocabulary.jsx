@@ -62,7 +62,7 @@ const Vocabulary = () => {
       setError(null);
       try {
         const res = await getTopicsByUserAPI(user.idUser);
-        setTopics(res.data || []);
+        setTopics(res?.data || res || []);
       } catch (err) {
         console.error("Failed to fetch topics:", err);
         setError("Không thể tải danh sách chủ đề");
@@ -86,20 +86,10 @@ const Vocabulary = () => {
         setIsSuggesting(true);
         const word = newVocabulary.word.trim();
         const res = await suggestVocabAPI(word);
-        setSuggestion(res);
+        setSuggestion(res || null);
       } catch (error) {
-        console.error("Failed to get suggestion:", error);
-        // THÊM XỬ LÝ LỖI TIMEOUT
-        if (
-          error.code === "ECONNABORTED" ||
-          error.message?.includes("timeout")
-        ) {
-          setError(
-            "Kết nối AI bị timeout. Vui lòng thử lại sau hoặc nhập thủ công."
-          );
-        } else {
-          setError("Không thể lấy gợi ý từ AI. Vui lòng nhập thủ công.");
-        }
+        // suggestVocabAPI currently fails soft and should not throw; keep defensive guard
+        setSuggestion(null);
       } finally {
         setIsSuggesting(false);
       }
@@ -207,7 +197,7 @@ const Vocabulary = () => {
     setTopics(updatedTopics);
     try {
       const res = await getVocabAPI(topicId);
-      setVocabularies(res.data.data || []);
+      setVocabularies(res?.data?.data || res?.data || []);
     } catch (err) {
       console.error("Failed to fetch vocabularies:", err);
       setError("Không thể tải từ vựng trong chủ đề");
