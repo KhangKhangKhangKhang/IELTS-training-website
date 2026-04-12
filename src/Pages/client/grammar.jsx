@@ -70,7 +70,8 @@ const Grammar = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("user");
 
-  const isAdminOrTeacher = user?.role === "ADMIN" || user?.role === "TEACHER";
+  const isAdminOrTeacher = hasTeacherPrivileges(user?.role);
+  const isTeacher = user?.role === "GIAOVIEN";
 
   const getTypeColor = (type) => {
     const colors = {
@@ -112,6 +113,14 @@ const Grammar = () => {
 
     fetchAllGrammars();
   }, [showGrammarManagement]);
+
+  // If the current user is a teacher, default to management view and hide the learning tab
+  useEffect(() => {
+    if (isTeacher) {
+      setActiveTab("management");
+      setShowGrammarManagement(true);
+    }
+  }, [isTeacher]);
 
   // --- XỬ LÝ DANH MỤC ---
   const handleAddCategory = async () => {
@@ -522,18 +531,20 @@ const Grammar = () => {
 
             {isAdminOrTeacher && (
               <div className="flex space-x-2">
-                <button
-                  onClick={() => {
-                    setActiveTab("user");
-                    setShowGrammarManagement(false);
-                  }}
-                  className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === "user"
-                    ? "bg-indigo-600 !text-white"
-                    : "bg-gray-200 dark:bg-slate-700 !text-gray-700 dark:!text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600"
-                    }`}
-                >
-                  Học Ngữ Pháp
-                </button>
+                {!isTeacher && (
+                  <button
+                    onClick={() => {
+                      setActiveTab("user");
+                      setShowGrammarManagement(false);
+                    }}
+                    className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === "user"
+                      ? "bg-indigo-600 !text-white"
+                      : "bg-gray-200 dark:bg-slate-700 !text-gray-700 dark:!text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600"
+                      }`}
+                  >
+                    Học Ngữ Pháp
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setActiveTab("management");
