@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import ProfileModal from "./profileModal";
 import Cookies from "js-cookie";
+import { useAuth } from "@/context/authContext";
 import ChatBotWidget from "./chatBotWidget";
 import StreakWidget from "./StreakWidget";
 import ThemeToggle from "@/components/ui/ThemeToggle";
@@ -25,7 +26,9 @@ const NavbarTeacher = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const navLinks = [
+  const { user } = useAuth();
+
+  const baseNavLinks = [
     { name: "Trang Chủ", href: "/teacher/homepage", icon: Home },
     { name: "Diễn đàn", href: "/teacher/statistic", icon: BarChart3 },
     { name: "Làm đề", href: "/teacher/test", icon: BookOpen },
@@ -34,6 +37,11 @@ const NavbarTeacher = () => {
     { name: "Ngữ pháp", href: "/teacher/grammar", icon: Cookie },
     { name: "Danh sách", href: "/teacher/userList", icon: Users2 },
   ];
+
+  // Hide Vocabulary for teachers (role: GIAOVIEN)
+  const navLinks = user?.role === "GIAOVIEN"
+    ? baseNavLinks.filter((item) => item.name !== "Từ Vựng")
+    : baseNavLinks;
 
   const handleLogout = () => {
     Cookies.remove("accessToken");

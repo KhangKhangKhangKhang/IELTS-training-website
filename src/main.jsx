@@ -28,6 +28,7 @@ const StartingPage = lazy(() => import("./Pages/StartingPage"));
 const TestManager = lazy(() => import("./Pages/teacher/test/testManager"));
 const TestCreate = lazy(() => import("./Pages/teacher/test/testCreate"));
 const TestEdit = lazy(() => import("./Pages/teacher/test/testEdit"));
+const TeacherDashboard = lazy(() => import("./Pages/teacher/teacherDashboard"));
 const Grammar = lazy(() => import("./Pages/client/grammar"));
 
 // Loading fallback component
@@ -77,8 +78,8 @@ const router = createBrowserRouter([
         path: "/teacher",
         element: <NavbarTeacher />,
         children: [
-          { index: true, element: <LazyRoute Component={HomePage} /> },
-          { path: "homepage", element: <LazyRoute Component={HomePage} /> },
+          { index: true, element: <LazyRoute Component={TeacherDashboard} /> },
+          { path: "homepage", element: <LazyRoute Component={TeacherDashboard} /> },
           { path: "statistic", element: <LazyRoute Component={Statistic} /> },
           { path: "vocabulary", element: <LazyRoute Component={Vocabulary} /> },
           { path: "test", element: <LazyRoute Component={Test} /> },
@@ -86,6 +87,7 @@ const router = createBrowserRouter([
           { path: "userList", element: <LazyRoute Component={UserList} /> },
           { path: "doTest", element: <LazyRoute Component={TestDetail} /> },
           { path: "testManager", element: <LazyRoute Component={TestManager} /> },
+          { path: "dashboard", element: <LazyRoute Component={TeacherDashboard} /> },
           { path: "testManager/testCreate", element: <LazyRoute Component={TestCreate} /> },
           { path: "testManager/testEdit/:id", element: <LazyRoute Component={TestEdit} /> },
           { path: "testManager/testDetail/:id", element: <LazyRoute Component={TestDetail} /> },
@@ -112,6 +114,7 @@ const router = createBrowserRouter([
           { path: "profile", element: <LazyRoute Component={Profile} /> },
           { path: "userList", element: <LazyRoute Component={UserList} /> },
           { path: "doTest", element: <LazyRoute Component={TestDetail} /> },
+          { path: "dashboard", element: <LazyRoute Component={TeacherDashboard} /> },
           { path: "testManager/testCreate", element: <LazyRoute Component={TestCreate} /> },
           { path: "testManager/testEdit/:id", element: <LazyRoute Component={TestEdit} /> },
           { path: "testManager", element: <LazyRoute Component={TestManager} /> },
