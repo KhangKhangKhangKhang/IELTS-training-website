@@ -12,6 +12,7 @@ import {
   FilePlus2,
   Users2,
   Cookie,
+  ShieldCheck,
 } from "lucide-react";
 import ProfileModal from "./profileModal";
 import Cookies from "js-cookie";
@@ -27,15 +28,17 @@ const NavbarTeacher = () => {
   const navigate = useNavigate();
 
   const { user } = useAuth();
+  const basePath = location.pathname.startsWith("/admin") ? "/admin" : "/teacher";
 
   const baseNavLinks = [
-    { name: "Trang Chủ", href: "/teacher/homepage", icon: Home },
-    { name: "Diễn đàn", href: "/teacher/statistic", icon: BarChart3 },
-    { name: "Làm đề", href: "/teacher/test", icon: BookOpen },
-    { name: "Từ Vựng", href: "/teacher/vocabulary", icon: BookMarked },
-    { name: "Quản lý đề", href: "/teacher/testManager", icon: FilePlus2 },
-    { name: "Ngữ pháp", href: "/teacher/grammar", icon: Cookie },
-    { name: "Danh sách", href: "/teacher/userList", icon: Users2 },
+    { name: "Trang Chủ", href: `${basePath}/homepage`, icon: Home },
+    { name: "Diễn đàn", href: `${basePath}/statistic`, icon: BarChart3 },
+    { name: "Làm đề", href: `${basePath}/test`, icon: BookOpen },
+    { name: "Từ Vựng", href: `${basePath}/vocabulary`, icon: BookMarked },
+    { name: "Quản lý đề", href: `${basePath}/testManager`, icon: FilePlus2 },
+    { name: "Ngữ pháp", href: `${basePath}/grammar`, icon: Cookie },
+    { name: "Duyệt bài", href: `${basePath}/moderation`, icon: ShieldCheck },
+    { name: "Danh sách", href: `${basePath}/userList`, icon: Users2 },
   ];
 
   // Hide Vocabulary for teachers (role: GIAOVIEN)
@@ -61,7 +64,7 @@ const NavbarTeacher = () => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link
-              to="/teacher"
+              to={basePath}
               className="text-white text-xl font-bold flex items-center gap-2 hover:opacity-90 transition-opacity"
             >
               <div className="p-1.5 bg-blue-600 rounded-lg">

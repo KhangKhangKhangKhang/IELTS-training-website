@@ -29,6 +29,7 @@ const TestManager = lazy(() => import("./Pages/teacher/test/testManager"));
 const TestCreate = lazy(() => import("./Pages/teacher/test/testCreate"));
 const TestEdit = lazy(() => import("./Pages/teacher/test/testEdit"));
 const TeacherDashboard = lazy(() => import("./Pages/teacher/teacherDashboard"));
+const ForumModeration = lazy(() => import("./Pages/teacher/forumModeration"));
 const Grammar = lazy(() => import("./Pages/client/grammar"));
 
 // Loading fallback component
@@ -93,6 +94,7 @@ const router = createBrowserRouter([
           { path: "testManager/testDetail/:id", element: <LazyRoute Component={TestDetail} /> },
           { path: "startingPage", element: <LazyRoute Component={StartingPage} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
+          { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },
         ],
       },
     ],
@@ -119,6 +121,7 @@ const router = createBrowserRouter([
           { path: "testManager/testEdit/:id", element: <LazyRoute Component={TestEdit} /> },
           { path: "testManager", element: <LazyRoute Component={TestManager} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
+          { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },
         ],
       },
     ],
