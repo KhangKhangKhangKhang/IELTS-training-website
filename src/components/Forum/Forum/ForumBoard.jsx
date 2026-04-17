@@ -8,6 +8,11 @@ import { Spin } from "antd";
 import { useAuth } from "@/context/authContext";
 import { LoadingOutlined } from "@ant-design/icons";
 
+const isVisibleApprovedPost = (post) => {
+  const status = post?.moderation?.status;
+  return status === "auto_approved" || status === "approved";
+};
+
 const ForumBoard = ({ idForumThreads }) => {
   const [thread, setThread] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -50,16 +55,23 @@ const ForumBoard = ({ idForumThreads }) => {
       <ForumHeader thread={thread} />
       <CreatePost
         idForumThreads={idForumThreads}
-        onSuccess={(newPost) => setPosts([newPost, ...posts])}
+        onSuccess={(newPost) => {
+          if (!isVisibleApprovedPost(newPost)) {
+            return;
+          }
+          setPosts((prev) => [newPost, ...prev]);
+        }}
       />
       <PostList
         posts={posts}
         onPostUpdated={(updatedPost) =>
-          setPosts((prev) =>
-            prev.map((x) =>
+          setPosts((prev) => {
+            const next = prev.map((x) =>
               x.idForumPost === updatedPost.idForumPost ? updatedPost : x
-            )
-          )
+            );
+
+            return next.filter(isVisibleApprovedPost);
+          })
         }
         onPostDeleted={(deletedId) =>
           setPosts((prev) => prev.filter((x) => x.idForumPost !== deletedId))

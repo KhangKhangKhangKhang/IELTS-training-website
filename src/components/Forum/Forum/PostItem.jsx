@@ -1,6 +1,6 @@
 // PostItem - Updated with enhanced UI
 import React, { useState } from "react";
-import { Avatar, Card, Button, Dropdown, Modal, message, Tooltip } from "antd";
+import { Avatar, Card, Button, Dropdown, Modal, Tag, message, Tooltip } from "antd";
 import {
   LikeOutlined,
   LikeFilled,
@@ -17,12 +17,35 @@ import CommentList from "./CommentList";
 import { useAuth } from "@/context/authContext";
 import EditPostModal from "./Modal/EditPostModal";
 
+const MODERATION_STATUS_META = {
+  pending: { label: "Đang chờ AI", color: "default" },
+  auto_approved: { label: "Tự duyệt (AI)", color: "green" },
+  needs_review: { label: "Cần duyệt tay", color: "gold" },
+  auto_rejected: { label: "Tự từ chối (AI)", color: "red" },
+  approved: { label: "Đã duyệt", color: "blue" },
+  rejected: { label: "Đã từ chối", color: "volcano" },
+  changes_requested: { label: "Yêu cầu chỉnh sửa", color: "purple" },
+};
+
+const getScoreTagColor = (score) => {
+  if (typeof score !== "number") return "default";
+  if (score >= 80) return "green";
+  if (score <= 20) return "red";
+  return "gold";
+};
+
 const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   const { user } = useAuth();
   const isOwner =
     user?.role === "ADMIN" ||
+    user?.role === "GIAOVIEN" ||
     user?.role === "TEACHER" ||
     (user && post?.idUser === user.idUser);
+
+  const moderation = post?.moderation || null;
+  const moderationStatus = moderation?.status || "pending";
+  const moderationMeta = MODERATION_STATUS_META[moderationStatus] || MODERATION_STATUS_META.pending;
+  const showModerationInfo = isOwner;
 
   const [liked, setLiked] = useState(post.isLikedByCurrentUser);
   const [likeCount, setLikeCount] = useState(post.likeCount);
@@ -151,6 +174,21 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
           <p className="text-slate-700 dark:text-slate-300 text-base leading-relaxed whitespace-pre-line">
             {post.content}
           </p>
+
+          {showModerationInfo && moderation && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Tag color={moderationMeta.color}>{moderationMeta.label}</Tag>
+              <Tag color={getScoreTagColor(moderation.score)}>
+                AI: {typeof moderation.score === "number" ? `${moderation.score}/100` : "N/A"}
+              </Tag>
+            </div>
+          )}
+
+          {showModerationInfo && moderationStatus === "changes_requested" && moderation?.note && (
+            <div className="mt-3 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-800">
+              Góp ý từ người duyệt: {moderation.note}
+            </div>
+          )}
         </div>
 
         {/* Media */}

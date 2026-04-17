@@ -24,11 +24,12 @@ import {
   StopOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/context/authContext";
-import { getAllThreadAPI, getPostByThreadAPI } from "@/services/apiForum";
+import { getModerationQueueAPI, reviewForumPostAPI } from "@/services/apiForum";
 
 const { Paragraph, Text } = Typography;
 
 const STATUS_META = {
+  pending: { label: "Đang chờ AI", color: "default" },
   auto_approved: { label: "Tự duyệt (AI)", color: "green" },
   needs_review: { label: "Cần duyệt tay", color: "gold" },
   auto_rejected: { label: "Tự từ chối (AI)", color: "red" },
@@ -37,107 +38,27 @@ const STATUS_META = {
   changes_requested: { label: "Yêu cầu chỉnh sửa", color: "purple" },
 };
 
-const SPAM_KEYWORDS = [
-  "buy now",
-  "free money",
-  "casino",
-  "đặt cược",
-  "kiếm tiền nhanh",
-  "click link",
-  "airdrop",
-  "telegram",
-];
+const REVIEWABLE_STATUSES = ["approved", "rejected", "changes_requested"];
 
-const OFFENSIVE_KEYWORDS = ["idiot", "stupid", "ngu", "đồ ngu", "chửi"];
+const getStatus = (record) => record?.moderation?.status || "pending";
 
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const getPrimaryReason = (record) => {
+  const explanation = record?.moderation?.explanation;
+  const reasons = Array.isArray(record?.moderation?.reasons)
+    ? record.moderation.reasons
+    : [];
 
-const evaluatePostForModeration = (post) => {
-  const content = String(post?.content || "").trim();
-  const normalized = content.toLowerCase();
-  const reasons = [];
-  let score = 55;
-
-  if (content.length >= 80 && content.length <= 900) {
-    score += 15;
+  if (typeof explanation === "string" && explanation.trim()) {
+    return explanation;
   }
-
-  if (content.length < 25) {
-    score -= 25;
-    reasons.push("Nội dung quá ngắn, cần thêm ngữ cảnh học thuật.");
+  if (reasons.length > 0) {
+    return reasons[0];
   }
-
-  if (content.length > 1500) {
-    score -= 12;
-    reasons.push("Nội dung quá dài, cần rà soát rủi ro spam.");
-  }
-
-  const urlMatches = normalized.match(/https?:\/\/|www\./g) || [];
-  if (urlMatches.length > 0) {
-    score -= 15;
-    reasons.push("Có liên kết ngoài, cần kiểm tra độ an toàn.");
-  }
-  if (urlMatches.length > 2) {
-    score -= 10;
-    reasons.push("Quá nhiều liên kết trong một bài viết.");
-  }
-
-  if (/(.)\1{6,}/.test(content)) {
-    score -= 10;
-    reasons.push("Phát hiện ký tự lặp bất thường.");
-  }
-
-  if (/\b(\w{2,})\b(?:\s+\1\b){2,}/i.test(normalized)) {
-    score -= 10;
-    reasons.push("Phát hiện từ/cụm từ lặp nhiều lần.");
-  }
-
-  if (SPAM_KEYWORDS.some((kw) => normalized.includes(kw))) {
-    score -= 30;
-    reasons.push("Dấu hiệu quảng cáo hoặc spam.");
-  }
-
-  if (OFFENSIVE_KEYWORDS.some((kw) => normalized.includes(kw))) {
-    score -= 35;
-    reasons.push("Có khả năng chứa từ ngữ công kích.");
-  }
-
-  if (/[.!?]/.test(content)) {
-    score += 5;
-  }
-
-  if (post?.file) {
-    score += 4;
-    reasons.push("Có tệp đính kèm, cần xác nhận mức độ liên quan.");
-  }
-
-  if (!reasons.length) {
-    reasons.push("Nội dung tương đối an toàn, rủi ro thấp.");
-  }
-
-  const finalScore = clamp(Math.round(score), 0, 100);
-  let decision = "needs_review";
-
-  if (finalScore >= 80) {
-    decision = "auto_approved";
-  } else if (finalScore <= 20) {
-    decision = "auto_rejected";
-  }
-
-  const confidenceBase =
-    decision === "needs_review"
-      ? 55 - Math.abs(finalScore - 50)
-      : Math.abs(finalScore - (decision === "auto_approved" ? 80 : 20)) * 2.5;
-
-  return {
-    score: finalScore,
-    decision,
-    confidence: clamp(Math.round(confidenceBase), 35, 99),
-    reasons,
-  };
+  return "Không có lý do chi tiết từ AI.";
 };
 
 const getScoreColor = (score) => {
+  if (typeof score !== "number") return "default";
   if (score >= 80) return "green";
   if (score <= 20) return "red";
   return "gold";
@@ -147,10 +68,10 @@ const ForumModeration = () => {
   const { user } = useAuth();
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [manualActions, setManualActions] = useState({});
   const [previewPost, setPreviewPost] = useState(null);
   const [requestChangesModal, setRequestChangesModal] = useState({
     open: false,
@@ -160,52 +81,68 @@ const ForumModeration = () => {
 
   const canModerate = user?.role === "ADMIN" || user?.role === "GIAOVIEN";
 
-  const getCurrentStatus = useCallback(
-    (record) => manualActions[record.idForumPost]?.status || record.ai.decision,
-    [manualActions]
-  );
-
   const applyManualAction = useCallback(
-    (postIds, status, note = "") => {
+    async (postIds, status, note = "") => {
       if (!postIds.length) return;
+      if (!user?.idUser) {
+        message.error("Không tìm thấy người duyệt hiện tại.");
+        return;
+      }
 
-      const reviewedBy = user?.nameUser || user?.email || "Moderator";
-      const reviewedAt = new Date().toISOString();
+      try {
+        setActionLoading(true);
 
-      setManualActions((prev) => {
-        const next = { ...prev };
-        postIds.forEach((id) => {
-          next[id] = {
-            status,
-            note,
-            reviewedBy,
-            reviewedAt,
-          };
-        });
-        return next;
-      });
+        const results = await Promise.allSettled(
+          postIds.map((idForumPost) =>
+            reviewForumPostAPI(idForumPost, {
+              idReviewer: user.idUser,
+              status,
+              note,
+            })
+          )
+        );
 
-      setSelectedRowKeys([]);
+        const successRecords = results
+          .filter((result) => result.status === "fulfilled")
+          .map((result) => result.value?.data)
+          .filter(Boolean);
 
-      const labelByStatus = {
-        approved: "Đã duyệt",
-        rejected: "Đã từ chối",
-        changes_requested: "Đã yêu cầu chỉnh sửa",
-      };
+        if (!successRecords.length) {
+          throw new Error("No record updated");
+        }
 
-      message.success(`${labelByStatus[status] || "Đã cập nhật"} ${postIds.length} bài.`);
+        const updateMap = new Map(
+          successRecords.map((record) => [record.idForumPost, record])
+        );
+
+        setQueue((prev) =>
+          prev.map((record) => updateMap.get(record.idForumPost) || record)
+        );
+
+        setSelectedRowKeys([]);
+
+        const labelByStatus = {
+          approved: "Đã duyệt",
+          rejected: "Đã từ chối",
+          changes_requested: "Đã yêu cầu chỉnh sửa",
+        };
+
+        message.success(
+          `${labelByStatus[status] || "Đã cập nhật"} ${successRecords.length} bài.`
+        );
+
+        const failedCount = results.length - successRecords.length;
+        if (failedCount > 0) {
+          message.warning(`${failedCount} bài chưa cập nhật được, vui lòng thử lại.`);
+        }
+      } catch {
+        message.error("Không thể cập nhật trạng thái moderation.");
+      } finally {
+        setActionLoading(false);
+      }
     },
-    [user]
+    [user?.idUser]
   );
-
-  const clearManualAction = useCallback((postId) => {
-    setManualActions((prev) => {
-      if (!prev[postId]) return prev;
-      const next = { ...prev };
-      delete next[postId];
-      return next;
-    });
-  }, []);
 
   const loadModerationQueue = useCallback(async () => {
     if (!user?.idUser) {
@@ -215,31 +152,9 @@ const ForumModeration = () => {
 
     setLoading(true);
     try {
-      const threadRes = await getAllThreadAPI();
-      const threads = Array.isArray(threadRes?.data) ? threadRes.data : [];
-
-      const results = await Promise.all(
-        threads.map(async (thread) => {
-          try {
-            const postRes = await getPostByThreadAPI(thread.idForumThreads, user.idUser);
-            const posts = Array.isArray(postRes?.data) ? postRes.data : [];
-            return posts.map((post) => ({
-              ...post,
-              threadId: thread.idForumThreads,
-              threadTitle: thread.title,
-              ai: evaluatePostForModeration(post),
-            }));
-          } catch {
-            return [];
-          }
-        })
-      );
-
-      const flattenedQueue = results
-        .flat()
-        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-
-      setQueue(flattenedQueue);
+      const queueRes = await getModerationQueueAPI(user.idUser);
+      const queueData = Array.isArray(queueRes?.data) ? queueRes.data : [];
+      setQueue(queueData);
       setSelectedRowKeys([]);
     } catch {
       setQueue([]);
@@ -257,7 +172,7 @@ const ForumModeration = () => {
     const needle = keyword.trim().toLowerCase();
 
     return queue.filter((record) => {
-      const status = getCurrentStatus(record);
+      const status = getStatus(record);
 
       if (statusFilter !== "all" && status !== statusFilter) {
         return false;
@@ -277,25 +192,26 @@ const ForumModeration = () => {
         content.includes(needle)
       );
     });
-  }, [getCurrentStatus, keyword, queue, statusFilter]);
+  }, [keyword, queue, statusFilter]);
 
   const summary = useMemo(() => {
     const total = queue.length;
-    const needsReview = queue.filter(
-      (record) => getCurrentStatus(record) === "needs_review"
-    ).length;
+    const needsReview = queue.filter((record) => getStatus(record) === "needs_review").length;
     const highRisk = queue.filter((record) => {
-      const status = getCurrentStatus(record);
+      const status = getStatus(record);
       return status === "auto_rejected" || status === "rejected";
     }).length;
     const approved = queue.filter((record) => {
-      const status = getCurrentStatus(record);
+      const status = getStatus(record);
       return status === "auto_approved" || status === "approved";
     }).length;
-    const manualReviewed = Object.keys(manualActions).length;
+    const manualReviewed = queue.filter((record) => {
+      const status = getStatus(record);
+      return REVIEWABLE_STATUSES.includes(status);
+    }).length;
 
     return { total, needsReview, highRisk, approved, manualReviewed };
-  }, [getCurrentStatus, manualActions, queue]);
+  }, [queue]);
 
   const columns = useMemo(
     () => [
@@ -307,7 +223,7 @@ const ForumModeration = () => {
         render: (_, record) => (
           <div>
             <div className="font-semibold text-slate-800">{record.user?.nameUser || "Ẩn danh"}</div>
-            <div className="text-xs text-slate-500 mb-1">{record.threadTitle}</div>
+            <div className="text-xs text-slate-500 mb-1">{record.threadTitle || "(Không có thread)"}</div>
             <Paragraph ellipsis={{ rows: 2 }} className="!mb-1 !text-slate-700">
               {record.content || "(Không có nội dung)"}
             </Paragraph>
@@ -318,23 +234,30 @@ const ForumModeration = () => {
       {
         title: "Điểm AI",
         key: "aiScore",
-        width: 130,
-        render: (_, record) => (
-          <Space direction="vertical" size={2}>
-            <Tag color={getScoreColor(record.ai.score)}>{record.ai.score}/100</Tag>
-            <Text type="secondary" className="!text-xs">
-              Conf: {record.ai.confidence}%
-            </Text>
-          </Space>
-        ),
+        width: 140,
+        render: (_, record) => {
+          const score = record?.moderation?.score;
+          const confidence = record?.moderation?.confidence;
+
+          return (
+            <Space direction="vertical" size={2}>
+              <Tag color={getScoreColor(score)}>
+                {typeof score === "number" ? `${score}/100` : "N/A"}
+              </Tag>
+              <Text type="secondary" className="!text-xs">
+                Conf: {typeof confidence === "number" ? `${confidence}%` : "N/A"}
+              </Text>
+            </Space>
+          );
+        },
       },
       {
         title: "Trạng thái",
         key: "status",
         width: 180,
         render: (_, record) => {
-          const status = getCurrentStatus(record);
-          const meta = STATUS_META[status] || STATUS_META.needs_review;
+          const status = getStatus(record);
+          const meta = STATUS_META[status] || STATUS_META.pending;
           return <Tag color={meta.color}>{meta.label}</Tag>;
         },
       },
@@ -344,7 +267,7 @@ const ForumModeration = () => {
         width: 260,
         render: (_, record) => (
           <Paragraph ellipsis={{ rows: 2 }} className="!mb-0 !text-slate-600">
-            {record.ai.reasons[0]}
+            {getPrimaryReason(record)}
           </Paragraph>
         ),
       },
@@ -353,69 +276,57 @@ const ForumModeration = () => {
         key: "actions",
         fixed: "right",
         width: 260,
-        render: (_, record) => {
-          const action = manualActions[record.idForumPost];
-
-          return (
-            <Space direction="vertical" size={4}>
-              <Space size={6} wrap>
-                <Button
-                  size="small"
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  onClick={() => applyManualAction([record.idForumPost], "approved")}
-                >
-                  Duyệt
-                </Button>
-                <Button
-                  size="small"
-                  danger
-                  icon={<CloseCircleOutlined />}
-                  onClick={() => applyManualAction([record.idForumPost], "rejected")}
-                >
-                  Từ chối
-                </Button>
-              </Space>
-
-              <Space size={6} wrap>
-                <Button
-                  size="small"
-                  icon={<StopOutlined />}
-                  onClick={() =>
-                    setRequestChangesModal({
-                      open: true,
-                      postId: record.idForumPost,
-                      note: action?.note || "",
-                    })
-                  }
-                >
-                  Yêu cầu sửa
-                </Button>
-                <Button
-                  size="small"
-                  icon={<EyeOutlined />}
-                  onClick={() => setPreviewPost(record)}
-                >
-                  Chi tiết
-                </Button>
-              </Space>
-
-              {action && (
-                <Button
-                  type="link"
-                  size="small"
-                  className="!px-0"
-                  onClick={() => clearManualAction(record.idForumPost)}
-                >
-                  Khôi phục theo AI
-                </Button>
-              )}
+        render: (_, record) => (
+          <Space direction="vertical" size={4}>
+            <Space size={6} wrap>
+              <Button
+                size="small"
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                loading={actionLoading}
+                onClick={() => applyManualAction([record.idForumPost], "approved")}
+              >
+                Duyệt
+              </Button>
+              <Button
+                size="small"
+                danger
+                icon={<CloseCircleOutlined />}
+                loading={actionLoading}
+                onClick={() => applyManualAction([record.idForumPost], "rejected")}
+              >
+                Từ chối
+              </Button>
             </Space>
-          );
-        },
+
+            <Space size={6} wrap>
+              <Button
+                size="small"
+                icon={<StopOutlined />}
+                loading={actionLoading}
+                onClick={() =>
+                  setRequestChangesModal({
+                    open: true,
+                    postId: record.idForumPost,
+                    note: record?.moderation?.note || "",
+                  })
+                }
+              >
+                Yêu cầu sửa
+              </Button>
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => setPreviewPost(record)}
+              >
+                Chi tiết
+              </Button>
+            </Space>
+          </Space>
+        ),
       },
     ],
-    [applyManualAction, clearManualAction, getCurrentStatus, manualActions]
+    [actionLoading, applyManualAction]
   );
 
   if (!canModerate) {
@@ -436,14 +347,10 @@ const ForumModeration = () => {
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Forum Moderation Center</h1>
               <p className="text-slate-600 mt-1">
-                Duyệt bài tự động + thủ công theo mô hình ở mục 11 (MVP frontend).
+                Duyệt bài tự động + thủ công theo luồng 11.1 và 11.2.
               </p>
             </div>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={loadModerationQueue}
-              loading={loading}
-            >
+            <Button icon={<ReloadOutlined />} onClick={loadModerationQueue} loading={loading}>
               Tải lại queue
             </Button>
           </div>
@@ -452,8 +359,8 @@ const ForumModeration = () => {
         <Alert
           type="info"
           showIcon
-          message="MVP moderation"
-          description="Điểm AI và trạng thái auto đang được mô phỏng bằng rule-based scorer ở frontend. Quyết định duyệt thủ công có hiệu lực trong phiên hiện tại."
+          message="Gemini moderation đang hoạt động"
+          description="Điểm AI và lý do được lấy trực tiếp từ backend (Gemini prompt scoring) rồi trả về frontend để duyệt."
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
@@ -491,6 +398,7 @@ const ForumModeration = () => {
               className="w-full md:w-[220px]"
               options={[
                 { value: "all", label: "Tất cả trạng thái" },
+                { value: "pending", label: "Đang chờ AI" },
                 { value: "needs_review", label: "Cần duyệt tay" },
                 { value: "auto_approved", label: "Tự duyệt (AI)" },
                 { value: "auto_rejected", label: "Tự từ chối (AI)" },
@@ -503,6 +411,7 @@ const ForumModeration = () => {
             <Space wrap>
               <Button
                 type="primary"
+                loading={actionLoading}
                 disabled={selectedRowKeys.length === 0}
                 onClick={() => applyManualAction(selectedRowKeys, "approved")}
               >
@@ -510,6 +419,7 @@ const ForumModeration = () => {
               </Button>
               <Button
                 danger
+                loading={actionLoading}
                 disabled={selectedRowKeys.length === 0}
                 onClick={() => applyManualAction(selectedRowKeys, "rejected")}
               >
@@ -550,15 +460,25 @@ const ForumModeration = () => {
         {previewPost && (
           <div className="space-y-4">
             <div>
-              <Text strong>Thread:</Text> <Text>{previewPost.threadTitle}</Text>
+              <Text strong>Thread:</Text> <Text>{previewPost.threadTitle || "(Không có thread)"}</Text>
             </div>
             <div>
               <Text strong>Tác giả:</Text> <Text>{previewPost.user?.nameUser || "Ẩn danh"}</Text>
             </div>
             <div>
               <Text strong>Điểm AI:</Text>{" "}
-              <Tag color={getScoreColor(previewPost.ai.score)}>{previewPost.ai.score}/100</Tag>
-              <Text type="secondary">(Confidence {previewPost.ai.confidence}%)</Text>
+              <Tag color={getScoreColor(previewPost?.moderation?.score)}>
+                {typeof previewPost?.moderation?.score === "number"
+                  ? `${previewPost.moderation.score}/100`
+                  : "N/A"}
+              </Tag>
+              <Text type="secondary">
+                (Confidence{" "}
+                {typeof previewPost?.moderation?.confidence === "number"
+                  ? `${previewPost.moderation.confidence}%`
+                  : "N/A"}
+                )
+              </Text>
             </div>
             <div>
               <Text strong>Nội dung:</Text>
@@ -568,12 +488,27 @@ const ForumModeration = () => {
             </div>
             <div>
               <Text strong>Lý do AI:</Text>
-              <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-700">
-                {previewPost.ai.reasons.map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))}
-              </ul>
+              {Array.isArray(previewPost?.moderation?.reasons) &&
+              previewPost.moderation.reasons.length > 0 ? (
+                <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-700">
+                  {previewPost.moderation.reasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              ) : (
+                <Paragraph className="!mt-2 !mb-0 text-slate-600">
+                  {getPrimaryReason(previewPost)}
+                </Paragraph>
+              )}
             </div>
+            {previewPost?.moderation?.note && (
+              <div>
+                <Text strong>Góp ý từ người duyệt:</Text>
+                <Paragraph className="!mt-2 !mb-0 text-slate-700">
+                  {previewPost.moderation.note}
+                </Paragraph>
+              </div>
+            )}
           </div>
         )}
       </Modal>
@@ -583,6 +518,7 @@ const ForumModeration = () => {
         title="Yêu cầu chỉnh sửa"
         okText="Gửi yêu cầu"
         cancelText="Hủy"
+        confirmLoading={actionLoading}
         onCancel={() =>
           setRequestChangesModal({
             open: false,
@@ -590,13 +526,19 @@ const ForumModeration = () => {
             note: "",
           })
         }
-        onOk={() => {
+        onOk={async () => {
           const note = requestChangesModal.note.trim();
           if (!note) {
             message.warning("Vui lòng nhập nội dung góp ý.");
             return;
           }
-          applyManualAction([requestChangesModal.postId], "changes_requested", note);
+
+          await applyManualAction(
+            [requestChangesModal.postId],
+            "changes_requested",
+            note
+          );
+
           setRequestChangesModal({
             open: false,
             postId: null,
