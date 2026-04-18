@@ -25,6 +25,10 @@ import {
   Headphones,
   PenTool,
   Mic,
+  Cpu,
+  Wallet,
+  RefreshCw,
+  MessageCircle,
   Calendar,
   Target,
   Award,
@@ -134,6 +138,18 @@ const HomePage = () => {
   const [historyFilter, setHistoryFilter] = useState("ALL");
   const ITEMS_PER_PAGE = 5;
 
+  // --- AI FLOW MVP STATES ---
+  const [studyMode, setStudyMode] = useState(
+    () => localStorage.getItem("studyMode") || "BALANCED"
+  );
+  const [studyHoursPerDay, setStudyHoursPerDay] = useState(() => {
+    const saved = Number(localStorage.getItem("studyHoursPerDay"));
+    return Number.isFinite(saved) && saved > 0 ? saved : 1.5;
+  });
+  const [lastGeneratedPlanAt, setLastGeneratedPlanAt] = useState(
+    () => localStorage.getItem("lastGeneratedPlanAt") || ""
+  );
+
   // --- API CALLS ---
   useEffect(() => {
     const fetchData = async () => {
@@ -164,6 +180,14 @@ const HomePage = () => {
     };
     fetchData();
   }, [idUser]);
+
+  useEffect(() => {
+    localStorage.setItem("studyMode", studyMode);
+  }, [studyMode]);
+
+  useEffect(() => {
+    localStorage.setItem("studyHoursPerDay", String(studyHoursPerDay));
+  }, [studyHoursPerDay]);
 
   // --- LOGIC 1: Xử lý Target & Countdown ---
   const targetInfo = useMemo(() => {
@@ -267,6 +291,93 @@ const HomePage = () => {
     setHistoryPage(1);
   }, [historyFilter]);
 
+  const assessmentCoverage = useMemo(() => {
+    const checkedSkills = new Set(
+      history
+        .map((item) => item?.test?.testType)
+        .filter((type) =>
+          ["READING", "LISTENING", "WRITING", "SPEAKING"].includes(type)
+        )
+    );
+
+    const allSkills = ["READING", "LISTENING", "WRITING", "SPEAKING"];
+    const missing = allSkills.filter((skill) => !checkedSkills.has(skill));
+
+    return {
+      completedCount: checkedSkills.size,
+      missingSkills: missing,
+    };
+  }, [history]);
+
+  const weakSkills = useMemo(() => {
+    const details = Array.isArray(overall?.details) ? [...overall.details] : [];
+
+    return details
+      .sort((a, b) => Number(a.avg ?? 0) - Number(b.avg ?? 0))
+      .slice(0, 2)
+      .map((item) => ({ type: item.type, score: Number(item.avg ?? 0) }));
+  }, [overall?.details]);
+
+  const aiPlan = useMemo(() => {
+    const totalMinutes = Math.max(30, Math.round(Number(studyHoursPerDay || 1) * 60));
+    const focusPrimary = weakSkills[0]?.type || "READING";
+    const focusSecondary = weakSkills[1]?.type || "LISTENING";
+    const modeDescriptions = {
+      LOW_COST: "Prefer free resources, low AI calls, and manual review.",
+      BALANCED: "Mix free resources with selective AI grading.",
+      PREMIUM: "Use full AI feedback flow with frequent evaluation.",
+    };
+    const estimatedCredits = {
+      LOW_COST: 0,
+      BALANCED: 2,
+      PREMIUM: 5,
+    };
+
+    const tasks = [
+      `10m SRS warm-up for ${focusPrimary}`,
+      `${Math.round(totalMinutes * 0.4)}m focused practice on ${focusPrimary}`,
+      `${Math.round(totalMinutes * 0.3)}m focused practice on ${focusSecondary}`,
+      `${Math.max(10, Math.round(totalMinutes * 0.2))}m review and error log`,
+    ];
+
+    if (recommended[0]?.title) {
+      tasks.push(`Recommended test: ${recommended[0].title}`);
+    }
+
+    if (targetInfo?.daysLeft <= 30) {
+      tasks.push("Exam countdown < 30 days: prioritize timed tests.");
+    }
+
+    return {
+      tasks,
+      modeDescription: modeDescriptions[studyMode] || modeDescriptions.BALANCED,
+      estimatedCredits: estimatedCredits[studyMode] ?? 2,
+    };
+  }, [recommended, studyHoursPerDay, studyMode, targetInfo?.daysLeft, weakSkills]);
+
+  const generatedAtLabel = useMemo(() => {
+    if (!lastGeneratedPlanAt) {
+      return "Not generated yet";
+    }
+
+    return new Date(lastGeneratedPlanAt).toLocaleString("vi-VN");
+  }, [lastGeneratedPlanAt]);
+
+  const handleGenerateAiPlan = () => {
+    const nowIso = new Date().toISOString();
+    setLastGeneratedPlanAt(nowIso);
+    localStorage.setItem("lastGeneratedPlanAt", nowIso);
+    message.success("Adaptive plan generated on dashboard.");
+  };
+
+  const handleStartAssessment = () => {
+    navigate("/test");
+  };
+
+  const handleOpenAiTutor = () => {
+    window.dispatchEvent(new Event("open-ielts-chat"));
+  };
+
   const getSkillScore = (type) =>
     overall?.details?.find((d) => d.type === type)?.avg || 0;
 
@@ -368,6 +479,133 @@ const HomePage = () => {
           </div>
         </div>
       </div>
+
+      {/* --- AI FLOW MVP --- */}
+      <section className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+              AI Study Flow (MVP)
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Initial assessment to plan generator to adaptive schedule to AI tutor support.
+            </p>
+          </div>
+          <span className="inline-flex w-fit rounded-full bg-blue-100 dark:bg-blue-900/30 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400">
+            Flow-first implementation
+          </span>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-4">
+          <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+            <div className="flex items-center gap-2">
+              <Cpu size={18} className="text-purple-600" />
+              <p className="font-semibold text-gray-800 dark:text-white">1) Initial Assessment</p>
+            </div>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              Coverage: {assessmentCoverage.completedCount}/4 skills
+            </p>
+            {assessmentCoverage.missingSkills.length > 0 ? (
+              <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                Missing: {assessmentCoverage.missingSkills.join(", ")}
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
+                Baseline data is available for all skills.
+              </p>
+            )}
+            <button
+              onClick={handleStartAssessment}
+              className="mt-3 w-full rounded-lg bg-slate-900 text-white py-2 text-sm font-semibold hover:bg-slate-800"
+            >
+              Start / Continue Assessment
+            </button>
+          </article>
+
+          <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+            <div className="flex items-center gap-2">
+              <Wallet size={18} className="text-emerald-600" />
+              <p className="font-semibold text-gray-800 dark:text-white">2) Plan Generator</p>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              <select
+                value={studyMode}
+                onChange={(event) => setStudyMode(event.target.value)}
+                className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 p-2 text-sm text-gray-800 dark:text-white"
+              >
+                <option value="LOW_COST">Low-cost</option>
+                <option value="BALANCED">Balanced</option>
+                <option value="PREMIUM">Premium</option>
+              </select>
+              <input
+                type="number"
+                min="0.5"
+                max="8"
+                step="0.5"
+                value={studyHoursPerDay}
+                onChange={(event) =>
+                  setStudyHoursPerDay(Number(event.target.value || 0.5))
+                }
+                className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 p-2 text-sm text-gray-800 dark:text-white"
+              />
+            </div>
+
+            <button
+              onClick={handleGenerateAiPlan}
+              className="mt-3 w-full rounded-lg bg-purple-600 text-white py-2 text-sm font-semibold hover:bg-purple-700"
+            >
+              Generate plan
+            </button>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Last generated: {generatedAtLabel}
+            </p>
+          </article>
+
+          <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+            <div className="flex items-center gap-2">
+              <RefreshCw size={18} className="text-blue-600" />
+              <p className="font-semibold text-gray-800 dark:text-white">3) Adaptive Scheduler</p>
+            </div>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              {aiPlan.modeDescription}
+            </p>
+            <ul className="mt-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">
+              {aiPlan.tasks.slice(0, 4).map((task) => (
+                <li key={task}>- {task}</li>
+              ))}
+            </ul>
+          </article>
+
+          <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+            <div className="flex items-center gap-2">
+              <MessageCircle size={18} className="text-pink-600" />
+              <p className="font-semibold text-gray-800 dark:text-white">4) Tutor + Next Action</p>
+            </div>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              Estimated credits/session: {aiPlan.estimatedCredits}
+            </p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Use AI tutor for grammar/explanation then run the suggested test.
+            </p>
+
+            <div className="mt-3 grid grid-cols-1 gap-2">
+              <button
+                onClick={handleOpenAiTutor}
+                className="rounded-lg bg-blue-600 text-white py-2 text-sm font-semibold hover:bg-blue-700"
+              >
+                Open AI Tutor
+              </button>
+              <button
+                onClick={() => navigate("/statistic")}
+                className="rounded-lg border border-gray-200 dark:border-slate-600 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700"
+              >
+                Open Forum Discussion
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
 
       {/* 4 Cards Kỹ Năng */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

@@ -37,7 +37,7 @@ const Statistic = () => {
                   </p>
                 </div>
 
-                {(user?.role === "ADMIN" || user?.role === "TEACHER") && (
+                {(user?.role === "ADMIN" || user?.role === "GIAOVIEN") && (
                   <Button
                     type="primary"
                     size="large"
