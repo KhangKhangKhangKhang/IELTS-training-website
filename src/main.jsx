@@ -8,6 +8,7 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 import ProtectedRoute from "./context/auth/protectedRoute";
 import Navbar from "./components/ui/navBar/navBar";
 import NavbarTeacher from "./components/ui/navBar/navBarTeacher";
+import NavbarAdmin from "./components/ui/navBar/navBarAdmin";
 import { Spin } from "antd";
 
 // ✅ OPTIMIZED: Lazy load all page components for better performance
@@ -29,7 +30,9 @@ const TestManager = lazy(() => import("./Pages/teacher/test/testManager"));
 const TestCreate = lazy(() => import("./Pages/teacher/test/testCreate"));
 const TestEdit = lazy(() => import("./Pages/teacher/test/testEdit"));
 const TeacherDashboard = lazy(() => import("./Pages/teacher/teacherDashboard"));
+const ForumModeration = lazy(() => import("./Pages/teacher/forumModeration"));
 const Grammar = lazy(() => import("./Pages/client/grammar"));
+const AdminDashboard = lazy(() => import("./Pages/admin/adminDashboard"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -93,6 +96,7 @@ const router = createBrowserRouter([
           { path: "testManager/testDetail/:id", element: <LazyRoute Component={TestDetail} /> },
           { path: "startingPage", element: <LazyRoute Component={StartingPage} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
+          { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },
         ],
       },
     ],
@@ -104,10 +108,11 @@ const router = createBrowserRouter([
     children: [
       {
         path: "/admin",
-        element: <NavbarTeacher />,
+        element: <NavbarAdmin />,
         children: [
-          { index: true, element: <LazyRoute Component={HomePage} /> },
-          { path: "homepage", element: <LazyRoute Component={HomePage} /> },
+          { index: true, element: <LazyRoute Component={AdminDashboard} /> },
+          { path: "homepage", element: <LazyRoute Component={AdminDashboard} /> },
+          { path: "dashboard", element: <LazyRoute Component={AdminDashboard} /> },
           { path: "statistic", element: <LazyRoute Component={Statistic} /> },
           { path: "vocabulary", element: <LazyRoute Component={Vocabulary} /> },
           { path: "test", element: <LazyRoute Component={Test} /> },
@@ -119,6 +124,7 @@ const router = createBrowserRouter([
           { path: "testManager/testEdit/:id", element: <LazyRoute Component={TestEdit} /> },
           { path: "testManager", element: <LazyRoute Component={TestManager} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
+          { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },
         ],
       },
     ],

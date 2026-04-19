@@ -70,7 +70,7 @@ const Grammar = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("user");
 
-  const isAdminOrTeacher = hasTeacherPrivileges(user?.role);
+  const isAdminOrTeacher = user?.role === "ADMIN" || user?.role === "GIAOVIEN";
   const isTeacher = user?.role === "GIAOVIEN";
 
   const getTypeColor = (type) => {

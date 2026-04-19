@@ -144,6 +144,18 @@ const ChatBotWidget = () => {
     if (isOpen) loadChatHistory();
   }, [isOpen]);
 
+  useEffect(() => {
+    const handleOpenWidget = () => {
+      setIsOpen(true);
+    };
+
+    window.addEventListener("open-ielts-chat", handleOpenWidget);
+
+    return () => {
+      window.removeEventListener("open-ielts-chat", handleOpenWidget);
+    };
+  }, []);
+
   // Xử lý kéo thả đổi bên
   const handleDragEnd = (event, info) => {
     const screenWidth = window.innerWidth;

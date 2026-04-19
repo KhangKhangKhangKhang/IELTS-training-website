@@ -25,6 +25,11 @@ export const getPostByIdAPI = async (idForumPost, idUser) => {
   return res.data;
 };
 
+export const getModerationQueueAPI = async (idUser) => {
+  const res = await API.get(`/forum-post/moderation-queue/${idUser}`);
+  return res.data;
+};
+
 export const getAllCommentsByPostAPI = async (idForumPost) => {
   const res = await API.get(
     `/forum-comment/get-all-by-idForumPost/${idForumPost}`
@@ -77,6 +82,11 @@ export const updatePostAPI = async (idForumPost, formData) => {
       headers: { "Content-Type": "multipart/form-data" },
     }
   );
+  return res.data;
+};
+
+export const reviewForumPostAPI = async (idForumPost, data) => {
+  const res = await API.patch(`/forum-post/moderation-review/${idForumPost}`, data);
   return res.data;
 };
 

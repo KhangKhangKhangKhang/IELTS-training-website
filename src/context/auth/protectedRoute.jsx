@@ -25,7 +25,7 @@ const ProtectedRoute = () => {
       return <Navigate to="/teacher/homepage" replace />;
     }
     if (role === "ADMIN") {
-      return <Navigate to="/admin/homepage" replace />;
+      return <Navigate to="/admin/dashboard" replace />;
     }
   }
   if (isAuth === null) {

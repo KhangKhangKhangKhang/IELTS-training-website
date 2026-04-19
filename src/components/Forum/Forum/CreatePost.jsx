@@ -36,7 +36,22 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
     setLoading(true);
     try {
       const res = await createPostAPI(form);
-      message.success("Đăng bài thành công!");
+
+      const moderationStatus = res?.data?.moderation?.status;
+      const moderationReason = res?.data?.moderation?.explanation;
+
+      if (moderationStatus === "auto_approved" || moderationStatus === "approved") {
+        message.success("Đăng bài thành công và đã được hiển thị.");
+      } else if (moderationStatus === "needs_review" || moderationStatus === "pending") {
+        message.info("Bài viết đã gửi, đang chờ duyệt thủ công.");
+      } else if (moderationStatus === "auto_rejected") {
+        message.warning(
+          moderationReason || "Bài viết bị từ chối tự động, vui lòng chỉnh sửa và đăng lại."
+        );
+      } else {
+        message.success("Đăng bài thành công!");
+      }
+
       setContent("");
       setFile(null);
       onSuccess(res.data);
@@ -188,7 +203,7 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
               type="primary"
               loading={loading}
               onClick={handlePost}
-              disabled={!content.trim() && !file}
+              disabled={!content.trim()}
               icon={<SendOutlined />}
               className="bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 border-0 rounded-xl px-6 h-10 font-medium shadow-md shadow-blue-200 dark:shadow-blue-900/20 disabled:opacity-50"
             >
