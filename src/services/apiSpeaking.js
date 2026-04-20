@@ -1,5 +1,26 @@
 import API from "./axios.custom";
 
+const normalizeEnvelope = (responseData) => {
+  if (!responseData || typeof responseData !== "object") return responseData;
+
+  if (responseData?.data?.idSpeakingTask || Array.isArray(responseData?.data)) {
+    return {
+      ...responseData,
+      data: Array.isArray(responseData.data)
+        ? responseData.data.map((task) => ({
+            ...task,
+            part: task?.part || task?.partType,
+          }))
+        : {
+            ...responseData.data,
+            part: responseData?.data?.part || responseData?.data?.partType,
+          },
+    };
+  }
+
+  return responseData;
+};
+
 // =============================================================================
 // SPEAKING TASK APIS (FORM DATA)
 // =============================================================================
@@ -20,14 +41,17 @@ export const updateSpeakingTask = async (idSpeakingTask, data) => {
 };
 
 export const getAllSpeakingTasks = async (idTest) => {
-  const res = await API.get(`/speaking-task/find-all-speaking-tasks/${idTest}`);
-  return res.data;
+  const res = await API.get(
+    `/speaking-task/find-all-speaking-tasks-in-test/${idTest}`
+  );
+  return normalizeEnvelope(res.data);
 };
 
 export const getSpeakingTask = async (idSpeakingTask) => {
   const res = await API.get(
     `/speaking-task/find-speaking-task/${idSpeakingTask}`
   );
+  return normalizeEnvelope(res.data);
 };
 
 export const deleteSpeakingTask = async (idSpeakingTask) => {

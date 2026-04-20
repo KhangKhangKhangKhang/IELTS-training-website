@@ -1,5 +1,66 @@
 import API from "./axios.custom";
-import axios from "axios";
+import {
+  encodeInstructionsWithQuantity,
+  mapBackendQuestionToLegacyQuestion,
+  mapLegacyQuestionsPayloadToBackend,
+  mapLegacyGroupTypeToBackendQuestionType,
+  normalizeGroupForLegacy,
+  normalizePartForLegacy,
+} from "./contractAdapters";
+
+const normalizeEnvelope = (responseData, normalizer) => {
+  if (!responseData || typeof responseData !== "object") return responseData;
+  if (responseData.data === undefined) return normalizer(responseData);
+  return {
+    ...responseData,
+    data: normalizer(responseData.data),
+  };
+};
+
+const buildQuestionGroupFormData = (data = {}) => {
+  const formData = new FormData();
+
+  formData.append("idPart", data.idPart);
+  formData.append(
+    "questionType",
+    mapLegacyGroupTypeToBackendQuestionType(
+      data.typeQuestion || data.questionType
+    )
+  );
+  formData.append("title", data.title || "");
+
+  const encodedInstructions = encodeInstructionsWithQuantity(
+    data.instructions || data.instruction || "",
+    data.quantity
+  );
+  if (encodedInstructions) {
+    formData.append("instructions", encodedInstructions);
+  }
+
+  if (data.order !== undefined && data.order !== null) {
+    formData.append("order", String(data.order));
+  }
+
+  const imageFile = data.imageUrl || data.img || data.image;
+  if (imageFile !== undefined && imageFile !== null) {
+    formData.append("imageUrl", imageFile);
+  }
+
+  return formData;
+};
+
+const normalizeQuestionGroupResponseAsLegacyArray = (responseData) => {
+  const normalized = normalizeGroupForLegacy(responseData?.data || responseData);
+  return {
+    ...(responseData || {}),
+    data: normalized ? [normalized] : [],
+  };
+};
+
+const stripQuestionIdFromCreatePayload = (question) => {
+  const { idQuestion: _idQuestion, ...rest } = question;
+  return rest;
+};
 
 export const getAPITest = async () => {
   const res = await API.get("/test/get-all-test");
@@ -63,29 +124,27 @@ export const createPassageAPI = async (formData) => {
 };
 
 export const createGroupOfQuestionsAPI = async (data) => {
-  const formData = new FormData();
+  const formData = buildQuestionGroupFormData(data);
+  const res = await API.post("/question-group/create-question-group", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 
-  // Thêm các fields vào FormData
-  for (const key in data) {
-    if (data[key] != null) {
-      formData.append(key, data[key]);
-    }
-  }
-
-  const res = await API.post(
-    "/group-of-questions/create-group-question",
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
-  return res.data;
+  return normalizeEnvelope(res.data, normalizeGroupForLegacy);
 };
 
 export const createQuestion = async (data) => {
-  const res = await API.post("/question/create-question", data);
+  const isLegacyPayload =
+    !!data?.idGroupOfQuestions || Array.isArray(data?.answers);
+
+  let payload = data;
+  if (isLegacyPayload) {
+    const [mappedQuestion] = await mapLegacyQuestionsPayloadToBackend(API, [data]);
+    payload = stripQuestionIdFromCreatePayload(mappedQuestion);
+  }
+
+  const res = await API.post("/question/create-question", payload);
   return res.data;
 };
 
@@ -113,7 +172,18 @@ export const createUserTestResult = async (idUser, idTest, data) => {
 };
 
 export const createManyQuestion = async (data) => {
-  const res = await API.post(`/question/create-many-questions`, data);
+  const sourceQuestions = Array.isArray(data?.questions) ? data.questions : [];
+  const mappedQuestions = await mapLegacyQuestionsPayloadToBackend(
+    API,
+    sourceQuestions
+  );
+  const payload = {
+    questions: mappedQuestions.map((question) =>
+      stripQuestionIdFromCreatePayload(question)
+    ),
+  };
+
+  const res = await API.post(`/question/create-many-questions`, payload);
   return res.data;
 };
 
@@ -125,7 +195,7 @@ export const deletePartAPI = async (idPart) => {
 
 export const deleteGroupOfQuestionsAPI = async (idGroupOfQuestions) => {
   const res = await API.delete(
-    `/group-of-questions/delete-group-of-questions/${idGroupOfQuestions}`
+    `/question-group/delete-question-group/${idGroupOfQuestions}`
   );
   return res.data;
 };
@@ -138,18 +208,32 @@ export const getAllPartByIdAPI = async (idTest) => {
 
 export const getPartByIdAPI = async (idPart) => {
   const res = await API.get(`/part/get-one/${idPart}`);
-  return res.data;
+
+  return normalizeEnvelope(res.data, (parts) =>
+    (Array.isArray(parts) ? parts : []).map((part) => normalizePartForLegacy(part))
+  );
 };
 export const getQuestionsByIdGroupAPI = async (idGroupOfQuestions) => {
-  const res = await API.get(
-    `/group-of-questions/get-by-id/${idGroupOfQuestions}`
-  );
-  return res.data;
+  const res = await API.get(`/question-group/get-by-id/${idGroupOfQuestions}`);
+  return normalizeQuestionGroupResponseAsLegacyArray(res.data);
 };
 
 export const getAnswersByIdQuestionAPI = async (idQuestion) => {
-  const res = await API.get(`/answer/get-by-id-question/${idQuestion}`);
-  return res.data;
+  const res = await API.get(`/question/find-by-id/${idQuestion}`);
+  const question = res?.data?.data;
+
+  if (Array.isArray(question?.answers) && question.answers.length > 0) {
+    return {
+      ...res.data,
+      data: question.answers,
+    };
+  }
+
+  const mapped = mapBackendQuestionToLegacyQuestion(question || {});
+  return {
+    ...res.data,
+    data: mapped?.answers || [],
+  };
 };
 
 //patch
@@ -164,11 +248,18 @@ export const updatePassageAPI = async (idPassage, data) => {
 };
 
 export const updateGroupOfQuestionsAPI = async (idGroupOfQuestions, data) => {
+  const formData = buildQuestionGroupFormData(data);
   const res = await API.patch(
-    `/group-of-questions/update-group-of-questions/${idGroupOfQuestions}`,
-    data
+    `/question-group/update-question-group/${idGroupOfQuestions}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
   );
-  return res.data;
+
+  return normalizeEnvelope(res.data, normalizeGroupForLegacy);
 };
 
 export const updateAnswerAPI = async (idAnswer, data) => {
@@ -176,11 +267,62 @@ export const updateAnswerAPI = async (idAnswer, data) => {
   return res.data;
 };
 export const updateQuestionAPI = async (idQuestion, data) => {
-  const res = await API.patch(`/question/update-question/${idQuestion}`, data);
+  const isLegacyPayload =
+    !!data?.idGroupOfQuestions || Array.isArray(data?.answers);
+
+  let payload = data;
+  if (isLegacyPayload) {
+    const [mappedQuestion] = await mapLegacyQuestionsPayloadToBackend(API, [
+      {
+        ...data,
+        idQuestion,
+      },
+    ]);
+    payload = stripQuestionIdFromCreatePayload(mappedQuestion);
+  }
+
+  const res = await API.patch(`/question/update-question/${idQuestion}`, payload);
   return res.data;
 };
 
 export const updateManyQuestionAPI = async (data) => {
-  const res = await API.patch(`/question/update-many-questions`, data);
-  return res.data;
+  const sourceQuestions = Array.isArray(data?.questions) ? data.questions : [];
+  const mappedQuestions = await mapLegacyQuestionsPayloadToBackend(
+    API,
+    sourceQuestions
+  );
+
+  const toUpdate = mappedQuestions.filter((question) => !!question.idQuestion);
+  const toCreate = mappedQuestions
+    .filter((question) => !question.idQuestion)
+    .map((question) => stripQuestionIdFromCreatePayload(question));
+
+  const updatedRecords = [];
+
+  if (toUpdate.length > 0) {
+    const updateResponses = await Promise.all(
+      toUpdate.map(async (question) => {
+        const { idQuestion, ...payload } = question;
+        const res = await API.patch(`/question/update-question/${idQuestion}`, payload);
+        return res?.data?.data || res?.data || null;
+      })
+    );
+    updatedRecords.push(...updateResponses.filter(Boolean));
+  }
+
+  if (toCreate.length > 0) {
+    const createRes = await API.post(`/question/create-many-questions`, {
+      questions: toCreate,
+    });
+    const created = Array.isArray(createRes?.data?.data)
+      ? createRes.data.data
+      : [];
+    updatedRecords.push(...created);
+  }
+
+  return {
+    message: "Questions updated successfully",
+    data: updatedRecords,
+    status: 200,
+  };
 };

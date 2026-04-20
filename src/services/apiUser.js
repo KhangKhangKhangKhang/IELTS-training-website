@@ -5,7 +5,7 @@ export const userProfileAPI = async (id) => {
 };
 
 export const getAllUserAPI = async (params = {}) => {
-  const res = await API.get(`/users/get-all`, params);
+  const res = await API.get(`/users/get-all`, { params });
   return res.data;
 };
 
@@ -24,7 +24,7 @@ export const updateUserAPI = async (id, data) => {
 };
 
 export const deleteUserAPI = async (id) => {
-  const res = await API.delete(`/users/${id}`);
+  const res = await API.delete(`/users/delete-user/${id}`);
   return res.data;
 };
 

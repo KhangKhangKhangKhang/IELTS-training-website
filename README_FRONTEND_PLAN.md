@@ -1,244 +1,102 @@
-# README_FRONTEND_PLAN
+# Kế hoạch Frontend cho Nền tảng IELTS Tự học dùng AI
 
-## 1. Overview of Major Changes
+## 1. Mục tiêu sản phẩm
 
-The backend moved to a stricter metadata-first contract with standardized question handling. The biggest frontend-impacting shifts are:
+- Chuyển trải nghiệm từ mô hình lớp học truyền thống sang mô hình tự học cá nhân hóa.
+- Đặt AI làm trung tâm cho các luồng học tập: gợi ý lộ trình, chấm Writing/Speaking tức thì, theo dõi tiến độ.
+- Tích hợp rõ cơ chế Credits/Packages để người dùng hiểu chi phí và giá trị trước khi sử dụng tính năng nâng cao.
+- Bổ sung luồng "On-Demand Review Ticket" để người dùng mua chấm chữa thủ công từ giáo viên freelance.
 
-1. Endpoint contracts changed across auth, tests, answers, forum, vocab, grammar, statistics, and teacher flows, so existing service assumptions are no longer safe.
-2. Question logic is now schema-driven (14 question types), with strong validation and stricter payload requirements from [ielts_training_app/docs/metadata/schema-reference.md](../ielts_training_app/docs/metadata/schema-reference.md).
-3. Completion questions now require standardized blank placeholders like [1], [2] per [ielts_training_app/docs/metadata/blank-patterns.md](../ielts_training_app/docs/metadata/blank-patterns.md) and [ielts_training_app/docs/question-types/completion-types.md](../ielts_training_app/docs/question-types/completion-types.md).
-4. Renderer behavior changed for grouped completion/table/flowchart modes and dual answer input modes, documented in [ielts_training_app/docs/frontend/renderer-guide.md](../ielts_training_app/docs/frontend/renderer-guide.md).
-5. Teacher authoring payloads must send metadata correctly per type (no legacy answers-style payload), documented in [ielts_training_app/docs/frontend/teacher-guide.md](../ielts_training_app/docs/frontend/teacher-guide.md).
-6. Validation errors are now contract-critical and must be parsed/displayed correctly per [ielts_training_app/docs/api/validation-errors.md](../ielts_training_app/docs/api/validation-errors.md).
+## 2. Định vị giao diện
 
-## 2. List of Affected Files
+- Hướng tới trải nghiệm "Self-Study Command Center":
+  - Ưu tiên dashboard cá nhân theo mục tiêu band.
+  - Luồng thao tác ngắn, rõ, ít rào cản.
+  - Mọi trang quan trọng đều thể hiện trạng thái tín dụng (credits), tiến độ và gợi ý bước tiếp theo.
 
-### Core service and auth foundation
+## 3. Nhóm người dùng và nhu cầu
 
-- [src/services/axios.custom.js](src/services/axios.custom.js)
-- [src/services/apiAuth.js](src/services/apiAuth.js)
-- [src/context/authContext.jsx](src/context/authContext.jsx)
-- [src/context/auth/protectedRoute.jsx](src/context/auth/protectedRoute.jsx)
+### USER (học viên tự học)
 
-### Test lifecycle and renderer
+- Cần biết học gì hôm nay, học bao lâu, ưu tiên kỹ năng nào.
+- Cần phản hồi nhanh sau khi nộp bài.
+- Cần minh bạch credits trước khi chấm AI nâng cao hoặc gọi giáo viên chấm lại.
 
-- [src/services/apiDoTest.js](src/services/apiDoTest.js)
-- [src/services/apiTest.js](src/services/apiTest.js)
-- [src/Pages/client/test/testReview.jsx](src/Pages/client/test/testReview.jsx)
-- [src/Pages/client/test/testDetail.jsx](src/Pages/client/test/testDetail.jsx)
-- [src/components/test/Detail/QuestionRenderer.jsx](src/components/test/Detail/QuestionRenderer.jsx)
-- [src/components/test/Detail/RenderFillBlank.jsx](src/components/test/Detail/RenderFillBlank.jsx)
-- [src/components/test/Detail/RenderMatching.jsx](src/components/test/Detail/RenderMatching.jsx)
-- [src/components/test/Detail/RenderLabeling.jsx](src/components/test/Detail/RenderLabeling.jsx)
-- [src/components/test/Detail/RenderMCQ.jsx](src/components/test/Detail/RenderMCQ.jsx)
-- [src/components/test/Detail/RenderTFNG.jsx](src/components/test/Detail/RenderTFNG.jsx)
-- [src/components/test/Detail/RenderYesNoNotGiven.jsx](src/components/test/Detail/RenderYesNoNotGiven.jsx)
-- [src/components/test/Detail/RenderShortAnswer.jsx](src/components/test/Detail/RenderShortAnswer.jsx)
-- [src/components/test/type/listening.jsx](src/components/test/type/listening.jsx)
-- [src/components/test/type/reading.jsx](src/components/test/type/reading.jsx)
-- [src/components/test/type/writing.jsx](src/components/test/type/writing.jsx)
-- [src/components/test/type/speaking.jsx](src/components/test/type/speaking.jsx)
+### TEACHER (freelance reviewer/moderator)
 
-### Teacher authoring
+- Cần bảng hàng đợi ticket toàn cục dễ lọc và dễ nhận việc.
+- Cần trang xử lý ticket nhanh, có rubric rõ, hỗ trợ nhập feedback chuẩn hóa.
+- Cần theo dõi thu nhập và lịch sử ticket đã hoàn tất.
 
-- [src/components/test/teacher/Detail/FillBlankForm.jsx](src/components/test/teacher/Detail/FillBlankForm.jsx)
-- [src/components/test/teacher/Detail/MCQForm.jsx](src/components/test/teacher/Detail/MCQForm.jsx)
-- [src/components/test/teacher/Detail/MatchingForm.jsx](src/components/test/teacher/Detail/MatchingForm.jsx)
-- [src/components/test/teacher/Detail/LabelingForm.jsx](src/components/test/teacher/Detail/LabelingForm.jsx)
-- [src/components/test/teacher/Detail/TFNGForm.jsx](src/components/test/teacher/Detail/TFNGForm.jsx)
-- [src/components/test/teacher/Detail/YesNoNotGivenForm.jsx](src/components/test/teacher/Detail/YesNoNotGivenForm.jsx)
-- [src/Pages/teacher/test/testCreate.jsx](src/Pages/teacher/test/testCreate.jsx)
-- [src/Pages/teacher/test/testEdit.jsx](src/Pages/teacher/test/testEdit.jsx)
-- [src/Pages/teacher/test/testManager.jsx](src/Pages/teacher/test/testManager.jsx)
+### ADMIN
 
-### Feature modules and dashboard
+- Cần trang cấu hình gói dịch vụ, credits, quy tắc moderation.
+- Cần dashboard giám sát chất lượng chấm, tỷ lệ khiếu nại, và hiệu suất thị trường ticket.
 
-- [src/services/apiStatistics.js](src/services/apiStatistics.js)
-- [src/Pages/client/homePage.jsx](src/Pages/client/homePage.jsx)
-- [src/services/apiVocab.js](src/services/apiVocab.js)
-- [src/Pages/client/vocabulary.jsx](src/Pages/client/vocabulary.jsx)
-- [src/components/Vocab/FlashcardModal.jsx](src/components/Vocab/FlashcardModal.jsx)
-- [src/services/apiGrammar.js](src/services/apiGrammar.js)
-- [src/Pages/client/grammar.jsx](src/Pages/client/grammar.jsx)
-- [src/services/apiForum.js](src/services/apiForum.js)
-- [src/Pages/client/statistic.jsx](src/Pages/client/statistic.jsx)
-- [src/components/Forum/Forum/ForumBoard.jsx](src/components/Forum/Forum/ForumBoard.jsx)
-- [src/components/Forum/Forum/PostItem.jsx](src/components/Forum/Forum/PostItem.jsx)
-- [src/components/Forum/Forum/CommentList.jsx](src/components/Forum/Forum/CommentList.jsx)
-- [src/services/apiUser.js](src/services/apiUser.js)
-- [src/components/ui/navBar/profileModal.jsx](src/components/ui/navBar/profileModal.jsx)
-- [src/components/ui/navBar/StreakWidget.jsx](src/components/ui/navBar/StreakWidget.jsx)
-- [src/components/ui/navBar/xPWidget.jsx](src/components/ui/navBar/xPWidget.jsx)
-- [src/Pages/teacher/userList.jsx](src/Pages/teacher/userList.jsx)
+## 4. Luồng cốt lõi cần ưu tiên triển khai
 
-## 3. Implementation Plan (Phases)
+1. Luồng tự học bằng AI
+- Từ Dashboard -> Nhận kế hoạch ngày/tuần -> Làm bài -> Nhận chấm tức thì -> Cập nhật tiến độ.
 
-### Phase 1: Contract Baseline + Core API Services
+2. Luồng mua và dùng credits
+- Từ trang Pricing/Credits -> Chọn gói -> Thanh toán -> Cập nhật số dư -> Dùng vào tính năng cao cấp.
 
-**Objective:** Make the app contract-safe at service level before touching UI logic.
+3. Luồng On-Demand Review Ticket
+- Sau khi AI chấm -> Người dùng bấm yêu cầu chấm lại -> Trừ credits -> Tạo ticket -> Theo dõi trạng thái ticket.
 
-**Files to modify and detailed changes:**
+4. Luồng nhận và xử lý ticket của TEACHER
+- Teacher mở Global Queue -> Nhận ticket -> Chấm theo rubric -> Gửi feedback -> Hoàn tất và ghi nhận commission.
 
-1. Update endpoint paths, payload shapes, and response mapping in service files:
-   - [src/services/apiAuth.js](src/services/apiAuth.js)
-   - [src/services/apiDoTest.js](src/services/apiDoTest.js)
-   - [src/services/apiTest.js](src/services/apiTest.js)
-   - [src/services/apiStatistics.js](src/services/apiStatistics.js)
-   - [src/services/apiVocab.js](src/services/apiVocab.js)
-   - [src/services/apiForum.js](src/services/apiForum.js)
-   - [src/services/apiGrammar.js](src/services/apiGrammar.js)
-   - [src/services/apiUser.js](src/services/apiUser.js)
-2. Harden token refresh/introspect assumptions in:
-   - [src/services/axios.custom.js](src/services/axios.custom.js)
-   - [src/context/authContext.jsx](src/context/authContext.jsx)
-   - [src/context/auth/protectedRoute.jsx](src/context/auth/protectedRoute.jsx)
-3. Add a temporary compatibility mapper in service return values to keep old UI running while later phases migrate components.
+## 5. Danh sách màn hình frontend
 
-**Testing checklist after Phase 1:**
+- Dashboard tự học (USER)
+- Trang làm bài Writing/Speaking
+- Trang kết quả AI + lịch sử phản hồi
+- Trang Pricing, Subscription và Credits
+- Trang tạo và theo dõi On-Demand Review Ticket
+- Teacher Global Queue
+- Teacher Review Workspace
+- Teacher Earnings
+- Admin Control Panel (gói cước, moderation, analytics)
 
-1. App boots and routes render without blocking errors.
-2. Login, refresh-token retry, logout, and protected route access all work.
-3. At least one GET call and one mutation per major service family returns parsed data without runtime exceptions.
-4. Validation error payloads from backend show stable user-facing messages.
+## 6. Kế hoạch triển khai theo giai đoạn
 
-### Phase 2: Renderer + Teacher Form Foundations
+### Giai đoạn 1: Nền tảng tự học
 
-**Objective:** Align question rendering/submission and authoring payloads with new metadata rules.
+- Hoàn thiện dashboard tự học và trang lịch sử tiến độ.
+- Chuẩn hóa UI cho nộp bài Writing/Speaking và hiển thị kết quả AI.
+- Hoàn tất quản lý trạng thái loading/error/empty cho các trang chính.
 
-**Files to modify and detailed changes:**
+### Giai đoạn 2: Monetization
 
-1. Update renderer pipeline in:
-   - [src/components/test/Detail/QuestionRenderer.jsx](src/components/test/Detail/QuestionRenderer.jsx)
-   - [src/components/test/Detail/RenderFillBlank.jsx](src/components/test/Detail/RenderFillBlank.jsx)
-   - Other question detail renderers
-   to parse standardized [n] placeholders and grouped content modes.
-2. Update answer capture in:
-   - [src/components/test/type/listening.jsx](src/components/test/type/listening.jsx)
-   - [src/components/test/type/reading.jsx](src/components/test/type/reading.jsx)
-   - [src/components/test/type/writing.jsx](src/components/test/type/writing.jsx)
-   - [src/components/test/type/speaking.jsx](src/components/test/type/speaking.jsx)
-   to support dual-mode answerText and matching_key behavior.
-3. Refactor teacher forms in:
-   - [src/components/test/teacher/Detail/FillBlankForm.jsx](src/components/test/teacher/Detail/FillBlankForm.jsx)
-   - [src/components/test/teacher/Detail/MCQForm.jsx](src/components/test/teacher/Detail/MCQForm.jsx)
-   - [src/components/test/teacher/Detail/MatchingForm.jsx](src/components/test/teacher/Detail/MatchingForm.jsx)
-   - [src/components/test/teacher/Detail/LabelingForm.jsx](src/components/test/teacher/Detail/LabelingForm.jsx)
-   - [src/components/test/teacher/Detail/TFNGForm.jsx](src/components/test/teacher/Detail/TFNGForm.jsx)
-   - [src/components/test/teacher/Detail/YesNoNotGivenForm.jsx](src/components/test/teacher/Detail/YesNoNotGivenForm.jsx)
-   to emit metadata-first payloads with client-side pre-validation.
+- Xây trang Pricing và Credits Wallet.
+- Tích hợp kiểm tra entitlement theo gói Freemium/Pro.
+- Thêm cảnh báo trước khi tiêu credits ở các thao tác premium.
 
-**Testing checklist after Phase 2:**
+### Giai đoạn 3: Marketplace giáo viên
 
-1. Teacher can create one question each for MCQ, matching, completion, diagram, TFNG/YNNG, short answer with valid metadata.
-2. Student renderer can display and submit those created questions.
-3. Submission payload includes correct answer shape by input mode.
-4. App remains fully runnable for non-test areas.
+- Xây luồng tạo ticket từ bài AI đã chấm.
+- Xây Global Queue cho TEACHER và trang xử lý ticket.
+- Bổ sung trạng thái ticket đầy đủ: mới, đã nhận, đang xử lý, hoàn tất, khiếu nại.
 
-### Phase 3: Isolated Feature Tracks (Parallel, Independent)
+### Giai đoạn 4: Vận hành và tối ưu
 
-**Objective:** Migrate low-coupling modules while preserving app stability.
+- Hoàn thiện trang quản trị cho ADMIN.
+- Bổ sung dashboard chất lượng chấm và KPI doanh thu.
+- Tối ưu UX mobile cho các luồng chính.
 
-**Files to modify and detailed changes:**
+## 7. KPI đề xuất cho frontend
 
-1. Vocabulary track:
-   - [src/services/apiVocab.js](src/services/apiVocab.js)
-   - [src/Pages/client/vocabulary.jsx](src/Pages/client/vocabulary.jsx)
-   - [src/components/Vocab/FlashcardModal.jsx](src/components/Vocab/FlashcardModal.jsx)
-2. Grammar track:
-   - [src/services/apiGrammar.js](src/services/apiGrammar.js)
-   - [src/Pages/client/grammar.jsx](src/Pages/client/grammar.jsx)
-3. Forum track:
-   - [src/services/apiForum.js](src/services/apiForum.js)
-   - [src/Pages/client/statistic.jsx](src/Pages/client/statistic.jsx)
-   - [src/components/Forum/Forum/ForumBoard.jsx](src/components/Forum/Forum/ForumBoard.jsx)
-   - [src/components/Forum/Forum/PostItem.jsx](src/components/Forum/Forum/PostItem.jsx)
-   - [src/components/Forum/Forum/CommentList.jsx](src/components/Forum/Forum/CommentList.jsx)
+- Tỷ lệ hoàn thành phiên học tự đề xuất bởi AI.
+- Tỷ lệ chuyển đổi từ Freemium sang Pro.
+- Tỷ lệ người dùng mua credits lần 2.
+- Thời gian trung bình từ tạo ticket đến lúc hoàn tất review.
+- Mức độ hài lòng của người dùng sau khi nhận feedback từ AI và từ giáo viên.
 
-**Testing checklist after Phase 3:**
+## 8. Tiêu chí hoàn thành
 
-1. Vocabulary CRUD and AI suggestion fallback work.
-2. Grammar category/item CRUD works.
-3. Forum thread/post/comment/like flows including multipart post updates work.
-4. App is still runnable and testable even if test module is not yet fully migrated.
+- Người dùng mới có thể bắt đầu học trong dưới 3 phút.
+- Luồng mua credits và dùng credits không gây nhầm lẫn.
+- Luồng tạo ticket và theo dõi ticket hoạt động xuyên suốt trên desktop và mobile.
+- Teacher có thể xử lý ticket với thao tác tối giản và phản hồi đúng rubric.
 
-### Phase 4: User Surface + Statistics Aggregation
-
-**Objective:** Migrate profile/admin/dashboard cross-read logic before final test lifecycle migration.
-
-**Files to modify and detailed changes:**
-
-1. Update profile/streak/xp/user admin assumptions in:
-   - [src/services/apiUser.js](src/services/apiUser.js)
-   - [src/components/ui/navBar/profileModal.jsx](src/components/ui/navBar/profileModal.jsx)
-   - [src/components/ui/navBar/StreakWidget.jsx](src/components/ui/navBar/StreakWidget.jsx)
-   - [src/components/ui/navBar/xPWidget.jsx](src/components/ui/navBar/xPWidget.jsx)
-   - [src/Pages/teacher/userList.jsx](src/Pages/teacher/userList.jsx)
-2. Migrate dashboard aggregation in:
-   - [src/services/apiStatistics.js](src/services/apiStatistics.js)
-   - [src/Pages/client/homePage.jsx](src/Pages/client/homePage.jsx)
-   with partial-failure handling for multi-call loads.
-
-**Testing checklist after Phase 4:**
-
-1. Profile fetch/update works and navbar widgets do not crash.
-2. Teacher user list CRUD works.
-3. Dashboard cards/charts/targets load correctly with graceful fallback if one endpoint fails.
-4. Recommendation clicks navigate safely (even if test flow final migration is pending).
-
-### Phase 5: Test Lifecycle (Sequential, High-Risk Core)
-
-**Objective:** Complete the full student and teacher test flows with no session-breaking gaps.
-
-**Files to modify and detailed changes:**
-
-1. Subphase 5A (list + start):
-   - [src/Pages/client/test/testReview.jsx](src/Pages/client/test/testReview.jsx)
-   - [src/services/apiTest.js](src/services/apiTest.js)
-   - [src/services/apiDoTest.js](src/services/apiDoTest.js)
-   Persist and safely restore test session identity to avoid refresh-loss blockers.
-2. Subphase 5B (runner + submit):
-   - [src/Pages/client/test/testDetail.jsx](src/Pages/client/test/testDetail.jsx)
-   - Test type components
-   - Renderer detail components
-   - Answer serialization paths
-3. Subphase 5C (review replay):
-   - [src/components/test/SimpleResultModal.jsx](src/components/test/SimpleResultModal.jsx)
-   - Question review rendering paths
-   - Result-and-answers mapping
-4. Subphase 5D (teacher create/edit):
-   - [src/Pages/teacher/test/testCreate.jsx](src/Pages/teacher/test/testCreate.jsx)
-   - [src/Pages/teacher/test/testEdit.jsx](src/Pages/teacher/test/testEdit.jsx)
-   - [src/Pages/teacher/test/testManager.jsx](src/Pages/teacher/test/testManager.jsx)
-   - Teacher detail forms
-
-**Testing checklist after Phase 5:**
-
-1. Student path: list tests -> start -> answer -> submit -> view score -> open review.
-2. Teacher path: create/edit/delete test with nested entities and multiple question types.
-3. Test session survives refresh/re-entry without unrecoverable state.
-4. No blocking UI/runtime errors remain in test and dashboard integration.
-
-### Phase 6: Hardening + Cutover Cleanup
-
-**Objective:** Remove transitional compatibility logic and certify release-readiness.
-
-**Files to modify and detailed changes:**
-
-1. Remove temporary compatibility adapters introduced in Phase 1 from service modules.
-2. Clean dead code paths and normalize response parsing across components.
-3. Finalize migration documentation in the plan appendix and release checklist.
-
-**Testing checklist after Phase 6:**
-
-1. Full regression of auth, vocab, grammar, forum, profile/admin, statistics, test-taking, and teacher authoring.
-2. Validation-error UX review across all create/update forms.
-3. Smoke test on production-like environment variables and network latency scenarios.
-
-## 4. Risks & Notes
-
-1. Highest risk area is test execution and answer serialization in [src/services/apiDoTest.js](src/services/apiDoTest.js) and [src/services/apiTest.js](src/services/apiTest.js); small contract drift here can break core flows.
-2. Refresh-token response shape drift in [src/services/axios.custom.js](src/services/axios.custom.js) can cause global auth failure.
-3. Grouped completion rendering and [n] placeholder parsing errors in [src/components/test/Detail/RenderFillBlank.jsx](src/components/test/Detail/RenderFillBlank.jsx) can silently corrupt answer capture.
-4. Teacher form payload mismatches (especially MCQ indexes, TFNG/YNNG enums, diagram coordinates) are likely to trigger frequent 400s unless pre-validation is added.
-5. Statistics page is multi-endpoint and tightly coupled to test data; partial failure handling is required to keep [src/Pages/client/homePage.jsx](src/Pages/client/homePage.jsx) runnable during staged migration.
-6. Session continuity for active tests should be explicitly decided early; using only navigation state is fragile.

@@ -16,7 +16,16 @@ export const verifyOtpAPI = async (data) => {
 };
 
 export const resendOtpAPI = async (data) => {
-  const res = await API.post("/auth/resend-otp", data);
+  const rawType = data?.type;
+  const mappedType =
+    rawType === "RESET_PASSWORD"
+      ? "RESET_LINK"
+      : rawType || "OTP";
+
+  const res = await API.post("/auth/resend-otp", {
+    ...data,
+    type: mappedType,
+  });
   return res.data; // { message: "OTP resent" }
 };
 
