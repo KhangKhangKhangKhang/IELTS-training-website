@@ -1,4 +1,28 @@
 import API from "./axios.custom";
+import Cookies from "js-cookie";
+
+const resolveCurrentUserId = (idUser) => {
+  if (idUser) return idUser;
+
+  try {
+    const rawUser = Cookies.get("user");
+    if (!rawUser) return null;
+    const parsed = JSON.parse(rawUser);
+    return parsed?.idUser || null;
+  } catch {
+    return null;
+  }
+};
+
+const buildDeleteConfig = (idUser) => {
+  const resolvedUserId = resolveCurrentUserId(idUser);
+  if (!resolvedUserId) return undefined;
+  return {
+    data: {
+      idUser: resolvedUserId,
+    },
+  };
+};
 
 //Get
 export const getAllThreadAPI = async () => {
@@ -99,21 +123,26 @@ export const updateCommentAPI = async (idForumComment, data) => {
 };
 
 //delete
-export const deleteThreadAPI = async (idForumThreads) => {
+export const deleteThreadAPI = async (idForumThreads, idUser) => {
   const res = await API.delete(
-    `/forum-threads/delete-forum-thread/${idForumThreads}`
+    `/forum-threads/delete-forum-thread/${idForumThreads}`,
+    buildDeleteConfig(idUser)
   );
   return res.data;
 };
 
-export const deletePostAPI = async (idForumPost) => {
-  const res = await API.delete(`/forum-post/delete-forum-post/${idForumPost}`);
+export const deletePostAPI = async (idForumPost, idUser) => {
+  const res = await API.delete(
+    `/forum-post/delete-forum-post/${idForumPost}`,
+    buildDeleteConfig(idUser)
+  );
   return res.data;
 };
 
-export const deleteCommentAPI = async (idForumComment) => {
+export const deleteCommentAPI = async (idForumComment, idUser) => {
   const res = await API.delete(
-    `/forum-comment/delete-forum-comment/${idForumComment}`
+    `/forum-comment/delete-forum-comment/${idForumComment}`,
+    buildDeleteConfig(idUser)
   );
   return res.data;
 };
