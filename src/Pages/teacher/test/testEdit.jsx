@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useParams } from "react-router";
-import { Spin, message } from "antd";
+import { Spin, message, Button } from "antd";
+import { UploadOutlined, FilePdfOutlined } from "@ant-design/icons";
 import CreateReading from "@/components/test/teacher/Reading/CreateReading";
 import CreateListening from "@/components/test/teacher/Listening/CreateListening";
 import CreateWriting from "@/components/test/teacher/Writing/CreateWriting";
 import { getDetailInTestAPI } from "@/services/apiDoTest";
 import CreateSpeaking from "@/components/test/teacher/Speaking/CreateSpeaking";
+import PdfImportModal from "@/components/test/teacher/PdfImportModal";
 
 const TestEdit = () => {
   const { idTest, id } = useParams();
@@ -14,6 +16,7 @@ const TestEdit = () => {
 
   const [exam, setExam] = useState(locationState || null);
   const [loading, setLoading] = useState(!locationState);
+  const [showPdfImportModal, setShowPdfImportModal] = useState(false);
 
   // Fetch fresh data từ API khi component mount hoặc idTest thay đổi
   useEffect(() => {
@@ -45,6 +48,23 @@ const TestEdit = () => {
   // Callback để cập nhật exam state khi TestInfoEditor save thành công
   const handleExamUpdate = (updatedExam) => {
     setExam(updatedExam);
+  };
+
+  // Callback khi import PDF thành công - refresh lại dữ liệu
+  const handlePdfImportSuccess = async (importedIdTest) => {
+    try {
+      setLoading(true);
+      const res = await getDetailInTestAPI(resolvedTestId);
+      if (res?.data) {
+        setExam(res.data);
+        message.success("Import PDF thành công! Đã thêm nội dung vào đề thi.");
+      }
+    } catch (error) {
+      console.error("Error refreshing after import:", error);
+      message.warning("Import thành công nhưng cần tải lại trang để xem nội dung mới.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -96,7 +116,30 @@ const TestEdit = () => {
     }
   };
 
-  return renderTestComponent();
+  return (
+    <div className="relative">
+      <div className="absolute top-4 right-4 z-10">
+        <Button
+          type="default"
+          icon={<UploadOutlined />}
+          onClick={() => setShowPdfImportModal(true)}
+          className="flex items-center gap-2 shadow-md"
+        >
+          <FilePdfOutlined />
+          Import PDF
+        </Button>
+      </div>
+      {renderTestComponent()}
+      <PdfImportModal
+        visible={showPdfImportModal}
+        onClose={() => setShowPdfImportModal(false)}
+        idTest={resolvedTestId}
+        testType={exam?.testType}
+        exam={exam}
+        onImportSuccess={handlePdfImportSuccess}
+      />
+    </div>
+  );
 };
 
 export default TestEdit;
