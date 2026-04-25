@@ -26,12 +26,7 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 1000, // Warn if chunk > 1MB
     sourcemap: false, // Disable sourcemaps in production for smaller builds
-    minify: 'terser', // Use terser for better compression
-    terserOptions: {
-      compress: {
-        drop_console: true, // Remove console.logs in production
-      },
-    },
+    minify: 'esbuild', // Use esbuild (built-in, faster than terser)
   },
   server: {
     host: "0.0.0.0", // mở cho LAN
