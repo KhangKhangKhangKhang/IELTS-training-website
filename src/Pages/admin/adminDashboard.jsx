@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Activity,
   Settings,
+  Trophy,
 } from "lucide-react";
 import { useAuth } from "@/context/authContext";
 import {
@@ -17,6 +18,7 @@ import {
 } from "@/services/apiTeacherDashboard";
 import { getModerationQueueAPI } from "@/services/apiForum";
 import { getAllUserAPI } from "@/services/apiUser";
+import { getCommissionConfigAPI, updateCommissionConfigAPI } from "@/services/apiTeacherReview";
 
 const POLICY_KEY = "admin_moderation_policy_v1";
 const AUDIT_KEY = "admin_audit_log_v1";
@@ -50,6 +52,8 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [policy, setPolicy] = useState(defaultPolicy);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [commission, setCommission] = useState({ writing: 50000, speaking: 40000 });
+  const [commissionSaving, setCommissionSaving] = useState(false);
 
   useEffect(() => {
     const rawPolicy = localStorage.getItem(POLICY_KEY);
@@ -80,12 +84,13 @@ const AdminDashboard = () => {
       setError("");
 
       try {
-        const [overviewData, skillData, topData, userData, moderationData] = await Promise.all([
+        const [overviewData, skillData, topData, userData, moderationData, commissionData] = await Promise.all([
           getDashboardOverviewAPI(),
           getDashboardSkillPerformanceAPI(),
           getDashboardTopPerformersAPI(),
           getAllUserAPI(),
           user?.idUser ? getModerationQueueAPI(user.idUser) : Promise.resolve({ data: [] }),
+          getCommissionConfigAPI(),
         ]);
 
         if (!mounted) {
@@ -97,6 +102,9 @@ const AdminDashboard = () => {
         setTopPerformers(Array.isArray(topData) ? topData : []);
         setUsers(Array.isArray(userData?.data) ? userData.data : []);
         setModerationQueue(Array.isArray(moderationData?.data) ? moderationData.data : []);
+        if (commissionData) {
+          setCommission({ writing: commissionData.writing || 50000, speaking: commissionData.speaking || 40000 });
+        }
       } catch {
         if (!mounted) {
           return;
@@ -198,6 +206,22 @@ const AdminDashboard = () => {
     setAuditLogs(updatedLogs);
     localStorage.setItem(AUDIT_KEY, JSON.stringify(updatedLogs));
     message.success("Policy draft saved locally.");
+  };
+
+  const handleSaveCommission = async () => {
+    setCommissionSaving(true);
+    try {
+      await updateCommissionConfigAPI({
+        writing: commission.writing,
+        speaking: commission.speaking,
+      });
+      message.success("Đã lưu cấu hình commission thành công!");
+    } catch (err) {
+      console.error("Error saving commission:", err);
+      message.error("Không thể lưu cấu hình commission.");
+    } finally {
+      setCommissionSaving(false);
+    }
   };
 
   const quickActions = [
@@ -403,6 +427,43 @@ const AdminDashboard = () => {
                 ))}
               </ul>
             )}
+          </Card>
+
+          <Card>
+            <h2 className="text-lg font-semibold text-slate-900">Commission Configuration</h2>
+            <p className="mt-1 text-sm text-slate-600">Set fixed commission per reviewed paper.</p>
+
+            <Form layout="vertical" className="mt-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <Form.Item label="Writing (VNĐ)">
+                  <InputNumber
+                    min={0}
+                    step={10000}
+                    value={commission.writing}
+                    onChange={(value) => setCommission((prev) => ({ ...prev, writing: Number(value || 0) }))}
+                    className="!w-full"
+                    formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    parser={(value) => value.replace(/,/g, '')}
+                  />
+                </Form.Item>
+
+                <Form.Item label="Speaking (VNĐ)">
+                  <InputNumber
+                    min={0}
+                    step={10000}
+                    value={commission.speaking}
+                    onChange={(value) => setCommission((prev) => ({ ...prev, speaking: Number(value || 0) }))}
+                    className="!w-full"
+                    formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                    parser={(value) => value.replace(/,/g, '')}
+                  />
+                </Form.Item>
+              </div>
+
+              <Button type="primary" onClick={handleSaveCommission} loading={commissionSaving}>
+                Save commission
+              </Button>
+            </Form>
           </Card>
         </section>
 

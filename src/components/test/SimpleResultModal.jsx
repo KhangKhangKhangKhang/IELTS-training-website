@@ -9,6 +9,8 @@ import {
     Statistic,
     Tag,
     Collapse,
+    Button,
+    Tooltip,
 } from 'antd';
 import {
     TrophyOutlined,
@@ -510,7 +512,14 @@ const RenderWritingSubmission = ({ submission }) => {
 };
 
 // --- MAIN MODAL COMPONENT ---
-const SimpleResultModal = ({ open, onClose, idTestResult }) => {
+const SimpleResultModal = ({
+    open,
+    onClose,
+    idTestResult,
+    existingTicket,
+    requestingReview,
+    onRequestTeacherReview,
+}) => {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState(null);
 
@@ -755,6 +764,38 @@ const SimpleResultModal = ({ open, onClose, idTestResult }) => {
                                 />
                             )}
                             <div className="h-10 w-px bg-gray-300 mx-2 hidden md:block"></div>
+
+                            {/* Teacher Review Button - Only for Writing/Speaking */}
+                            {(data.test?.testType === 'WRITING' || data.test?.testType === 'SPEAKING') && (
+                                <div className="flex items-center">
+                                    {existingTicket ? (
+                                        <div className="flex items-center gap-2">
+                                            <Tag color={existingTicket.status === 'PENDING' ? 'orange' : 'blue'}>
+                                                {existingTicket.status === 'PENDING' && 'Đang chờ giáo viên'}
+                                                {existingTicket.status === 'CLAIMED' && 'Giáo viên đã nhận'}
+                                                {existingTicket.status === 'IN_PROGRESS' && 'Đang chấm'}
+                                            </Tag>
+                                            {existingTicket.teacher?.nameUser && (
+                                                <span className="text-sm text-gray-600">
+                                                    GV: {existingTicket.teacher.nameUser}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <Tooltip title="Gửi yêu cầu giáo viên chấm lại bài của bạn">
+                                            <Button
+                                                type="primary"
+                                                loading={requestingReview}
+                                                onClick={onRequestTeacherReview}
+                                                className="bg-purple-600 hover:bg-purple-700"
+                                                icon={<span>👨‍🏫</span>}
+                                            >
+                                                Yêu cầu giáo viên chấm
+                                            </Button>
+                                        </Tooltip>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
