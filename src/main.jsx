@@ -33,6 +33,9 @@ const TeacherDashboard = lazy(() => import("./Pages/teacher/teacherDashboard"));
 const ForumModeration = lazy(() => import("./Pages/teacher/forumModeration"));
 const Grammar = lazy(() => import("./Pages/client/grammar"));
 const AdminDashboard = lazy(() => import("./Pages/admin/adminDashboard"));
+const TeacherReviewHistory = lazy(() => import("./Pages/client/teacherReviewHistory"));
+const TeacherQueue = lazy(() => import("./Pages/teacher/teacherQueue"));
+const TeacherReviewManager = lazy(() => import("./Pages/admin/teacherReviewManager"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -67,6 +70,7 @@ const router = createBrowserRouter([
           { path: "profile", element: <LazyRoute Component={Profile} /> },
           { path: "startingPage", element: <LazyRoute Component={StartingPage} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
+          { path: "teacher-review-history", element: <LazyRoute Component={TeacherReviewHistory} /> },
         ],
       },
     ],
@@ -97,6 +101,7 @@ const router = createBrowserRouter([
           { path: "startingPage", element: <LazyRoute Component={StartingPage} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
           { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },
+          { path: "teacher-review", element: <LazyRoute Component={TeacherQueue} /> },
         ],
       },
     ],
@@ -125,6 +130,7 @@ const router = createBrowserRouter([
           { path: "testManager", element: <LazyRoute Component={TestManager} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
           { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },
+          { path: "teacher-review", element: <LazyRoute Component={TeacherReviewManager} /> },
         ],
       },
     ],

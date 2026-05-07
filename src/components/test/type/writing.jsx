@@ -8,12 +8,16 @@ import GradingAnimation from "../GradingAnimation";
 import { getAllWritingTasksAPI } from "@/services/apiWriting";
 
 import { FinishTestWritingAPI } from "@/services/apiDoTest";
+import {
+  checkStudentTicketAPI,
+  requestTeacherReviewAPI,
+} from "@/services/apiTeacherReview";
 
 import { useAuth } from "@/context/authContext";
 import { cn } from "@/lib/utils";
 
 // UI Libraries
-import { Modal, Tabs, Collapse, Tag, Divider, Spin } from "antd";
+import { Modal, Tabs, Collapse, Tag, Divider, Spin, message, Tooltip } from "antd";
 import { ClockCircleOutlined } from "@ant-design/icons";
 import {
   CheckCircle,
@@ -208,6 +212,10 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
   const [submissionResults, setSubmissionResults] = useState([]);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
 
+  // Teacher review state
+  const [existingTicket, setExistingTicket] = useState(null);
+  const [requestingReview, setRequestingReview] = useState(false);
+
   // Resizer state
   const [leftPanelWidth, setLeftPanelWidth] = useState(45);
   const [isDragging, setIsDragging] = useState(false);
@@ -292,6 +300,47 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
     }, 1000);
     return () => clearInterval(timer);
   }, [timeLeft]);
+
+  // Check for existing teacher review ticket when result modal opens
+  useEffect(() => {
+    if (!resultModalOpen || !initialTestResult?.idTestResult || !user?.idUser) {
+      return;
+    }
+
+    const checkExisting = async () => {
+      try {
+        const result = await checkStudentTicketAPI(initialTestResult.idTestResult);
+        setExistingTicket(result);
+      } catch (err) {
+        console.error("Error checking existing ticket:", err);
+        setExistingTicket(null);
+      }
+    };
+
+    checkExisting();
+  }, [resultModalOpen, initialTestResult?.idTestResult, user?.idUser]);
+
+  const handleRequestTeacherReview = async () => {
+    if (!user?.idUser || !initialTestResult?.idTestResult) return;
+
+    setRequestingReview(true);
+    try {
+      await requestTeacherReviewAPI(initialTestResult.idTestResult, user.idUser);
+      message.success("Yêu cầu giáo viên chấm bài thành công!");
+      // Refresh the ticket status
+      const result = await checkStudentTicketAPI(initialTestResult.idTestResult);
+      setExistingTicket(result);
+    } catch (err) {
+      console.error("Error requesting teacher review:", err);
+      if (err?.response?.data?.message === "ALREADY_REQUESTED") {
+        message.warning("Bạn đã yêu cầu giáo viên chấm bài rồi!");
+      } else {
+        message.error("Không thể yêu cầu giáo viên chấm bài. Vui lòng thử lại.");
+      }
+    } finally {
+      setRequestingReview(false);
+    }
+  };
 
   const formatTime = (sec) => {
     const m = Math.floor(sec / 60)
@@ -619,7 +668,35 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
         ) : (
           <Tabs defaultActiveKey="0" items={modalTabItems} type="card" />
         )}
-        <div className="mt-6 text-right">
+        <div className="mt-6 flex justify-between items-center">
+          <div className="flex-1">
+            {existingTicket ? (
+              <div className="flex items-center gap-2">
+                <Tag color={existingTicket.status === "PENDING" ? "orange" : "blue"}>
+                  {existingTicket.status === "PENDING" && "Đang chờ giáo viên"}
+                  {existingTicket.status === "CLAIMED" && "Giáo viên đã nhận"}
+                  {existingTicket.status === "IN_PROGRESS" && "Đang chấm"}
+                </Tag>
+                {existingTicket.teacher?.nameUser && (
+                  <span className="text-sm text-slate-600">
+                    GV: {existingTicket.teacher.nameUser}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <Tooltip title="Gửi yêu cầu giáo viên chấm lại bài viết của bạn">
+                <Button
+                  type="primary"
+                  loading={requestingReview}
+                  onClick={handleRequestTeacherReview}
+                  className="bg-purple-600 hover:bg-purple-700"
+                  icon={<span className="mr-1">👨‍🏫</span>}
+                >
+                  Yêu cầu giáo viên chấm
+                </Button>
+              </Tooltip>
+            )}
+          </div>
           <Button
             onClick={handleCloseModal}
             className="bg-slate-900 text-white hover:bg-slate-800"

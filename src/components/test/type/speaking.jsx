@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Spin, Card, Alert, message } from "antd"; // Đã bỏ Modal ở đây vì dùng SimpleResultModal
+import { Spin, Card, Alert, message, Tooltip, Tag } from "antd"; // Đã bỏ Modal ở đây vì dùng SimpleResultModal
 import {
   ClockCircleOutlined,
   SoundOutlined,
@@ -16,6 +16,10 @@ import { useNavigate } from "react-router-dom";
 // --- IMPORTS API ---
 import { getDetailInTestAPI } from "@/services/apiDoTest";
 import { finishSpeakingTest } from "@/services/apiSpeaking";
+import {
+  checkStudentTicketAPI,
+  requestTeacherReviewAPI,
+} from "@/services/apiTeacherReview";
 
 // --- IMPORTS COMPONENT ---
 import GradingAnimation from "../GradingAnimation";
@@ -57,6 +61,10 @@ const Speaking = ({ idTest, initialTestResult }) => {
   // --- STATE MỚI CHO MODAL KẾT QUẢ ---
   const [showResultModal, setShowResultModal] = useState(false);
   const [submittedTestId, setSubmittedTestId] = useState(null);
+
+  // --- STATE CHO TEACHER REVIEW ---
+  const [existingTicket, setExistingTicket] = useState(null);
+  const [requestingReview, setRequestingReview] = useState(false);
 
   // --- 1. FETCH DATA (GIỮ NGUYÊN) ---
   useEffect(() => {
@@ -291,7 +299,49 @@ const Speaking = ({ idTest, initialTestResult }) => {
 
   const handleCloseResult = () => {
     setShowResultModal(false);
+    setExistingTicket(null);
     navigate("/");
+  };
+
+  // Check for existing teacher review ticket when modal opens
+  useEffect(() => {
+    if (!showResultModal || !submittedTestId || !user?.idUser) {
+      return;
+    }
+
+    const checkExisting = async () => {
+      try {
+        const result = await checkStudentTicketAPI(submittedTestId);
+        setExistingTicket(result);
+      } catch (err) {
+        console.error("Error checking existing ticket:", err);
+        setExistingTicket(null);
+      }
+    };
+
+    checkExisting();
+  }, [showResultModal, submittedTestId, user?.idUser]);
+
+  const handleRequestTeacherReview = async () => {
+    if (!user?.idUser || !submittedTestId) return;
+
+    setRequestingReview(true);
+    try {
+      await requestTeacherReviewAPI(submittedTestId, user.idUser);
+      message.success("Yêu cầu giáo viên chấm bài thành công!");
+      // Refresh the ticket status
+      const result = await checkStudentTicketAPI(submittedTestId);
+      setExistingTicket(result);
+    } catch (err) {
+      console.error("Error requesting teacher review:", err);
+      if (err?.response?.data?.message === "ALREADY_REQUESTED") {
+        message.warning("Bạn đã yêu cầu giáo viên chấm bài rồi!");
+      } else {
+        message.error("Không thể yêu cầu giáo viên chấm bài. Vui lòng thử lại.");
+      }
+    } finally {
+      setRequestingReview(false);
+    }
   };
 
   // --- RENDER ---
@@ -553,6 +603,9 @@ const Speaking = ({ idTest, initialTestResult }) => {
         open={showResultModal}
         idTestResult={submittedTestId}
         onClose={handleCloseResult}
+        existingTicket={existingTicket}
+        requestingReview={requestingReview}
+        onRequestTeacherReview={handleRequestTeacherReview}
       />
 
       <style jsx>{`

@@ -10,6 +10,7 @@ import {
   User,
   LogOut,
   Album,
+  ClipboardList,
 } from "lucide-react";
 import ProfileModal from "./profileModal";
 import ChatBotWidget from "./chatBotWidget";
@@ -30,6 +31,7 @@ const Navbar = () => {
     { name: "Diễn đàn", href: "/statistic", icon: BarChart3 },
     { name: "Từ Vựng", href: "/vocabulary", icon: BookMarked },
     { name: "Ngữ pháp", href: "/grammar", icon: Album },
+    { name: "Lịch sử chấm bài", href: "/teacher-review-history", icon: ClipboardList },
   ];
 
   const handleLogout = () => {

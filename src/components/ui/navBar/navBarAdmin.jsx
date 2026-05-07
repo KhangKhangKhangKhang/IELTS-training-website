@@ -11,6 +11,7 @@ import {
   X,
   User,
   LogOut,
+  ClipboardCheck,
 } from "lucide-react";
 import Cookies from "js-cookie";
 import ProfileModal from "./profileModal";
@@ -24,6 +25,7 @@ const adminLinks = [
   { name: "Content", href: "/admin/testManager", icon: FileStack },
   { name: "Grammar", href: "/admin/grammar", icon: BookOpen },
   { name: "Vocabulary", href: "/admin/vocabulary", icon: BookMarked },
+  { name: "Chấm bài", href: "/admin/teacher-review", icon: ClipboardCheck },
 ];
 
 const NavbarAdmin = () => {

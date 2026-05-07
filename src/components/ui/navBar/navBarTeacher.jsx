@@ -13,6 +13,7 @@ import {
   Users2,
   Cookie,
   ShieldCheck,
+  ClipboardCheck,
 } from "lucide-react";
 import ProfileModal from "./profileModal";
 import Cookies from "js-cookie";
@@ -39,6 +40,7 @@ const NavbarTeacher = () => {
     { name: "Ngữ pháp", href: `${basePath}/grammar`, icon: Cookie },
     { name: "Duyệt bài", href: `${basePath}/moderation`, icon: ShieldCheck },
     { name: "Danh sách", href: `${basePath}/userList`, icon: Users2 },
+    { name: "Chấm bài", href: `${basePath}/teacher-review`, icon: ClipboardCheck },
   ];
 
   // Hide Vocabulary for teachers (role: GIAOVIEN)
