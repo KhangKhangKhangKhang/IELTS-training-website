@@ -43,7 +43,7 @@ import { useAuth } from "@/context/authContext";
 import SimpleResultModal from "@/components/test/SimpleResultModal";
 
 // --- Components Con (SkillCard) ---
-const SkillCard = ({ type, score, icon: Icon, color }) => (
+const SkillCard = ({ type, score, icon, color }) => (
   <div className="p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-gray-100 dark:border-slate-700 flex items-center justify-between hover:shadow-md transition-shadow">
     <div>
       <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">
@@ -54,7 +54,7 @@ const SkillCard = ({ type, score, icon: Icon, color }) => (
       </h3>
     </div>
     <div className={`p-3 rounded-xl ${color}`}>
-      <Icon size={24} className="text-white" />
+      {icon && React.createElement(icon, { size: 24, className: "text-white" })}
     </div>
   </div>
 );
@@ -140,14 +140,14 @@ const HomePage = () => {
 
   // --- AI FLOW MVP STATES ---
   const [studyMode, setStudyMode] = useState(
-    () => localStorage.getItem("studyMode") || "BALANCED"
+    () => localStorage.getItem("studyMode") || "BALANCED",
   );
   const [studyHoursPerDay, setStudyHoursPerDay] = useState(() => {
     const saved = Number(localStorage.getItem("studyHoursPerDay"));
     return Number.isFinite(saved) && saved > 0 ? saved : 1.5;
   });
   const [lastGeneratedPlanAt, setLastGeneratedPlanAt] = useState(
-    () => localStorage.getItem("lastGeneratedPlanAt") || ""
+    () => localStorage.getItem("lastGeneratedPlanAt") || "",
   );
 
   // --- API CALLS ---
@@ -296,8 +296,8 @@ const HomePage = () => {
       history
         .map((item) => item?.test?.testType)
         .filter((type) =>
-          ["READING", "LISTENING", "WRITING", "SPEAKING"].includes(type)
-        )
+          ["READING", "LISTENING", "WRITING", "SPEAKING"].includes(type),
+        ),
     );
 
     const allSkills = ["READING", "LISTENING", "WRITING", "SPEAKING"];
@@ -319,7 +319,10 @@ const HomePage = () => {
   }, [overall?.details]);
 
   const aiPlan = useMemo(() => {
-    const totalMinutes = Math.max(30, Math.round(Number(studyHoursPerDay || 1) * 60));
+    const totalMinutes = Math.max(
+      30,
+      Math.round(Number(studyHoursPerDay || 1) * 60),
+    );
     const focusPrimary = weakSkills[0]?.type || "READING";
     const focusSecondary = weakSkills[1]?.type || "LISTENING";
     const modeDescriptions = {
@@ -353,7 +356,13 @@ const HomePage = () => {
       modeDescription: modeDescriptions[studyMode] || modeDescriptions.BALANCED,
       estimatedCredits: estimatedCredits[studyMode] ?? 2,
     };
-  }, [recommended, studyHoursPerDay, studyMode, targetInfo?.daysLeft, weakSkills]);
+  }, [
+    recommended,
+    studyHoursPerDay,
+    studyMode,
+    targetInfo?.daysLeft,
+    weakSkills,
+  ]);
 
   const generatedAtLabel = useMemo(() => {
     if (!lastGeneratedPlanAt) {
@@ -488,7 +497,8 @@ const HomePage = () => {
               AI Study Flow (MVP)
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Initial assessment to plan generator to adaptive schedule to AI tutor support.
+              Initial assessment to plan generator to adaptive schedule to AI
+              tutor support.
             </p>
           </div>
           <span className="inline-flex w-fit rounded-full bg-blue-100 dark:bg-blue-900/30 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400">
@@ -500,7 +510,9 @@ const HomePage = () => {
           <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
             <div className="flex items-center gap-2">
               <Cpu size={18} className="text-purple-600" />
-              <p className="font-semibold text-gray-800 dark:text-white">1) Initial Assessment</p>
+              <p className="font-semibold text-gray-800 dark:text-white">
+                1) Initial Assessment
+              </p>
             </div>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
               Coverage: {assessmentCoverage.completedCount}/4 skills
@@ -525,7 +537,9 @@ const HomePage = () => {
           <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
             <div className="flex items-center gap-2">
               <Wallet size={18} className="text-emerald-600" />
-              <p className="font-semibold text-gray-800 dark:text-white">2) Plan Generator</p>
+              <p className="font-semibold text-gray-800 dark:text-white">
+                2) Plan Generator
+              </p>
             </div>
 
             <div className="mt-3 space-y-2">
@@ -565,7 +579,9 @@ const HomePage = () => {
           <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
             <div className="flex items-center gap-2">
               <RefreshCw size={18} className="text-blue-600" />
-              <p className="font-semibold text-gray-800 dark:text-white">3) Adaptive Scheduler</p>
+              <p className="font-semibold text-gray-800 dark:text-white">
+                3) Adaptive Scheduler
+              </p>
             </div>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
               {aiPlan.modeDescription}
@@ -580,7 +596,9 @@ const HomePage = () => {
           <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
             <div className="flex items-center gap-2">
               <MessageCircle size={18} className="text-pink-600" />
-              <p className="font-semibold text-gray-800 dark:text-white">4) Tutor + Next Action</p>
+              <p className="font-semibold text-gray-800 dark:text-white">
+                4) Tutor + Next Action
+              </p>
             </div>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
               Estimated credits/session: {aiPlan.estimatedCredits}
@@ -953,6 +971,7 @@ const HomePage = () => {
                 <th className="p-3">Kỹ năng</th>
                 <th className="p-3">Điểm</th>
                 <th className="p-3">Ngày</th>
+                <th className="p-3">Giáo viên chấm</th>
                 <th className="p-3 text-right rounded-tr-lg"></th>
               </tr>
             </thead>
@@ -974,17 +993,17 @@ const HomePage = () => {
                           item.test?.testType === "READING"
                             ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                             : item.test?.testType === "LISTENING"
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                            : item.test?.testType === "WRITING"
-                            ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              : item.test?.testType === "WRITING"
+                                ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                                : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                         }`}
                       >
                         {item.test?.testType}
                       </span>
                     </td>
                     <td className="p-3 font-bold text-gray-800 dark:text-gray-100">
-                      {item.band_score}
+                      {item.bandScore ?? item.band_score ?? "-"}
                     </td>
                     <td className="p-3 text-gray-500 dark:text-gray-400">
                       {new Date(item.createdAt).toLocaleDateString("vi-VN", {
@@ -994,6 +1013,47 @@ const HomePage = () => {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
+                    </td>
+                    <td className="p-3">
+                      {(() => {
+                        const tickets = item.teacherReviewTickets || [];
+                        if (tickets.length === 0) {
+                          return (
+                            <span className="text-gray-400 text-xs">
+                              Chưa yêu cầu
+                            </span>
+                          );
+                        }
+                        // Ưu tiên: hiển thị điểm COMPLETED trước
+                        const completedTicket = tickets.find(
+                          (t) => t.status === "COMPLETED" && t.teacherBandScore,
+                        );
+                        if (completedTicket) {
+                          return (
+                            <span className="text-green-600 font-bold">
+                              {completedTicket.teacherBandScore}
+                            </span>
+                          );
+                        }
+                        // Sau đó mới check PENDING/CLAIMED
+                        const pendingTicket = tickets.find((t) =>
+                          ["PENDING", "CLAIMED", "IN_PROGRESS"].includes(
+                            t.status,
+                          ),
+                        );
+                        if (pendingTicket) {
+                          return (
+                            <span className="text-yellow-600 text-xs font-semibold">
+                              Đang chờ
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="text-gray-400 text-xs">
+                            Chưa yêu cầu
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="p-3 text-right">
                       <button
@@ -1008,7 +1068,7 @@ const HomePage = () => {
               ) : (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="p-8 text-center text-gray-400 dark:text-gray-500 italic"
                   >
                     Không tìm thấy lịch sử làm bài nào.
@@ -1077,7 +1137,7 @@ const HomePage = () => {
                       );
                     }
                     return null;
-                  }
+                  },
                 )}
               </div>
               <button

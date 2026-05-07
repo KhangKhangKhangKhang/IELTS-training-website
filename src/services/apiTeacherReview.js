@@ -149,3 +149,23 @@ export const updateAssignModeAPI = async (mode) => {
   const res = await API.put('/system-config/teacher-review/assign-mode', { mode });
   return res.data;
 };
+
+// =============================================================================
+// MODERATION POLICY
+// =============================================================================
+
+/**
+ * Get moderation policy from backend
+ */
+export const getModerationPolicyAPI = async () => {
+  const res = await API.get('/system-config/moderation/policy');
+  return res.data;
+};
+
+/**
+ * Update moderation policy on backend
+ */
+export const updateModerationPolicyAPI = async (data) => {
+  const res = await API.put('/system-config/moderation/policy', data);
+  return res.data;
+};
