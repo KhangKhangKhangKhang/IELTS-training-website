@@ -211,6 +211,13 @@ model QuestionTypePerformance {
 
 ## SMART STUDY PLANNER - DETAILED LEARNING PATH
 
+### Research Foundation
+
+**Nguồn:**
+- Zimmerman, B.J. (1989). "Self-Regulated Learning and Academic Achievement." *Journal of Educational Psychology*.
+- Locke, E.A. & Latham, G.P. (2002). "Building a Practically Useful Theory of Goal Setting." *American Psychologist*.
+- Krashen, S.D. (1982). *Principles and Practice in Second Language Acquisition*.
+
 ### Core Algorithm: Generate Study Plan
 
 **Input:**
@@ -220,6 +227,9 @@ interface UserProfile {
   targetBand: number
   daysUntilExam: number
   studyHoursPerDay: number
+  vocabTier: 1 | 2 | 3  // NEW: from vocabulary placement
+  weakSkills: string[]  // NEW: from question type analytics
+  preferredScheduleTime: 'morning' | 'afternoon' | 'evening'
 }
 ```
 
@@ -232,6 +242,11 @@ interface StudyPlan {
   weeklyPlan: WeeklyPlan[]
   dailyMinutes: number
   recommendation: string
+  // NEW: Research-based additions
+  inputOutputBalance: { input: number; output: number }
+  difficultyLevel: 'easier' | 'standard' | 'challenging'
+  motivationTips: string[]  // Based on SDT
+  metacognitivePrompts: string[]  // For self-reflection
 }
 ```
 
@@ -246,10 +261,10 @@ function generateStudyPlan(profile: UserProfile): StudyPlan {
                               currentBand.writing, currentBand.speaking]);
   const bandGap = targetBand - currentAvg;
 
-  // 2. Calculate realistic improvement rate
-  //    Max sustainable improvement: 0.5 band per month for beginners
-  //    0.3 band per month for intermediate (5.5-6.5)
-  //    0.2 band per month for advanced (7.0+)
+  // 2. Calculate realistic improvement rate (from research)
+  //    Max 0.5 band/month for beginners (<5.5)
+  //    0.3 band/month for intermediate (5.5-7.0)
+  //    0.2 band/month for advanced (7.0+)
   const maxMonthlyGain = currentAvg < 5.5 ? 0.5
                        : currentAvg < 7.0 ? 0.3
                        : 0.2;
@@ -263,22 +278,148 @@ function generateStudyPlan(profile: UserProfile): StudyPlan {
       warning: `Với band hiện tại ${currentAvg.toFixed(1)} và ${daysUntilExam} ngày, mục tiêu band ${targetBand} không thực tế.`,
       adjustedTarget: Math.min(targetBand, currentAvg + maxPossibleGain),
       recommendation: `Gợi ý: Kéo dài ngày thi thêm ${Math.ceil((bandGap - maxPossibleGain) / maxMonthlyGain * 30)} ngày, hoặc giảm mục tiêu band xuống ${(currentAvg + maxPossibleGain).toFixed(1)}`
+      // NEW: Motivation tips based on SDT
+      motivationTips: [
+        "Đặt mục tiêu vừa sức giúp duy trì động lực (competence need)",
+        "Nhớ rằng việc học là hành trình, không phải cuộc đua"
+      ]
     };
   }
 
-  // 4. EDGE CASE: Very short timeline
-  if (daysUntilExam <= 14) {
-    return generateIntensiveTwoWeekPlan(profile);
-  }
+  // 4. Calculate Four Strands Balance
+  const dailyMinutes = studyHoursPerDay * 60;
+  const inputTime = Math.round(dailyMinutes * 0.35);  // 35% input
+  const outputTime = Math.round(dailyMinutes * 0.35);  // 35% output
+  const languageFocusTime = Math.round(dailyMinutes * 0.20);  // 20% vocab/grammar
+  const fluencyTime = Math.round(dailyMinutes * 0.10);  // 10% speed practice
 
-  // 5. EDGE CASE: Very long timeline
-  if (daysUntilExam >= 180) {
-    return generateSixMonthPlan(profile);
-  }
+  // 5. Determine difficulty level based on i+1 principle
+  const difficultyLevel = determineIOneLevel(currentAvg, targetBand);
 
-  // 6. Normal path: Generate phased plan
-  return generateStandardPlan(profile);
+  // 6. Generate standard plan with all components
+  return generateStandardPlan(profile, {
+    inputTime, outputTime, languageFocusTime, fluencyTime,
+    difficultyLevel,
+    motivationTips: generateMotivationTips(profile),
+    metacognitivePrompts: generateMetacognitivePrompts(profile)
+  });
 }
+
+// NEW: i+1 difficulty adjustment
+function determineIOneLevel(currentBand: number, targetBand: number): string {
+  const gap = targetBand - currentBand;
+  if (gap > 1.5) return 'easier';    // Significant gap - need easier materials
+  if (gap > 0.5) return 'standard';  // Normal progression
+  return 'challenging';              // Small gap - push to harder materials
+}
+
+// NEW: SDT-based motivation tips
+function generateMotivationTips(profile: UserProfile): string[] {
+  const tips = [];
+  const { currentBand, targetBand, daysUntilExam } = profile;
+  
+  // Competence support
+  if (daysUntilExam > 90) {
+    tips.push("Bạn có thời gian chuẩn bị tốt - hãy tập trung vào tiến bộ ổn định");
+  }
+  
+  // Autonomy support
+  tips.push("Bạn có thể chọn thứ tự học từ gợi ý bên dưới - hãy chọn what works best for you");
+  
+  // Relatedness hint
+  tips.push("Tham gia forum để kết nối với người cùng mục tiêu");
+  
+  return tips;
+}
+
+// NEW: Metacognitive prompts for self-reflection
+function generateMetacognitivePrompts(profile: UserProfile): string[] {
+  return [
+    "Sau mỗi bài practice: 'Mình đã hiểu được bao nhiêu % nội dung?'",
+    "Cuối tuần: 'Tuần này mình tiến bộ gì? Cần cải thiện gì?'",
+    "Khi gặp khó khăn: 'Mình có đang học đúng cách không?' (self-monitoring)"
+  ];
+}
+```
+
+### Metacognitive Self-Regulation Features (Research-Based)
+
+**Based on Zimmerman's SRL Model:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              SELF-REGULATED LEARNING PROMPTS                    │
+├─────────────────────────────────────────────────────────────────┤
+│ FORETHOUGHT (Start of session):                                │
+│   → "Hôm nay mình sẽ tập trung vào kỹ năng yếu: [skill]"     │
+│   → "Mục tiêu: hoàn thành [X] tasks trong [Y] phút"          │
+│                                                                 │
+│ PERFORMANCE (During session):                                  │
+│   → Timer prompts: "Đã học được 15 phút - tiếp tục!"         │
+│   → Self-check: "Mình đang làm tốt không?"                     │
+│   → If struggling: "Cần nghỉ 5 phút không?"                    │
+│                                                                 │
+│ SELF-REFLECTION (End of session):                              │
+│   → "Hôm nay học được gì?" (Journal entry)                    │
+│   → "Kỹ năng nào vẫn còn yếu?"                               │
+│   → "Ngày mai cần tập trung vào đâu?"                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Implementation in UI:**
+- Start-of-session modal with goal setting prompt
+- End-of-session quick reflection (3 questions, < 1 min)
+- Weekly summary email with progress visualization
+
+### i+1 Material Recommendation System (NEW)
+
+**Krashen's Input Hypothesis applied:**
+
+```typescript
+interface MaterialRecommendation {
+  type: 'reading' | 'listening'
+  difficulty: 'foundation' | 'intermediate' | 'advanced' | 'expert'
+  examples: string[]
+  warningThreshold: number  // % unknown words to trigger warning
+}
+
+// Material database based on difficulty
+const readingMaterials = {
+  foundation: [
+    "BBC Learning English (Beginner)",
+    "IELTS Foundation Reading Materials",
+    "Simple Wikipedia articles"
+  ],
+  intermediate: [
+    "IELTS Cambridge Practice Tests",
+    "National Geographic (Simple articles)",
+    "BBC News (Learning English section)"
+  ],
+  advanced: [
+    "The Economist articles",
+    "Academic journals (simplified)",
+    "Cambridge academic word list materials"
+  ],
+  expert: [
+    "Native English newspapers (FT, WSJ)",
+    "Academic papers in your field",
+    "Documentaries with subtitles"
+  ]
+};
+
+// Auto-adjust based on user performance
+function recommendMaterial(user, skillType) {
+  const recentAccuracy = calculateRecentAccuracy(user, skillType);
+  const currentBand = getUserOverallBand(user);
+  
+  if (recentAccuracy < 0.6) {
+    return materials[currentBand].easier;  // i+1: slightly below level
+  } else if (recentAccuracy > 0.85) {
+    return materials[currentBand].harder;  // Push to challenge
+  }
+  return materials[currentBand].current;  // Stay at appropriate level
+}
+```
 ```
 
 ### EDGE CASE HANDLING
@@ -459,10 +600,30 @@ Week 14: Rest + confidence building
 
 ## VOCABULARY IMPROVEMENT STRATEGY
 
+### Research Foundation
+
+**Nguồn:** Nation, I.S.P. (2013). *Learning Vocabulary in Another Language*. Cambridge University Press.
+
+**Lexical Coverage Research:**
+| Coverage | Word Families | Context |
+|----------|--------------|---------|
+| 85% | ~1,000 | Casual conversation |
+| 90% | ~3,000 | Basic communication |
+| 95% | ~5,000 | Reading newspapers, IELTS |
+| 98% | ~8,000-9,000 | Novels/literature |
+
+**Target:** 5,000 word families = minimum for IELTS reading (95% coverage)
+
+**Coxhead's Academic Word List (AWL):**
+- 570 word families
+- Covers ~10% of academic texts
+- **Priority for band 6.5+ users**
+
 ### Current Problem
 - User có thể thêm từ vựng nhưng **không tích hợp vào learning flow**
 - Không có **spaced repetition** thực sự
 - AI suggestion chỉ là lookup, không có **active learning**
+- **Không có ưu tiên theo tần suất** - user học từ random, không phải high-value words
 
 ### Solution: Integrated Vocabulary Pipeline
 
@@ -471,17 +632,79 @@ Week 14: Rest + confidence building
 │                    VOCABULARY FLOW                         │
 ├─────────────────────────────────────────────────────────────┤
 │  1. Learn    │  2. Practice    │  3. Review    │  4. Master │
-│  (New word) │  (In context)   │  (Spaced rep) │  (In tests)│
+│  (High-freq) │  (In context)  │  (Spaced rep) │  (In tests)│
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Stage 0: Priority Ranking (NEW)
+
+**High-Frequency Word Priority based on research:**
+
+```
+VOCABULARY PRIORITY TIERS:
+┌─────────────────────────────────────────────────────────────┐
+│ TIER 1 (Week 1-4): High-frequency general service words    │
+│   → 1,000 most common words (90% coverage)                  │
+│   → Priority for: Band < 5.5 learners                      │
+├─────────────────────────────────────────────────────────────┤
+│ TIER 2 (Week 5-12): Academic Word List                     │
+│   → 570 word families (10% academic texts)                  │
+│   → Priority for: Band 5.5-6.5 learners                    │
+├─────────────────────────────────────────────────────────────┤
+│ TIER 3 (Week 13+): Specialized/Technical vocabulary        │
+│   → Topic-specific words (environment, education, etc.)    │
+│   → Priority for: Band 6.5+ learners                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Implementation:**
+- User takes vocabulary placement test (50 common words assessment)
+- System determines starting tier based on current band
+- AI suggestions prioritize current tier words first
+- Auto-progress to next tier when 80% mastery of current tier achieved
+
+**Vocabulary Placement Test (NEW):**
+```typescript
+interface VocabPlacementTest {
+  id: string
+  userId: string
+  totalQuestions: 50
+  correctCount: number
+  estimatedTier: 'TIER_1' | 'TIER_2' | 'TIER_3'
+  recommendedStartingPoint: number  // word family index
+}
+```
+
 ### Stage 1: Learn (Input)
+
 **How:**
 - User thêm từ manually
 - AI suggest từ mới dựa trên reading/listening transcripts
-- Topic-based vocabulary lists (Education, Environment, Technology...)
+- **Topic-based vocabulary lists prioritized by current tier**
+- AI suggests words from current tier that user hasn't learned yet
 
-**Data Model:**
+**Smart Word Suggestion Algorithm:**
+```javascript
+function suggestNextWord(user) {
+  const currentTier = user.vocabTier;  // 1, 2, or 3
+  const knownWords = user.learnedWordIds;
+  
+  // Get words from current tier not yet learned
+  const candidateWords = getWordsFromTier(currentTier)
+    .filter(w => !knownWords.includes(w.id))
+    .sortByFrequency();  // Most frequent first
+  
+  // Prioritize words that appear in user's recent practice tests
+  const recentTestVocab = getRecentTestVocab(user);
+  const prioritized = candidateWords
+    .filter(w => recentTestVocab.includes(w.word))
+    .concat(candidateWords.filter(w => !recentTestVocab.includes(w.word));
+  
+  return prioritized[0];
+}
+```
+
+**Data Model (Updated):**
 ```typescript
 interface VocabWord {
   id: string
@@ -491,7 +714,9 @@ interface VocabWord {
   example: string
   level: Level          // Low, Mid, High
   topic: string
-  relatedQuestionTypes: QuestionType[]  // để link vào practice
+  tier: 1 | 2 | 3       // NEW: frequency tier
+  frequencyRank: number // NEW: position in frequency list
+  relatedQuestionTypes: QuestionType[]
   timesReviewed: number
   lastReviewedAt: Date
   nextReviewAt: Date    // SM-2 algorithm
@@ -563,87 +788,204 @@ function sm2(quality, repetitions, easiness, interval) {
 
 ## GRAMMAR IMPROVEMENT STRATEGY
 
+### Research Foundation
+
+**Nguồn:** Nation, I.S.P. (2013). *Learning Vocabulary in Another Language*. Cambridge University Press.
+
+**Key insight:** Grammar structures follow a "Natural Order" (Krashen) - some structures are acquired before others.
+
+**Grammar Categories by IELTS Band Target:**
+
+| Band Target | Essential Grammar Focus | Advanced Grammar |
+|-------------|------------------------|-------------------|
+| 5.0-5.5 | Verb tenses, Subject-verb agreement, Basic sentence structure | Simple passives |
+| 6.0-6.5 | Complex tenses, Clause structure, Relative clauses | Advanced passives, Nominalization |
+| 7.0+ | Complex sentences, Paragraph coherence, Discourse markers | Academic style, Subjunctive |
+
 ### Current Problem
 - Grammar module hiện tại **tách rời** với test flow
 - User học grammar riêng nhưng **không áp dụng** vào Writing/Speaking
 - Không có **error tracking** từ AI grading
+- **Grammar không gắn với band target** - học random không có priority
 
-### Solution: Integrated Grammar Pipeline
+### Solution: Integrated Grammar Pipeline with Error Intelligence
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    GRAMMAR FLOW                            │
 ├─────────────────────────────────────────────────────────────┤
-│  1. Learn    │  2. Error Detect │  3. Practice │  4. Fix  │
-│  (Rules)     │  (From AI)       │  (Targeted)   │  (Retry) │
+│  1. Learn    │  2. Error Detect │  3. Practice │  4. Master │
+│  (Band-based)│  (From AI)       │  (Targeted)   │  (In output)│
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Stage 1: Learn (Grammar Lessons)
-**Current:** Generic grammar lessons (tenses, clauses, etc.)
+### Stage 0: Grammar Placement Assessment (NEW)
 
-**Improved: Topic-based + Context**
-```javascript
-const grammarTopics = [
-  { topic: 'Verb Tenses',        contexts: ['present', 'past', 'future'] },
-  { topic: 'Conditional',        contexts: ['zero', 'first', 'second', 'third'] },
-  { topic: 'Passive Voice',      contexts: ['simple', 'continuous', 'perfect'] },
-  { topic: 'Complex Sentences',  contexts: ['relative', 'subordinate', 'compound'] },
-  { topic: 'Cohesive Devices',   contexts: ['however', 'furthermore', 'consequently'] }
-];
+**Assessment to determine starting point based on current band:**
+
+```typescript
+interface GrammarPlacementTest {
+  id: string
+  userId: string
+  sections: {
+    verbTenses: number      // score 0-10
+    sentenceStructure: number
+    clauseTypes: number
+    coherenceCohesion: number
+  }
+  recommendedFocus: GrammarCategory[]
+  estimatedBandLevel: number
+}
 ```
 
-### Stage 2: Error Detection (AI-Powered)
-**How:**
-- AI grading Writing/Speaking → detect grammar errors
-- Auto-categorize errors → Grammar category
+**Question sampling by band:**
+- Band < 5.0: Focus on basic verb tenses, simple sentences
+- Band 5.0-6.0: Add complex tenses, relative clauses
+- Band 6.0+: Add discourse markers, paragraph structure
 
-**Error Types Tracked:**
+### Stage 1: Learn (Grammar Lessons - Band-Prioritized)
+
+**Topic-based + Context + Band Priority:**
+
+```javascript
+const grammarTopics = [
+  // Tier 1: Essential for Band 5.0-5.5
+  { topic: 'Verb Tenses',        contexts: ['present', 'past', 'future'], bandTarget: 5.0 },
+  { topic: 'Subject-Verb Agreement', contexts: ['singular', 'plural'], bandTarget: 5.0 },
+  { topic: 'Simple Sentences',    contexts: ['declarative', 'question'], bandTarget: 5.0 },
+
+  // Tier 2: For Band 5.5-6.5
+  { topic: 'Conditional',        contexts: ['zero', 'first', 'second', 'third'], bandTarget: 5.5 },
+  { topic: 'Passive Voice',      contexts: ['simple', 'continuous', 'perfect'], bandTarget: 5.5 },
+  { topic: 'Relative Clauses',    contexts: ['defining', 'non-defining'], bandTarget: 5.5 },
+  { topic: 'Complex Sentences',  contexts: ['subordinate', 'coordinate'], bandTarget: 6.0 },
+
+  // Tier 3: For Band 6.5+
+  { topic: 'Cohesive Devices',   contexts: ['however', 'furthermore', 'consequently'], bandTarget: 6.5 },
+  { topic: 'Advanced Passives',   contexts: ['causative', 'modal'], bandTarget: 7.0 },
+  { topic: 'Academic Style',      contexts: ['nominalization', 'formal register'], bandTarget: 7.5 }
+];
+
+// System recommends grammar topics based on user's target band
+function getRecommendedGrammarTopics(targetBand: number): GrammarTopic[] {
+  return grammarTopics.filter(t => t.bandTarget <= targetBand);
+}
+```
+
+### Stage 2: Error Detection (AI-Powered + Research-Based Error Categories)
+
+**Based on research:** Each grammar error category has measurable band impact.
+
+**Error Categories with Band Impact:**
+
+| Error Type | Band Impact | AI Detection Priority |
+|------------|-------------|---------------------|
+| Verb tense errors | -0.5 band | HIGH (most common) |
+| Subject-verb agreement | -0.5 band | HIGH |
+| Missing articles | -0.5 band | MEDIUM (common for non-native speakers) |
+| Word order | -0.5 band | HIGH |
+| Preposition errors | -0.25 band | MEDIUM |
+| Cohesive device misuse | -0.5 band | HIGH (critical for coherence) |
+| Sentence fragment | -0.25 band | MEDIUM |
+| Run-on sentence | -0.25 band | MEDIUM |
+
+**Error Types Tracked (Updated):**
 ```typescript
 interface GrammarError {
   userId: string
-  category: GrammarCategory    // Tense, Subject-Verb, Article, etc.
+  category: GrammarCategory
   errorCount: number
-  examples: string[]            // user's actual wrong sentences
+  bandImpact: number          // Estimated band score impact
+  examples: string[]          // user's actual wrong sentences
   lastOccurrredAt: Date
-  improvementRate: number       // decreasing = improving
+  improvementRate: number     // decreasing = improving
+  linkedLesson: string       // Grammar topic to review
 }
 ```
 
-**AI Detection Flow:**
+**AI Detection Flow with Band Impact:**
 ```
 User submits Writing
   → AI Grading processes
-  → Extract grammar errors
+  → Extract grammar errors with band impact estimation
   → Categorize + Store in GrammarError
-  → Link to Grammar lesson
-  → Suggest practice
+  → Link to Grammar lesson (band-prioritized)
+  → Show band impact: "This error type could cost you 0.5 band"
+  → Generate targeted practice
 ```
 
-### Stage 3: Targeted Practice
-**Based on errors:**
+### Stage 3: Targeted Practice (Error-Focused with Band Context)
+
+**Based on error patterns + band target:**
+
 ```javascript
-// Example: User makes 5 Subject-Verb errors in last 10 writings
-if (grammarError['SUBJECT_VERB'] > 3) {
-  recommendPractice('subject-verb-agreement', 5);
+// Example: User targeting Band 6.0, has 5 Subject-Verb errors
+if (grammarError['SUBJECT_VERB'] > 3 && user.targetBand >= 6.0) {
+  recommendPractice({
+    topic: 'subject-verb-agreement',
+    exercises: 5,
+    focus: 'advanced: complex subjects with prepositional phrases',
+    bandContext: 'Band 6.0 requires 90%+ accuracy on S-V agreement'
+  });
 }
 ```
 
-**Practice Types:**
-| Practice | Duration | Focus |
-|----------|----------|-------|
-| Error correction | 10 min | Identify + fix errors |
-| Sentence transformation | 15 min | Rewrite with correct grammar |
-| Error detection in passage | 10 min | Find errors in text |
+**Practice Types with Band Context:**
 
-### Stage 4: Mastery Check
+| Practice | Duration | Band Relevance |
+|----------|----------|----------------|
+| Error correction | 10 min | Essential for 5.5+ |
+| Sentence transformation | 15 min | Required for 6.0+ |
+| Error detection in passage | 10 min | Critical for 6.5+ |
+| Coherence analysis | 15 min | Essential for 7.0+ |
+
+### Stage 4: Mastery Check (Output Integration with Band Scoring)
+
 **Integration với Writing:**
 - AI check for repeated errors → If improved, mark as "resolved"
-- Band impact: Each error category can affect 0.5 band
+- Each resolved error type = potential 0.25-0.5 band improvement
 
-**Grammar + Vocabulary Combo:**
+**Band Progress Tracking:**
+```typescript
+interface GrammarBandProgress {
+  userId: string
+  categories: {
+    [category: string]: {
+      attempts: number
+      accuracyRate: number
+      bandContribution: number  // How much this affects overall band
+      isBlockingProgress: boolean  // TRUE if error prevents band upgrade
+    }
+  }
+  overallGrammarBandEstimate: number
+  blockingErrors: GrammarError[]  // Errors preventing band improvement
+}
+```
+
+**Grammar + Vocabulary Combo (Four Strands Integration):**
 - Passage reading: Highlight grammar structures + vocabulary
 - User learns both simultaneously
+- Output: Use new vocabulary in grammatically correct sentences
+
+### Affective Filter in Grammar Learning (NEW)
+
+**Krashen's Affective Filter Hypothesis applied:**
+
+```
+GRAMMAR ANXIETY REDUCTION STRATEGIES:
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Progressive complexity: Start easy, build confidence     │
+│ 2. Positive framing: "You've mastered 8 grammar points"      │
+│ 3. Error as learning: "This error is common, let's fix"    │
+│ 4. Low-pressure practice: Timed exercises only in mock tests │
+│ 5. Celebrate progress: Grammar accuracy improvement = band   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**UI Implementation:**
+- Grammar exercises show: "You're improving! 80% accuracy → potential +0.25 band"
+- If user struggles: "Let's try an easier topic first"
+- Gamification: Grammar badges for mastering each category
 
 ---
 
@@ -681,17 +1023,95 @@ if (grammarError['SUBJECT_VERB'] > 3) {
 }
 ```
 
-### Weekly Integration
+### Daily Schedule with 4-Strand Balance (Research-Based)
 
-| Day | Vocab | Grammar | Skill Focus |
-|-----|-------|---------|-------------|
-| Mon | Review 10 | Verb Tenses | Listening |
-| Tue | Review 10 | Conditionals | Reading |
-| Wed | Review 10 | Passive Voice | Writing Task 1 |
-| Thu | Review 10 | Complex Sentences | Writing Task 2 |
-| Fri | Review 10 | Cohesive Devices | Speaking |
-| Sat | Full Test | Light review | All |
-| Sun | Rest | Rest | Rest |
+**Nation's Four Strands Applied:**
+
+| Strand | % Time | Activities | Example |
+|--------|--------|-----------|---------|
+| **Meaning-focused input** | 35% | Reading/Listening comprehension | IELTS reading passages, podcasts |
+| **Meaning-focused output** | 35% | Speaking/Writing production | Speaking practice, essay writing |
+| **Language-focused learning** | 20% | Vocabulary/Grammar drills | SRS flashcard, grammar exercises |
+| **Fluency development** | 10% | Speed practice, review | Timed reading, shadowing |
+
+**Daily Template (with 4-Strand Balance):**
+```javascript
+const standardDailySchedule = {
+  morning: {
+    time: "7:00 - 7:30",
+    strand: "Language-focused",  // SRS for vocabulary
+    activity: "Vocabulary Review (10 words, SM-2)",
+    duration: 30,
+    method: "Active recall flashcard"
+  },
+  afternoon: {
+    time: "12:00 - 12:35",
+    strand: "Meaning-focused input",  // 35 min = 35% of 100 min
+    activity: "Reading OR Listening practice",
+    duration: 35,
+    method: "Passage with comprehension questions"
+  },
+  evening: {
+    time: "19:00 - 19:35",
+    strand: "Meaning-focused output",  // 35 min = 35% of 100 min
+    activity: "Speaking OR Writing (rotate daily)",
+    duration: 35,
+    method: "Speaking: Part 1-3 practice | Writing: Task 1/2"
+  },
+  beforeSleep: {
+    time: "22:00 - 22:15",
+    strand: "Fluency development",
+    activity: "Quick review / dictation",
+    duration: 15,
+    method: "Listen to today's vocabulary in context"
+  }
+};
+
+// For users studying 2+ hours/day:
+const extendedDailySchedule = {
+  // Add extra skill practice session (45 min)
+  afternoon2: {
+    time: "15:00 - 15:45",
+    strand: "Rotating skill focus",
+    activity: "Weak skill practice OR full mock section",
+    duration: 45
+  }
+};
+```
+
+**Rotation Pattern for Output (Meaning-focused output):**
+```
+Week pattern (prevent burnout from same skill):
+  Mon: Writing Task 1
+  Tue: Speaking Part 1-2
+  Wed: Writing Task 2
+  Thu: Speaking Part 3
+  Fri: Writing (any) / Speaking (any) - user's choice
+  Sat: Full Test (all 4 skills)
+  Sun: Rest
+```
+
+### Weekly Integration with Metacognitive Prompts
+
+| Day | Strand Focus | Metacognitive Prompt |
+|-----|-------------|---------------------|
+| Monday | Input heavy (Reading) | "What did you learn about reading strategies this week?" |
+| Tuesday | Output heavy (Writing) | "How did you apply feedback from last writing?" |
+| Wednesday | Language focus (Vocab/Grammar) | "Which new words will you use this week?" |
+| Thursday | Output heavy (Speaking) | "What topic was most challenging in speaking?" |
+| Friday | Fluency focus | "Review: What 3 things will you do differently?" |
+| Saturday | Full test | "Analyze: Where did you lose points and why?" |
+| Sunday | Rest + reflection | "Weekly Review: Progress toward band goal?" |
+
+**Weekly Self-Reflection Template (Sunday):**
+```
+1. Band progress: Current avg vs target - am I on track?
+2. Strongest skill this week: [skill] - why?
+3. Weakest skill this week: [skill] - what to focus next week?
+4. Vocabulary mastered: X new words
+5. Grammar area improved: [topic]
+6. Next week's priority: [specific goal]
+```
 
 ---
 
@@ -721,47 +1141,360 @@ if (grammarError['SUBJECT_VERB'] > 3) {
 
 ## IMPLEMENTATION ROADMAP
 
-### Phase 1: Subscription Foundation (2-3 weeks)
+### Phase 1: Subscription System + Foundation (2-3 weeks)
 - [ ] Add Subscription model to schema
 - [ ] Add AiUsageLog model
 - [ ] Create subscription module (NestJS)
 - [ ] Create payment module (Stripe/VNPay integration)
 - [ ] Add subscription-gated guards to existing endpoints
 - [ ] Frontend: upgrade modal, plan comparison page
+- [ ] **NEW: VocabPlacementTest model + API** - determine user's vocabulary tier
 
-### Phase 2: Question Analytics (1-2 weeks)
+### Phase 2: Research-Based Study Planner (2-3 weeks) [ENHANCED]
+- [ ] Study plan templates database with 4-strand balance
+- [ ] **Rule-based planner with i+1 difficulty adjustment**
+- [ ] **Vocabulary tier system (Tier 1/2/3)**
+- [ ] **Grammar placement assessment**
+- [ ] **Metacognitive prompts (Zimmerman's SRL)**
+- [ ] **Motivation tips based on SDT**
+- [ ] Frontend: planner UI with self-regulation prompts
+- [ ] Push notification for daily study reminders
+- [ ] **Weekly self-reflection email (Premium)**
+
+### Phase 3: Intelligent Vocabulary System (2 weeks) [ENHANCED]
+- [ ] SM-2 algorithm implementation
+- [ ] **High-frequency word priority (Tier 1/2/3)**
+- [ ] **AI suggestions based on current tier**
+- [ ] **Vocabulary placement test flow**
+- [ ] Auto-progress to next tier at 80% mastery
+- [ ] **Four strands integration for vocabulary**
+- [ ] Vocabulary analytics dashboard
+
+### Phase 4: Grammar Error Intelligence (2 weeks) [ENHANCED]
+- [ ] **Grammar placement test**
+- [ ] **Band-prioritized grammar topics**
+- [ ] AI error detection with band impact estimation
+- [ ] **Coherent error tracking system**
+- [ ] Targeted practice generator
+- [ ] **Grammar progress with band contribution**
+- [ ] Affective filter anxiety reduction UI
+
+### Phase 5: Question Analytics + Weakness Detection (1-2 weeks)
 - [ ] Add QuestionTypePerformance tracking
 - [ ] Implement rule-based weakness detection
 - [ ] "Practice Weaknesses" mode UI
 - [ ] Analytics dashboard improvements
+- [ ] **Material difficulty recommendation system (i+1)**
 
-### Phase 3: Cost Optimization (1 week)
+### Phase 6: Cost Optimization (1 week)
 - [ ] AI grading cache (hash-based dedup)
 - [ ] Vocabulary suggestion cache
 - [ ] AI usage monitoring dashboard (admin)
 - [ ] Set up cost alerts
 
-### Phase 4: Smart Planner (2 weeks)
-- [ ] Study plan templates database
-- [ ] Rule-based planner logic
-- [ ] Frontend: planner UI + reminders
-- [ ] Push notification for reminders
-
-### Phase 5: Premium Features (2-3 weeks)
+### Phase 7: Premium Features (2-3 weeks)
 - [ ] Actionable feedback templates
 - [ ] Micro-learning question banks
 - [ ] Offline vocabulary sync
 - [ ] Band score prediction model
+- [ ] **Compare with Average feature (SDT relatedness)**
+- [ ] **Weekly Report with AI-generated insights (Premium)**
+
+---
+
+## IMMEDIATE NEXT WEEK PLAN (Week of 2026-05-11)
+
+### Research Foundation
+
+**Lý thuyết nền tảng:**
+
+1. **SM-2 Algorithm** (Woźniak, 1987):
+   - Ebbinghaus Forgetting Curve: trí nhớ giảm theo hàm mũ nếu không ôn tập
+   - Meta-analyses 2021-2024: SRS hiệu quả hơn massed practice ~60-80%
+   - Công thức: Lần 1 = 1 ngày, Lần 2 = 6 ngày, sau = interval × easiness
+   - Quality rating: 0-5 (3 = ngưỡng chuyển interval)
+
+2. **Nation's Vocabulary Acquisition** (2013):
+   - 5,000 word families = 95% reading coverage (ngưỡng cho IELTS)
+   - 3,000 word families = 90% coverage (cơ bản)
+   - Coxhead's AWL (570 words) = ~10% bài IELTS, cần cho band 6.5+
+
+3. **Band Improvement Research** (British Council, IELTS.org):
+   - <5.5: max 0.5 band/tháng
+   - 5.5-7.0: max 0.3 band/tháng
+   - >7.0: max 0.2 band/tháng
+
+4. **Nation's Four Strands** (2001):
+   - 35% input (đọc/nghe)
+   - 35% output (viết/nói)
+   - 20% language-focused (vocab/grammar)
+   - 10% fluency
+
+### Day 1-2: Vocabulary Model với SM-2 + Tier System
+
+**Tasks:**
+```typescript
+// 1. Thêm fields vào Vocabulary model (schema.prisma)
+model Vocabulary {
+  // ... existing fields ...
+  timesReviewed: Int @default(0)
+  easinessFactor: Float @default(2.5)
+  interval: Int @default(1)  // days
+  nextReviewAt: DateTime?
+  tier: Int @default(1)  // 1: general, 2: AWL, 3: specialized
+  status: String @default("new")  // new|learning|review|mastered
+}
+
+// 2. SM-2 Algorithm trong service
+function sm2(quality: number, repetitions: number, easiness: number, interval: number) {
+  if (quality < 3) {
+    return { repetitions: 0, interval: 1, easiness };
+  }
+  if (repetitions === 0) interval = 1;
+  else if (repetitions === 1) interval = 6;
+  else interval = Math.round(interval * easiness);
+
+  repetitions++;
+  easiness = easiness + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+
+  return { repetitions, interval: Math.max(1, interval), easiness: Math.max(1.3, easiness) };
+}
+
+// 3. APIs cần tạo:
+// GET /vocabulary/due-review?userId=xxx
+// POST /vocabulary/review {vocabId, quality}
+```
+
+**API Example:**
+```typescript
+// GET /vocabulary/due-review
+// Response: [{id, word, meaning, nextReviewAt, status}]
+
+// POST /vocabulary/review
+// Body: {vocabId: string, quality: 0-5}
+// Response: {nextReviewAt, interval, status}
+```
+
+### Day 3-4: Vocabulary Tier Progression Logic
+
+**Tasks:**
+```typescript
+// 1. Tier Recommendation
+function getRecommendedTier(currentBand: number): 1 | 2 | 3 {
+  if (currentBand < 5.5) return 1;  // 3,000 words (90% coverage)
+  if (currentBand < 6.5) return 2;  // AWL 570 words (academic)
+  return 3;  // Specialized vocabulary
+}
+
+// 2. Tier Progression Check (80% mastery)
+function checkTierProgression(userId: string): {
+  shouldProgress: boolean,
+  currentTier: number,
+  masteredCount: number,
+  totalInTier: number
+}
+
+// 3. Word suggestion by tier
+function getNextWordForUser(userId: string): VocabWord {
+  const tier = getRecommendedTier(getUserBand(userId));
+  const knownWords = getUserLearnedWords(userId);
+  return getWordsFromTier(tier)
+    .filter(w => !knownWords.includes(w.id))
+    .sortByFrequency()[0];
+}
+```
+
+**Vocabulary Priority Tiers:**
+```
+TIER 1 (Band < 5.5): 3,000 high-frequency words → 90% coverage
+TIER 2 (Band 5.5-6.5): Coxhead's AWL 570 words → academic texts
+TIER 3 (Band 6.5+): Specialized/technical vocabulary
+```
+
+### Day 5: Study Planner với Band Gap Algorithm
+
+**Tasks:**
+```typescript
+// 1. Calculate Realistic Target
+function calculateRealisticTarget(currentBand: number, daysUntilExam: number): {
+  maxPossibleGain: number,
+  isRealistic: boolean,
+  warning?: string,
+  adjustedTarget?: number
+}
+
+// Band improvement rates from research:
+const maxMonthlyRate = currentBand < 5.5 ? 0.5
+                     : currentBand < 7.0 ? 0.3
+                     : 0.2;
+
+const maxPossibleGain = maxMonthlyRate * (daysUntilExam / 30);
+
+// 2. Daily Schedule Generator (4-Strand Balance)
+function generateDailyPlan(
+  targetBand: number,
+  currentBand: number,
+  dailyMinutes: number
+): DailySchedule {
+  return {
+    input: Math.round(dailyMinutes * 0.35),   // Reading/Listening
+    output: Math.round(dailyMinutes * 0.35),  // Writing/Speaking
+    languageFocus: Math.round(dailyMinutes * 0.20),  // Vocab/Grammar
+    fluency: Math.round(dailyMinutes * 0.10)  // Review
+  };
+}
+
+// 3. Warning Examples:
+// - "5.0 → 8.0 trong 30 ngày: max possible gain = 0.3 band, suggest 5.5"
+// - "Bạn có 90 ngày, với band 5.0 target 6.5 là realistic (0.5/month possible)"
+```
+
+### Day 6: AI Grammar Error Extraction
+
+**Tasks:**
+```typescript
+// 1. Grammar Error Model (schema.prisma)
+model GrammarError {
+  id: String @id
+  userId: String
+  category: String  // VERB_TENSE|SUBJECT_VERB|ARTICLE|WORD_ORDER|PREPOSITION|COHESIVE
+  example: String  // user's wrong sentence
+  correction: String  // suggested fix
+  bandImpact: Float  // -0.25 to -0.5
+  linkedLesson: String  // grammar topic to review
+  createdAt: DateTime
+}
+
+// 2. AI Response Parser
+function extractGrammarErrors(aiResponse: string): GrammarError[] {
+  // Parse từ AI grading response
+  // Extract: category, example, correction
+  // Estimate band impact per error type
+}
+
+// 3. Error Categories with Band Impact:
+const errorBandImpact = {
+  VERB_TENSE: -0.5,         // HIGH priority
+  SUBJECT_VERB: -0.5,
+  WORD_ORDER: -0.5,
+  COHESIVE_DEVICE: -0.5,    // Critical for coherence
+  ARTICLE: -0.25,
+  PREPOSITION: -0.25,
+  SENTENCE_FRAGMENT: -0.25
+};
+
+// 4. Band-Prioritized Grammar Topics:
+const grammarTopics = [
+  // Tier 1: Band 5.0-5.5
+  { topic: 'Verb Tenses', bandTarget: 5.0 },
+  { topic: 'Subject-Verb Agreement', bandTarget: 5.0 },
+  // Tier 2: Band 5.5-6.5
+  { topic: 'Conditional', bandTarget: 5.5 },
+  { topic: 'Passive Voice', bandTarget: 5.5 },
+  { topic: 'Relative Clauses', bandTarget: 5.5 },
+  // Tier 3: Band 6.5+
+  { topic: 'Cohesive Devices', bandTarget: 6.5 },
+  { topic: 'Advanced Passives', bandTarget: 7.0 }
+];
+```
+
+### Day 7: Weak Areas Detection + Recommendation
+
+**Tasks:**
+```typescript
+// 1. Weak Skill Detection
+function getWeakSkills(userId: string): SkillWeakness[] {
+  const performances = await getQuestionTypePerformances(userId);
+  // Group by skill, calculate avg score
+  // Sort by avg ascending → weakest first
+  return performances
+    .groupBy(p => p.skillType)
+    .map(g => ({
+      skill: g.key,
+      avgScore: g.values.avg(s => s.score),
+      questionTypes: g.values.map(v => v.questionType)
+    }))
+    .sort((a, b) => a.avgScore - b.avgScore)
+    .slice(0, 2);  // Top 2 weakest
+}
+
+// 2. Practice Weaknesses Mode
+function generateWeakPractice(userId: string): PracticeSet {
+  const weakSkills = getWeakSkills(userId);
+  // Rule-based: generate practice từ existing question bank
+  // Không cần AI - dùng question type đã có trong system
+  return {
+    focus: weakSkills.map(s => s.skill).join(', '),
+    questions: getQuestionsBySkill(weakSkills[0].skill)
+               .filter(q => q.difficulty <= getUserBand(userId))
+               .slice(0, 10)
+  };
+}
+
+// 3. Metacognitive Prompts (Zimmerman's SRL)
+const selfReflectionPrompts = [
+  "Sau mỗi bài practice: 'Mình đã hiểu được bao nhiêu % nội dung?'",
+  "Cuối tuần: 'Tuần này mình tiến bộ gì? Cần cải thiện gì?'",
+  "Khi gặp khó khăn: 'Mình có đang học đúng cách không?'"
+];
+```
+
+### Week Summary
+
+| Day | Task | Research Base | Output |
+|-----|------|---------------|--------|
+| 1-2 | Vocab SM-2 + Tier model | Woźniak SM-2, Nation lexical coverage | Vocab model, SM-2 service, due-review API |
+| 3-4 | Vocab tier progression | Nation Tier system (90%/95% coverage) | tier recommendation, progression check |
+| 5 | Study Planner algorithm | British Council band rates, 4 Strands | realistic target, daily schedule generator |
+| 6 | Grammar error AI extraction | Band impact categories, Krashen order | GrammarError model, AI parser |
+| 7 | Weak areas detection | Zimmerman's SRL, self-evaluation | weak skill detection, practice recommendation |
 
 ---
 
 ## Verification Plan
 
-1. Test subscription flow: Free → Basic upgrade
-2. Verify AI usage logging accurate
-3. Test weakness detection matches manual review
-4. Verify cost tracking works (Stripe webhooks)
-5. Load test: AI queue processing capacity
+### Research-Based Validation Checklist
+
+**Vocabulary System:**
+- [ ] SM-2 intervals correctly calculated (verify with known test cases)
+- [ ] Tier progression at 80% mastery threshold works
+- [ ] High-frequency words prioritized over low-frequency
+
+**Study Planner:**
+- [ ] 4-strand balance (35/35/20/10) correctly distributed
+- [ ] i+1 difficulty adjustment triggers at correct thresholds (60%/85%)
+- [ ] Unrealistic target warnings appear for impossible band gaps
+- [ ] Metacognitive prompts appear at correct times
+
+**Grammar System:**
+- [ ] Grammar placement test correctly determines starting point
+- [ ] Error detection categorizes correctly
+- [ ] Band impact estimation matches IELTS rubric
+- [ ] Targeted practice recommendations are relevant
+
+**General:**
+- [ ] Test subscription flow: Free → Basic upgrade
+- [ ] Verify AI usage logging accurate
+- [ ] Verify weakness detection matches manual review
+- [ ] Verify cost tracking works (Stripe webhooks)
+- [ ] Load test: AI queue processing capacity
+
+---
+
+## ALIGNMENT SUMMARY: Research vs Implementation
+
+| Research Finding | SpecificPlan.md Implementation | Status |
+|-----------------|---------------------------------|--------|
+| **SM-2 Algorithm** (Woźniak) | SM-2 formula in vocabulary system | ✅ Implemented |
+| **0.5 band/month max** (British Council) | Band improvement algorithm rules | ✅ Implemented |
+| **Nation's 4 Strands** | Daily schedule with 35/35/20/10 balance | ✅ Implemented |
+| **Krashen's i+1** | Material difficulty recommendation system | ✅ Added |
+| **Zimmerman's SRL** | Metacognitive prompts in planner | ✅ Added |
+| **Locke & Latham SMART Goals** | Target band with timeline algorithm | ✅ Implemented |
+| **Deci & Ryan SDT** | Motivation tips, gamification for competence | ✅ Added |
+| **Lexical Coverage 95%** (Nation) | 5,000 word families target | ✅ Added |
+| **Coxhead's AWL** | Tier 2 vocabulary for band 5.5+ | ✅ Added |
+| **Grammar Natural Order** (Krashen) | Band-prioritized grammar topics | ✅ Added |
 
 ---
 
@@ -777,11 +1510,82 @@ if (grammarError['SUBJECT_VERB'] > 3) {
 3. **Basic tier MUST include Study Planner** - it's a core learning feature, not a premium add-on
 4. **Premium differs by convenience, NOT AI limits** - same AI limits for Basic and Premium
 
-### Band Improvement Rules
+### Research-Based Band Improvement Rules (Verified)
 - Max 0.5 band/month for beginners (<5.5)
 - Max 0.3 band/month for intermediate (5.5-7.0)
 - Max 0.2 band/month for advanced (>7.0)
 - **Always warn user when target is unrealistic** and suggest alternatives
+
+### Research-Based Study Balance
+- 35% Meaning-focused input (Reading/Listening)
+- 35% Meaning-focused output (Speaking/Writing)
+- 20% Language-focused (Vocabulary/Grammar)
+- 10% Fluency development
+
+### Research-Based Foundation
+
+#### Krashen's Input Hypothesis (i+1) Applied to IELTS
+
+**Nguồn:** Krashen, S.D. (1982). *Principles and Practice in Second Language Acquisition*.
+
+**Principle:** Language acquisition occurs when learners receive comprehensible input slightly beyond their current level (i+1).
+
+**Implementation in Study Planner:**
+
+| User Band | Recommended Input Level | Examples |
+|-----------|------------------------|----------|
+| 4.0-5.0 | Simplified with visual support | BBC Learning English, IELTS Foundation materials |
+| 5.0-6.0 | Standard with some unknown words | Native materials with dictionary support |
+| 6.0-7.0 | Near-native, academic context | The Economist, academic papers, native podcasts |
+| 7.0+ | Fully native materials | News, documentaries, academic texts |
+
+**Auto-adjustment logic:**
+- If user scores <60% on a skill's practice → suggest easier materials
+- If user scores >85% consistently → prompt to increase difficulty
+- Material difficulty tracked via: avg unknown words per passage, speed metrics
+
+#### Nation's Four Strands Applied to Daily Schedule
+
+**Nguồn:** Nation, I.S.P. (2001). *Learning Vocabulary in Another Language*.
+
+**Four strands that must be balanced:**
+
+1. **Meaning-focused input** (Reading/Listening) - 35% of study time
+2. **Meaning-focused output** (Speaking/Writing) - 35% of study time
+3. **Language-focused learning** (Vocabulary/Grammar drills) - 20% of study time
+4. **Fluency development** (Speed practice, review) - 10% of study time
+
+**Daily schedule must include all 4 strands:**
+
+```
+STUDY BALANCE ALGORITHM:
+dailyMinutes = user-selected study time
+
+inputTime = dailyMinutes × 0.35  // Reading/Listening
+outputTime = dailyMinutes × 0.35  // Speaking/Writing
+languageFocusTime = dailyMinutes × 0.20  // Vocab/Grammar
+fluencyTime = dailyMinutes × 0.10  // Speed review
+
+Rotate output activities: W1 → S1 → W2 → S2 pattern
+Never skip input OR output for more than 2 days
+```
+
+#### Self-Determination Theory (Deci & Ryan) Applied to Engagement
+
+**Nguồn:** Deci & Ryan (1985). *Intrinsic Motivation and Self-Determination*.
+
+**Three basic needs to satisfy:**
+
+| Need | Implementation | Feature |
+|------|----------------|---------|
+| **Autonomy** | User chooses what to study, when | Flexible schedule, topic selection |
+| **Competence** | Clear progress feedback | Band score tracking, streak rewards |
+| **Relatedness** | Social connection | Forum, compare with average |
+
+**Gamification based on SDT:**
+- XP system designed for mastery (competence), not competition
+- Streak for consistency, not intensity
+- Leaderboards are optional, not mandatory (preserve autonomy)
 
 ### Key Technologies Used
 - Backend: NestJS, Prisma, PostgreSQL, Redis, RabbitMQ, Gemini AI
