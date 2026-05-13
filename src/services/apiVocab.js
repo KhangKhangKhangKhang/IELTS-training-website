@@ -64,3 +64,42 @@ export const suggestVocabAPI = async (word) => {
     throw error;
   }
 };
+
+// SM-2 Spaced Repetition APIs
+export const getDueReviewAPI = async (idUser, limit = 20) => {
+  try {
+    const response = await API.get("/vocabulary/due-review", {
+      params: { idUser, limit },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching due review:", error);
+    throw error;
+  }
+};
+
+export const submitReviewAPI = async (idVocab, idUser, quality) => {
+  try {
+    const response = await API.post("/vocabulary/review", {
+      idVocab,
+      idUser,
+      quality,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error submitting review:", error);
+    throw error;
+  }
+};
+
+export const getTierRecommendationAPI = async (idUser) => {
+  try {
+    const response = await API.get("/vocabulary/tier-recommendation", {
+      params: { idUser },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching tier recommendation:", error);
+    throw error;
+  }
+};

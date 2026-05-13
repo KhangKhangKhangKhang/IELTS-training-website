@@ -977,6 +977,7 @@ const Vocabulary = () => {
           onClose={() => setShowFlashcard(false)}
           vocabularies={vocabularies} // Danh sách từ vựng hiện tại (đã filter theo topic)
           user={user}
+          submitReview={true} // Enable SM-2 quality rating
         />
         ;{/* Modal Edit Vocabulary - GIỮ NGUYÊN */}
         {showEditVocabulary && vocabToEdit && (
