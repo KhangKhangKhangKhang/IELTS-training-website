@@ -10,10 +10,11 @@ import {
   Loader2,
 } from "lucide-react";
 import { postVocabStreakAPI, userProfileAPI } from "@/services/apiUser";
+import { submitReviewAPI } from "@/services/apiVocab";
 import { message } from "antd";
 import LevelUpModal from "@/components/ui/LevelUpModal";
 
-const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
+const FlashcardModal = ({ isOpen, onClose, vocabularies, user, submitReview = false }) => {
   // --- STATE ---
   const [queue, setQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,6 +27,9 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
   // State cho Level Up Modal
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [levelUpData, setLevelUpData] = useState({ oldLevel: null, newLevel: null });
+
+  // SM-2 Quality rating state
+  const [selectedQuality, setSelectedQuality] = useState(null);
 
   // --- EFFECT: KHỞI TẠO ---
   useEffect(() => {
@@ -42,27 +46,39 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
       setResults([]);
       setIsFinished(false);
       setIsSubmitting(false);
+      setSelectedQuality(null);
     }
   }, [isOpen, vocabularies]);
 
-  // --- LOGIC: XỬ LÝ TRẢ LỜI ---
-  const handleFlip = useCallback(() => {
-    if (!isFinished) setIsFlipped((prev) => !prev);
-  }, [isFinished]);
-
-  const handleAnswer = useCallback(
-    async (isCorrect) => {
+  // --- LOGIC: XỬ LÝ TRẢ LỜI VỚI SM-2 QUALITY ---
+  const handleAnswerWithQuality = useCallback(
+    async (quality) => {
       if (isSubmitting || isFinished) return;
+      setIsSubmitting(true);
 
       const currentVocab = queue[currentIndex];
+
+      try {
+        // Gọi SM-2 review API nếu enabled
+        if (submitReview && user?.idUser) {
+          await submitReviewAPI(currentVocab.idVocab, user.idUser, quality);
+        }
+      } catch (error) {
+        console.error("SM-2 review API error:", error);
+        // Continue anyway - don't block the flow
+      }
+
+      const isCorrect = quality >= 3;
       const newResult = {
         idVocab: currentVocab.idVocab,
         isCorrect: isCorrect,
+        quality: quality,
       };
 
       // Cập nhật state results
       const updatedResults = [...results, newResult];
       setResults(updatedResults);
+      setSelectedQuality(null);
 
       // Nếu chưa phải câu cuối -> Chuyển câu
       if (currentIndex < queue.length - 1) {
@@ -75,8 +91,19 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
         // Nếu là câu cuối -> Kết thúc phiên
         await finishSession(updatedResults);
       }
+      setIsSubmitting(false);
     },
-    [queue, currentIndex, results, isSubmitting, isFinished]
+    [queue, currentIndex, results, isSubmitting, isFinished, submitReview, user]
+  );
+
+  // Legacy handler for simple correct/incorrect (backward compatibility)
+  const handleAnswer = useCallback(
+    async (isCorrect) => {
+      // Map isCorrect to SM-2 quality: true=5, false=1
+      const quality = isCorrect ? 5 : 1;
+      await handleAnswerWithQuality(quality);
+    },
+    [handleAnswerWithQuality]
   );
 
   // --- LOGIC: GỌI API VÀ CẬP NHẬT STREAK ---
@@ -102,7 +129,7 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
       // 1. Gọi API lưu kết quả
       const response = await postVocabStreakAPI(payload);
 
-      // 2. 🔥 QUAN TRỌNG: Bắn sự kiện để StreakWidget cập nhật ngay lập tức
+      // 2. Bắn sự kiện để StreakWidget cập nhật ngay lập tức
       window.dispatchEvent(new Event("streak-update"));
 
       // 3. Kiểm tra xem có lên level không
@@ -249,6 +276,43 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
     </div>
   );
 
+  // SM-2 Quality buttons if enabled
+  const renderQualityButtons = () => {
+    if (!submitReview || !isFlipped) return null;
+
+    return (
+      <div className="flex flex-col gap-2 mt-4">
+        <p className="text-sm text-slate-500 text-center">Bạn nhớ từ này không?</p>
+        <div className="flex justify-center gap-2">
+          {[0, 1, 2, 3, 4, 5].map((q) => (
+            <button
+              key={q}
+              onClick={() => handleAnswerWithQuality(q)}
+              disabled={isSubmitting}
+              className={`w-10 h-10 rounded-full font-bold text-sm transition-all ${
+                selectedQuality === q
+                  ? "ring-2 ring-blue-500"
+                  : ""
+              } ${
+                q <= 2
+                  ? "bg-red-100 text-red-700 hover:bg-red-200"
+                  : q === 3
+                  ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                  : "bg-green-100 text-green-700 hover:bg-green-200"
+              }`}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-between text-xs text-slate-400 px-4">
+          <span>Chưa nhớ</span>
+          <span>Nhớ hoàn toàn</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
       <div className="w-full max-w-2xl h-[650px] flex flex-col p-4">
@@ -293,8 +357,7 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
           onClick={handleFlip}
         >
           <div
-            className={`relative w-full h-full duration-500 preserve-3d transition-all transform ease-in-out ${isFlipped ? "rotate-y-180" : ""
-              }`}
+            className={`relative w-full h-full duration-500 preserve-3d transition-all transform ease-in-out ${isFlipped ? "rotate-y-180" : ""}`}
             style={{ transformStyle: "preserve-3d" }}
           >
             {/* --- FRONT SIDE --- */}
@@ -319,57 +382,68 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user }) => {
                 Answer
               </span>
               <BackSideContent />
+              {renderQualityButtons()}
             </div>
           </div>
         </div>
 
-        {/* Controls Buttons */}
-        <div
-          className={`grid grid-cols-2 gap-6 transition-all duration-500 transform ${isFlipped
-            ? "opacity-100 translate-y-0"
-            : "opacity-50 translate-y-4 pointer-events-none grayscale"
+        {/* Controls Buttons - Chỉ hiện khi chưa enable SM-2 quality */}
+        {submitReview ? null : (
+          <div
+            className={`grid grid-cols-2 gap-6 transition-all duration-500 transform ${
+              isFlipped
+                ? "opacity-100 translate-y-0"
+                : "opacity-50 translate-y-4 pointer-events-none grayscale"
             }`}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleAnswer(false);
-            }}
-            disabled={isSubmitting}
-            className="group flex items-center justify-center gap-3 py-4 rounded-2xl bg-white text-red-600 font-bold text-lg shadow-lg border-b-4 border-red-100 active:border-b-0 active:translate-y-1 hover:bg-red-50 transition-all"
           >
-            <div className="p-1 bg-red-100 rounded-full group-hover:bg-red-200 transition-colors">
-              <XIcon size={20} />
-            </div>
-            Chưa nhớ
-            <span className="hidden md:inline text-xs font-normal text-red-400 bg-red-100/50 px-1.5 py-0.5 rounded border border-red-200">
-              ←
-            </span>
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAnswer(false);
+              }}
+              disabled={isSubmitting}
+              className="group flex items-center justify-center gap-3 py-4 rounded-2xl bg-white text-red-600 font-bold text-lg shadow-lg border-b-4 border-red-100 active:border-b-0 active:translate-y-1 hover:bg-red-50 transition-all"
+            >
+              <div className="p-1 bg-red-100 rounded-full group-hover:bg-red-200 transition-colors">
+                <XIcon size={20} />
+              </div>
+              Chưa nhớ
+              <span className="hidden md:inline text-xs font-normal text-red-400 bg-red-100/50 px-1.5 py-0.5 rounded border border-red-200">
+                ←
+              </span>
+            </button>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleAnswer(true);
-            }}
-            disabled={isSubmitting}
-            className="group flex items-center justify-center gap-3 py-4 rounded-2xl bg-blue-600 text-white font-bold text-lg shadow-lg border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 hover:bg-blue-500 transition-all"
-          >
-            {isSubmitting ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <>
-                <div className="p-1 bg-white/20 rounded-full">
-                  <Check size={20} />
-                </div>
-                Đã nhớ
-                <span className="hidden md:inline text-xs font-normal text-blue-200 bg-blue-700 px-1.5 py-0.5 rounded border border-blue-500">
-                  →
-                </span>
-              </>
-            )}
-          </button>
-        </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAnswer(true);
+              }}
+              disabled={isSubmitting}
+              className="group flex items-center justify-center gap-3 py-4 rounded-2xl bg-blue-600 text-white font-bold text-lg shadow-lg border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 hover:bg-blue-500 transition-all"
+            >
+              {isSubmitting ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <>
+                  <div className="p-1 bg-white/20 rounded-full">
+                    <Check size={20} />
+                  </div>
+                  Đã nhớ
+                  <span className="hidden md:inline text-xs font-normal text-blue-200 bg-blue-700 px-1.5 py-0.5 rounded border border-blue-500">
+                    →
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* SM-2 Quality buttons - Thay thế controls */}
+        {submitReview && isFlipped ? (
+          <div className="grid grid-cols-2 gap-6 opacity-0 pointer-events-none">
+            {/* Hidden, replaced by quality buttons in card */}
+          </div>
+        ) : null}
       </div>
 
       {/* Level Up Celebration Modal */}
