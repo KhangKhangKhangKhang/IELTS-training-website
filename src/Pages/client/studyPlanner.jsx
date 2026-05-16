@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/authContext";
 import { getStudyPlanAPI, calculateStudyPlanAPI, completeTaskAPI } from "@/services/apiStudyPlanner";
 import { Calculator, Target, Calendar, AlertTriangle, CheckCircle, Clock, Trophy } from "lucide-react";
@@ -14,6 +15,7 @@ const HOUR_OPTIONS = [
 
 const StudyPlanner = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState(null);
   const [manualInput, setManualInput] = useState({
@@ -87,6 +89,15 @@ const StudyPlanner = () => {
     }
   };
 
+  // Handle task click navigation
+  const handleTaskClick = (task) => {
+    if (task.route && task.routeParams) {
+      navigate(task.route, { state: task.routeParams });
+    } else if (task.route) {
+      navigate(task.route);
+    }
+  };
+
   // Render time validation warning
   const renderTimeValidation = () => {
     if (!plan?.timeValidation) return null;
@@ -127,7 +138,8 @@ const StudyPlanner = () => {
           {dailyTasks.map((task) => (
             <div
               key={task.id}
-              className={`flex items-center gap-3 p-4 rounded-lg border transition-all ${
+              onClick={() => handleTaskClick(task)}
+              className={`flex items-center gap-3 p-4 rounded-lg border transition-all cursor-pointer ${
                 task.completed
                   ? 'bg-green-50 border-green-200'
                   : 'bg-slate-50 border-slate-200 hover:border-blue-300 hover:bg-blue-50'
@@ -136,7 +148,11 @@ const StudyPlanner = () => {
               <input
                 type="checkbox"
                 checked={task.completed}
-                onChange={() => handleCompleteTask(task.id)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  handleCompleteTask(task.id);
+                }}
+                onClick={(e) => e.stopPropagation()}
                 className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
               />
               <div className="flex-1">
