@@ -50,7 +50,15 @@ export const getStudyPlanAPI = async (idUser) => {
     const response = await API.get("/study-planner/plan", {
       params: { idUser },
     });
-    return response.data;
+
+    return {
+      ...response.data,
+      currentStage: response.data.currentStage,
+      stageTheme: response.data.stageTheme,
+      stageThemeDescription: response.data.stageThemeDescription,
+      stageProgress: response.data.stageProgress,
+      userProficiency: response.data.userProficiency
+    };
   } catch (error) {
     console.error("Error fetching study plan:", error);
     throw error;
