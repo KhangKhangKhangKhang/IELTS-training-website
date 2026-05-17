@@ -160,6 +160,11 @@ const StudyPlanner = () => {
                   {task.name}
                 </p>
                 <p className="text-sm text-slate-500">{task.description}</p>
+                {task.reason && (
+                  <div className="mt-2 text-xs text-blue-600">
+                    💡 {task.reason}
+                  </div>
+                )}
               </div>
               {task.completed && (
                 <span className="text-green-600 text-sm font-medium flex items-center gap-1">
@@ -222,28 +227,32 @@ const StudyPlanner = () => {
     return (
       <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
         <h3 className="text-lg font-semibold mb-4">Lộ trình từng tuần</h3>
+        {/* Weekly Plan Theme */}
+        <div className="mb-4 p-3 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg">
+          <p className="text-sm text-indigo-600 font-medium">📅 Tuần này: {plan.stageTheme}</p>
+          <p className="text-xs text-gray-500">{plan.stageThemeDescription}</p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {plan.weeklyPlan.map((week) => (
             <div
-              key={week.week}
+              key={week.date}
               className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-blue-600">Tuần {week.week}</span>
-                <span className={`text-xs px-2 py-1 rounded-full ${
-                  week.theme === 'Foundation' ? 'bg-green-100 text-green-700' :
-                  week.theme === 'Skill Building' ? 'bg-blue-100 text-blue-700' :
-                  week.theme === 'Integration' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-purple-100 text-purple-700'
-                }`}>
-                  {week.theme === 'Foundation' ? 'Nền tảng' :
-                   week.theme === 'Skill Building' ? 'Rèn kỹ năng' :
-                   week.theme === 'Integration' ? 'Tích hợp' : 'Sát ngày thi'}
-                </span>
+                <span className="text-sm font-medium text-blue-600">{week.dayName}</span>
+                {week.isRestDay ? (
+                  <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-500">
+                    Nghỉ
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-500">
+                    {week.completedCount}/{week.totalCount} hoàn thành
+                  </span>
+                )}
               </div>
-              <p className="text-sm text-slate-600 mb-2">{week.focus}</p>
+              <p className="text-sm text-slate-600 mb-2">{week.isRestDay ? 'Ngày nghỉ' : `${week.tasks.length} tasks`}</p>
               <div className="text-xs text-slate-400">
-                Mỗi ngày: {week.dailyMinutes} phút
+                {week.isRestDay ? 'Hãy nghỉ ngơi!' : `${week.totalCount} phút`}
               </div>
             </div>
           ))}
@@ -507,6 +516,59 @@ const StudyPlanner = () => {
                 {renderTimeValidation()}
                 {renderWarning()}
                 {renderMotivationTips()}
+
+                {/* Stage Indicator */}
+                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600">Giai đoạn hiện tại</span>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      plan.currentStage === 'FOUNDATION' ? 'bg-green-100 text-green-700' :
+                      plan.currentStage === 'SKILL_BUILDING' ? 'bg-blue-100 text-blue-700' :
+                      plan.currentStage === 'INTEGRATION' ? 'bg-purple-100 text-purple-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {
+                        plan.currentStage === 'FOUNDATION' ? 'Nền tảng' :
+                        plan.currentStage === 'SKILL_BUILDING' ? 'Rèn luyện' :
+                        plan.currentStage === 'INTEGRATION' ? 'Tích hợp' :
+                        'Luyện thi'
+                      }
+                    </span>
+                  </div>
+
+                  {/* Stage Progress Bar */}
+                  <div className="mb-2">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Tiến độ giai đoạn</span>
+                      <span>{plan.stageProgress?.stageProgressPercent || 0}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-200 rounded-full">
+                      <div
+                        className="h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all"
+                        style={{ width: `${plan.stageProgress?.stageProgressPercent || 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Next Milestone */}
+                  {plan.stageProgress?.nextMilestone && (
+                    <div className="mt-3 p-3 bg-white rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">Mục tiêu tiếp theo:</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        {
+                          plan.stageProgress.nextMilestone.stage === 'SKILL_BUILDING' ? 'Rèn luyện' :
+                          plan.stageProgress.nextMilestone.stage === 'INTEGRATION' ? 'Tích hợp' :
+                          'Luyện thi'
+                        }
+                      </p>
+                      <ul className="mt-1 text-xs text-gray-600">
+                        {plan.stageProgress.nextMilestone.requirements?.map((req, i) => (
+                          <li key={i}>• {req}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
 
                 {/* Today View - Show daily tasks */}
                 {viewMode === 'today' && renderDailyTasks()}
