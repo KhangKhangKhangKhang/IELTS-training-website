@@ -11,6 +11,7 @@ import {
   LogOut,
   Album,
   ClipboardList,
+  Route,
 } from "lucide-react";
 import ProfileModal from "./profileModal";
 import ChatBotWidget from "./chatBotWidget";
@@ -31,6 +32,7 @@ const Navbar = () => {
     { name: "Diễn đàn", href: "/statistic", icon: BarChart3 },
     { name: "Từ Vựng", href: "/vocabulary", icon: BookMarked },
     { name: "Ngữ pháp", href: "/grammar", icon: Album },
+    { name: "Lộ trình", href: "/study-planner", icon: Route },
     { name: "Lịch sử chấm bài", href: "/teacher-review-history", icon: ClipboardList },
   ];
 

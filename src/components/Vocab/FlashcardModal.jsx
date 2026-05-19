@@ -106,6 +106,11 @@ const FlashcardModal = ({ isOpen, onClose, vocabularies, user, submitReview = fa
     [handleAnswerWithQuality]
   );
 
+  // --- LOGIC: LẬT THẺ ---
+  const handleFlip = useCallback(() => {
+    setIsFlipped((prev) => !prev);
+  }, []);
+
   // --- LOGIC: GỌI API VÀ CẬP NHẬT STREAK ---
   const finishSession = async (finalResults) => {
     setIsSubmitting(true);

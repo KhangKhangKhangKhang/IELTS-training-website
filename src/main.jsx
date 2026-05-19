@@ -32,6 +32,7 @@ const TestEdit = lazy(() => import("./Pages/teacher/test/testEdit"));
 const TeacherDashboard = lazy(() => import("./Pages/teacher/teacherDashboard"));
 const ForumModeration = lazy(() => import("./Pages/teacher/forumModeration"));
 const Grammar = lazy(() => import("./Pages/client/grammar"));
+const StudyPlanner = lazy(() => import("./Pages/client/studyPlanner"));
 const AdminDashboard = lazy(() => import("./Pages/admin/adminDashboard"));
 const TeacherReviewHistory = lazy(() => import("./Pages/client/teacherReviewHistory"));
 const TeacherQueue = lazy(() => import("./Pages/teacher/teacherQueue"));
@@ -70,6 +71,7 @@ const router = createBrowserRouter([
           { path: "profile", element: <LazyRoute Component={Profile} /> },
           { path: "startingPage", element: <LazyRoute Component={StartingPage} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
+          { path: "study-planner", element: <LazyRoute Component={StudyPlanner} /> },
           { path: "teacher-review-history", element: <LazyRoute Component={TeacherReviewHistory} /> },
         ],
       },
