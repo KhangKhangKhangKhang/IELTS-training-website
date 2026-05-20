@@ -1616,3 +1616,583 @@ Never skip input OR output for more than 2 days
 - **Lexibot:** 45k/month, unlimited writing AI grading only
 - **Our advantage:** 4 skills instead of 1, Study Planner included in Basic
 - **Our challenge:** Need to balance AI costs while competing on price
+
+---
+
+## WEEKLY PLAN ENHANCEMENT (TODO)
+
+### Current Problem
+
+**Week plan is STATIC and not personalized:**
+
+1. **`generateWeeklyPlan` always uses `weekOffset = 0`:**
+   ```typescript
+   // Line 241 in study-planner.service.ts
+   const weeklyPlan = await this.generateWeeklyPlan(studyMinutesPerDay, prof.stage, 0);
+   ```
+   - Cannot navigate to past/future weeks
+   - Always shows current week only
+
+2. **Tasks generated with empty userId:**
+   ```typescript
+   // Line 630 in generateWeeklyPlan
+   const tasks = isSunday
+     ? []
+     : (await this.generateDailyTasks('', stage, theme.theme, dailyMinutes))
+   ```
+   - Passes empty string `''` as userId
+   - Tasks are NOT personalized - only based on stage
+   - Does not use user's actual weak skills, vocab, grammar data
+
+3. **CompletedCount always = 0:**
+   ```typescript
+   // Line 641 in generateWeeklyPlan
+   completedCount: 0,
+   ```
+   - Never loads actual completion data from `userDailyTaskCompletion` table
+   - UI shows "0/X hoàn thành" for all days
+
+### Required Fixes
+
+#### 1. Load Completion Data from DB
+
+**New endpoint or modify existing:**
+```typescript
+// GET /study-planner/weekly/:weekOffset
+// Query params: idUser, weekOffset (0 = current, -1 = last week, 1 = next week)
+
+async getWeeklyPlan(idUser: string, weekOffset: number = 0): Promise<WeeklyPlan[]> {
+  // 1. Calculate date range for the week
+  const startOfWeek = getStartOfWeek(weekOffset);
+  const endOfWeek = addDays(startOfWeek, 6);
+
+  // 2. Load actual completions from DB
+  const completions = await this.db.userDailyTaskCompletion.findMany({
+    where: {
+      idUser,
+      date: { gte: startOfWeek, lte: endOfWeek },
+      completed: true
+    }
+  });
+
+  // 3. Map completions by date and taskType
+  const completionMap = completions.reduce((acc, c) => {
+    const dateKey = c.date.toISOString().split('T')[0];
+    if (!acc[dateKey]) acc[dateKey] = {};
+    acc[dateKey][c.taskType] = true;
+    return acc;
+  }, {});
+
+  // 4. Generate personalized tasks for each day (using actual userId)
+  const weekPlans = await this.generateWeeklyPlan(
+    dailyMinutes, stage, weekOffset, userId  // Pass userId!
+  );
+
+  // 5. Merge with completion data
+  return weekPlans.map(day => ({
+    ...day,
+    completedCount: Object.values(completionMap[day.date] || {}).length,
+    tasks: day.tasks.map(task => ({
+      ...task,
+      completed: completionMap[day.date]?.[task.type] || false
+    }))
+  }));
+}
+```
+
+#### 2. Personalize Tasks with UserId
+
+**Fix line 630:**
+```typescript
+// BEFORE (broken)
+const tasks = (await this.generateDailyTasks('', stage, theme.theme, dailyMinutes))
+
+// AFTER (fixed)
+const tasks = (await this.generateDailyTasks(userId, stage, theme.theme, dailyMinutes))
+```
+
+#### 3. Add Week Navigation
+
+**Frontend: Add prev/next week buttons**
+```typescript
+// In studyPlanner.jsx
+const [weekOffset, setWeekOffset] = useState(0);
+
+// Navigate buttons
+<button onClick={() => setWeekOffset(w => w - 1)}>Tuần trước</button>
+<button onClick={() => setWeekOffset(w => w + 1)}>Tuần sau</button>
+```
+
+**API: Add weekOffset parameter**
+```typescript
+// GET /study-planner/plan?idUser=xxx&weekOffset=0
+// POST /study-planner/calculate { ..., weekOffset?: number }
+```
+
+#### 4. Calculate Real Dates Based on Offset
+
+**Fix line 616-618:**
+```typescript
+// BEFORE (always current week)
+const today = new Date();
+const startOfWeek = new Date(today);
+startOfWeek.setDate(today.getDate() - today.getDay() + 1);
+
+// AFTER (based on offset)
+const getStartOfWeek = (weekOffset: number) => {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const diff = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek) + (weekOffset * 7);
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() + diff);
+  startOfWeek.setHours(0, 0, 0, 0);
+  return startOfWeek;
+};
+```
+
+### Data Model Requirements
+
+**userDailyTaskCompletion table should have:**
+```prisma
+model UserDailyTaskCompletion {
+  id             String   @id @default(uuid())
+  idUser         String
+  idStudyPlan    String?
+  taskType       String   // VOCABULARY, GRAMMAR, READING, LISTENING, WRITING, SPEAKING
+  date           DateTime @default(now())
+  completed      Boolean  @default(false)
+  completedAt    DateTime?
+
+  @@unique([idUser, idStudyPlan, taskType, date])
+}
+```
+
+### Implementation Priority
+
+| Priority | Task | Effort |
+|----------|------|--------|
+| P0 | Fix userId to not be empty string | 5 min |
+| P0 | Load completion data from DB | 30 min |
+| P1 | Add week navigation (prev/next) | 1 hour |
+| P1 | Calculate real dates based on offset | 30 min |
+| P2 | Add weekly summary (streak, progress) | 1 hour |
+| P2 | Persist completed tasks to DB on check | 1 hour |
+
+### Files to Modify
+
+**Backend:**
+- `src/module/study-planner/study-planner.service.ts` - Lines 241, 614-653
+- `src/module/study-planner/study-planner.controller.ts` - Add weekOffset param
+- `src/module/study-planner/dto/` - Add weekOffset to DTO
+
+**Frontend:**
+- `src/Pages/client/studyPlanner.jsx` - Add week navigation buttons
+- `src/services/apiStudyPlanner.js` - Add weekOffset param to API calls
+
+---
+
+## METACOGNITIVE PROMPTS INTEGRATION
+
+### Current Implementation
+
+The system already has metacognitive prompts based on Zimmerman's Self-Regulated Learning:
+
+```typescript
+// In study-planner.service.ts
+private generateMetacognitivePrompts(): string[] {
+  return [
+    "Sau mỗi bài luyện: 'Mình đã hiểu được bao nhiêu % nội dung?'",
+    "Cuối tuần: 'Tuần này mình tiến bộ gì? Cần cải thiện gì?'",
+    "Khi gặp khó khăn: 'Mình có đang học đúng cách không?'",
+    "Trước khi học: 'Hôm nay mình sẽ tập trung vào kỹ năng gì?'",
+  ];
+}
+```
+
+### Enhancement Options
+
+1. **Context-aware prompts:** Show prompts relevant to current stage
+2. **End-of-session reflection:** Modal after completing all daily tasks
+3. **Weekly summary email:** AI-generated progress review (Premium feature)
+4. **Streak integration:** Motivation based on consistency
+
+### Research Source
+
+Zimmerman, B.J. (1989). "Self-Regulated Learning and Academic Achievement." *Journal of Educational Psychology*.
+
+---
+
+## STAGE PROGRESSION SYSTEM
+
+### Current Implementation
+
+```typescript
+// Calculate stage based on avgBand only
+let stage: Stage;
+if (!hasTestHistory) stage = Stage.FOUNDATION;
+else if (avgBand < 5.0) stage = Stage.FOUNDATION;
+else if (avgBand < 6.0) stage = Stage.SKILL_BUILDING;
+else if (avgBand < 7.0) stage = Stage.INTEGRATION;
+else stage = Stage.EXAM_PREP;
+```
+
+### Enhancement Options
+
+1. **Multi-factor progression:**
+   - avgBand (weight: 40%)
+   - vocabMastered (weight: 25%)
+   - grammarProficiency (weight: 20%)
+   - completionRate (weight: 15%)
+
+2. **Time-based progression:** Minimum weeks in stage before transitioning
+
+3. **Skill-specific stages:** Different stages for different skills (e.g., Reading at SKILL_BUILDING while Writing still at FOUNDATION)
+
+### Stage Transition Rules
+
+```typescript
+const STAGE_TRANSITIONS = [
+  { from: FOUNDATION, to: SKILL_BUILDING, conditions: {
+    minAvgBand: 5.0,
+    minVocabMastered: 50,
+    minGrammarProficiency: "medium",
+    minCompletionRate: 0.75,
+    minWeeksInStage: 2
+  }},
+  // ... more transitions
+];
+```
+
+### Files to Modify for Enhancement
+
+- `src/module/study-planner/study-planner.service.ts` - Lines 866-877, 78-82
+- Consider adding `StageProgress` tracking per skill type
+
+---
+
+## ONBOARDING FLOW & PLACEMENT TEST
+
+### Current Problem
+
+1. **User mới không có band** → Backend defaults to `5.0` (WRONG)
+2. **User chưa set target** → Backend defaults to `6.5` (WRONG)
+3. **Không có onboarding flow** → User vào thẳng dashboard mà không biết gì
+4. **Study Planner hoạt động với fake data** → Results không đáng tin
+
+### New User Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        NEW USER ONBOARDING                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. Welcome Screen                                                   │
+│     → Giới thiệu platform                                           │
+│     → "Học IELTS cá nhân hóa với AI"                               │
+│     → Button: "Bắt đầu đánh giá trình độ"                          │
+│                                                                      │
+│  2. Set Target                                                       │
+│     → Target band (slider 4.0 - 9.0)                                │
+│     → Ngày thi dự kiến (optional, calendar picker)                  │
+│     → Học bao nhiêu giờ/ngày (slider)                               │
+│     → Button: "Tiếp tục"                                            │
+│                                                                      │
+│  3. Placement Test                                                  │
+│     → Mini test 4 skills (20 phút)                                  │
+│     → Reading: 10 questions                                         │
+│     → Listening: 10 questions                                       │
+│     → Writing: 1 task (small)                                       │
+│     → Speaking: 3 questions (recorded)                              │
+│                                                                      │
+│  4. Results + Plan                                                  │
+│     → Hiển thị band hiện tại từng skill                            │
+│     → So sánh với target                                            │
+│     → Gợi ý lộ trình học                                            │
+│     → Button: "Bắt đầu học"                                         │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Backend Changes
+
+#### 1. Nullable Band Types
+
+**BEFORE (study-planner.service.ts):**
+```typescript
+let currentBand = 5.0;  // WRONG: always has value
+targetBand: user.targetBandScore || 6.5;  // WRONG: fake default
+```
+
+**AFTER:**
+```typescript
+// Return null if not set - let frontend handle missing data
+currentBand: recentResults.length > 0 ? Math.round(currentBand * 10) / 10 : null,
+targetBand: user.targetBandScore || null,  // null if not set
+
+// Add flags for frontend to show appropriate UI
+needsTargetBand: !user.targetBandScore,
+needsPlacementTest: !hasTestHistory,
+```
+
+#### 2. Add Error Handling
+
+**Add Validation in calculatePlan:**
+```typescript
+async calculatePlan(dto: CalculatePlanDto): Promise<StudyPlan> {
+  // Validate required fields
+  if (!dto.currentBand) {
+    throw new BadRequestException(
+      'Current band is required. User needs to take placement test first.'
+    );
+  }
+  
+  if (!dto.targetBand) {
+    throw new BadRequestException(
+      'Target band is required. Please set your target in settings.'
+    );
+  }
+  
+  if (dto.currentBand >= dto.targetBand) {
+    throw new BadRequestException(
+      'Target band must be higher than current band.'
+    );
+  }
+  
+  // ... rest of logic
+}
+```
+
+#### 3. New Placement Test API
+
+```typescript
+// POST /study-planner/placement
+// Body: { idUser, answers: PlacementAnswers }
+// Response: { currentBand, strongSkills, weakSkills, recommendedStage }
+
+interface PlacementAnswers {
+  reading: { questionId: string, answer: string }[];
+  listening: { questionId: string, answer: string }[];
+  writing: { taskId: string, content: string };
+  speaking: { taskId: string, audioUrl: string };
+}
+```
+
+### Frontend Changes
+
+#### 1. Onboarding Pages
+
+```typescript
+// src/Pages/client/Onboarding/index.jsx
+const Onboarding = () => {
+  const [step, setStep] = useState(1); // 1: welcome, 2: target, 3: test, 4: results
+  
+  return (
+    <div>
+      {step === 1 && <WelcomeStep onNext={() => setStep(2)} />}
+      {step === 2 && <TargetStep onNext={() => setStep(3)} />}
+      {step === 3 && <PlacementTest onComplete={() => setStep(4)} />}
+      {step === 4 && <ResultsStep />}
+    </div>
+  );
+};
+```
+
+#### 2. Handle Missing Data in StudyPlanner
+
+```typescript
+// studyPlanner.jsx
+const StudyPlanner = () => {
+  const { user } = useAuth();
+  
+  // Check if user needs onboarding
+  if (!user.currentBand || !user.targetBand) {
+    return <Redirect to="/onboarding" />;
+  }
+  
+  // ... rest of component
+};
+```
+
+#### 3. Show Appropriate UI for Missing Data
+
+```typescript
+// If currentBand is null - show placement test prompt
+if (!plan?.currentBand) {
+  return (
+    <div className="text-center py-12">
+      <h2>Bạn cần làm bài đánh giá trình độ</h2>
+      <p>Để chúng tôi biết band hiện tại của bạn</p>
+      <Link to="/placement-test" className="btn-primary">
+        Làm bài đánh giá
+      </Link>
+    </div>
+  );
+}
+
+// If targetBand is null - show target setting prompt
+if (!plan?.targetBand) {
+  return (
+    <div className="text-center py-12">
+      <h2>Đặt mục tiêu band của bạn</h2>
+      <p>Bạn muốn đạt bao nhiêu band?</p>
+      <Link to="/settings/target" className="btn-primary">
+        Đặt mục tiêu
+      </Link>
+    </div>
+  );
+}
+```
+
+### Database Changes
+
+#### Add `needsOnboarding` flag to User model
+
+```prisma
+model User {
+  // ... existing fields ...
+  needsOnboarding    Boolean  @default(true)
+  hasTakenPlacement  Boolean  @default(false)
+  onboardingStep    Int      @default(1)
+}
+```
+
+#### Add Placement Test Result model
+
+```prisma
+model PlacementResult {
+  id              String   @id @default(uuid())
+  idUser          String   @unique
+  readingBand     Float?
+  listeningBand   Float?
+  writingBand     Float?
+  speakingBand    Float?
+  overallBand     Float?
+  recommendedStage Stage
+  completedAt     DateTime @default(now())
+}
+```
+
+### User Flow State Machine
+
+```
+                    ┌──────────────┐
+                    │   NEW_USER   │
+                    │ needsOnboard │
+                    └──────┬───────┘
+                           │
+                    ┌──────▼───────┐
+           ┌────────│  ONBOARDING │
+           │        │  step 1-4   │
+           │        └──────┬───────┘
+           │               │ completed
+    not done│               │
+           │        ┌──────▼───────┐
+           │        │needsOnboard  │
+           │        │= false       │
+           │        └──────┬───────┘
+           │               │
+           └──────┐        │
+                  │        ▼
+                  │  ┌────────────────┐
+                  │  │ STUDY_PLANNER  │
+                  │  │ (normal flow)  │
+                  │  └────────────────┘
+                  │
+         ┌────────▼────────┐
+         │   STUCK HERE    │
+         │ (can't proceed) │
+         └─────────────────┘
+```
+
+### Implementation Priority
+
+| Priority | Task | Effort |
+|----------|------|--------|
+| P0 | Add `null` handling for bands in backend | 1h |
+| P0 | Add validation errors | 30min |
+| P1 | Create onboarding pages | 4h |
+| P1 | Placement test API | 2h |
+| P1 | Update StudyPlanner to handle missing data | 1h |
+| P2 | Placement result model + stored procedure | 1h |
+
+### Files to Create/Modify
+
+**Backend:**
+- `src/module/study-planner/study-planner.service.ts` - Add null handling, errors
+- `src/module/study-planner/dto/` - Add placement test DTO
+- `prisma/schema.prisma` - Add `needsOnboarding`, `PlacementResult`
+
+**Frontend:**
+- `src/Pages/client/onboarding/` - New folder with steps
+- `src/Pages/client/placementTest/` - New page
+- `src/Pages/client/studyPlanner.jsx` - Handle missing data
+- `src/services/apiStudyPlanner.js` - Add placement API
+
+---
+
+## BUG FIXES (IMMEDIATE)
+
+### 1. Fix Empty UserId in Weekly Plan (Line 630)
+
+```typescript
+// BEFORE
+const tasks = (await this.generateDailyTasks('', stage, theme.theme, dailyMinutes))
+
+// AFTER - pass actual userId
+const tasks = (await this.generateDailyTasks(userId, stage, theme.theme, dailyMinutes))
+```
+
+### 2. Fix Band Defaults to null
+
+```typescript
+// BEFORE (study-planner.service.ts line 748)
+let currentBand = 5.0;
+if (recentResults.length > 0) {
+  const allBands = Object.values(skillBands).flat();
+  if (allBands.length > 0) currentBand = allBands.reduce((a, b) => a + b, 0) / allBands.length;
+}
+
+// AFTER
+let currentBand: number | null = null;
+if (recentResults.length > 0) {
+  const allBands = Object.values(skillBands).flat();
+  if (allBands.length > 0) currentBand = Math.round((allBands.reduce((a, b) => a + b, 0) / allBands.length) * 10) / 10;
+}
+
+// Use explicit null instead of fake default
+const hasTestHistory = currentBand !== null;
+```
+
+### 3. Add Validation Errors
+
+```typescript
+// In calculatePlan
+if (dto.currentBand === null || dto.currentBand === undefined) {
+  throw new BadRequestException('Placement test required before using Study Planner');
+}
+
+if (dto.targetBand === null || dto.targetBand === undefined) {
+  throw new BadRequestException('Please set your target band in settings');
+}
+
+if (dto.currentBand >= dto.targetBand) {
+  throw new BadRequestException({
+    message: 'Target band must be higher than current band',
+    currentBand: dto.currentBand,
+    targetBand: dto.targetBand
+  });
+}
+```
+
+### 4. Add needsOnboarding Flags to Response
+
+```typescript
+// In getUserStudyPlan or calculatePlan response
+interface StudyPlanResponse {
+  // ... existing fields ...
+  
+  // New fields for onboarding state
+  needsOnboarding: boolean;
+  needsPlacementTest: boolean;
+  needsTargetBand: boolean;
+  missingData: string[];
+}
+```
