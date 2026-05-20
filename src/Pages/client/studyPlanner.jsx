@@ -25,7 +25,6 @@ const StudyPlanner = () => {
     studyMinutesPerDay: 120,
   });
   const [mode, setMode] = useState("auto"); // "auto" or "manual"
-  const [viewMode, setViewMode] = useState('today'); // 'today' | 'week'
   const [dailyTasks, setDailyTasks] = useState([]);
   const [showCelebration, setShowCelebration] = useState(false);
 
@@ -273,7 +272,7 @@ const StudyPlanner = () => {
           <p className="text-sm text-red-600 mt-1">{plan.warning}</p>
           {plan.adjustedTarget && (
             <p className="text-sm text-red-600 mt-1">
-              Gợi ý: Thử đặt mục tiêu band <span className="font-bold">{plan.adjustedTarget.toFixed(1)}</span> thay vì {plan.targetBand}
+              Gợi ý: Thử đặt mục tiêu band <span className="font-bold">{plan.adjustedTarget.toFixed(1)}</span> thay vì {plan.targetBand ?? 'Chưa đặt mục tiêu'}
             </p>
           )}
         </div>
@@ -447,31 +446,6 @@ const StudyPlanner = () => {
           </button>
         </div>
 
-        {/* View Mode Toggle */}
-        {plan && (
-          <div className="flex gap-2 mb-6">
-            <button
-              onClick={() => setViewMode('today')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                viewMode === 'today'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-white text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Hôm nay
-            </button>
-            <button
-              onClick={() => setViewMode('week')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                viewMode === 'week'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-white text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              Tuần này
-            </button>
-          </div>
-        )}
 
         {/* Loading State */}
         {loading && (
@@ -492,12 +466,12 @@ const StudyPlanner = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-blue-100 text-sm">Band hiện tại</p>
-                      <p className="text-4xl font-bold">{plan.currentBand}</p>
+                      <p className="text-4xl font-bold">{plan.currentBand ?? 'Chưa có'}</p>
                     </div>
                     <div className="text-3xl">→</div>
                     <div>
                       <p className="text-blue-100 text-sm">Band mục tiêu</p>
-                      <p className="text-4xl font-bold">{plan.targetBand}</p>
+                      <p className="text-4xl font-bold">{plan.targetBand ?? 'Chưa đặt mục tiêu'}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-blue-100 text-sm">Ngày còn lại</p>
@@ -570,11 +544,13 @@ const StudyPlanner = () => {
                   )}
                 </div>
 
-                {/* Today View - Show daily tasks */}
-                {viewMode === 'today' && renderDailyTasks()}
+                {/* Daily Tasks */}
+                {renderDailyTasks()}
 
                 {renderFourStrandBalance()}
-                {renderWeeklyPlan()}
+                {/* TODO: Implement dynamic weekly plan - see SpecificPlan.md
+                     Currently static with no real completion data */}
+                {/* {renderWeeklyPlan()} */}
 
                 {/* Metacognitive Prompts */}
                 {plan.metacognitivePrompts && (
