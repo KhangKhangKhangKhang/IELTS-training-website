@@ -867,6 +867,96 @@ const HomePage = () => {
         </div>
       )}
 
+      {/* Flex-row: Question Type Performance + Đề xuất ngang nhau */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        {/* Cột trái: Question Type Performance */}
+        <div className="lg:col-span-2">
+          {/* Question Type Performance Section */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Hiệu Suất Theo Loại Câu Hỏi</h3>
+              </div>
+              <div className="flex bg-purple-50 dark:bg-slate-700 rounded-xl p-1">
+                <button onClick={() => handleQuestionTypeFilter("READING")} className={`px-4 py-2 text-sm font-medium rounded-lg ${selectedQuestionFilter === "READING" ? "bg-purple-600 text-white" : "text-purple-700 dark:text-purple-300 hover:bg-purple-100"}`}>READING</button>
+                <button onClick={() => handleQuestionTypeFilter("LISTENING")} className={`px-4 py-2 text-sm font-medium rounded-lg ${selectedQuestionFilter === "LISTENING" ? "bg-purple-600 text-white" : "text-purple-700 dark:text-purple-300 hover:bg-purple-100"}`}>LISTENING</button>
+                <button onClick={() => handleQuestionTypeFilter("ALL")} className={`px-4 py-2 text-sm font-medium rounded-lg ${selectedQuestionFilter === "ALL" ? "bg-purple-600 text-white" : "text-purple-700 dark:text-purple-300 hover:bg-purple-100"}`}>ALL</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredQuestionTypes.map((qt) => {
+                const accuracy = Math.round((1 - qt.errorRate) * 100);
+                const colors = getProgressColor(qt.errorRate);
+                return (
+                  <div key={qt.questionType} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 px-2 py-0.5 rounded">{qt.skillType}</span>
+                      <span className={`text-sm font-bold ${colors.text}`}>{accuracy}%</span>
+                    </div>
+                    <h4 className="font-medium text-gray-800 dark:text-white text-sm mb-3 leading-tight">{qt.questionType.replace(/_/g, " ")}</h4>
+                    <div className="mb-3">
+                      <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
+                        <div className={`h-2 rounded-full ${colors.bar}`} style={{ width: `${accuracy}%` }}></div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
+                      <span>{qt.totalAttempts} lần</span>
+                      <span>{qt.lastAttemptAt ? new Date(qt.lastAttemptAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }) : "-"}</span>
+                    </div>
+                  </div>
+                );
+              })}
+              {filteredQuestionTypes.length === 0 && (
+                <div className="col-span-full text-center py-12 text-gray-400 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-600">
+                  <div className="text-4xl mb-2">📊</div>
+                  <p className="font-medium">Chưa có dữ liệu loại câu hỏi</p>
+                  <p className="text-sm mt-1">Làm bài thi Reading/Listening để hệ thống track performance</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Cột phải: Đề xuất cho bạn */}
+        <div>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white">Đề xuất cho bạn</h3>
+              <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-3 py-1 rounded-full font-semibold">{recommended.length} đề</span>
+            </div>
+            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+              {recommended.slice(0, 3).map((test) => {
+                const testIcons = { READING: <BookOpen size={18} className="text-white" />, LISTENING: <Headphones size={18} className="text-white" />, WRITING: <PenTool size={18} className="text-white" />, SPEAKING: <Mic size={18} className="text-white" /> };
+                const testColors = { READING: "from-blue-500 to-cyan-500", LISTENING: "from-green-500 to-emerald-500", WRITING: "from-purple-500 to-pink-500", SPEAKING: "from-orange-500 to-red-500" };
+                return (
+                  <div key={test.idTest} onClick={() => handleRecommendClick(test)} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-purple-300 cursor-pointer transition-all">
+                    <div className={`w-10 h-10 bg-gradient-to-r ${testColors[test.testType] || "from-gray-400 to-gray-500"} rounded-lg flex items-center justify-center shrink-0`}>
+                      {testIcons[test.testType] || <BookOpen size={18} className="text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{test.title}</p>
+                      <p className="text-xs text-gray-500">{test.duration}p • {test.level || "Mid"}</p>
+                    </div>
+                    <ChevronRight size={16} className="text-gray-400 shrink-0" />
+                  </div>
+                );
+              })}
+              {recommended.length === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  <Award size={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Chưa có đề xuất</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Question Type Weak Areas Widget */}
       {questionTypeWeakness.length > 0 && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
