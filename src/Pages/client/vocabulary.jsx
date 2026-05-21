@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import {
   Plus,
   Search,
@@ -7,6 +8,9 @@ import {
   BookOpen,
   Sparkles,
   AlertTriangle,
+  Play,
+  RotateCcw,
+  Calendar,
 } from "lucide-react";
 import {
   createTopicAPI,
@@ -17,6 +21,7 @@ import {
   deleteVocabAPI,
   updateVocabAPI,
   suggestVocabAPI,
+  getVocabStatsAPI,
 } from "../../services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import { getTopicsByUserAPI } from "@/services/apiVocab";
@@ -24,10 +29,13 @@ import FlashcardModal from "@/components/Vocab/FlashcardModal";
 
 const Vocabulary = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showFlashcard, setShowFlashcard] = useState(false);
   const [topics, setTopics] = useState([]);
   const [vocabularies, setVocabularies] = useState([]);
   const [loadingTopics, setLoadingTopics] = useState(false);
+  const [vocabStats, setVocabStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(false);
   const [newTopic, setNewTopic] = useState("");
   const [showAddTopic, setShowAddTopic] = useState(false);
   const [showEditTopic, setShowEditTopic] = useState(false);
@@ -72,6 +80,24 @@ const Vocabulary = () => {
     };
 
     fetchTopics();
+  }, [user?.idUser]);
+
+  // Fetch vocab stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user?.idUser) return;
+      setLoadingStats(true);
+      try {
+        const res = await getVocabStatsAPI(user.idUser);
+        setVocabStats(res.data || res);
+      } catch (err) {
+        console.error("Failed to fetch vocab stats:", err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchStats();
   }, [user?.idUser]);
 
   // Effect cho suggest từ vựng - ĐÃ THÊM XỬ LÝ LỖI TIMEOUT
@@ -346,17 +372,144 @@ const Vocabulary = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 transition-colors duration-300">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="relative overflow-hidden bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 rounded-2xl shadow-lg p-8 mb-6 border border-slate-700">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="relative overflow-hidden bg-slate-800 rounded-2xl shadow-lg p-8 mb-6">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
           <div className="relative z-10 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center">
-              <BookOpen className="w-7 h-7 text-blue-400" />
+            <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center">
+              <BookOpen className="w-7 h-7 text-white" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-white">Từ Vựng IELTS</h1>
-              <p className="text-slate-400 text-sm mt-1">Học từ vựng thông minh với hệ thống flashcard</p>
+              <p className="text-blue-200 text-sm mt-1">Học từ vựng thông minh với hệ thống SRS</p>
             </div>
+          </div>
+        </div>
+
+        {/* Vocab Progress + Practice Modes */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* LEFT: Progress */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-800 mb-3">📊 Tiến độ Vocabulary</h3>
+            {!loadingStats && vocabStats ? (
+              <>
+                <div className="text-center mb-4">
+                  <div className="relative inline-block">
+                    <svg className="w-28 h-28" viewBox="0 0 128 128">
+                      <circle cx="64" cy="64" r="56" fill="none" stroke="#e5e7eb" strokeWidth="12"/>
+                      <circle
+                        cx="64" cy="64" r="56" fill="none" stroke="#6366f1" strokeWidth="12"
+                        strokeDasharray="352"
+                        strokeDashoffset={352 - (352 * ((vocabStats.tier1Progress?.percentage || 0) / 100))}
+                        strokeLinecap="round"
+                        transform="rotate(-90 64 64)"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center -translate-y-1">
+                      <span className="text-2xl font-bold text-slate-800">{vocabStats.tier1Progress?.percentage || 0}%</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-500 mt-2">
+                    {vocabStats.tier1Progress?.mastered || 0} / {vocabStats.tier1Progress?.total || 0} từ đã master
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Tier 1 (3K words)</span>
+                    <span className="font-medium text-indigo-600">{vocabStats.tier1Progress?.percentage || 0}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${vocabStats.tier1Progress?.percentage || 0}%` }}></div>
+                  </div>
+                  <div className="flex justify-between text-sm mt-2">
+                    <span className="text-slate-600">Tier 2 (AWL 570)</span>
+                    <span className="font-medium text-purple-600">{vocabStats.tier2Progress?.percentage || 0}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${vocabStats.tier2Progress?.percentage || 0}%` }}></div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-40">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              </div>
+            )}
+          </div>
+
+          {/* MIDDLE: Practice Modes */}
+          <div className="bg-slate-800 rounded-2xl p-5 text-white shadow-lg">
+            <h3 className="text-lg font-bold mb-3">🎯 Luyện từ vựng</h3>
+            <p className="text-sm opacity-75 mb-4">Chọn chế độ luyện tập</p>
+
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  if (vocabularies.length === 0 && !selectedTopic) {
+                    alert("Vui lòng chọn một chủ đề trước!");
+                    return;
+                  }
+                  setShowFlashcard(true);
+                }}
+                className="w-full p-3 bg-white/20 hover:bg-white/30 rounded-xl flex items-center gap-3 transition-colors text-left"
+              >
+                <span className="text-2xl">🃏</span>
+                <div>
+                  <p className="font-semibold">Flashcard</p>
+                  <p className="text-xs opacity-75">Flip xem nghĩa</p>
+                </div>
+              </button>
+              <button
+                onClick={() => navigate("/vocabulary?mode=fill")}
+                className="w-full p-3 bg-white/20 hover:bg-white/30 rounded-xl flex items-center gap-3 transition-colors text-left"
+              >
+                <span className="text-2xl">✏️</span>
+                <div>
+                  <p className="font-semibold">Điền từ</p>
+                  <p className="text-xs opacity-75">Nhập từ để kiểm tra</p>
+                </div>
+              </button>
+              <button
+                onClick={() => navigate("/vocabulary?mode=multiple")}
+                className="w-full p-3 bg-white/20 hover:bg-white/30 rounded-xl flex items-center gap-3 transition-colors text-left"
+              >
+                <span className="text-2xl">📝</span>
+                <div>
+                  <p className="font-semibold">Trắc nghiệm</p>
+                  <p className="text-xs opacity-75">20 câu chọn đáp án</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT: Quick Actions */}
+          <div className="space-y-4">
+            <button
+              onClick={() => navigate("/vocab-daily")}
+              className="w-full p-4 bg-white rounded-xl border border-slate-200 text-left hover:border-indigo-300 hover:shadow-md transition-all flex items-center gap-4"
+            >
+              <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-800">Luyện hàng ngày</p>
+                <p className="text-xs text-slate-500">10 từ với SM-2</p>
+              </div>
+              <Play className="w-5 h-5 text-indigo-600 ml-auto" />
+            </button>
+            <button
+              onClick={() => navigate("/vocabulary?mode=review")}
+              className="w-full p-4 bg-white rounded-xl border border-slate-200 text-left hover:border-indigo-300 hover:shadow-md transition-all flex items-center gap-4"
+            >
+              <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+                <RotateCcw className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-800">Review từ đã học</p>
+                <p className="text-xs text-slate-500">Ôn lại những từ sắp quên</p>
+              </div>
+              <RotateCcw className="w-5 h-5 text-purple-600 ml-auto" />
+            </button>
           </div>
         </div>
 

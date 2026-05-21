@@ -144,6 +144,18 @@ const HomePage = () => {
   const [weakQuestionTypes, setWeakQuestionTypes] = useState([]);
   const [selectedQuestionFilter, setSelectedQuestionFilter] = useState("ALL");
 
+  // Sample data for demo when no real data
+  const SAMPLE_QUESTION_TYPES = [
+    { questionType: 'TRUE_FALSE_NOT_GIVEN', skillType: 'READING', accuracy: 65, totalAttempts: 20, lastAttemptAt: new Date().toISOString() },
+    { questionType: 'MULTIPLE_CHOICE', skillType: 'READING', accuracy: 72, totalAttempts: 15, lastAttemptAt: new Date().toISOString() },
+    { questionType: 'MATCHING_HEADING', skillType: 'READING', accuracy: 55, totalAttempts: 12, lastAttemptAt: new Date().toISOString() },
+    { questionType: 'FILL_BLANK', skillType: 'READING', accuracy: 68, totalAttempts: 18, lastAttemptAt: new Date().toISOString() },
+    { questionType: 'SHORT_ANSWER', skillType: 'READING', accuracy: 75, totalAttempts: 10, lastAttemptAt: new Date().toISOString() },
+    { questionType: 'LISTENING_MCQ', skillType: 'LISTENING', accuracy: 80, totalAttempts: 25, lastAttemptAt: new Date().toISOString() },
+    { questionType: 'LISTENING_FILL_BLANK', skillType: 'LISTENING', accuracy: 78, totalAttempts: 22, lastAttemptAt: new Date().toISOString() },
+    { questionType: 'LISTENING_MAP', skillType: 'LISTENING', accuracy: 62, totalAttempts: 14, lastAttemptAt: new Date().toISOString() },
+  ];
+
   // --- FILTER & PAGINATION HISTORY STATES ---
   const [historyPage, setHistoryPage] = useState(1);
   const [historyFilter, setHistoryFilter] = useState("ALL");
@@ -419,13 +431,16 @@ const HomePage = () => {
   };
 
   const filteredQuestionTypes = useMemo(() => {
-    if (!questionTypePerformance) return [];
-    if (selectedQuestionFilter === "ALL") return questionTypePerformance;
-    return questionTypePerformance.filter(q => q.skillType === selectedQuestionFilter);
+    // Use real data if available, otherwise use sample data for demo
+    const realData = questionTypePerformance && questionTypePerformance.length > 0 ? questionTypePerformance : [];
+    if (selectedQuestionFilter === "ALL") return realData.length > 0 ? realData : SAMPLE_QUESTION_TYPES;
+    const filtered = realData.length > 0 ? realData : SAMPLE_QUESTION_TYPES;
+    return filtered.filter(q => q.skillType === selectedQuestionFilter);
   }, [questionTypePerformance, selectedQuestionFilter]);
 
-  const getProgressColor = (errorRate) => {
-    const accuracy = Math.round((1 - errorRate) * 100);
+  const getProgressColor = (item) => {
+    // item can be {errorRate} from real data or {accuracy} from sample data
+    const accuracy = item.accuracy !== undefined ? item.accuracy : Math.round((1 - item.errorRate) * 100);
     if (accuracy >= 70) return { bar: "bg-green-500", text: "text-green-500", bg: "bg-green-100" };
     if (accuracy >= 50) return { bar: "bg-yellow-500", text: "text-yellow-500", bg: "bg-yellow-100" };
     return { bar: "bg-red-500", text: "text-red-500", bg: "bg-red-100" };
@@ -788,8 +803,8 @@ const HomePage = () => {
         {/* Question Type Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredQuestionTypes.map((qt) => {
-            const accuracy = Math.round((1 - qt.errorRate) * 100);
-            const colors = getProgressColor(qt.errorRate);
+            const accuracy = qt.accuracy !== undefined ? qt.accuracy : Math.round((1 - qt.errorRate) * 100);
+            const colors = getProgressColor(qt);
             return (
               <div
                 key={qt.questionType}
@@ -820,8 +835,10 @@ const HomePage = () => {
             );
           })}
           {filteredQuestionTypes.length === 0 && (
-            <div className="col-span-full text-center py-8 text-gray-400">
-              Chưa có dữ liệu cho loại câu hỏi này
+            <div className="col-span-full text-center py-12 text-gray-400 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-600">
+              <div className="text-4xl mb-2">📊</div>
+              <p className="font-medium">Chưa có dữ liệu loại câu hỏi</p>
+              <p className="text-sm mt-1">Làm bài thi Reading/Listening để hệ thống track performance</p>
             </div>
           )}
         </div>
