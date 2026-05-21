@@ -11,7 +11,7 @@ import {
   getGrammarWeaknessAPI,
   getQuestionTypeWeaknessAPI,
 } from "@/services/apiStatistics";
-import { getAllQuestionTypePerformanceAPI } from "@/services/apiQuestionTypePerformance";
+import { getAllQuestionTypePerformanceAPI, getWeakQuestionTypesAPI } from "@/services/apiQuestionTypePerformance";
 import { StartTestAPI } from "@/services/apiDoTest";
 import {
   LineChart,
@@ -139,6 +139,7 @@ const HomePage = () => {
   const [grammarWeakness, setGrammarWeakness] = useState([]);
   const [questionTypeWeakness, setQuestionTypeWeakness] = useState([]);
   const [questionTypePerformance, setQuestionTypePerformance] = useState([]);
+  const [weakQuestionTypes, setWeakQuestionTypes] = useState([]);
   const [selectedQuestionFilter, setSelectedQuestionFilter] = useState("ALL");
 
   // --- FILTER & PAGINATION HISTORY STATES ---
@@ -172,6 +173,7 @@ const HomePage = () => {
           resGrammarWeak,
           resQTWeak,
           resQTP,
+          resWeakQT,
         ] = await Promise.all([
           getOverallScroreAPI(idUser),
           getAvgScoreByDayAPI(idUser),
@@ -181,6 +183,7 @@ const HomePage = () => {
           getGrammarWeaknessAPI(idUser),
           getQuestionTypeWeaknessAPI(idUser),
           getAllQuestionTypePerformanceAPI(idUser),
+          getWeakQuestionTypesAPI(idUser),
         ]);
 
         if (resOverall) setOverall(resOverall);
@@ -194,6 +197,7 @@ const HomePage = () => {
         if (resGrammarWeak) setGrammarWeakness(resGrammarWeak);
         if (resQTWeak) setQuestionTypeWeakness(resQTWeak);
         if (resQTP?.data) setQuestionTypePerformance(resQTP.data);
+        if (resWeakQT?.weakTypes) setWeakQuestionTypes(resWeakQT.weakTypes);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -813,6 +817,44 @@ const HomePage = () => {
           )}
         </div>
       </div>
+
+      {/* Weak Question Types Widget - Compact Gradient */}
+      {weakQuestionTypes.length > 0 && (
+        <div className="bg-gradient-to-br from-red-500 to-orange-500 rounded-2xl p-6 shadow-lg mb-8 text-white">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <span className="text-xl">🔴</span>
+              </div>
+              <h3 className="text-lg font-semibold">Loại Câu Hỏi Yếu</h3>
+            </div>
+            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Reading/Listening</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {weakQuestionTypes.slice(0, 3).map((wt) => {
+              const accuracy = Math.round((1 - wt.errorRate) * 100);
+              return (
+                <div key={wt.questionType} className="bg-white/10 backdrop-blur rounded-xl p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium text-sm">{wt.questionType.replace(/_/g, " ")}</span>
+                    <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">{accuracy}%</span>
+                  </div>
+                  <div className="bg-white/20 rounded-full h-2">
+                    <div className="bg-white rounded-full h-2" style={{ width: `${accuracy}%` }}></div>
+                  </div>
+                  <p className="text-xs mt-2 opacity-75">{wt.totalAttempts} lần làm</p>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => navigate(`/test?filter=weakQuestionType`)}
+            className="w-full mt-4 bg-white text-red-600 font-semibold py-2.5 rounded-xl hover:bg-red-50 transition-colors text-sm"
+          >
+            Luyện tập ngay
+          </button>
+        </div>
+      )}
 
       {/* Question Type Weak Areas Widget */}
       {questionTypeWeakness.length > 0 && (
