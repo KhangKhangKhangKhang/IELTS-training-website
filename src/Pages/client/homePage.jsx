@@ -8,7 +8,10 @@ import {
   getRecomendedTestsAPI,
   getTargetScoresAPI,
   updateTargetScoresAPI,
+  getGrammarWeaknessAPI,
+  getQuestionTypeWeaknessAPI,
 } from "@/services/apiStatistics";
+import { getAllQuestionTypePerformanceAPI } from "@/services/apiQuestionTypePerformance";
 import { StartTestAPI } from "@/services/apiDoTest";
 import {
   LineChart,
@@ -133,6 +136,11 @@ const HomePage = () => {
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [selectedSkillType, setSelectedSkillType] = useState("ALL");
 
+  const [grammarWeakness, setGrammarWeakness] = useState([]);
+  const [questionTypeWeakness, setQuestionTypeWeakness] = useState([]);
+  const [questionTypePerformance, setQuestionTypePerformance] = useState([]);
+  const [selectedQuestionFilter, setSelectedQuestionFilter] = useState("ALL");
+
   // --- FILTER & PAGINATION HISTORY STATES ---
   const [historyPage, setHistoryPage] = useState(1);
   const [historyFilter, setHistoryFilter] = useState("ALL");
@@ -155,14 +163,25 @@ const HomePage = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [resOverall, resChart, resHistory, resRec, resTarget] =
-          await Promise.all([
-            getOverallScroreAPI(idUser),
-            getAvgScoreByDayAPI(idUser),
-            getTestResultByIdUserAPI(idUser),
-            getRecomendedTestsAPI(idUser),
-            getTargetScoresAPI(idUser),
-          ]);
+        const [
+          resOverall,
+          resChart,
+          resHistory,
+          resRec,
+          resTarget,
+          resGrammarWeak,
+          resQTWeak,
+          resQTP,
+        ] = await Promise.all([
+          getOverallScroreAPI(idUser),
+          getAvgScoreByDayAPI(idUser),
+          getTestResultByIdUserAPI(idUser),
+          getRecomendedTestsAPI(idUser),
+          getTargetScoresAPI(idUser),
+          getGrammarWeaknessAPI(idUser),
+          getQuestionTypeWeaknessAPI(idUser),
+          getAllQuestionTypePerformanceAPI(idUser),
+        ]);
 
         if (resOverall) setOverall(resOverall);
         if (resChart?.data) setChartData(resChart.data);
@@ -172,6 +191,9 @@ const HomePage = () => {
           setTarget(resTarget.data);
           setTempTarget(resTarget.data);
         }
+        if (resGrammarWeak) setGrammarWeakness(resGrammarWeak);
+        if (resQTWeak) setQuestionTypeWeakness(resQTWeak);
+        if (resQTP?.data) setQuestionTypePerformance(resQTP.data);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -377,6 +399,23 @@ const HomePage = () => {
     setLastGeneratedPlanAt(nowIso);
     localStorage.setItem("lastGeneratedPlanAt", nowIso);
     message.success("Adaptive plan generated on dashboard.");
+  };
+
+  const handleQuestionTypeFilter = (filter) => {
+    setSelectedQuestionFilter(filter);
+  };
+
+  const filteredQuestionTypes = useMemo(() => {
+    if (!questionTypePerformance) return [];
+    if (selectedQuestionFilter === "ALL") return questionTypePerformance;
+    return questionTypePerformance.filter(q => q.skillType === selectedQuestionFilter);
+  }, [questionTypePerformance, selectedQuestionFilter]);
+
+  const getProgressColor = (errorRate) => {
+    const accuracy = Math.round((1 - errorRate) * 100);
+    if (accuracy >= 70) return { bar: "bg-green-500", text: "text-green-500", bg: "bg-green-100" };
+    if (accuracy >= 50) return { bar: "bg-yellow-500", text: "text-yellow-500", bg: "bg-yellow-100" };
+    return { bar: "bg-red-500", text: "text-red-500", bg: "bg-red-100" };
   };
 
   const handleStartAssessment = () => {
@@ -652,6 +691,165 @@ const HomePage = () => {
           color="bg-red-500"
         />
       </div>
+
+      {/* Grammar Weak Areas Widget */}
+      {grammarWeakness.length > 0 && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <span className="text-xl">⚠️</span> Grammar Yếu
+            </h3>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Từ Writing/Speaking</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {grammarWeakness.map((weak) => (
+              <div key={weak.idGrammar} className={`p-4 rounded-xl border ${
+                weak.wrongCount >= 4 ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium text-gray-800">{weak.title}</p>
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                    weak.wrongCount >= 4 ? 'bg-red-500 text-white' : 'bg-orange-500 text-white'
+                  }`}>
+                    {weak.wrongCount} lần sai
+                  </span>
+                </div>
+                <button
+                  onClick={() => navigate(`/grammar?topic=${weak.idGrammar}`)}
+                  className="w-full mt-2 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
+                >
+                  Ôn ngay
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Question Type Performance Section */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+              <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Hiệu Suất Theo Loại Câu Hỏi</h3>
+          </div>
+          {/* Tab Selector */}
+          <div className="flex bg-purple-50 dark:bg-slate-700 rounded-xl p-1">
+            <button
+              onClick={() => handleQuestionTypeFilter("READING")}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                selectedQuestionFilter === "READING"
+                  ? "bg-purple-600 text-white"
+                  : "text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-slate-600"
+              }`}
+            >
+              READING
+            </button>
+            <button
+              onClick={() => handleQuestionTypeFilter("LISTENING")}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                selectedQuestionFilter === "LISTENING"
+                  ? "bg-purple-600 text-white"
+                  : "text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-slate-600"
+              }`}
+            >
+              LISTENING
+            </button>
+            <button
+              onClick={() => handleQuestionTypeFilter("ALL")}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                selectedQuestionFilter === "ALL"
+                  ? "bg-purple-600 text-white"
+                  : "text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-slate-600"
+              }`}
+            >
+              ALL
+            </button>
+          </div>
+        </div>
+
+        {/* Question Type Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredQuestionTypes.map((qt) => {
+            const accuracy = Math.round((1 - qt.errorRate) * 100);
+            const colors = getProgressColor(qt.errorRate);
+            return (
+              <div
+                key={qt.questionType}
+                className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600 hover:shadow-md transition-shadow"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 px-2 py-0.5 rounded">
+                    {qt.skillType}
+                  </span>
+                  <span className={`text-sm font-bold ${colors.text}`}>{accuracy}%</span>
+                </div>
+                <h4 className="font-medium text-gray-800 dark:text-white text-sm mb-3 leading-tight">
+                  {qt.questionType.replace(/_/g, " ")}
+                </h4>
+                <div className="mb-3">
+                  <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${colors.bar}`}
+                      style={{ width: `${accuracy}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
+                  <span>{qt.totalAttempts} lần</span>
+                  <span>{qt.lastAttemptAt ? new Date(qt.lastAttemptAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }) : "-"}</span>
+                </div>
+              </div>
+            );
+          })}
+          {filteredQuestionTypes.length === 0 && (
+            <div className="col-span-full text-center py-8 text-gray-400">
+              Chưa có dữ liệu cho loại câu hỏi này
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Question Type Weak Areas Widget */}
+      {questionTypeWeakness.length > 0 && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <span className="text-xl">🔴</span> Question Types Yếu
+            </h3>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Reading/Listening</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {questionTypeWeakness.map((wt) => (
+              <div key={wt.questionType} className={`p-4 rounded-xl border ${
+                wt.errorRate >= 0.4 ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-sm font-bold px-2 py-1 rounded ${
+                    wt.errorRate >= 0.4 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {wt.questionType}
+                  </span>
+                  <span className="text-xs font-bold text-white bg-red-500 px-2 py-1 rounded">
+                    {Math.round(wt.errorRate * 100)}% lỗi
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{wt.totalAttempts} lần làm</p>
+                <button
+                  onClick={() => navigate(`/test?filter=weakQuestionType&type=${wt.questionType}`)}
+                  className="w-full mt-2 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
+                >
+                  Luyện ngay
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* --- PHẦN BIỂU ĐỒ & ĐỀ XUẤT --- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
