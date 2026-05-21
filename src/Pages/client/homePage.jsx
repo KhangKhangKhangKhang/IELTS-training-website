@@ -1178,6 +1178,61 @@ const HomePage = () => {
         </div>
       </div>
 
+      {/* Band Progression Chart */}
+<div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 mb-8">
+  <div className="flex items-center gap-3 mb-6">
+    <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+      <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+      </svg>
+    </div>
+    <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Biến Động Điểm Band (12 tháng)</h3>
+  </div>
+  <div className="h-64">
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={filteredChartData}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+        <XAxis
+          dataKey="date"
+          tick={{ fontSize: 12 }}
+          tickFormatter={(str) => {
+            const d = new Date(str);
+            return `${d.getDate()}/${d.getMonth() + 1}`;
+          }}
+        />
+        <YAxis domain={[0, 9]} tick={{ fontSize: 12 }} />
+        <Tooltip
+          contentStyle={{
+            borderRadius: "8px",
+            border: "none",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          }}
+        />
+        <Legend />
+        <Line
+          name="Overall Band"
+          type="monotone"
+          dataKey="OVERALL"
+          stroke="#6366f1"
+          strokeWidth={3}
+          dot={{ r: 4 }}
+          fill="#6366f1"
+        />
+        {target.targetBandScore && (
+          <Line
+            name={`Target (${target.targetBandScore})`}
+            type="monotone"
+            dataKey={() => target.targetBandScore}
+            stroke="#22c55e"
+            strokeDasharray="5 5"
+            dot={false}
+          />
+        )}
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+</div>
+
       {/* --- BẢNG LỊCH SỬ (Updated with Pagination & Filter) --- */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
