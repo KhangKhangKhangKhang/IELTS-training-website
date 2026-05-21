@@ -22,6 +22,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  BarChart,
+  Bar,
 } from "recharts";
 import {
   BookOpen,
@@ -1039,6 +1041,64 @@ const HomePage = () => {
                 Chưa có dữ liệu học tập phù hợp
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Analytics Summary - Skill Bar Chart */}
+        <div className="bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 p-6 rounded-2xl shadow-lg border border-purple-100 dark:border-slate-700 mb-6">
+          <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4 flex items-center gap-2">
+            <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl">
+              <Award className="text-white" size={18} />
+            </div>
+            Tổng Quan Hiệu Suất
+          </h3>
+          <div className="h-40 mb-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={[
+                  { skill: "Reading", score: getSkillScore("READING") },
+                  { skill: "Listening", score: getSkillScore("LISTENING") },
+                  { skill: "Writing", score: getSkillScore("WRITING") },
+                  { skill: "Speaking", score: getSkillScore("SPEAKING") },
+                ]}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis dataKey="skill" tick={{ fontSize: 12 }} />
+                <YAxis domain={[0, 9]} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "none",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  }}
+                />
+                <Bar
+                  dataKey="score"
+                  fill="#6366f1"
+                  radius={[8, 8, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Mạnh nhất</p>
+              <p className="font-bold text-green-500">
+                {weakSkills[0]?.type || "Listening"}
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                {getSkillScore(weakSkills[0]?.type || "LISTENING")}
+              </p>
+            </div>
+            <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-xl">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Yếu nhất</p>
+              <p className="font-bold text-red-500">
+                {weakSkills[weakSkills.length - 1]?.type || "Writing"}
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                {getSkillScore(weakSkills[weakSkills.length - 1]?.type || "WRITING")}
+              </p>
+            </div>
           </div>
         </div>
 
