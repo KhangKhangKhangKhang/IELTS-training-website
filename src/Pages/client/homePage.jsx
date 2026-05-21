@@ -198,7 +198,14 @@ const HomePage = () => {
         }
         if (resGrammarWeak) setGrammarWeakness(resGrammarWeak);
         if (resQTWeak) setQuestionTypeWeakness(resQTWeak);
-        if (resQTP?.data) setQuestionTypePerformance(resQTP.data);
+        if (resQTP?.data) {
+          // Backend returns {READING: [...], LISTENING: [...]} - flatten to array
+          const allTypes = [
+            ...(resQTP.data.READING || []).map(q => ({ ...q, skillType: 'READING' })),
+            ...(resQTP.data.LISTENING || []).map(q => ({ ...q, skillType: 'LISTENING' })),
+          ];
+          setQuestionTypePerformance(allTypes);
+        }
         if (resWeakQT?.weakTypes) setWeakQuestionTypes(resWeakQT.weakTypes);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
