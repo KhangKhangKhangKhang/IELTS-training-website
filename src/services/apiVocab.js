@@ -103,3 +103,39 @@ export const getTierRecommendationAPI = async (idUser) => {
     throw error;
   }
 };
+
+// Vocab Daily Exercise APIs
+export const getDailyVocabAPI = async (idUser, limit = 10) => {
+  try {
+    const response = await API.get("/vocabulary/daily", {
+      params: { idUser, limit: limit || 10 },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching daily vocab:", error);
+    throw error;
+  }
+};
+
+export const completeDailyVocabAPI = async (idUser, answers) => {
+  try {
+    const response = await API.post("/vocabulary/daily/complete", {
+      idUser,
+      answers,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error completing daily vocab:", error);
+    throw error;
+  }
+};
+
+export const getVocabStatsAPI = async (idUser) => {
+  try {
+    const response = await API.get(`/vocabulary/stats/${idUser}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching vocab stats:", error);
+    throw error;
+  }
+};

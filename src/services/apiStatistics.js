@@ -40,3 +40,13 @@ export const updateTargetScoresAPI = async (idUser, data) => {
   const res = await API.patch(`/statistics/target/${idUser}`, data);
   return res.data;
 };
+
+export const getGrammarWeaknessAPI = async (idUser) => {
+  const res = await API.get(`/weakness/grammar?idUser=${idUser}`);
+  return res.data;
+};
+
+export const getQuestionTypeWeaknessAPI = async (idUser) => {
+  const res = await API.get(`/weakness/question-types?idUser=${idUser}`);
+  return res.data;
+};

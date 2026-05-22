@@ -32,6 +32,8 @@ const TestEdit = lazy(() => import("./Pages/teacher/test/testEdit"));
 const TeacherDashboard = lazy(() => import("./Pages/teacher/teacherDashboard"));
 const ForumModeration = lazy(() => import("./Pages/teacher/forumModeration"));
 const Grammar = lazy(() => import("./Pages/client/grammar"));
+const GrammarPractice = lazy(() => import("./Pages/client/GrammarPractice"));
+const VocabDaily = lazy(() => import("./Pages/client/VocabDaily"));
 const StudyPlanner = lazy(() => import("./Pages/client/studyPlanner"));
 const AdminDashboard = lazy(() => import("./Pages/admin/adminDashboard"));
 const TeacherReviewHistory = lazy(() => import("./Pages/client/teacherReviewHistory"));
@@ -71,6 +73,8 @@ const router = createBrowserRouter([
           { path: "profile", element: <LazyRoute Component={Profile} /> },
           { path: "startingPage", element: <LazyRoute Component={StartingPage} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
+          { path: "grammar-practice", element: <LazyRoute Component={GrammarPractice} /> },
+          { path: "vocab-daily", element: <LazyRoute Component={VocabDaily} /> },
           { path: "study-planner", element: <LazyRoute Component={StudyPlanner} /> },
           { path: "teacher-review-history", element: <LazyRoute Component={TeacherReviewHistory} /> },
         ],
@@ -102,6 +106,7 @@ const router = createBrowserRouter([
           { path: "testManager/testDetail/:id", element: <LazyRoute Component={TestDetail} /> },
           { path: "startingPage", element: <LazyRoute Component={StartingPage} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
+          { path: "grammar-practice", element: <LazyRoute Component={GrammarPractice} /> },
           { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },
           { path: "teacher-review", element: <LazyRoute Component={TeacherQueue} /> },
         ],
@@ -131,6 +136,7 @@ const router = createBrowserRouter([
           { path: "testManager/testEdit/:id", element: <LazyRoute Component={TestEdit} /> },
           { path: "testManager", element: <LazyRoute Component={TestManager} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
+          { path: "grammar-practice", element: <LazyRoute Component={GrammarPractice} /> },
           { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },
           { path: "teacher-review", element: <LazyRoute Component={TeacherReviewManager} /> },
         ],

@@ -106,3 +106,8 @@ export const createGrammarWithoutCategoryAPI = async (data, idUser) => {
   const res = await API.post(`/grammar/create-grammar-alone/${idUser}`, data);
   return res.data;
 };
+
+export const getSystemCategoriesAPI = async () => {
+  const res = await API.get('/grammar/categories/system');
+  return res.data;
+};

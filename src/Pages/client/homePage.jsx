@@ -8,7 +8,10 @@ import {
   getRecomendedTestsAPI,
   getTargetScoresAPI,
   updateTargetScoresAPI,
+  getGrammarWeaknessAPI,
+  getQuestionTypeWeaknessAPI,
 } from "@/services/apiStatistics";
+import { getAllQuestionTypePerformanceAPI, getWeakQuestionTypesAPI } from "@/services/apiQuestionTypePerformance";
 import { StartTestAPI } from "@/services/apiDoTest";
 import {
   LineChart,
@@ -19,6 +22,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  BarChart,
+  Bar,
 } from "recharts";
 import {
   BookOpen,
@@ -133,6 +138,12 @@ const HomePage = () => {
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [selectedSkillType, setSelectedSkillType] = useState("ALL");
 
+  const [grammarWeakness, setGrammarWeakness] = useState([]);
+  const [questionTypeWeakness, setQuestionTypeWeakness] = useState([]);
+  const [questionTypePerformance, setQuestionTypePerformance] = useState([]);
+  const [weakQuestionTypes, setWeakQuestionTypes] = useState([]);
+  const [selectedQuestionFilter, setSelectedQuestionFilter] = useState("ALL");
+
   // --- FILTER & PAGINATION HISTORY STATES ---
   const [historyPage, setHistoryPage] = useState(1);
   const [historyFilter, setHistoryFilter] = useState("ALL");
@@ -155,14 +166,27 @@ const HomePage = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [resOverall, resChart, resHistory, resRec, resTarget] =
-          await Promise.all([
-            getOverallScroreAPI(idUser),
-            getAvgScoreByDayAPI(idUser),
-            getTestResultByIdUserAPI(idUser),
-            getRecomendedTestsAPI(idUser),
-            getTargetScoresAPI(idUser),
-          ]);
+        const [
+          resOverall,
+          resChart,
+          resHistory,
+          resRec,
+          resTarget,
+          resGrammarWeak,
+          resQTWeak,
+          resQTP,
+          resWeakQT,
+        ] = await Promise.all([
+          getOverallScroreAPI(idUser),
+          getAvgScoreByDayAPI(idUser),
+          getTestResultByIdUserAPI(idUser),
+          getRecomendedTestsAPI(idUser),
+          getTargetScoresAPI(idUser),
+          getGrammarWeaknessAPI(idUser),
+          getQuestionTypeWeaknessAPI(idUser),
+          getAllQuestionTypePerformanceAPI(idUser),
+          getWeakQuestionTypesAPI(idUser),
+        ]);
 
         if (resOverall) setOverall(resOverall);
         if (resChart?.data) setChartData(resChart.data);
@@ -172,6 +196,17 @@ const HomePage = () => {
           setTarget(resTarget.data);
           setTempTarget(resTarget.data);
         }
+        if (resGrammarWeak) setGrammarWeakness(resGrammarWeak);
+        if (resQTWeak) setQuestionTypeWeakness(resQTWeak);
+        if (resQTP?.data) {
+          // Backend returns {READING: [...], LISTENING: [...]} - flatten to array
+          const allTypes = [
+            ...(resQTP.data.READING || []).map(q => ({ ...q, skillType: 'READING' })),
+            ...(resQTP.data.LISTENING || []).map(q => ({ ...q, skillType: 'LISTENING' })),
+          ];
+          setQuestionTypePerformance(allTypes);
+        }
+        if (resWeakQT?.weakTypes) setWeakQuestionTypes(resWeakQT.weakTypes);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -377,6 +412,23 @@ const HomePage = () => {
     setLastGeneratedPlanAt(nowIso);
     localStorage.setItem("lastGeneratedPlanAt", nowIso);
     message.success("Adaptive plan generated on dashboard.");
+  };
+
+  const handleQuestionTypeFilter = (filter) => {
+    setSelectedQuestionFilter(filter);
+  };
+
+  const filteredQuestionTypes = useMemo(() => {
+    if (!questionTypePerformance || questionTypePerformance.length === 0) return [];
+    if (selectedQuestionFilter === "ALL") return questionTypePerformance;
+    return questionTypePerformance.filter(q => q.skillType === selectedQuestionFilter);
+  }, [questionTypePerformance, selectedQuestionFilter]);
+
+  const getProgressColor = (errorRate) => {
+    const accuracy = Math.round((1 - errorRate) * 100);
+    if (accuracy >= 70) return { bar: "bg-green-500", text: "text-green-500", bg: "bg-green-100" };
+    if (accuracy >= 50) return { bar: "bg-yellow-500", text: "text-yellow-500", bg: "bg-yellow-100" };
+    return { bar: "bg-red-500", text: "text-red-500", bg: "bg-red-100" };
   };
 
   const handleStartAssessment = () => {
@@ -653,290 +705,260 @@ const HomePage = () => {
         />
       </div>
 
-      {/* --- PHẦN BIỂU ĐỒ & ĐỀ XUẤT --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* Cột Trái: Chart */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700">
-          <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-              Tiến độ học tập
+      {/* Grammar Weak Areas Widget */}
+      {grammarWeakness.length > 0 && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <span className="text-xl">⚠️</span> Grammar Yếu
             </h3>
-            <div className="flex gap-2 items-center flex-wrap">
-              {/* Filter Skill */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 dark:bg-slate-700 rounded-lg border border-purple-100 dark:border-slate-600 mr-2">
-                <Filter size={16} className="text-purple-600" />
-                <select
-                  className="bg-transparent text-sm font-medium text-purple-900 dark:text-white dark:bg-slate-700 focus:outline-none cursor-pointer"
-                  value={selectedSkillType}
-                  onChange={(e) => setSelectedSkillType(e.target.value)}
-                >
-                  <option value="ALL">Tất cả kỹ năng</option>
-                  <option value="OVERALL">Overall Band</option>
-                  <option value="READING">Reading</option>
-                  <option value="LISTENING">Listening</option>
-                  <option value="WRITING">Writing</option>
-                  <option value="SPEAKING">Speaking</option>
-                </select>
-              </div>
-              {/* Filter Month */}
-              <select
-                className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-sm text-gray-800 dark:text-white rounded-lg p-2 focus:outline-none disabled:opacity-50"
-                value={filterMonth}
-                onChange={(e) => setFilterMonth(e.target.value)}
-                disabled={filterYear === "ALL"}
-              >
-                <option value="ALL">Cả năm</option>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
-                    Tháng {m}
-                  </option>
-                ))}
-              </select>
-              {/* Filter Year */}
-              <select
-                className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-sm text-gray-800 dark:text-white rounded-lg p-2 focus:outline-none"
-                value={filterYear}
-                onChange={(e) => {
-                  setFilterYear(e.target.value);
-                  if (e.target.value === "ALL") setFilterMonth("ALL");
-                }}
-              >
-                <option value="ALL">Toàn thời gian</option>
-                <option value="2024">2024</option>
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
-              </select>
-            </div>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Từ Writing/Speaking</span>
           </div>
-
-          <div className="h-[300px] w-full">
-            {filteredChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={filteredChartData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="#f0f0f0"
-                  />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(str) => {
-                      const d = new Date(str);
-                      return filterYear === "ALL" || filterMonth === "ALL"
-                        ? `${d.getDate()}/${d.getMonth() + 1}`
-                        : d.getDate();
-                    }}
-                  />
-                  <YAxis domain={[0, 9]} tick={{ fontSize: 12 }} />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: "8px",
-                      border: "none",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                    }}
-                  />
-                  <Legend />
-                  {(selectedSkillType === "ALL" ||
-                    selectedSkillType === "OVERALL") && (
-                    <Line
-                      name="Overall"
-                      type="monotone"
-                      dataKey="OVERALL"
-                      stroke="#8884d8"
-                      strokeWidth={3}
-                      dot={{ r: 4 }}
-                    />
-                  )}
-                  {(selectedSkillType === "ALL" ||
-                    selectedSkillType === "READING") && (
-                    <Line
-                      name="Reading"
-                      type="monotone"
-                      dataKey="READING"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
-                  {(selectedSkillType === "ALL" ||
-                    selectedSkillType === "LISTENING") && (
-                    <Line
-                      name="Listening"
-                      type="monotone"
-                      dataKey="LISTENING"
-                      stroke="#22c55e"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
-                  {(selectedSkillType === "ALL" ||
-                    selectedSkillType === "WRITING") && (
-                    <Line
-                      name="Writing"
-                      type="monotone"
-                      dataKey="WRITING"
-                      stroke="#eab308"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
-                  {(selectedSkillType === "ALL" ||
-                    selectedSkillType === "SPEAKING") && (
-                    <Line
-                      name="Speaking"
-                      type="monotone"
-                      dataKey="SPEAKING"
-                      stroke="#ef4444"
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-400">
-                Chưa có dữ liệu học tập phù hợp
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {grammarWeakness.map((weak) => (
+              <div key={weak.idGrammar} className={`p-4 rounded-xl border ${
+                weak.wrongCount >= 4 ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium text-gray-800">{weak.title}</p>
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                    weak.wrongCount >= 4 ? 'bg-red-500 text-white' : 'bg-orange-500 text-white'
+                  }`}>
+                    {weak.wrongCount} lần sai
+                  </span>
+                </div>
+                <button
+                  onClick={() => navigate(`/grammar?topic=${weak.idGrammar}`)}
+                  className="w-full mt-2 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
+                >
+                  Ôn ngay
+                </button>
               </div>
-            )}
+            ))}
           </div>
         </div>
+      )}
 
-        {/* Cột Phải: Recommended Tests */}
-        <div className="bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 p-6 rounded-2xl shadow-lg border border-purple-100 dark:border-slate-700 flex flex-col">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl">
-                <Award className="text-white" size={20} />
+      {/* Weak Question Types Widget - Compact Gradient */}
+      {weakQuestionTypes.length > 0 && (
+        <div className="bg-gradient-to-br from-red-500 to-orange-500 rounded-2xl p-6 shadow-lg mb-8 text-white">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <span className="text-xl">🔴</span>
               </div>
-              Đề xuất cho bạn
-            </h3>
-            <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-3 py-1 rounded-full font-semibold">
-              {recommended.length} đề
-            </span>
+              <h3 className="text-lg font-semibold">Loại Câu Hỏi Yếu</h3>
+            </div>
+            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Reading/Listening</span>
           </div>
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar max-h-[400px]">
-            {recommended.map((test, index) => {
-              const testIcons = {
-                READING: <BookOpen size={20} className="text-white" />,
-                LISTENING: <Headphones size={20} className="text-white" />,
-                WRITING: <PenTool size={20} className="text-white" />,
-                SPEAKING: <Mic size={20} className="text-white" />,
-              };
-
-              const testColors = {
-                READING: "from-blue-500 to-cyan-500",
-                LISTENING: "from-green-500 to-emerald-500",
-                WRITING: "from-purple-500 to-pink-500",
-                SPEAKING: "from-orange-500 to-red-500",
-              };
-
-              const levelColors = {
-                Low: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-                Mid: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-                High: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-                Great:
-                  "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-              };
-
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {weakQuestionTypes.slice(0, 3).map((wt) => {
+              const accuracy = Math.round((1 - wt.errorRate) * 100);
               return (
-                <div
-                  key={test.idTest}
-                  onClick={() => handleRecommendClick(test)}
-                  className="group relative bg-white dark:bg-slate-700/50 rounded-xl border-2 border-gray-100 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-500 transition-all duration-300 cursor-pointer overflow-hidden hover:shadow-xl hover:scale-[1.02] animate-fade-in-up"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <div
-                    className={`absolute inset-0 bg-gradient-to-r ${
-                      testColors[test.testType] || "from-gray-400 to-gray-600"
-                    } opacity-0 group-hover:opacity-5 transition-opacity duration-300`}
-                  ></div>
-
-                  <div className="relative p-4 flex gap-4">
-                    <div className="relative shrink-0">
-                      <img
-                        src={test.img || getDefaultTestImage(test.testType)}
-                        alt={test.title}
-                        className="w-20 h-20 rounded-lg object-cover ring-2 ring-gray-100 dark:ring-slate-600 group-hover:ring-purple-300 dark:group-hover:ring-purple-500 transition-all duration-300"
-                      />
-                      <div
-                        className={`absolute -top-2 -right-2 bg-gradient-to-r ${
-                          testColors[test.testType] ||
-                          "from-purple-500 to-blue-500"
-                        } rounded-full p-1.5 shadow-lg`}
-                      >
-                        {testIcons[test.testType] || (
-                          <BookOpen size={16} className="text-white" />
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-bold text-gray-800 dark:text-white line-clamp-2 mb-2 group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors">
-                        {test.title}
-                      </h4>
-
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <span
-                          className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                            levelColors[test.level] || levelColors.Low
-                          }`}
-                        >
-                          {test.level || "Low"}
-                        </span>
-                        <span className="text-xs bg-gray-100 dark:bg-slate-600 px-2.5 py-1 rounded-full text-gray-700 dark:text-gray-300 font-medium flex items-center gap-1">
-                          <Clock size={12} />
-                          {test.duration}p
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                        <div className="flex-1 h-1.5 bg-gray-100 dark:bg-slate-600 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full bg-gradient-to-r ${
-                              testColors[test.testType] ||
-                              "from-gray-400 to-gray-600"
-                            } rounded-full transition-all duration-500`}
-                            style={{ width: "0%" }}
-                          ></div>
-                        </div>
-                        <span className="text-xs font-medium whitespace-nowrap">
-                          Chưa làm
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="self-center">
-                      <div className="p-1.5 rounded-full bg-gray-100 dark:bg-slate-600 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/50 transition-all duration-300 group-hover:scale-110">
-                        <ChevronRight
-                          size={18}
-                          className="text-gray-400 dark:text-gray-500 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors"
-                        />
-                      </div>
-                    </div>
+                <div key={wt.questionType} className="bg-white/10 backdrop-blur rounded-xl p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium text-sm">{wt.questionType.replace(/_/g, " ")}</span>
+                    <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">{accuracy}%</span>
                   </div>
+                  <div className="bg-white/20 rounded-full h-2">
+                    <div className="bg-white rounded-full h-2" style={{ width: `${accuracy}%` }}></div>
+                  </div>
+                  <p className="text-xs mt-2 opacity-75">{wt.totalAttempts} lần làm</p>
                 </div>
               );
             })}
-            {recommended.length === 0 && (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center">
-                  <Award
-                    className="text-gray-400 dark:text-gray-500"
-                    size={32}
-                  />
+          </div>
+          <button
+            onClick={() => navigate(`/test?filter=weakQuestionType`)}
+            className="w-full mt-4 bg-white text-red-600 font-semibold py-2.5 rounded-xl hover:bg-red-50 transition-colors text-sm"
+          >
+            Luyện tập ngay
+          </button>
+        </div>
+      )}
+
+      {/* Flex-row: Question Type Performance + Đề xuất ngang nhau */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        {/* Cột trái: Question Type Performance */}
+        <div className="lg:col-span-2">
+          {/* Question Type Performance Section */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                  </svg>
                 </div>
-                <p className="text-gray-400 dark:text-gray-500 text-sm font-medium">
-                  Chưa có đề xuất nào mới.
-                </p>
-                <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
-                  Hãy hoàn thành thêm bài thi để nhận gợi ý!
-                </p>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Hiệu Suất Theo Loại Câu Hỏi</h3>
               </div>
-            )}
+              <div className="flex bg-purple-50 dark:bg-slate-700 rounded-xl p-1">
+                <button onClick={() => handleQuestionTypeFilter("READING")} className={`px-4 py-2 text-sm font-medium rounded-lg ${selectedQuestionFilter === "READING" ? "bg-purple-600 text-white" : "text-purple-700 dark:text-purple-300 hover:bg-purple-100"}`}>READING</button>
+                <button onClick={() => handleQuestionTypeFilter("LISTENING")} className={`px-4 py-2 text-sm font-medium rounded-lg ${selectedQuestionFilter === "LISTENING" ? "bg-purple-600 text-white" : "text-purple-700 dark:text-purple-300 hover:bg-purple-100"}`}>LISTENING</button>
+                <button onClick={() => handleQuestionTypeFilter("ALL")} className={`px-4 py-2 text-sm font-medium rounded-lg ${selectedQuestionFilter === "ALL" ? "bg-purple-600 text-white" : "text-purple-700 dark:text-purple-300 hover:bg-purple-100"}`}>ALL</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredQuestionTypes.map((qt) => {
+                const accuracy = Math.round((1 - qt.errorRate) * 100);
+                const colors = getProgressColor(qt.errorRate);
+                return (
+                  <div key={qt.questionType} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 px-2 py-0.5 rounded">{qt.skillType}</span>
+                      <span className={`text-sm font-bold ${colors.text}`}>{accuracy}%</span>
+                    </div>
+                    <h4 className="font-medium text-gray-800 dark:text-white text-sm mb-3 leading-tight">{qt.questionType.replace(/_/g, " ")}</h4>
+                    <div className="mb-3">
+                      <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
+                        <div className={`h-2 rounded-full ${colors.bar}`} style={{ width: `${accuracy}%` }}></div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
+                      <span>{qt.totalAttempts} lần</span>
+                      <span>{qt.lastAttemptAt ? new Date(qt.lastAttemptAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }) : "-"}</span>
+                    </div>
+                  </div>
+                );
+              })}
+              {filteredQuestionTypes.length === 0 && (
+                <div className="col-span-full text-center py-12 text-gray-400 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-600">
+                  <div className="text-4xl mb-2">📊</div>
+                  <p className="font-medium">Chưa có dữ liệu loại câu hỏi</p>
+                  <p className="text-sm mt-1">Làm bài thi Reading/Listening để hệ thống track performance</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Cột phải: Đề xuất cho bạn */}
+        <div>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white">Đề xuất cho bạn</h3>
+              <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-3 py-1 rounded-full font-semibold">{recommended.length} đề</span>
+            </div>
+            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+              {recommended.slice(0, 3).map((test) => {
+                const testIcons = { READING: <BookOpen size={18} className="text-white" />, LISTENING: <Headphones size={18} className="text-white" />, WRITING: <PenTool size={18} className="text-white" />, SPEAKING: <Mic size={18} className="text-white" /> };
+                const testColors = { READING: "from-blue-500 to-cyan-500", LISTENING: "from-green-500 to-emerald-500", WRITING: "from-purple-500 to-pink-500", SPEAKING: "from-orange-500 to-red-500" };
+                return (
+                  <div key={test.idTest} onClick={() => handleRecommendClick(test)} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-purple-300 cursor-pointer transition-all">
+                    <div className={`w-10 h-10 bg-gradient-to-r ${testColors[test.testType] || "from-gray-400 to-gray-500"} rounded-lg flex items-center justify-center shrink-0`}>
+                      {testIcons[test.testType] || <BookOpen size={18} className="text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{test.title}</p>
+                      <p className="text-xs text-gray-500">{test.duration}p • {test.level || "Mid"}</p>
+                    </div>
+                    <ChevronRight size={16} className="text-gray-400 shrink-0" />
+                  </div>
+                );
+              })}
+              {recommended.length === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  <Award size={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Chưa có đề xuất</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Question Type Weak Areas Widget */}
+      {questionTypeWeakness.length > 0 && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <span className="text-xl">🔴</span> Question Types Yếu
+            </h3>
+            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Reading/Listening</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {questionTypeWeakness.map((wt) => (
+              <div key={wt.questionType} className={`p-4 rounded-xl border ${
+                wt.errorRate >= 0.4 ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-sm font-bold px-2 py-1 rounded ${
+                    wt.errorRate >= 0.4 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {wt.questionType}
+                  </span>
+                  <span className="text-xs font-bold text-white bg-red-500 px-2 py-1 rounded">
+                    {Math.round(wt.errorRate * 100)}% lỗi
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{wt.totalAttempts} lần làm</p>
+                <button
+                  onClick={() => navigate(`/test?filter=weakQuestionType&type=${wt.questionType}`)}
+                  className="w-full mt-2 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
+                >
+                  Luyện ngay
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
+      {/* Band Progression Chart */}
+<div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 mb-8">
+  <div className="flex items-center gap-3 mb-6">
+    <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+      <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+      </svg>
+    </div>
+    <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Biến Động Điểm Band (12 tháng)</h3>
+  </div>
+  <div className="h-64">
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={filteredChartData}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+        <XAxis
+          dataKey="date"
+          tick={{ fontSize: 12 }}
+          tickFormatter={(str) => {
+            const d = new Date(str);
+            return `${d.getDate()}/${d.getMonth() + 1}`;
+          }}
+        />
+        <YAxis domain={[0, 9]} tick={{ fontSize: 12 }} />
+        <Tooltip
+          contentStyle={{
+            borderRadius: "8px",
+            border: "none",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          }}
+        />
+        <Legend />
+        <Line
+          name="Overall Band"
+          type="monotone"
+          dataKey="OVERALL"
+          stroke="#6366f1"
+          strokeWidth={3}
+          dot={{ r: 4 }}
+          fill="#6366f1"
+        />
+        {target.targetBandScore && (
+          <Line
+            name={`Target (${target.targetBandScore})`}
+            type="monotone"
+            dataKey={() => target.targetBandScore}
+            stroke="#22c55e"
+            strokeDasharray="5 5"
+            dot={false}
+          />
+        )}
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+</div>
 
       {/* --- BẢNG LỊCH SỬ (Updated with Pagination & Filter) --- */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
