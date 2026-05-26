@@ -32,18 +32,28 @@ const FlashcardPractice = ({ count = 20, onComplete }) => {
     const current = vocabList[currentIndex];
     if (!current) return;
 
-    setAnswers({ ...answers, [current.idVocab]: isCorrect });
+    // Use functional setState to avoid stale closure
+    setAnswers(prevAnswers => {
+      const newAnswers = { ...prevAnswers, [current.idVocab]: isCorrect };
 
-    if (currentIndex < vocabList.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setIsFlipped(false);
-    } else {
-      submitResults();
-    }
+      if (currentIndex < vocabList.length - 1) {
+        // Move to next immediately
+        setTimeout(() => {
+          setCurrentIndex(currentIndex + 1);
+          setIsFlipped(false);
+        }, 0);
+      } else {
+        // Last item - submit with new answers
+        setTimeout(() => submitResultsInternal(newAnswers), 0);
+      }
+
+      return newAnswers;
+    });
   };
 
-  const submitResults = async () => {
-    const answerList = Object.entries(answers).map(([vocabId, isCorrect]) => ({
+  // Helper to submit results with specific answers object
+  const submitResultsInternal = async (answersToSubmit) => {
+    const answerList = Object.entries(answersToSubmit).map(([vocabId, isCorrect]) => ({
       vocabId,
       isCorrect
     }));
@@ -56,6 +66,8 @@ const FlashcardPractice = ({ count = 20, onComplete }) => {
       setIsCompleted(true);
     }
   };
+
+  // NOTE: submitResults removed - use submitResultsInternal instead
 
   if (loading) return <div className="p-6 text-center">Loading...</div>;
 

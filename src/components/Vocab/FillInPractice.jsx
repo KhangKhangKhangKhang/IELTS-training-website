@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { getDailyVocabAPI, completeDailyVocabAPI } from "@/services/apiVocab";
+import React, { useState, useEffect, useRef } from "react";
+import { getDailyVocabAPI, completeDailyVocabAPI, submitReviewAPI } from "@/services/apiVocab";
 import { useAuth } from "@/context/authContext";
-import { Check, X, ArrowRight } from "lucide-react";
+import { Check, X, ArrowRight, Star } from "lucide-react";
+import SaveWordModal from "./SaveWordModal";
 
 const FillInPractice = ({ count = 20, onComplete }) => {
   const { user } = useAuth();
@@ -9,10 +10,13 @@ const FillInPractice = ({ count = 20, onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState("");
   const [answers, setAnswers] = useState({});
+  const answersRef = useRef({}); // Ref to always have current answers
   const [showResult, setShowResult] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isCompleted, setIsCompleted] = useState(false);
   const [summary, setSummary] = useState(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [currentWordForSave, setCurrentWordForSave] = useState(null);
 
   useEffect(() => {
     loadVocab();
@@ -34,7 +38,20 @@ const FillInPractice = ({ count = 20, onComplete }) => {
     if (!current) return;
 
     const isCorrect = userAnswer.trim().toLowerCase() === current.word.trim().toLowerCase();
-    setAnswers({ ...answers, [current.idVocab]: isCorrect });
+    const quality = isCorrect ? 5 : 1;
+
+    // Update local state
+    setAnswers(prev => {
+      const newAnswers = { ...prev, [current.idVocab]: { isCorrect, quality } };
+      answersRef.current = newAnswers;
+      return newAnswers;
+    });
+
+    // Send SM-2 review per word immediately
+    submitReviewAPI(current.idVocab, user.idUser, quality).catch(err => {
+      console.error(`[FillIn] Failed to submit review for ${current.idVocab}:`, err);
+    });
+
     setShowResult(true);
   };
 
@@ -44,23 +61,14 @@ const FillInPractice = ({ count = 20, onComplete }) => {
       setUserAnswer("");
       setShowResult(false);
     } else {
-      submitResults();
+      // Last word - mark as completed
+      setIsCompleted(true);
     }
   };
 
-  const submitResults = async () => {
-    const answerList = Object.entries(answers).map(([vocabId, isCorrect]) => ({
-      vocabId,
-      isCorrect
-    }));
-    try {
-      const result = await completeDailyVocabAPI(user?.idUser, answerList);
-      setSummary(result?.summary || { correct: 0, total: 0 });
-      setIsCompleted(true);
-    } catch (err) {
-      console.error(err);
-      setIsCompleted(true);
-    }
+  const handleOpenSaveModal = () => {
+    setCurrentWordForSave(current);
+    setShowSaveModal(true);
   };
 
   if (loading) return <div className="p-6 text-center">Loading...</div>;
@@ -109,19 +117,33 @@ const FillInPractice = ({ count = 20, onComplete }) => {
           )}
 
           {showResult ? (
-            <div className={`p-4 rounded-xl ${currentAnswer ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                {currentAnswer ? (
-                  <Check className="text-green-600" size={24} />
-                ) : (
-                  <X className="text-red-600" size={24} />
-                )}
-                <span className={`font-bold ${currentAnswer ? 'text-green-600' : 'text-red-600'}`}>
-                  {currentAnswer ? 'Đúng!' : 'Sai!'}
-                </span>
+            <div className={`p-4 rounded-xl ${currentAnswer?.isCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  {currentAnswer?.isCorrect ? (
+                    <Check className="text-green-600" size={24} />
+                  ) : (
+                    <X className="text-red-600" size={24} />
+                  )}
+                  <span className={`font-bold ${currentAnswer?.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                    {currentAnswer?.isCorrect ? 'Đúng!' : 'Sai!'}
+                  </span>
+                </div>
+                <button
+                  onClick={handleOpenSaveModal}
+                  className="p-2 hover:bg-slate-100 rounded-full text-slate-500 hover:text-yellow-500"
+                  title="Lưu từ"
+                >
+                  <Star size={20} />
+                </button>
               </div>
-              {!currentAnswer && (
-                <p className="text-sm">Đáp án đúng: <span className="font-bold">{current.word}</span></p>
+              {!currentAnswer?.isCorrect && (
+                <div className="mt-2 pt-2 border-t border-red-200">
+                  <p className="text-sm text-slate-600">Đáp án đúng: <span className="font-bold text-slate-800">{current.word}</span></p>
+                  {current.phonetic && (
+                    <p className="text-xs text-slate-400 mt-1">/{current.phonetic}/</p>
+                  )}
+                </div>
               )}
             </div>
           ) : (
@@ -155,6 +177,16 @@ const FillInPractice = ({ count = 20, onComplete }) => {
           {currentIndex < vocabList.length - 1 ? 'Tiếp theo' : 'Hoàn thành'}
           <ArrowRight size={20} />
         </button>
+      )}
+
+      {/* Save Word Modal */}
+      {showSaveModal && currentWordForSave && (
+        <SaveWordModal
+          isOpen={showSaveModal}
+          onClose={() => setShowSaveModal(false)}
+          word={currentWordForSave}
+          user={user}
+        />
       )}
     </div>
   );
