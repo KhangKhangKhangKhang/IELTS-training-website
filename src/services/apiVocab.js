@@ -139,3 +139,29 @@ export const getVocabStatsAPI = async (idUser) => {
     throw error;
   }
 };
+
+export const getDailySessionAPI = async (idUser, quota = 15) => {
+  try {
+    const response = await API.get('/vocabulary/daily-session', {
+      params: { idUser, quota },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching daily session:', error);
+    throw error;
+  }
+};
+
+export const saveToCollectionAPI = async (idUser, vocabId, topicId) => {
+  try {
+    const response = await API.post('/vocabulary/save-to-collection', {
+      idUser,
+      vocabId,
+      topicId,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error saving word to collection:', error);
+    throw error;
+  }
+};

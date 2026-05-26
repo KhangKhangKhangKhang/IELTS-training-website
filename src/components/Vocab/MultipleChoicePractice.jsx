@@ -41,12 +41,25 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
 
   const handleSelect = (option) => {
     if (showResult) return;
-    setSelectedAnswer(option);
-    setShowResult(true);
 
     const current = vocabList[currentIndex];
     const isCorrect = option === current.word;
-    setAnswers({ ...answers, [current.idVocab]: isCorrect });
+
+    // Use functional update to avoid stale state
+    setAnswers(prevAnswers => {
+      const newAnswers = { ...prevAnswers, [current.idVocab]: { isCorrect, quality: isCorrect ? 5 : 1 } };
+
+      // Show result after state update
+      setSelectedAnswer(option);
+      setShowResult(true);
+
+      // If last item, submit after state update
+      if (currentIndex === vocabList.length - 1) {
+        setTimeout(() => submitResultsInternal(newAnswers), 0);
+      }
+
+      return newAnswers;
+    });
   };
 
   const handleNext = () => {
@@ -55,14 +68,20 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
       setSelectedAnswer(null);
       setShowResult(false);
     } else {
-      submitResults();
+      // Last item - submit with current answers
+      setAnswers(currentAnswers => {
+        submitResultsInternal(currentAnswers);
+        return currentAnswers;
+      });
     }
   };
 
-  const submitResults = async () => {
-    const answerList = Object.entries(answers).map(([vocabId, isCorrect]) => ({
+  // Helper to submit results with specific answers object
+  const submitResultsInternal = async (answersToSubmit) => {
+    const answerList = Object.entries(answersToSubmit).map(([vocabId, data]) => ({
       vocabId,
-      isCorrect
+      isCorrect: data.isCorrect,
+      quality: data.quality || (data.isCorrect ? 5 : 1),
     }));
     try {
       const result = await completeDailyVocabAPI(user?.idUser, answerList);
@@ -73,6 +92,8 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
       setIsCompleted(true);
     }
   };
+
+  // NOTE: submitResults removed - use submitResultsInternal instead
 
   if (loading) return <div className="p-6 text-center">Loading...</div>;
 

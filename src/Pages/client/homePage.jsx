@@ -778,11 +778,11 @@ const HomePage = () => {
       )}
 
       {/* Flex-row: Question Type Performance + Đề xuất ngang nhau */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 items-stretch">
         {/* Cột trái: Question Type Performance */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 flex flex-col">
           {/* Question Type Performance Section */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 mb-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 flex-1">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
@@ -833,13 +833,13 @@ const HomePage = () => {
         </div>
 
         {/* Cột phải: Đề xuất cho bạn */}
-        <div>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 h-full">
+        <div className="flex flex-col">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 h-full flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-800 dark:text-white">Đề xuất cho bạn</h3>
               <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-3 py-1 rounded-full font-semibold">{recommended.length} đề</span>
             </div>
-            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            <div className="space-y-3 flex-1 overflow-y-auto">
               {recommended.slice(0, 3).map((test) => {
                 const testIcons = { READING: <BookOpen size={18} className="text-white" />, LISTENING: <Headphones size={18} className="text-white" />, WRITING: <PenTool size={18} className="text-white" />, SPEAKING: <Mic size={18} className="text-white" /> };
                 const testColors = { READING: "from-blue-500 to-cyan-500", LISTENING: "from-green-500 to-emerald-500", WRITING: "from-purple-500 to-pink-500", SPEAKING: "from-orange-500 to-red-500" };
