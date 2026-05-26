@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   Plus,
   Search,
@@ -11,6 +11,7 @@ import {
   Play,
   RotateCcw,
   Calendar,
+  ArrowLeft,
 } from "lucide-react";
 import {
   createTopicAPI,
@@ -26,10 +27,15 @@ import {
 import { useAuth } from "@/context/authContext";
 import { getTopicsByUserAPI } from "@/services/apiVocab";
 import FlashcardModal from "@/components/Vocab/FlashcardModal";
+import FillInPractice from "@/components/Vocab/FillInPractice";
+import MultipleChoicePractice from "@/components/Vocab/MultipleChoicePractice";
 
 const Vocabulary = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const practiceMode = searchParams.get("mode");
+
   const [showFlashcard, setShowFlashcard] = useState(false);
   const [topics, setTopics] = useState([]);
   const [vocabularies, setVocabularies] = useState([]);
@@ -62,6 +68,11 @@ const Vocabulary = () => {
     topic: "",
     vocabulary: "",
   });
+
+  // Handle back from practice mode
+  const handleBackFromPractice = () => {
+    setSearchParams({});
+  };
 
   useEffect(() => {
     const fetchTopics = async () => {
@@ -368,6 +379,61 @@ const Vocabulary = () => {
     )
     : [];
 
+  // Render practice mode if active
+  if (practiceMode === "fill") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6">
+        <div className="max-w-2xl mx-auto">
+          <button
+            onClick={handleBackFromPractice}
+            className="flex items-center gap-2 text-purple-600 hover:text-purple-700 mb-4 font-medium"
+          >
+            <ArrowLeft size={20} /> Quay lại
+          </button>
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <FillInPractice count={20} onComplete={handleBackFromPractice} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (practiceMode === "multiple") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6">
+        <div className="max-w-2xl mx-auto">
+          <button
+            onClick={handleBackFromPractice}
+            className="flex items-center gap-2 text-purple-600 hover:text-purple-700 mb-4 font-medium"
+          >
+            <ArrowLeft size={20} /> Quay lại
+          </button>
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <MultipleChoicePractice count={20} onComplete={handleBackFromPractice} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (practiceMode === "review") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6">
+        <div className="max-w-2xl mx-auto">
+          <button
+            onClick={handleBackFromPractice}
+            className="flex items-center gap-2 text-purple-600 hover:text-purple-700 mb-4 font-medium"
+          >
+            <ArrowLeft size={20} /> Quay lại
+          </button>
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <FillInPractice count={20} onComplete={handleBackFromPractice} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 transition-colors duration-300">
       <div className="max-w-6xl mx-auto">
@@ -498,7 +564,7 @@ const Vocabulary = () => {
               <Play className="w-5 h-5 text-indigo-600 ml-auto" />
             </button>
             <button
-              onClick={() => navigate("/vocabulary?mode=review")}
+              onClick={() => navigate("/vocab-daily")}
               className="w-full p-4 bg-white rounded-xl border border-slate-200 text-left hover:border-indigo-300 hover:shadow-md transition-all flex items-center gap-4"
             >
               <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
@@ -506,7 +572,7 @@ const Vocabulary = () => {
               </div>
               <div>
                 <p className="font-medium text-slate-800">Review từ đã học</p>
-                <p className="text-xs text-slate-500">Ôn lại những từ sắp quên</p>
+                <p className="text-xs text-slate-500">Ôn lại với SM-2</p>
               </div>
               <RotateCcw className="w-5 h-5 text-purple-600 ml-auto" />
             </button>
