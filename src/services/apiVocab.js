@@ -165,3 +165,30 @@ export const saveToCollectionAPI = async (idUser, vocabId, topicId) => {
     throw error;
   }
 };
+
+// Practice APIs
+export const getRandomWordsAPI = async (idUser, count = 20, mode = 'flashcard') => {
+  try {
+    const response = await API.get('/vocabulary/practice/random', {
+      params: { idUser, count, mode },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching random words:', error);
+    throw error;
+  }
+};
+
+export const submitPracticeAPI = async (idUser, mode, answers) => {
+  try {
+    const response = await API.post('/vocabulary/practice/submit', {
+      idUser,
+      mode,
+      answers,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error submitting practice:', error);
+    throw error;
+  }
+};
