@@ -5,17 +5,19 @@ import { motion } from 'framer-motion';
 
 const { Panel } = Collapse;
 
+const ONBOARDING_KEY = 'hasSeenOnboarding';
+
 const OnboardingGuide = ({ visible, onClose }) => {
   const navigate = useNavigate();
 
   const handleStartTest = () => {
-    localStorage.setItem('hasSeenOnboarding', 'true');
+    localStorage.setItem(ONBOARDING_KEY, 'true');
     onClose();
     navigate('/startingPage');
   };
 
   const handleClose = () => {
-    localStorage.setItem('hasSeenOnboarding', 'true');
+    localStorage.setItem(ONBOARDING_KEY, 'true');
     onClose();
   };
 
@@ -34,8 +36,8 @@ const OnboardingGuide = ({ visible, onClose }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <h2 style={{ textAlign: 'center', marginBottom: 24 }}>
-          👋 Chào mừng bạn mới! Cùng khám phá hệ thống IELTS
+        <h2 className="text-center mb-6">
+          Chào mừng bạn mới! Cùng khám phá hệ thống IELTS
         </h2>
 
         <Collapse accordion defaultActiveKey={['1']}>
@@ -59,7 +61,7 @@ const OnboardingGuide = ({ visible, onClose }) => {
               <li>Thiết lập mục tiêu band đích</li>
               <li>Theo lộ trình học hàng ngày</li>
             </ul>
-            <Button type="primary" onClick={handleStartTest} style={{ marginTop: 16 }}>
+            <Button type="primary" onClick={handleStartTest} className="mt-4">
               Làm bài test ngay →
             </Button>
           </Panel>
