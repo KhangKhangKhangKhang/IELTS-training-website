@@ -29,6 +29,8 @@ import {
   deleteGrammarAPI,
   createGrammarWithoutCategoryAPI,
   getSystemCategoriesAPI,
+  getGrammarDashboardAPI,
+  getGrammarPracticeByTopicAPI,
 } from "@/services/apiGrammar";
 import { useAuth } from "@/context/authContext";
 
@@ -46,6 +48,11 @@ const Grammar = () => {
     description: "",
   });
   const [categoryToEdit, setCategoryToEdit] = useState(null);
+
+  // Dashboard state
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [activeView, setActiveView] = useState("dashboard"); // "dashboard" or "categories"
 
   const [grammarItems, setGrammarItems] = useState([]);
   const [availableGrammars, setAvailableGrammars] = useState([]);
@@ -116,6 +123,23 @@ const Grammar = () => {
     };
     fetchSystemCategories();
   }, []);
+
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      if (!user?.idUser) return;
+      setLoadingDashboard(true);
+      try {
+        const res = await getGrammarDashboardAPI(user.idUser);
+        setDashboardData(res.data || res);
+      } catch (err) {
+        console.error("Failed to fetch dashboard:", err);
+      } finally {
+        setLoadingDashboard(false);
+      }
+    };
+    fetchDashboard();
+  }, [user?.idUser]);
 
   useEffect(() => {
     const fetchAllGrammars = async () => {
@@ -352,16 +376,129 @@ const Grammar = () => {
           </div>
         </div>
 
-        <div className="bg-slate-700 rounded-2xl p-5 text-white shadow-lg mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold">🎯 Luyện tập Grammar</h3>
-              <p className="text-sm opacity-75">Luyện với các bài tập: Error Correction, Cloze, Transformation, Multiple Choice</p>
-            </div>
-            <button onClick={() => navigate('/grammar-practice')} className="px-6 py-3 bg-white text-purple-600 rounded-xl font-bold hover:bg-gray-100 transition-colors">
-              📝 Bắt đầu luyện tập
+        <div className="mb-6">
+          {/* Tab switcher */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setActiveView("dashboard")}
+              className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeView === "dashboard" ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100"}`}
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => setActiveView("categories")}
+              className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeView === "categories" ? "bg-indigo-600 text-white" : "bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100"}`}
+            >
+              Chủ Đề
             </button>
           </div>
+
+          {/* Dashboard View */}
+          {activeView === "dashboard" && (
+            <div className="space-y-6">
+              {/* Weak Areas */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                  <span className="text-red-500 mr-2">🔴</span> Điểm Yếu Cần Luyện Tập
+                </h3>
+                {loadingDashboard ? (
+                  <p className="text-gray-500">Đang tải...</p>
+                ) : dashboardData?.weakAreas?.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {dashboardData.weakAreas.map((topic) => (
+                      <div
+                        key={topic.idGrammar}
+                        onClick={() => navigate(`/grammar-practice?topic=${topic.idGrammar}`)}
+                        className="border border-red-200 dark:border-red-800 rounded-xl p-4 cursor-pointer hover:shadow-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-bold text-gray-900 dark:text-white">{topic.title}</span>
+                          <span className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 rounded-full">
+                            {topic.violations} violations
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          Sai: {topic.exercisesWrong} | Đúng: {topic.exercisesCorrect}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 dark:text-slate-400">Chưa có dữ liệu điểm yếu. Hãy luyện tập nhiều hơn!</p>
+                )}
+              </div>
+
+              {/* Summary Stats */}
+              {dashboardData?.allTopics && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 text-center">
+                    <div className="text-3xl font-bold text-indigo-600">{dashboardData.allTopics.length}</div>
+                    <div className="text-sm text-gray-500">Tổng Chủ Đề</div>
+                  </div>
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 text-center">
+                    <div className="text-3xl font-bold text-red-500">
+                      {dashboardData.allTopics.filter(t => t.proficiency === 'weak').length}
+                    </div>
+                    <div className="text-sm text-gray-500">Yếu</div>
+                  </div>
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 text-center">
+                    <div className="text-3xl font-bold text-yellow-500">
+                      {dashboardData.allTopics.filter(t => t.proficiency === 'medium').length}
+                    </div>
+                    <div className="text-sm text-gray-500">Trung Bình</div>
+                  </div>
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 text-center">
+                    <div className="text-3xl font-bold text-green-500">
+                      {dashboardData.allTopics.filter(t => t.proficiency === 'strong').length}
+                    </div>
+                    <div className="text-sm text-gray-500">Mạnh</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Practice Banner */}
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold mb-1">Bắt đầu luyện tập</h3>
+                    <p className="text-sm opacity-80">Chọn một chủ đề để luyện tập ngay</p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/grammar-practice')}
+                    className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold hover:bg-gray-100 transition-colors"
+                  >
+                    Luyện Ngay
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Categories View - OLD UI */}
+          {activeView === "categories" && (
+            <div className="space-y-6">
+              {/* System Categories */}
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">📚 Chủ Đề Hệ Thống</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {dashboardData?.allTopics?.map((topic) => (
+                    <div
+                      key={topic.idGrammar}
+                      onClick={() => navigate(`/grammar-practice?topic=${topic.idGrammar}`)}
+                      className="border border-gray-200 dark:border-slate-600 rounded-xl p-3 cursor-pointer hover:shadow-md hover:bg-gray-50 dark:hover:bg-slate-700 transition-all"
+                    >
+                      <span className="font-medium text-gray-900 dark:text-white text-sm">{topic.title}</span>
+                      <div className="mt-1">
+                        <Tag color={topic.level === "Low" ? "green" : topic.level === "Mid" ? "orange" : "red"} className="text-xs">
+                          {topic.level}
+                        </Tag>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -374,8 +511,7 @@ const Grammar = () => {
           </div>
         )}
 
-        {showGrammarManagement && isAdminOrTeacher ? (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Quản Lý Ngữ Pháp Hệ Thống</h2>
               <button onClick={() => setShowAddGrammar(true)} className="bg-green-600 hover:bg-green-700 !text-white px-4 py-3 rounded-xl flex items-center transition-all duration-200 hover:shadow-md font-medium">

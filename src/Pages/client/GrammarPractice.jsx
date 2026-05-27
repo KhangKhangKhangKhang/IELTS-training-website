@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/authContext";
 import API from "@/services/axios.custom";
 import { ArrowLeft, Check, X } from "lucide-react";
+import { getGrammarPracticeByTopicAPI } from "@/services/apiGrammar";
 
 const GrammarPractice = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const topic = searchParams.get('topic');
   const [exercises, setExercises] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState("");
@@ -23,8 +26,14 @@ const GrammarPractice = () => {
 
   const loadExercises = async () => {
     try {
-      const res = await API.get(`/grammar/practice/random?idUser=${user?.idUser}&count=10`);
-      setExercises(res.data?.data || []);
+      let res;
+      if (topic) {
+        res = await getGrammarPracticeByTopicAPI(topic, 10);
+        setExercises(res.data || []);
+      } else {
+        res = await API.get(`/grammar/practice/random?idUser=${user?.idUser}&count=10`);
+        setExercises(res.data?.data || []);
+      }
       setLoading(false);
     } catch (err) {
       console.error(err);

@@ -46,6 +46,7 @@ import { useAuth } from "@/context/authContext";
 
 // --- IMPORT COMPONENT REVIEW MỚI ---
 import SimpleResultModal from "@/components/test/SimpleResultModal";
+import OnboardingGuide from '../../components/onboarding';
 
 // --- Components Con (SkillCard) ---
 const SkillCard = ({ type, score, icon, color }) => (
@@ -124,6 +125,7 @@ const HomePage = () => {
 
   // --- UI States ---
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [selectedTestDetail, setSelectedTestDetail] = useState(null);
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [tempTarget, setTempTarget] = useState({});
@@ -223,6 +225,14 @@ const HomePage = () => {
   useEffect(() => {
     localStorage.setItem("studyHoursPerDay", String(studyHoursPerDay));
   }, [studyHoursPerDay]);
+
+  // --- ONBOARDING CHECK ---
+  useEffect(() => {
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+    if (!hasSeenOnboarding) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   // --- LOGIC 1: Xử lý Target & Countdown ---
   const targetInfo = useMemo(() => {
@@ -451,6 +461,14 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 font-sans text-gray-800 dark:text-gray-100 transition-colors duration-300">
+      {/* Onboarding Guide for first-time users */}
+      {showOnboarding && (
+        <OnboardingGuide
+          visible={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+        />
+      )}
+
       {/* --- HEADER & TARGET INFO BAR --- */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-6">
         <div>
