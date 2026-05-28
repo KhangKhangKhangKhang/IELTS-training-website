@@ -111,3 +111,27 @@ export const getSystemCategoriesAPI = async () => {
   const res = await API.get('/grammar/categories/system');
   return res.data;
 };
+
+// Dashboard - get weak areas + all topics with proficiency
+export const getGrammarDashboardAPI = async (idUser) => {
+  const res = await API.get(`/grammar/dashboard?idUser=${idUser}`);
+  return res.data;
+};
+
+// Practice by topic
+export const getGrammarPracticeByTopicAPI = async (idGrammar, count = 10) => {
+  const res = await API.get(`/grammar/${idGrammar}/practice?count=${count}`);
+  return res.data;
+};
+
+// Due reviews (spaced repetition)
+export const getGrammarDueReviewsAPI = async (idUser, idGrammar) => {
+  const res = await API.get(`/grammar/${idGrammar}/due-reviews?idUser=${idUser}`);
+  return res.data;
+};
+
+// Save violation from writing/speaking
+export const saveGrammarViolationAPI = async (data) => {
+  const res = await API.post('/grammar/violation', data);
+  return res.data;
+};

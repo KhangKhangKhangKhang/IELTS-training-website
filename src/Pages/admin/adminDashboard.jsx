@@ -31,6 +31,7 @@ import {
   updateModerationPolicyAPI,
 } from "@/services/apiTeacherReview";
 import { getAuditLogsAPI } from "@/services/apiAuditLog";
+import { getStudyPlannerConfigAPI, updateStudyPlannerConfigAPI } from "@/services/apiStatistics";
 import dayjs from "dayjs";
 
 const defaultPolicy = {
@@ -68,6 +69,26 @@ const AdminDashboard = () => {
   const [commissionSaving, setCommissionSaving] = useState(false);
   const [policySaving, setPolicySaving] = useState(false);
 
+  // Study Planner Config state
+  const defaultStudyPlannerConfig = {
+    grammarPercentByStage: {
+      FOUNDATION: 25,
+      SKILL_BUILDING: 18,
+      INTEGRATION: 13,
+      EXAM_PREP: 10,
+    },
+    vocabMinutes: 8,
+    grammarFloorMinutes: 5,
+    priorityWeights: {
+      1: [100],
+      2: [50, 50],
+      3: [40, 30, 30],
+      4: [40, 30, 20, 10],
+    },
+  };
+  const [studyPlannerConfig, setStudyPlannerConfig] = useState(defaultStudyPlannerConfig);
+  const [studyPlannerSaving, setStudyPlannerSaving] = useState(false);
+
   // Audit log filter states
   const [auditFilter, setAuditFilter] = useState({ action: undefined, page: 1, limit: 10 });
   const [auditTotal, setAuditTotal] = useState(0);
@@ -80,7 +101,7 @@ const AdminDashboard = () => {
       setError("");
 
       try {
-        const [overviewData, skillData, topData, streakData, userData, moderationData, commissionData, policyData, auditData] = await Promise.all([
+        const [overviewData, skillData, topData, streakData, userData, moderationData, commissionData, policyData, auditData, studyPlannerData] = await Promise.all([
           getDashboardOverviewAPI(),
           getDashboardSkillPerformanceAPI(),
           getDashboardTopPerformersAPI(),
@@ -90,6 +111,7 @@ const AdminDashboard = () => {
           getCommissionConfigAPI(),
           getModerationPolicyAPI(),
           getAuditLogsAPI({ limit: 10 }),
+          getStudyPlannerConfigAPI(),
         ]);
 
         if (!mounted) {
@@ -119,6 +141,10 @@ const AdminDashboard = () => {
         if (auditData) {
           setAuditLogs(auditData.data || []);
           setAuditTotal(auditData.total || 0);
+        }
+
+        if (studyPlannerData) {
+          setStudyPlannerConfig(studyPlannerData);
         }
 
         setLastUpdated(new Date());
@@ -254,6 +280,24 @@ const AdminDashboard = () => {
       message.error("Không thể lưu cấu hình commission.");
     } finally {
       setCommissionSaving(false);
+    }
+  };
+
+  const handleSaveStudyPlannerConfig = async () => {
+    setStudyPlannerSaving(true);
+    try {
+      await updateStudyPlannerConfigAPI(studyPlannerConfig);
+      message.success("Đã lưu cấu hình Study Planner thành công!");
+
+      // Refresh audit logs
+      const auditData = await getAuditLogsAPI({ limit: 10 });
+      setAuditLogs(auditData.data || []);
+      setAuditTotal(auditData.total || 0);
+    } catch (err) {
+      console.error("Error saving study planner config:", err);
+      message.error("Không thể lưu cấu hình Study Planner.");
+    } finally {
+      setStudyPlannerSaving(false);
     }
   };
 
@@ -662,6 +706,108 @@ const AdminDashboard = () => {
               </Button>
             </Form>
           </Card>
+
+          {/* Study Planner Configuration */}
+          <Card className="border-0 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">Study Planner Config</h2>
+            <p className="mt-1 text-sm text-slate-600">Cấu hình thuật toán lập lộ trình học tập.</p>
+
+            <Form layout="vertical" className="mt-4">
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-slate-700 mb-2">Grammar % theo Stage</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {["FOUNDATION", "SKILL_BUILDING", "INTEGRATION", "EXAM_PREP"].map((stage) => (
+                    <Form.Item key={stage} label={stage} className="!mb-0">
+                      <InputNumber
+                        min={0}
+                        max={100}
+                        value={studyPlannerConfig.grammarPercentByStage?.[stage]}
+                        onChange={(value) => setStudyPlannerConfig((prev) => ({
+                          ...prev,
+                          grammarPercentByStage: { ...prev.grammarPercentByStage, [stage]: Number(value || 0) }
+                        }))}
+                        className="!w-full"
+                        addonAfter="%"
+                      />
+                    </Form.Item>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Form.Item label="Vocab Minutes" className="!mb-0">
+                  <InputNumber
+                    min={1}
+                    max={60}
+                    value={studyPlannerConfig.vocabMinutes}
+                    onChange={(value) => setStudyPlannerConfig((prev) => ({
+                      ...prev,
+                      vocabMinutes: Number(value || 8)
+                    }))}
+                    className="!w-full"
+                    addonAfter="phút"
+                  />
+                </Form.Item>
+
+                <Form.Item label="Grammar Floor Minutes" className="!mb-0">
+                  <InputNumber
+                    min={1}
+                    max={30}
+                    value={studyPlannerConfig.grammarFloorMinutes}
+                    onChange={(value) => setStudyPlannerConfig((prev) => ({
+                      ...prev,
+                      grammarFloorMinutes: Number(value || 5)
+                    }))}
+                    className="!w-full"
+                    addonAfter="phút"
+                  />
+                </Form.Item>
+              </div>
+
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-slate-700 mb-2">Priority Weights</h3>
+                <div className="space-y-2 text-sm text-slate-600">
+                  <div className="flex gap-2 items-center">
+                    <span className="w-20">1 skill:</span>
+                    <Input
+                      value={studyPlannerConfig.priorityWeights?.[1]?.join(", ") || "100"}
+                      disabled
+                      className="!w-32"
+                    />
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <span className="w-20">2 skills:</span>
+                    <Input
+                      value={studyPlannerConfig.priorityWeights?.[2]?.join(", ") || "50, 50"}
+                      disabled
+                      className="!w-32"
+                    />
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <span className="w-20">3 skills:</span>
+                    <Input
+                      value={studyPlannerConfig.priorityWeights?.[3]?.join(", ") || "40, 30, 30"}
+                      disabled
+                      className="!w-32"
+                    />
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <span className="w-20">4 skills:</span>
+                    <Input
+                      value={studyPlannerConfig.priorityWeights?.[4]?.join(", ") || "40, 30, 20, 10"}
+                      disabled
+                      className="!w-32"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Priority weights được tính tự động theo band của user</p>
+              </div>
+
+              <Button type="primary" onClick={handleSaveStudyPlannerConfig} loading={studyPlannerSaving}>
+                Save Study Planner Config
+              </Button>
+            </Form>
+          </Card>
         </section>
 
         {/* Audit Trail */}
@@ -686,6 +832,7 @@ const AdminDashboard = () => {
                   { label: "User Update", value: "USER_UPDATE" },
                   { label: "User Delete", value: "USER_DELETE" },
                   { label: "Role Change", value: "USER_ROLE_CHANGE" },
+                  { label: "Study Planner Config", value: "STUDY_PLANNER_CONFIG_UPDATE" },
                 ]}
               />
               <Button icon={<RefreshCw size={14} />} onClick={handleRefreshAudit}>

@@ -45,10 +45,10 @@ export const calculateStudyPlanAPI = async (planData) => {
 };
 
 // Get user's personalized study plan
-export const getStudyPlanAPI = async (idUser) => {
+export const getStudyPlanAPI = async (idUser, historyMonths = 6) => {
   try {
     const response = await API.get("/study-planner/plan", {
-      params: { idUser },
+      params: { idUser, historyMonths },
     });
 
     return {

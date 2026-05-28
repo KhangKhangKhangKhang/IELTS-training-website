@@ -6,6 +6,7 @@ import { AuthProvider } from "./context/authContext";
 import { ThemeProvider } from "./context/themeContext";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import ProtectedRoute from "./context/auth/protectedRoute";
+import OnlyUserRoute from "./context/auth/onlyUserRoute";
 import Navbar from "./components/ui/navBar/navBar";
 import NavbarTeacher from "./components/ui/navBar/navBarTeacher";
 import NavbarAdmin from "./components/ui/navBar/navBarAdmin";
@@ -55,6 +56,18 @@ const LazyRoute = ({ Component }) => (
 );
 
 const router = createBrowserRouter([
+  // --- USER ROUTE: /startingPage (standalone - no Navbar - USER only) ---
+  {
+    path: "/startingPage",
+    element: <ProtectedRoute />,
+    children: [
+      {
+        path: "",
+        element: <OnlyUserRoute><LazyRoute Component={StartingPage} /></OnlyUserRoute>,
+      },
+    ],
+  },
+
   // --- User Routes ---
   {
     path: "/",
@@ -71,7 +84,7 @@ const router = createBrowserRouter([
           { path: "test", element: <LazyRoute Component={Test} /> },
           { path: "doTest", element: <LazyRoute Component={TestDetail} /> },
           { path: "profile", element: <LazyRoute Component={Profile} /> },
-          { path: "startingPage", element: <LazyRoute Component={StartingPage} /> },
+          // startingPage moved to standalone route above
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
           { path: "grammar-practice", element: <LazyRoute Component={GrammarPractice} /> },
           { path: "vocab-daily", element: <LazyRoute Component={VocabDaily} /> },
@@ -104,7 +117,6 @@ const router = createBrowserRouter([
           { path: "testManager/testCreate", element: <LazyRoute Component={TestCreate} /> },
           { path: "testManager/testEdit/:id", element: <LazyRoute Component={TestEdit} /> },
           { path: "testManager/testDetail/:id", element: <LazyRoute Component={TestDetail} /> },
-          { path: "startingPage", element: <LazyRoute Component={StartingPage} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
           { path: "grammar-practice", element: <LazyRoute Component={GrammarPractice} /> },
           { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },

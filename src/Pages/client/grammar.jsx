@@ -12,6 +12,9 @@ import {
   CheckCircle,
   BookText,
   Users,
+  AlertCircle,
+  TrendingUp,
+  Target,
 } from "lucide-react";
 import { Tag } from "antd";
 import {
@@ -29,6 +32,7 @@ import {
   deleteGrammarAPI,
   createGrammarWithoutCategoryAPI,
   getSystemCategoriesAPI,
+  getGrammarDashboardAPI,
 } from "@/services/apiGrammar";
 import { useAuth } from "@/context/authContext";
 
@@ -77,6 +81,11 @@ const Grammar = () => {
 
   const isAdminOrTeacher = user?.role === "ADMIN" || user?.role === "GIAOVIEN";
   const isTeacher = user?.role === "GIAOVIEN";
+
+  // Grammar stats state
+  const [grammarStats, setGrammarStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [weakAreas, setWeakAreas] = useState([]);
 
   const getTypeColor = (type) => {
     const colors = { Low: "green", Mid: "orange", High: "red" };
@@ -135,6 +144,24 @@ const Grammar = () => {
       setShowGrammarManagement(true);
     }
   }, [isTeacher]);
+
+  // Fetch grammar stats for dashboard
+  useEffect(() => {
+    const fetchGrammarStats = async () => {
+      if (!user?.idUser) return;
+      setLoadingStats(true);
+      try {
+        const res = await getGrammarDashboardAPI(user.idUser);
+        setGrammarStats(res);
+        setWeakAreas(res.weakAreas || []);
+      } catch (err) {
+        console.error("Failed to fetch grammar stats:", err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    fetchGrammarStats();
+  }, [user?.idUser]);
 
   const handleAddCategory = async () => {
     if (!newCategory.name.trim()) { alert("Tên chủ đề không được để trống"); return; }
@@ -352,17 +379,125 @@ const Grammar = () => {
           </div>
         </div>
 
-        <div className="bg-slate-700 rounded-2xl p-5 text-white shadow-lg mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold">🎯 Luyện tập Grammar</h3>
-              <p className="text-sm opacity-75">Luyện với các bài tập: Error Correction, Cloze, Transformation, Multiple Choice</p>
+        {/* Grammar Stats Dashboard */}
+        {!showGrammarManagement && !isAdminOrTeacher && (
+          <div className="mb-6">
+            <div className="mb-4">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-white">📊 Tiến độ Grammar</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Theo dõi và cải thiện ngữ pháp IELTS của bạn</p>
             </div>
-            <button onClick={() => navigate('/grammar-practice')} className="px-6 py-3 bg-white text-purple-600 rounded-xl font-bold hover:bg-gray-100 transition-colors">
-              📝 Bắt đầu luyện tập
-            </button>
+
+            {!loadingStats && grammarStats ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-red-200 dark:border-red-500/30 dark:bg-slate-800">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400">
+                        <AlertCircle size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Cần cải thiện</p>
+                        <p className="text-2xl font-bold text-slate-800 dark:text-white">{weakAreas.length} topics</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-amber-200 dark:border-amber-500/30 dark:bg-slate-800">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                        <TrendingUp size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Trung bình</p>
+                        <p className="text-2xl font-bold text-slate-800 dark:text-white">
+                          {grammarStats.allTopics?.filter(t => t.proficiency === 'medium').length || 0} topics
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-green-200 dark:border-green-500/30 dark:bg-slate-800">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-500/20 flex items-center justify-center text-green-600 dark:text-green-400">
+                        <Target size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Tốt</p>
+                        <p className="text-2xl font-bold text-slate-800 dark:text-white">
+                          {grammarStats.allTopics?.filter(t => t.proficiency === 'hoàn thành').length || 0} topics
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+                    <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-3">Tiến độ</h3>
+                    <div className="flex items-center justify-center">
+                      <div className="relative">
+                        <svg className="w-28 h-28" viewBox="0 0 120 120">
+                          <circle cx="60" cy="60" r="52" fill="none" stroke="#e2e8f0" strokeWidth="10"/>
+                          <circle
+                            cx="60" cy="60" r="52" fill="none" stroke="#6366f1" strokeWidth="10"
+                            strokeDasharray="327"
+                            strokeDashoffset={327 * (1 - ((grammarStats.overallProgress?.percentage || 0) / 100))}
+                            strokeLinecap="round"
+                            transform="rotate(-90 60 60)"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center -translate-y-1">
+                          <span className="text-2xl font-bold text-slate-800 dark:text-white">{grammarStats.overallProgress?.percentage || 0}%</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center mt-2">
+                      {grammarStats.overallProgress?.mastered || 0} / {grammarStats.overallProgress?.total || 0} topics
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-5 shadow-sm border-2 border-red-200 dark:border-red-500/30 dark:bg-slate-800 lg:col-span-2">
+                    <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-3 flex items-center gap-2">
+                      <AlertCircle size={18} /> Cần cải thiện
+                    </h3>
+                    {weakAreas.length > 0 ? (
+                      <div className="space-y-3">
+                        {weakAreas.slice(0, 3).map((area) => (
+                          <div key={area.idGrammar} className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-500/10 rounded-lg border border-red-100 dark:border-red-500/20">
+                            <div>
+                              <p className="font-semibold text-slate-800 dark:text-red-200">{area.title}</p>
+                              <div className="flex gap-4 text-xs text-red-600 dark:text-red-300 mt-1">
+                                <span>⚠️ {area.violations} violations</span>
+                                <span>❌ {area.exercisesWrong} sai</span>
+                                <span>📊 {area.accuracy}%</span>
+                              </div>
+                              <p className="text-xs text-red-500 mt-1">→ {area.reason}</p>
+                            </div>
+                            <button
+                              onClick={() => navigate(`/grammar/${area.idGrammar}`)}
+                              className="px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-xs font-semibold hover:from-red-600 hover:to-red-700 transition-all flex items-center gap-1"
+                            >
+                              🎯 Luyện ngay
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="text-4xl mb-2">🎉</div>
+                        <p className="text-slate-600 dark:text-slate-300">Tuyệt vời! Bạn không có điểm yếu cần cải thiện</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-40">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6 flex justify-between items-center shadow-sm">
