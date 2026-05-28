@@ -50,3 +50,20 @@ export const getQuestionTypeWeaknessAPI = async (idUser) => {
   const res = await API.get(`/weakness/question-types?idUser=${idUser}`);
   return res.data;
 };
+
+// 8. Lấy skill status (đã assess / chưa assess)
+export const getSkillStatusAPI = async (idUser) => {
+  const res = await API.get(`/user-test-result/get-skill-status/${idUser}`);
+  return res.data;
+};
+
+// 9. Study Planner Config (Admin)
+export const getStudyPlannerConfigAPI = async () => {
+  const res = await API.get(`/system-config/study-planner/config`);
+  return res.data;
+};
+
+export const updateStudyPlannerConfigAPI = async (config) => {
+  const res = await API.put(`/system-config/study-planner/config`, config);
+  return res.data;
+};

@@ -10,6 +10,7 @@ import {
   updateTargetScoresAPI,
   getGrammarWeaknessAPI,
   getQuestionTypeWeaknessAPI,
+  getSkillStatusAPI,
 } from "@/services/apiStatistics";
 import { getAllQuestionTypePerformanceAPI, getWeakQuestionTypesAPI } from "@/services/apiQuestionTypePerformance";
 import { StartTestAPI } from "@/services/apiDoTest";
@@ -151,6 +152,9 @@ const HomePage = () => {
   const [historyFilter, setHistoryFilter] = useState("ALL");
   const ITEMS_PER_PAGE = 5;
 
+  // --- SKILL STATUS STATES ---
+  const [skillStatus, setSkillStatus] = useState(null);  // { skills, missingSkills, assessedCount }
+
   // --- AI FLOW MVP STATES ---
   const [studyMode, setStudyMode] = useState(
     () => localStorage.getItem("studyMode") || "BALANCED",
@@ -209,6 +213,7 @@ const HomePage = () => {
           setQuestionTypePerformance(allTypes);
         }
         if (resWeakQT?.weakTypes) setWeakQuestionTypes(resWeakQT.weakTypes);
+        if (resSkillStatus?.data) setSkillStatus(resSkillStatus.data);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -588,9 +593,29 @@ const HomePage = () => {
               Coverage: {assessmentCoverage.completedCount}/4 skills
             </p>
             {assessmentCoverage.missingSkills.length > 0 ? (
-              <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                Missing: {assessmentCoverage.missingSkills.join(", ")}
-              </p>
+              <div>
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  Missing: {assessmentCoverage.missingSkills.join(", ")}
+                </p>
+                {skillStatus?.missingSkills && skillStatus.missingSkills.length > 0 && (
+                  <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                    <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-2">
+                      Cần làm đề để có lộ trình chuẩn:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {skillStatus.missingSkills.map((skill) => (
+                        <button
+                          key={skill}
+                          onClick={() => navigate(`/doTest?skill=${skill}`)}
+                          className="px-3 py-1.5 text-xs font-medium bg-amber-100 hover:bg-amber-200 dark:bg-amber-800 dark:hover:bg-amber-700 text-amber-700 dark:text-amber-200 rounded-full transition-colors"
+                        >
+                          Làm đề {skill}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
                 Baseline data is available for all skills.
