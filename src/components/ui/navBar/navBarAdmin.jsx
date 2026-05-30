@@ -23,7 +23,6 @@ const adminLinks = [
   { name: "Users", href: "/admin/userList", icon: Users },
   { name: "Moderation", href: "/admin/moderation", icon: FileCheck },
   { name: "Content", href: "/admin/testManager", icon: FileStack },
-  { name: "Grammar", href: "/admin/grammar", icon: BookOpen },
   { name: "Vocabulary", href: "/admin/vocabulary", icon: BookMarked },
   { name: "Chấm bài", href: "/admin/teacher-review", icon: ClipboardCheck },
 ];
