@@ -147,8 +147,6 @@ const router = createBrowserRouter([
           { path: "testManager/testCreate", element: <LazyRoute Component={TestCreate} /> },
           { path: "testManager/testEdit/:id", element: <LazyRoute Component={TestEdit} /> },
           { path: "testManager", element: <LazyRoute Component={TestManager} /> },
-          { path: "grammar", element: <LazyRoute Component={Grammar} /> },
-          { path: "grammar-practice", element: <LazyRoute Component={GrammarPractice} /> },
           { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },
           { path: "teacher-review", element: <LazyRoute Component={TeacherReviewManager} /> },
         ],
