@@ -609,11 +609,11 @@ const Grammar = () => {
           </div>
         )}
       </div>
-      {showAddCategory && <ModalAddCategory />}
-      {showEditCategory && categoryToEdit && <ModalEditCategory />}
-      {showAddGrammarToCategory && <ModalAddGrammar />}
-      {showAddGrammar && <ModalCreateGrammar />}
-      {showEditGrammar && grammarToEdit && <ModalEditGrammar />}
+      {showAddCategory && <ModalAddCategory showAddCategory={showAddCategory} setShowAddCategory={setShowAddCategory} newCategory={newCategory} setNewCategory={setNewCategory} handleAddCategory={handleAddCategory} />}
+      {showEditCategory && categoryToEdit && <ModalEditCategory showEditCategory={showEditCategory} setShowEditCategory={setShowEditCategory} categoryToEdit={categoryToEdit} setCategoryToEdit={setCategoryToEdit} handleEditCategory={handleEditCategory} />}
+      {showAddGrammarToCategory && <ModalAddGrammar showAddGrammarToCategory={showAddGrammarToCategory} setShowAddGrammarToCategory={setShowAddGrammarToCategory} availableGrammars={availableGrammars} handleAddGrammarToCategory={handleAddGrammarToCategory} />}
+      {showAddGrammar && <ModalCreateGrammar showAddGrammar={showAddGrammar} setShowAddGrammar={setShowAddGrammar} newGrammar={newGrammar} setNewGrammar={setNewGrammar} newMistake={newMistake} setNewMistake={setNewMistake} addMistake={addMistake} removeMistake={removeMistake} handleAddGrammar={handleAddGrammar} />}
+      {showEditGrammar && grammarToEdit && <ModalEditGrammar showEditGrammar={showEditGrammar} setShowEditGrammar={setShowEditGrammar} grammarToEdit={grammarToEdit} setGrammarToEdit={setGrammarToEdit} handleEditGrammar={handleEditGrammar} />}
     </div>
   );
 
@@ -745,7 +745,7 @@ const Grammar = () => {
   }
 };
 
-function ModalAddCategory() {
+function ModalAddCategory({ showAddCategory, setShowAddCategory, newCategory, setNewCategory, handleAddCategory }) {
   if (!showAddCategory) return null;
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -773,7 +773,7 @@ function ModalAddCategory() {
   );
 }
 
-function ModalEditCategory() {
+function ModalEditCategory({ showEditCategory, setShowEditCategory, categoryToEdit, setCategoryToEdit, handleEditCategory }) {
   if (!showEditCategory || !categoryToEdit) return null;
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -801,7 +801,7 @@ function ModalEditCategory() {
   );
 }
 
-function ModalAddGrammar() {
+function ModalAddGrammar({ showAddGrammarToCategory, setShowAddGrammarToCategory, availableGrammars, handleAddGrammarToCategory }) {
   if (!showAddGrammarToCategory) return null;
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -832,7 +832,7 @@ function ModalAddGrammar() {
   );
 }
 
-function ModalCreateGrammar() {
+function ModalCreateGrammar({ showAddGrammar, setShowAddGrammar, newGrammar, setNewGrammar, newMistake, setNewMistake, addMistake, removeMistake, handleAddGrammar }) {
   if (!showAddGrammar) return null;
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -888,7 +888,7 @@ function ModalCreateGrammar() {
   );
 }
 
-function ModalEditGrammar() {
+function ModalEditGrammar({ showEditGrammar, setShowEditGrammar, grammarToEdit, setGrammarToEdit, handleEditGrammar }) {
   if (!showEditGrammar || !grammarToEdit) return null;
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

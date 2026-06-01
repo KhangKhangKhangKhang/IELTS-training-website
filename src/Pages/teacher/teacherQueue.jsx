@@ -294,7 +294,9 @@ const TeacherQueuePage = () => {
       key: "aiBandScore",
       width: 100,
       render: (score) => (
-        <span className="font-bold text-blue-600">{score || "N/A"}</span>
+        <span className="font-bold text-blue-600">
+          {typeof score === 'number' ? score?.toFixed(1) : score?.score || "N/A"}
+        </span>
       ),
     },
     {
@@ -384,7 +386,9 @@ const TeacherQueuePage = () => {
       key: "aiBandScore",
       width: 100,
       render: (score) => (
-        <span className="font-bold text-blue-600">{score || "N/A"}</span>
+        <span className="font-bold text-blue-600">
+          {typeof score === 'number' ? score?.toFixed(1) : score?.score || "N/A"}
+        </span>
       ),
     },
     {
@@ -465,7 +469,9 @@ const TeacherQueuePage = () => {
       key: "aiBandScore",
       width: 100,
       render: (score) => (
-        <span className="font-bold text-blue-600">{score?.toFixed(1) || "N/A"}</span>
+        <span className="font-bold text-blue-600">
+          {typeof score === 'number' ? score?.toFixed(1) : score?.score || "N/A"}
+        </span>
       ),
     },
     {
@@ -474,7 +480,9 @@ const TeacherQueuePage = () => {
       key: "teacherBandScore",
       width: 100,
       render: (score) => (
-        <span className="font-bold text-green-600">{score?.toFixed(1) || "N/A"}</span>
+        <span className="font-bold text-green-600">
+          {typeof score === 'number' ? score?.toFixed(1) : score?.score || "N/A"}
+        </span>
       ),
     },
     {
@@ -792,56 +800,72 @@ const TeacherQueuePage = () => {
               {ticketDetail.aiFeedback &&
                 (() => {
                   const fb = ticketDetail.aiFeedback;
+                  const getText = (val) => {
+                    if (!val) return null;
+                    if (typeof val === 'string') return val;
+                    if (typeof val === 'object' && val !== null) {
+                      return val.comment || val.text || JSON.stringify(val);
+                    }
+                    return String(val);
+                  };
                   const writingItems = [
                     {
                       key: "taskResponse",
                       label: "Task Response",
-                      score: fb.taskResponseScore,
-                      text: fb.taskResponse,
+                      score: typeof fb.taskResponseScore === 'object' ? fb.taskResponseScore?.score : fb.taskResponseScore,
+                      text: getText(fb.taskResponse),
                     },
                     {
                       key: "coherence",
                       label: "Coherence & Cohesion",
-                      score: fb.coherenceScore,
-                      text: fb.coherenceAndCohesion,
+                      score: typeof fb.coherenceScore === 'object' ? fb.coherenceScore?.score : fb.coherenceScore,
+                      text: getText(fb.coherenceAndCohesion),
                     },
                     {
                       key: "lexical",
                       label: "Lexical Resource",
-                      score: fb.lexicalScore,
-                      text: fb.lexicalResource,
+                      score: typeof fb.lexicalScore === 'object' ? fb.lexicalScore?.score : fb.lexicalScore,
+                      text: getText(fb.lexicalResource),
                     },
                     {
                       key: "grammar",
                       label: "Grammatical Range & Accuracy",
-                      score: fb.grammarScore,
-                      text: fb.grammaticalRangeAndAccuracy,
+                      score: typeof fb.grammarScore === 'object' ? fb.grammarScore?.score : fb.grammarScore,
+                      text: getText(fb.grammaticalRangeAndAccuracy),
                     },
                   ];
                   const speakingItems = [
                     {
                       key: "fluency",
                       label: "Fluency & Coherence",
-                      score: fb.fluencyScore || fb.scoreFluency,
-                      text: fb.fluencyAndCoherence || fb.commentFluency,
+                      score: typeof (fb.fluencyScore || fb.scoreFluency) === 'object'
+                        ? (fb.fluencyScore || fb.scoreFluency)?.score
+                        : (fb.fluencyScore || fb.scoreFluency),
+                      text: getText(fb.fluencyAndCoherence || fb.commentFluency),
                     },
                     {
                       key: "lexical",
                       label: "Lexical Resource",
-                      score: fb.lexicalScore || fb.scoreLexical,
-                      text: fb.lexicalResource || fb.commentLexical,
+                      score: typeof (fb.lexicalScore || fb.scoreLexical) === 'object'
+                        ? (fb.lexicalScore || fb.scoreLexical)?.score
+                        : (fb.lexicalScore || fb.scoreLexical),
+                      text: getText(fb.lexicalResource || fb.commentLexical),
                     },
                     {
                       key: "grammar",
                       label: "Grammatical Range",
-                      score: fb.grammarScore || fb.scoreGrammar,
-                      text: fb.grammaticalRangeAndAccuracy || fb.commentGrammar,
+                      score: typeof (fb.grammarScore || fb.scoreGrammar) === 'object'
+                        ? (fb.grammarScore || fb.scoreGrammar)?.score
+                        : (fb.grammarScore || fb.scoreGrammar),
+                      text: getText(fb.grammaticalRangeAndAccuracy || fb.commentGrammar),
                     },
                     {
                       key: "pronunciation",
                       label: "Pronunciation",
-                      score: fb.pronunciationScore || fb.scorePronunciation,
-                      text: fb.pronunciation || fb.commentPronunciation,
+                      score: typeof (fb.pronunciationScore || fb.scorePronunciation) === 'object'
+                        ? (fb.pronunciationScore || fb.scorePronunciation)?.score
+                        : (fb.pronunciationScore || fb.scorePronunciation),
+                      text: getText(fb.pronunciation || fb.commentPronunciation),
                     },
                   ];
                   const collapseItems = (
@@ -940,21 +964,101 @@ const TeacherQueuePage = () => {
                 </div>
               ) : (
                 ticketDetail.teacherBandScore && (
-                  <div className="bg-green-50 p-4 rounded-lg border border-green-100 mt-4">
-                    <h4 className="font-semibold mb-2 text-green-800">
-                      ✅ Đã chấm điểm
-                    </h4>
-                    <p className="text-sm">
-                      <span className="font-bold">Band Score:</span>{" "}
-                      {ticketDetail.teacherBandScore}
-                    </p>
-                    {ticketDetail.teacherFeedback && (
-                      <p className="text-sm mt-1">
-                        <span className="font-bold">Feedback:</span>{" "}
-                        {typeof ticketDetail.teacherFeedback === "string"
-                          ? ticketDetail.teacherFeedback
-                          : JSON.stringify(ticketDetail.teacherFeedback)}
-                      </p>
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-xl border border-green-200 mt-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-bold text-green-800 text-lg flex items-center gap-2">
+                        ✅ Đã chấm điểm
+                      </h4>
+                      <div className="flex items-center gap-4">
+                        <div className="text-center px-4 py-2 bg-white rounded-lg border border-green-200">
+                          <div className="text-xs text-gray-500">Band GV</div>
+                          <div className="text-2xl font-bold text-green-600">
+                            {typeof ticketDetail.teacherBandScore === 'number'
+                              ? ticketDetail.teacherBandScore.toFixed(1)
+                              : ticketDetail.teacherBandScore}
+                          </div>
+                        </div>
+                        {ticketDetail.aiBandScore && (
+                          <div className="text-center px-4 py-2 bg-white rounded-lg border border-blue-200">
+                            <div className="text-xs text-gray-500">Band AI</div>
+                            <div className="text-2xl font-bold text-blue-600">
+                              {typeof ticketDetail.aiBandScore === 'number'
+                                ? ticketDetail.aiBandScore.toFixed(1)
+                                : ticketDetail.aiBandScore}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Detailed Feedback Breakdown */}
+                    {ticketDetail.teacherFeedback && (() => {
+                      const tf = ticketDetail.teacherFeedback;
+
+                      const criteria = [];
+                      if (tf.taskResponse) {
+                        criteria.push({
+                          label: 'Task Response',
+                          text: tf.taskResponse,
+                          color: 'blue'
+                        });
+                      }
+                      if (tf.coherenceAndCohesion) {
+                        criteria.push({
+                          label: 'Coherence & Cohesion',
+                          text: tf.coherenceAndCohesion,
+                          color: 'cyan'
+                        });
+                      }
+                      if (tf.lexicalResource) {
+                        criteria.push({
+                          label: 'Lexical Resource',
+                          text: tf.lexicalResource,
+                          color: 'purple'
+                        });
+                      }
+                      if (tf.grammaticalRangeAndAccuracy) {
+                        criteria.push({
+                          label: 'Grammatical Range & Accuracy',
+                          text: tf.grammaticalRangeAndAccuracy,
+                          color: 'magenta'
+                        });
+                      }
+
+                      return criteria.length > 0 ? (
+                        <div className="mt-4 space-y-3">
+                          <h5 className="font-semibold text-gray-700 text-sm">Chi tiết đánh giá:</h5>
+                          {criteria.map((item, idx) => (
+                            <div key={idx} className="bg-white p-3 rounded-lg border border-gray-100">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-medium text-gray-800 text-sm">{item.label}</span>
+                              </div>
+                              {item.text && (
+                                <p className="text-sm text-gray-600 whitespace-pre-wrap">{item.text}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* General Feedback */}
+                    {ticketDetail.teacherFeedback?.generalFeedback && (
+                      <div className="mt-4 p-3 bg-white rounded-lg border border-gray-100">
+                        <h5 className="font-semibold text-gray-700 text-sm mb-2">Nhận xét chung:</h5>
+                        <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                          {ticketDetail.teacherFeedback.generalFeedback}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Simple string feedback fallback */}
+                    {typeof ticketDetail.teacherFeedback === 'string' && !ticketDetail.teacherFeedback?.generalFeedback && (
+                      <div className="mt-4 p-3 bg-white rounded-lg border border-gray-100">
+                        <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                          {ticketDetail.teacherFeedback}
+                        </p>
+                      </div>
                     )}
                   </div>
                 )
@@ -1169,56 +1273,72 @@ const TeacherQueuePage = () => {
               {ticketDetail.aiFeedback &&
                 (() => {
                   const fb = ticketDetail.aiFeedback;
+                  const getText = (val) => {
+                    if (!val) return null;
+                    if (typeof val === 'string') return val;
+                    if (typeof val === 'object' && val !== null) {
+                      return val.comment || val.text || JSON.stringify(val);
+                    }
+                    return String(val);
+                  };
                   const writingItems = [
                     {
                       key: "taskResponse",
                       label: "Task Response",
-                      score: fb.taskResponseScore,
-                      text: fb.taskResponse,
+                      score: typeof fb.taskResponseScore === 'object' ? fb.taskResponseScore?.score : fb.taskResponseScore,
+                      text: getText(fb.taskResponse),
                     },
                     {
                       key: "coherence",
                       label: "Coherence & Cohesion",
-                      score: fb.coherenceScore,
-                      text: fb.coherenceAndCohesion,
+                      score: typeof fb.coherenceScore === 'object' ? fb.coherenceScore?.score : fb.coherenceScore,
+                      text: getText(fb.coherenceAndCohesion),
                     },
                     {
                       key: "lexical",
                       label: "Lexical Resource",
-                      score: fb.lexicalScore,
-                      text: fb.lexicalResource,
+                      score: typeof fb.lexicalScore === 'object' ? fb.lexicalScore?.score : fb.lexicalScore,
+                      text: getText(fb.lexicalResource),
                     },
                     {
                       key: "grammar",
                       label: "Grammatical Range & Accuracy",
-                      score: fb.grammarScore,
-                      text: fb.grammaticalRangeAndAccuracy,
+                      score: typeof fb.grammarScore === 'object' ? fb.grammarScore?.score : fb.grammarScore,
+                      text: getText(fb.grammaticalRangeAndAccuracy),
                     },
                   ];
                   const speakingItems = [
                     {
                       key: "fluency",
                       label: "Fluency & Coherence",
-                      score: fb.fluencyScore || fb.scoreFluency,
-                      text: fb.fluencyAndCoherence || fb.commentFluency,
+                      score: typeof (fb.fluencyScore || fb.scoreFluency) === 'object'
+                        ? (fb.fluencyScore || fb.scoreFluency)?.score
+                        : (fb.fluencyScore || fb.scoreFluency),
+                      text: getText(fb.fluencyAndCoherence || fb.commentFluency),
                     },
                     {
                       key: "lexical",
                       label: "Lexical Resource",
-                      score: fb.lexicalScore || fb.scoreLexical,
-                      text: fb.lexicalResource || fb.commentLexical,
+                      score: typeof (fb.lexicalScore || fb.scoreLexical) === 'object'
+                        ? (fb.lexicalScore || fb.scoreLexical)?.score
+                        : (fb.lexicalScore || fb.scoreLexical),
+                      text: getText(fb.lexicalResource || fb.commentLexical),
                     },
                     {
                       key: "grammar",
                       label: "Grammatical Range",
-                      score: fb.grammarScore || fb.scoreGrammar,
-                      text: fb.grammaticalRangeAndAccuracy || fb.commentGrammar,
+                      score: typeof (fb.grammarScore || fb.scoreGrammar) === 'object'
+                        ? (fb.grammarScore || fb.scoreGrammar)?.score
+                        : (fb.grammarScore || fb.scoreGrammar),
+                      text: getText(fb.grammaticalRangeAndAccuracy || fb.commentGrammar),
                     },
                     {
                       key: "pronunciation",
                       label: "Pronunciation",
-                      score: fb.pronunciationScore || fb.scorePronunciation,
-                      text: fb.pronunciation || fb.commentPronunciation,
+                      score: typeof (fb.pronunciationScore || fb.scorePronunciation) === 'object'
+                        ? (fb.pronunciationScore || fb.scorePronunciation)?.score
+                        : (fb.pronunciationScore || fb.scorePronunciation),
+                      text: getText(fb.pronunciation || fb.commentPronunciation),
                     },
                   ];
                   const collapseItems = (
@@ -1268,33 +1388,46 @@ const TeacherQueuePage = () => {
                   ) : null;
                 })()}
 
-              {/* Teacher Scoring Form */}
-              <div className="border-t pt-4 mt-4">
-                <h4 className="font-semibold mb-3">Điền điểm và phản hồi:</h4>
-                <Form form={form} layout="vertical">
-                  <Form.Item
-                    name="bandScore"
-                    label="Band Score (0 - 9)"
-                    rules={[
-                      { required: true, message: "Vui lòng nhập điểm" },
-                      {
-                        type: "number",
-                        min: 0,
-                        max: 9,
-                        message: "Điểm phải từ 0 đến 9",
-                      },
-                    ]}
-                  >
-                    <InputNumber
-                      min={0}
-                      max={9}
-                      step={0.5}
-                      className="w-full"
-                      placeholder="VD: 7.0"
-                    />
-                  </Form.Item>
+              {/* Teacher Scoring Form - Only show if not completed */}
+              {ticketDetail.status !== "COMPLETED" && (
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    ✍️ Điền điểm và phản hồi
+                  </h4>
+                  <Form form={form} layout="vertical">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <Form.Item
+                        name="bandScore"
+                        label="Band Score (0 - 9)"
+                        rules={[
+                          { required: true, message: "Vui lòng nhập điểm" },
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 9,
+                            message: "Điểm phải từ 0 đến 9",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          min={0}
+                          max={9}
+                          step={0.5}
+                          className="w-full"
+                          placeholder="VD: 7.0"
+                        />
+                      </Form.Item>
+                      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="text-xs text-gray-500 mb-1">Band AI hiện tại</div>
+                          <div className="text-xl font-bold text-blue-600">
+                            {ticketDetail.aiBandScore || "N/A"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-                  {isWriting ? (
+                    {isWriting ? (
                     <>
                       <Form.Item
                         name="taskResponse"
@@ -1423,6 +1556,7 @@ const TeacherQueuePage = () => {
                   )}
                 </Form>
               </div>
+              )}
             </div>
           )
         )}
