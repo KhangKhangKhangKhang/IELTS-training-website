@@ -1,30 +1,30 @@
-// CreatePost - Updated with emoji picker
-import { useState } from "react";
+// CreatePost - composer đăng bài, emoji + upload ảnh thuần Tailwind
+import { useRef, useState } from "react";
 import { createPostAPI } from "@/services/apiForum";
-import { Input, Button, message, Upload, Avatar, Tooltip, Popover } from "antd";
-import {
-  PaperClipOutlined,
-  PictureOutlined,
-  SmileOutlined,
-  SendOutlined,
-  CloseCircleFilled,
-} from "@ant-design/icons";
+import { message } from "antd";
 import { useAuth } from "@/context/authContext";
 import EmojiPicker from "emoji-picker-react";
+import Avatar from "@/components/Forum/UI/Avatar";
 
-const { TextArea } = Input;
+const toneFromId = (id = "") => {
+  const palette = ["#6366f1", "#06b6d4", "#f43f5e", "#f59e0b", "#8b5cf6", "#10b981", "#ec4899"];
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return palette[Math.abs(h) % palette.length];
+};
 
 const CreatePost = ({ idForumThreads, onSuccess }) => {
   const { user } = useAuth();
   const [content, setContent] = useState("");
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const fileInputRef = useRef(null);
 
   const handlePost = async () => {
     if (!content.trim()) {
-      return message.error("Vui lòng nhập nội dung");
+      message.error("Vui lòng nhập nội dung");
+      return;
     }
 
     const form = new FormData();
@@ -37,16 +37,16 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
     try {
       const res = await createPostAPI(form);
 
-      const moderationStatus = res?.data?.moderation?.status;
-      const moderationReason = res?.data?.moderation?.explanation;
+      const status = res?.data?.moderation?.status;
+      const reason = res?.data?.moderation?.explanation;
 
-      if (moderationStatus === "auto_approved" || moderationStatus === "approved") {
+      if (status === "auto_approved" || status === "approved") {
         message.success("Đăng bài thành công và đã được hiển thị.");
-      } else if (moderationStatus === "needs_review" || moderationStatus === "pending") {
+      } else if (status === "needs_review" || status === "pending") {
         message.info("Bài viết đã gửi, đang chờ duyệt thủ công.");
-      } else if (moderationStatus === "auto_rejected") {
+      } else if (status === "auto_rejected") {
         message.warning(
-          moderationReason || "Bài viết bị từ chối tự động, vui lòng chỉnh sửa và đăng lại."
+          reason || "Bài viết bị từ chối tự động, vui lòng chỉnh sửa và đăng lại.",
         );
       } else {
         message.success("Đăng bài thành công!");
@@ -54,161 +54,124 @@ const CreatePost = ({ idForumThreads, onSuccess }) => {
 
       setContent("");
       setFile(null);
-      onSuccess(res.data);
-    } catch (error) {
+      // Luôn gọi onSuccess, kể cả khi moderation pending/auto_rejected
+      // để parent reload list (sẽ filter ra post không được duyệt).
+      onSuccess?.(res?.data);
+    } catch {
       message.error("Đăng bài thất bại!");
     } finally {
       setLoading(false);
     }
   };
 
-  const onEmojiClick = (emojiData) => {
-    setContent((prev) => prev + emojiData.emoji);
-    setShowEmojiPicker(false);
+  const onFileChange = (e) => {
+    const f = e.target.files?.[0];
+    if (f) setFile(f);
   };
 
-  const emojiPickerContent = (
-    <div className="emoji-picker-container">
-      <EmojiPicker
-        onEmojiClick={onEmojiClick}
-        width={320}
-        height={400}
-        searchPlaceHolder="Tìm emoji..."
-        previewConfig={{ showPreview: false }}
-        skinTonesDisabled
-        lazyLoadEmojis
-        categories={[
-          { name: "Hay dùng", category: "suggested" },
-          { name: "Mặt cười", category: "smileys_people" },
-          { name: "Động vật", category: "animals_nature" },
-          { name: "Đồ ăn", category: "food_drink" },
-          { name: "Hoạt động", category: "activities" },
-          { name: "Du lịch", category: "travel_places" },
-          { name: "Vật thể", category: "objects" },
-          { name: "Biểu tượng", category: "symbols" },
-        ]}
-      />
-    </div>
-  );
-
   return (
-    <div
-      className={`bg-white dark:bg-slate-800 rounded-2xl shadow-sm border-2 transition-all duration-300 p-5 mb-6 ${isFocused
-        ? "border-blue-300 dark:border-blue-600 shadow-md shadow-blue-100 dark:shadow-blue-900/20"
-        : "border-slate-200 dark:border-slate-700"
-        }`}
-    >
-      <div className="flex gap-4">
-        {/* Avatar */}
+    <div className="bg-white border-2 border-[#e6e6ed] rounded-2xl shadow-[0_2px_0_#e6e6ed] p-5">
+      <div className="flex gap-3">
         <Avatar
-          size={48}
-          src={user?.avatar || null}
-          className="border-2 border-blue-100 flex-shrink-0"
-        >
-          {user?.nameUser?.charAt(0)?.toUpperCase()}
-        </Avatar>
+          name={user?.nameUser}
+          tone={toneFromId(user?.idUser || "")}
+          size="lg"
+        />
 
-        {/* Input area */}
-        <div className="flex-1">
-          <TextArea
+        <div className="flex-1 min-w-0">
+          <textarea
             rows={3}
             placeholder={`${user?.nameUser || "Bạn"} ơi, chia sẻ điều gì đó với mọi người...`}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            className="rounded-xl border-0 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 focus:bg-white dark:focus:bg-slate-700 text-slate-900 dark:text-white resize-none text-base"
-            style={{ padding: "12px 16px" }}
+            className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 text-[15px] resize-none focus:border-indigo-500 outline-none bg-slate-50 focus:bg-white transition-colors"
           />
 
-          {/* File preview */}
           {file && (
-            <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-blue-50 dark:from-slate-700 dark:to-slate-700 rounded-xl border border-blue-200 dark:border-slate-600 flex items-center justify-between group">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                  <PictureOutlined className="text-blue-600 dark:text-blue-400" />
+            <div className="mt-2 p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center text-lg">
+                  🖼️
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-xs">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-700 truncate">
                     {file.name}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500">
                     {(file.size / 1024).toFixed(1)} KB
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setFile(null)}
-                className="text-slate-400 hover:text-red-500 transition-colors"
+                className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors flex items-center justify-center"
+                title="Bỏ file"
               >
-                <CloseCircleFilled className="text-lg" />
+                ✕
               </button>
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex mt-4 justify-between items-center">
-            <div className="flex gap-1">
-              <Upload
-                beforeUpload={(f) => {
-                  setFile(f);
-                  return false;
-                }}
-                showUploadList={false}
+          <div className="flex mt-3 justify-between items-center">
+            <div className="flex gap-1 relative">
+              <input
+                ref={fileInputRef}
+                type="file"
+                hidden
                 accept="image/*,video/*"
+                onChange={onFileChange}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-9 h-9 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center justify-center text-lg"
+                title="Thêm ảnh/video"
               >
-                <Tooltip title="Thêm ảnh/video">
-                  <button className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-all duration-200">
-                    <PictureOutlined className="text-xl" />
-                  </button>
-                </Tooltip>
-              </Upload>
+                🖼️
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-9 h-9 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center justify-center text-lg"
+                title="Đính kèm file"
+              >
+                📎
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowEmoji((s) => !s)}
+                className="w-9 h-9 rounded-xl text-slate-500 hover:text-amber-500 hover:bg-amber-50 transition-colors flex items-center justify-center text-lg"
+                title="Emoji"
+              >
+                😊
+              </button>
 
-              <Upload
-                beforeUpload={(f) => {
-                  setFile(f);
-                  return false;
-                }}
-                showUploadList={false}
-              >
-                <Tooltip title="Đính kèm file">
-                  <button className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700 transition-all duration-200">
-                    <PaperClipOutlined className="text-xl" />
-                  </button>
-                </Tooltip>
-              </Upload>
-
-              <Popover
-                content={emojiPickerContent}
-                trigger="click"
-                open={showEmojiPicker}
-                onOpenChange={setShowEmojiPicker}
-                placement="topLeft"
-                arrow={false}
-                overlayClassName="emoji-popover"
-              >
-                <Tooltip title="Thêm emoji">
-                  <button
-                    type="button"
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-slate-700 transition-all duration-200"
-                  >
-                    <SmileOutlined className="text-xl" />
-                  </button>
-                </Tooltip>
-              </Popover>
+              {showEmoji && (
+                <div className="absolute top-full left-0 mt-2 z-20 shadow-2xl rounded-2xl overflow-hidden border-2 border-slate-200">
+                  <EmojiPicker
+                    onEmojiClick={(e) => {
+                      setContent((p) => p + e.emoji);
+                      setShowEmoji(false);
+                    }}
+                    width={300}
+                    height={360}
+                    searchPlaceHolder="Tìm emoji..."
+                    previewConfig={{ showPreview: false }}
+                    skinTonesDisabled
+                    lazyLoadEmojis
+                  />
+                </div>
+              )}
             </div>
 
-            <Button
-              type="primary"
-              loading={loading}
+            <button
+              type="button"
               onClick={handlePost}
-              disabled={!content.trim()}
-              icon={<SendOutlined />}
-              className="bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 border-0 rounded-xl px-6 h-10 font-medium shadow-md shadow-blue-200 dark:shadow-blue-900/20 disabled:opacity-50"
+              disabled={loading || !content.trim()}
+              className="px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-[0_3px_0_#4338ca] active:translate-y-[1px] active:shadow-[0_2px_0_#4338ca] transition-all disabled:opacity-50 disabled:shadow-none flex items-center gap-2"
             >
-              Đăng bài
-            </Button>
+              {loading ? "Đang đăng..." : "Đăng bài"}
+            </button>
           </div>
         </div>
       </div>

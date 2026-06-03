@@ -1,13 +1,12 @@
-// PostList - Updated with enhanced UI
+// PostList - danh sách PostItem, empty state.
 import PostItem from "./PostItem";
-import { FileTextOutlined } from "@ant-design/icons";
 
 const PostList = ({ posts, onPostUpdated, onPostDeleted }) => {
-  if (posts.length === 0)
+  if (!posts || posts.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center">
-        <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-r from-blue-100 to-blue-100 flex items-center justify-center mb-4">
-          <FileTextOutlined className="text-3xl text-blue-400" />
+      <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center">
+        <div className="w-20 h-20 mx-auto rounded-full bg-indigo-50 flex items-center justify-center mb-4 text-3xl">
+          💭
         </div>
         <h3 className="text-slate-700 font-semibold text-lg mb-2">
           Chưa có bài viết nào
@@ -17,6 +16,7 @@ const PostList = ({ posts, onPostUpdated, onPostDeleted }) => {
         </p>
       </div>
     );
+  }
 
   return (
     <div className="space-y-4">

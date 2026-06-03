@@ -1,68 +1,70 @@
-// CommentItem - Updated with enhanced UI
+// CommentItem - 1 bình luận, dùng UI Kit + inline edit
 import { useState } from "react";
-import { Avatar, Button, Modal, Input, message, Tooltip } from "antd";
-import {
-  LikeOutlined,
-  LikeFilled,
-  EditOutlined,
-  DeleteOutlined,
-  HeartFilled,
-} from "@ant-design/icons";
+import { Modal, message } from "antd";
 import {
   toggleCommentLikeAPI,
   updateCommentAPI,
   deleteCommentAPI,
 } from "@/services/apiForum";
 import { useAuth } from "@/context/authContext";
+import Avatar from "@/components/Forum/UI/Avatar";
+
+const toneFromId = (id = "") => {
+  const palette = ["#6366f1", "#06b6d4", "#f43f5e", "#f59e0b", "#8b5cf6", "#10b981", "#ec4899"];
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return palette[Math.abs(h) % palette.length];
+};
+
+const formatTimeAgo = (date) => {
+  const diffMs = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Vừa xong";
+  if (mins < 60) return `${mins}p`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  return new Date(date).toLocaleDateString("vi-VN");
+};
 
 const CommentItem = ({ comment, onUpdated, onDeleted }) => {
   const { user } = useAuth();
-  const [liked, setLiked] = useState(comment.isCommentLikedByCurrentUser);
-  const [count, setCount] = useState(comment.commentLikeCount);
-  const [openEdit, setOpenEdit] = useState(false);
-  const [newContent, setNewContent] = useState(comment.content);
-  const [isHovered, setIsHovered] = useState(false);
+  const [liked, setLiked] = useState(!!comment.isCommentLikedByCurrentUser);
+  const [count, setCount] = useState(comment.commentLikeCount || 0);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(comment.content);
 
-  // Kiểm tra quyền: ADMIN hoặc chính chủ comment
-  const canAction =
-    user?.role === "ADMIN" || (user && user.idUser === comment.idUser);
-
-  // Format time ago
-  const getTimeAgo = (date) => {
-    const now = new Date();
-    const past = new Date(date);
-    const diffMs = now - past;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-
-    if (diffMins < 1) return "Vừa xong";
-    if (diffMins < 60) return `${diffMins}p`;
-    if (diffHours < 24) return `${diffHours}h`;
-    return past.toLocaleDateString("vi-VN");
-  };
+  const canEdit = user?.idUser === comment.idUser;
+  const canDelete = user?.role === "ADMIN" || canEdit;
 
   const handleLike = async () => {
-    setLiked(!liked);
-    setCount((prev) => (liked ? prev - 1 : prev + 1));
-    await toggleCommentLikeAPI({
-      idForumComment: comment.idForumComment,
-      idUser: user.idUser,
-    });
+    setLiked((v) => !v);
+    setCount((c) => (liked ? c - 1 : c + 1));
+    try {
+      await toggleCommentLikeAPI({
+        idForumComment: comment.idForumComment,
+        idUser: user.idUser,
+      });
+    } catch {
+      // rollback
+      setLiked(liked);
+      setCount(count);
+    }
   };
 
-  const handleUpdate = async () => {
+  const handleSave = async () => {
+    if (!draft.trim()) return;
     try {
       const body = {
         idForumPost: comment.idForumPost,
         idUser: user.idUser,
-        content: newContent,
+        content: draft,
       };
       await updateCommentAPI(comment.idForumComment, body);
-      onUpdated && onUpdated(newContent);
-      message.success("Đã cập nhật bình luận!");
-      setOpenEdit(false);
+      message.success("Đã cập nhật bình luận");
+      onUpdated?.(comment.idForumComment, draft);
+      setEditing(false);
     } catch {
-      message.error("Cập nhật thất bại!");
+      message.error("Cập nhật thất bại");
     }
   };
 
@@ -76,122 +78,95 @@ const CommentItem = ({ comment, onUpdated, onDeleted }) => {
       onOk: async () => {
         try {
           await deleteCommentAPI(comment.idForumComment);
-          message.success("Đã xóa bình luận!");
-          // Gọi callback để cha xóa khỏi state
-          onDeleted && onDeleted(comment.idForumComment);
-        } catch (error) {
-          message.error("Xóa thất bại!");
+          message.success("Đã xóa bình luận");
+          onDeleted?.(comment.idForumComment);
+        } catch {
+          message.error("Xóa thất bại");
         }
       },
     });
   };
 
   return (
-    <div
-      className={`p-4 rounded-2xl transition-all duration-300 ${isHovered
-        ? "bg-gradient-to-r from-blue-50 to-blue-50 dark:from-slate-700 dark:to-slate-700 border-2 border-blue-100 dark:border-blue-800"
-        : "bg-slate-50 dark:bg-slate-800 border-2 border-transparent"
-        }`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="flex gap-3">
-        <Avatar
-          size={40}
-          src={comment.user?.avatar || null}
-          className="border-2 border-white shadow-sm flex-shrink-0"
-        >
-          {comment.user?.nameUser?.charAt(0)?.toUpperCase()}
-        </Avatar>
+    <div className="group flex items-start gap-2.5 p-2.5 rounded-2xl hover:bg-slate-50 transition-colors">
+      <Avatar
+        name={comment.user?.nameUser || "?"}
+        tone={toneFromId(comment.user?.idUser || "")}
+        size="sm"
+      />
 
-        <div className="flex-1 min-w-0">
-          {/* Comment bubble */}
-          <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm border border-slate-100 dark:border-slate-600">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-slate-900 dark:text-white text-sm hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors">
-                {comment.user?.nameUser}
-              </span>
-              <Tooltip
-                title={new Date(comment.created_at).toLocaleString("vi-VN")}
-              >
-                <span className="text-xs text-slate-400 cursor-help">
-                  • {getTimeAgo(comment.created_at)}
-                </span>
-              </Tooltip>
+      <div className="flex-1 min-w-0">
+        <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="font-bold text-sm text-slate-900">
+              {comment.user?.nameUser || "Người dùng"}
+            </span>
+            <span className="text-[11px] text-slate-400">
+              {formatTimeAgo(comment.created_at)}
+            </span>
+          </div>
+          {editing ? (
+            <div className="mt-1.5 space-y-2">
+              <textarea
+                rows={2}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none resize-none"
+              />
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => {
+                    setEditing(false);
+                    setDraft(comment.content);
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
+                >
+                  Lưu
+                </button>
+              </div>
             </div>
-
-            <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
+          ) : (
+            <p className="text-sm text-slate-700 leading-relaxed">
               {comment.content}
             </p>
-          </div>
+          )}
+        </div>
 
-          {/* Actions */}
-          <div className="flex gap-4 items-center mt-2 ml-1">
+        <div className="flex items-center gap-3 mt-1 ml-1">
+          <button
+            onClick={handleLike}
+            className={`flex items-center gap-1 text-xs font-bold transition-colors ${
+              liked ? "text-rose-500" : "text-slate-500 hover:text-rose-500"
+            }`}
+          >
+            {liked ? "❤️" : "🤍"}
+            {count > 0 && <span>{count}</span>}
+          </button>
+
+          {canEdit && !editing && (
             <button
-              onClick={handleLike}
-              className={`flex items-center gap-1.5 text-xs font-medium transition-all duration-200 ${liked
-                ? "text-blue-500"
-                : "text-slate-500 dark:text-slate-400 hover:text-blue-500"
-                }`}
+              onClick={() => setEditing(true)}
+              className="text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors"
             >
-              {liked ? (
-                <HeartFilled className="text-sm" />
-              ) : (
-                <LikeOutlined className="text-sm" />
-              )}
-              <span>{count > 0 ? count : "Thích"}</span>
+              Sửa
             </button>
-
-            {canAction && (
-              <>
-                <button
-                  onClick={() => setOpenEdit(true)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors"
-                >
-                  <EditOutlined className="text-sm" />
-                  <span>Sửa</span>
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-red-500 transition-colors"
-                >
-                  <DeleteOutlined className="text-sm" />
-                  <span>Xóa</span>
-                </button>
-              </>
-            )}
-          </div>
+          )}
+          {canDelete && !editing && (
+            <button
+              onClick={handleDelete}
+              className="text-xs font-bold text-slate-500 hover:text-rose-600 transition-colors"
+            >
+              Xóa
+            </button>
+          )}
         </div>
       </div>
-
-      <Modal
-        title={
-          <span className="text-slate-900 font-semibold">
-            Chỉnh sửa bình luận
-          </span>
-        }
-        open={openEdit}
-        onCancel={() => setOpenEdit(false)}
-        onOk={handleUpdate}
-        okText="Lưu"
-        cancelText="Hủy"
-        className="rounded-2xl"
-        okButtonProps={{
-          className:
-            "bg-gradient-to-r from-blue-600 to-blue-600 border-0 rounded-lg",
-        }}
-        cancelButtonProps={{
-          className: "rounded-lg",
-        }}
-      >
-        <Input.TextArea
-          rows={4}
-          value={newContent}
-          onChange={(e) => setNewContent(e.target.value)}
-          className="rounded-xl border-slate-200 mt-4 focus:border-blue-300"
-          placeholder="Nhập nội dung bình luận..."
-        />
-      </Modal>
     </div>
   );
 };
