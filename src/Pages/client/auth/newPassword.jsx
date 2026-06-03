@@ -1,10 +1,26 @@
+// Pages/client/auth/newPassword.jsx
+// UI adapted from MagicPath "IELTS Auth Screens" (forgot-reset screen)
+// Logic/API calls preserved.
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Lock, ShieldCheck } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Eye, EyeOff, Lock } from "lucide-react";
 import { resetPasswordAPI } from "@/services/apiAuth";
 import { useNavigate, useLocation } from "react-router";
-import { Button } from "@/components/ui/button";
+import AuthShell from "@/components/auth/AuthShell";
+import {
+  AuthInput,
+  AuthButton,
+  ProgressDots,
+} from "@/components/auth/AuthPrimitives";
+
+const scorePassword = (pw) => {
+  let s = 0;
+  if (pw.length >= 8) s++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+  if (/\d/.test(pw)) s++;
+  if (/[^A-Za-z0-9]/.test(pw)) s++;
+  return s;
+};
 
 const NewPassword = () => {
   const [password, setPassword] = useState("");
@@ -41,98 +57,118 @@ const NewPassword = () => {
     }
   };
 
+  const score = scorePassword(password);
+  const rules = [
+    { ok: password.length >= 8, label: "Ít nhất 8 ký tự" },
+    {
+      ok: /[A-Z]/.test(password) && /[a-z]/.test(password),
+      label: "Chữ hoa và chữ thường",
+    },
+    { ok: /\d/.test(password), label: "Có số" },
+    { ok: /[^A-Za-z0-9]/.test(password), label: "Ký tự đặc biệt (!@#$)" },
+  ];
+  const canSubmit =
+    password && password === confirmPassword && score >= 2;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
-      </div>
-
+    <AuthShell title="Bước 3/3 · Đặt mật khẩu mới" icon="🔐">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md relative z-10"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-md mx-auto"
       >
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring" }}
-            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/30 mb-4"
-          >
-            <ShieldCheck className="w-8 h-8 text-white" />
-          </motion.div>
-          <h1 className="text-2xl font-bold text-white">Mật khẩu mới</h1>
-          <p className="text-slate-400 text-sm">Tạo mật khẩu mới cho tài khoản</p>
-        </div>
-
-        {/* Card */}
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-white">Đặt lại mật khẩu</h2>
-            <p className="text-slate-400 mt-1 text-sm">
-              Vui lòng nhập mật khẩu mới của bạn
+        <div className="space-y-5">
+          <div>
+            <h1
+              className="text-3xl font-black text-[#1e1b4b] mb-1"
+              style={{ fontFamily: "Nunito" }}
+            >
+              🔐 Đặt mật khẩu mới
+            </h1>
+            <p className="text-sm text-[#64748b]">
+              Tạo mật khẩu mạnh, dễ nhớ
             </p>
           </div>
 
-          <form onSubmit={handleNewPassword} className="space-y-5">
-            {/* New Password */}
-            <div className="space-y-2">
-              <label className="block text-slate-300 text-sm font-medium">
-                Mật khẩu mới
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu mới"
-                  className="pl-10 pr-10 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20"
-                  required
-                />
+          <ProgressDots current={2} total={3} />
+
+          <form onSubmit={handleNewPassword} className="space-y-4">
+            <AuthInput
+              label="Mật khẩu mới"
+              type={showPassword ? "text" : "password"}
+              placeholder="Tối thiểu 8 ký tự"
+              icon={<Lock className="w-4 h-4 text-[#64748b]" />}
+              value={password}
+              onChange={setPassword}
+              autoFocus
+              rightSlot={
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                  className="pr-4 text-[#64748b] hover:text-[#1e1b4b]"
+                  tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
+              }
+            />
+
+            <AuthInput
+              label="Xác nhận mật khẩu"
+              type={showPassword ? "text" : "password"}
+              placeholder="Nhập lại"
+              icon={<Lock className="w-4 h-4 text-[#64748b]" />}
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              error={
+                confirmPassword && confirmPassword !== password
+                  ? "Mật khẩu không khớp"
+                  : undefined
+              }
+              hint={
+                confirmPassword && confirmPassword === password
+                  ? "Mật khẩu khớp ✓"
+                  : undefined
+              }
+            />
+
+            <div className="bg-[#eef2ff] border-2 border-[#a5b4fc]/40 rounded-2xl p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#4338ca] mb-2">
+                Yêu cầu
               </div>
+              <ul className="space-y-1 text-xs">
+                {rules.map((r) => (
+                  <li
+                    key={r.label}
+                    className={`flex items-center gap-2 font-bold ${
+                      r.ok ? "text-[#047857]" : "text-[#64748b]"
+                    }`}
+                  >
+                    <span>{r.ok ? "✓" : "○"}</span>
+                    <span>{r.label}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            {/* Confirm Password */}
-            <div className="space-y-2">
-              <label className="block text-slate-300 text-sm font-medium">
-                Xác nhận mật khẩu
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Nhập lại mật khẩu"
-                  className="pl-10 pr-10 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <Button
+            <AuthButton
+              tone="indigo"
+              size="lg"
               type="submit"
-              className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all"
+              className="w-full"
+              disabled={!canSubmit}
             >
-              Xác nhận
-            </Button>
+              🔐 Đặt lại mật khẩu
+            </AuthButton>
           </form>
         </div>
       </motion.div>
-    </div>
+    </AuthShell>
   );
 };
 
