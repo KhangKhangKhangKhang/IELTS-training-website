@@ -1,10 +1,17 @@
+// Pages/client/auth/forgetPassword.jsx
+// UI adapted from MagicPath "IELTS Auth Screens" (forgot-email screen)
+// Logic/API calls preserved.
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, KeyRound, ArrowLeft } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Mail } from "lucide-react";
 import { forgetPasswordAPI } from "@/services/apiAuth";
 import { useNavigate } from "react-router";
+import AuthShell from "@/components/auth/AuthShell";
+import {
+  AuthInput,
+  AuthButton,
+  ProgressDots,
+} from "@/components/auth/AuthPrimitives";
 
 const ForgetPassword = () => {
   const [email, setEmail] = useState("");
@@ -27,81 +34,71 @@ const ForgetPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
-      </div>
-
+    <AuthShell title="Bước 1/3 · Quên mật khẩu" icon="🔑">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md relative z-10"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-md mx-auto"
       >
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring" }}
-            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/30 mb-4"
+        <div className="space-y-5">
+          <button
+            type="button"
+            onClick={() => navigate("/login")}
+            className="text-xs font-bold text-[#64748b] hover:text-[#1e1b4b] flex items-center gap-1"
           >
-            <KeyRound className="w-8 h-8 text-white" />
-          </motion.div>
-          <h1 className="text-2xl font-bold text-white">Quên mật khẩu</h1>
-          <p className="text-slate-400 text-sm">Khôi phục quyền truy cập tài khoản</p>
-        </div>
+            ← Quay lại đăng nhập
+          </button>
 
-        {/* Card */}
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-white">Đặt lại mật khẩu</h2>
-            <p className="text-slate-400 mt-1 text-sm">
-              Nhập email để nhận mã xác thực
+          <div>
+            <h1
+              className="text-3xl font-black text-[#1e1b4b] mb-1"
+              style={{ fontFamily: "Nunito" }}
+            >
+              🔑 Quên mật khẩu?
+            </h1>
+            <p className="text-sm text-[#64748b]">
+              Nhập email — chúng tôi sẽ gửi mã OTP để đặt lại
             </p>
           </div>
 
-          <form onSubmit={handleForgetPassword} className="space-y-5">
-            {/* Email */}
-            <div className="space-y-2">
-              <label className="block text-slate-300 text-sm font-medium">
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className="pl-10 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/20"
-                  required
-                />
-              </div>
-            </div>
+          <ProgressDots current={0} total={3} />
 
-            {/* Submit Button */}
-            <Button
+          <form onSubmit={handleForgetPassword} className="space-y-4">
+            <AuthInput
+              label="Email đã đăng ký"
+              type="email"
+              placeholder="you@example.com"
+              icon={<Mail className="w-4 h-4 text-[#64748b]" />}
+              value={email}
+              onChange={setEmail}
+              autoFocus
+            />
+
+            <AuthButton
+              tone="indigo"
+              size="lg"
               type="submit"
-              className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all"
+              className="w-full"
+              disabled={!email}
             >
-              Gửi mã xác thực
-            </Button>
-          </form>
+              Gửi mã OTP →
+            </AuthButton>
 
-          {/* Back to Login */}
-          <button
-            onClick={() => navigate("/login")}
-            className="w-full mt-4 flex items-center justify-center gap-2 text-slate-400 hover:text-white transition-colors py-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại đăng nhập</span>
-          </button>
+            <div className="text-center text-xs text-[#64748b]">
+              Nhớ mật khẩu rồi?{" "}
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="font-extrabold text-[#6366f1] hover:underline"
+              >
+                Đăng nhập
+              </button>
+            </div>
+          </form>
         </div>
       </motion.div>
-    </div>
+    </AuthShell>
   );
 };
 
