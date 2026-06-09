@@ -13,7 +13,6 @@ import {
   getPartByIdAPI,
   createPartAPI,
 } from "@/services/apiTest";
-import TestInfoEditor from "@/components/test/teacher/TestInfoEditor";
 
 const SKILL_FROM_TYPE = {
   READING: "READING",
@@ -112,12 +111,6 @@ export const IELTSTestEditor = ({
     }
   }, [parts, skill]);
 
-  // Auto-reset sub-tab when skill changes
-  const changeSkill = (s) => {
-    setSkill(s);
-    setTab("questions");
-  };
-
   // Keep initial skill in sync with exam.testType (in case it loads later)
   useEffect(() => {
     if (exam?.testType && SKILL_FROM_TYPE[exam.testType]) {
@@ -165,18 +158,21 @@ export const IELTSTestEditor = ({
     }));
   })();
 
-  const renderBody = () => {
-    if (tab === "settings") {
-      return (
-        <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] p-5">
-          <h2 className="text-lg font-black text-[#1e1b4b] mb-4">
-            ⚙️ Test Settings
-          </h2>
-          <TestInfoEditor exam={exam} onUpdate={onExamUpdate} />
-        </div>
-      );
-    }
+  const activeSidebarIdx = Math.max(
+    0,
+    sidebarParts.findIndex((p) => p.id === activePartId)
+  );
 
+  const handleSidebarSelect = (idx) => {
+    const item = sidebarParts[idx];
+    if (!item) return;
+    if (skill === "READING" || skill === "LISTENING") {
+      setActivePartId(item.id);
+      setTab("questions");
+    }
+  };
+
+  const renderBody = () => {
     // READING / LISTENNING share one PartsContext
     if (skill === "READING" || skill === "LISTENING") {
       return (
@@ -209,7 +205,9 @@ export const IELTSTestEditor = ({
       <EditorSidebar
         skill={skill}
         parts={sidebarParts}
-        activeIdx={0}
+        activeIdx={activeSidebarIdx}
+        onSelect={handleSidebarSelect}
+        onCreate={skill === "READING" || skill === "LISTENING" ? createPart : undefined}
         exam={exam}
         totalQuestions={totalQuestions}
         targetQuestions={targetQuestions}
@@ -218,13 +216,13 @@ export const IELTSTestEditor = ({
       <main className="flex-1 min-w-0 flex flex-col">
         <EditorHeader
           skill={skill}
-          onSkillChange={changeSkill}
           tab={tab}
           onTabChange={setTab}
           exam={exam}
           onPreview={onPreview}
           onImportPdf={onImportPdf}
           onPublish={onPublish}
+          onExamUpdate={onExamUpdate}
         />
 
         <div className="flex-1 grid grid-cols-1 xl:grid-cols-[1fr_340px] overflow-hidden">

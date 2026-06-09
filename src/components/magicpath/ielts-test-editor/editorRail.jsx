@@ -43,15 +43,26 @@ export function EditorRail({ skill }) {
     <aside className="hidden xl:block w-[340px] shrink-0 border-l-2 border-[#e6e6ed] bg-white">
       <div className="sticky top-[120px] p-4 space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto">
         <div className="bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4338ca] text-white rounded-3xl shadow-[0_3px_0_#0b0a1f] p-4">
-          <div className="text-[10px] font-bold uppercase tracking-wider opacity-90 mb-2">
-            📱 Student Preview
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider opacity-90">
+                Student preview
+              </div>
+              <div className="text-[11px] opacity-70 font-semibold">Approximate learner view</div>
+            </div>
+            <span className="px-2 py-1 rounded-lg bg-white/15 text-[10px] font-black">Live</span>
           </div>
           <PreviewBlock skill={skill} />
         </div>
 
         <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] p-4">
-          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#fb7185] mb-2">
-            ⚠️ Validation
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#fb7185]">
+              Validation
+            </div>
+            <span className="text-[10px] font-black text-[#4338ca] bg-[#eef2ff] px-2 py-0.5 rounded-full">
+              {items.filter((i) => i.ok).length}/{items.length}
+            </span>
           </div>
           <ul className="space-y-2 text-xs">
             {items.map((v, i) => (
@@ -72,16 +83,28 @@ export function EditorRail({ skill }) {
           </ul>
         </div>
 
-        <div className="bg-[#eef2ff] border-2 border-[#a5b4fc]/40 rounded-3xl p-4 flex gap-3">
-          <div className="text-2xl flex-none">🦉</div>
-          <div>
-            <div className="text-xs font-extrabold text-[#4338ca] mb-1">
-              Test prep tips
-            </div>
-            <div className="text-xs text-[#1e1b4b] leading-relaxed">
-              {TIPS[skill]}
+        <div className="bg-[#eef2ff] border-2 border-[#c7d2fe] rounded-3xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-extrabold text-[#4338ca]">Prep tip</div>
+            <div className="w-8 h-8 rounded-xl bg-white border border-[#c7d2fe] flex items-center justify-center text-[10px] font-black text-[#4338ca]">
+              IELTS
             </div>
           </div>
+          <div className="text-xs text-[#1e1b4b] leading-relaxed">
+            {TIPS[skill]}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] p-4 space-y-3">
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#64748b]">
+            Quick actions
+          </div>
+          <button className="w-full px-3 py-2 rounded-xl bg-[#eef2ff] text-[#4338ca] text-xs font-black text-left hover:bg-[#e0e7ff] transition-colors">
+            Review incomplete fields
+          </button>
+          <button className="w-full px-3 py-2 rounded-xl bg-[#f8fafc] text-[#475569] border border-[#e2e8f0] text-xs font-black text-left hover:border-[#6366f1] transition-colors">
+            Check student preview
+          </button>
         </div>
       </div>
     </aside>

@@ -3,8 +3,11 @@
 // - sub-type groups (which qType picks which sub-type)
 // - validation rules (which fields are required)
 
+// Family key matches the canvas `typeMeta` key (FILL_BLANK, MATCHING) so
+// `subTypesByFamily[family]` resolves directly in both AddGroupModal and
+// QuestionQuickForm without any remapping.
 const subTypesByFamily = {
-  FILL_IN_THE_BLANK: [
+  FILL_BLANK: [
     { key: "SENTENCE_COMPLETION", label: "Sentence completion" },
     { key: "SUMMARY_COMPLETION", label: "Summary completion" },
     { key: "NOTE_COMPLETION", label: "Note completion" },
@@ -17,6 +20,63 @@ const subTypesByFamily = {
     { key: "MATCHING_FEATURES", label: "Matching features" },
     { key: "MATCHING_SENTENCE_ENDINGS", label: "Sentence endings" },
   ],
+};
+
+const QUESTION_FAMILY_LABELS = {
+  FILL_BLANK: "Fill in blanks",
+  MATCHING: "Matching",
+};
+
+const QUESTION_SUBTYPE_LABELS = {
+  SENTENCE_COMPLETION: "Sentence",
+  SUMMARY_COMPLETION: "Summary",
+  NOTE_COMPLETION: "Note",
+  TABLE_COMPLETION: "Table",
+  FLOW_CHART_COMPLETION: "Flow Chart",
+  MATCHING_HEADING: "Headings",
+  MATCHING_INFORMATION: "Information",
+  MATCHING_FEATURES: "Features",
+  MATCHING_SENTENCE_ENDINGS: "Sentence Endings",
+};
+
+const QUESTION_TYPE_LABELS = {
+  MULTIPLE_CHOICE: "Multiple choice",
+  TRUE_FALSE_NOT_GIVEN: "True / False / Not Given",
+  YES_NO_NOT_GIVEN: "Yes / No / Not Given",
+  SHORT_ANSWER: "Short answer",
+  DIAGRAM_LABELING: "Diagram labelling",
+  OTHER: "Other",
+  ...Object.fromEntries(
+    Object.entries(QUESTION_SUBTYPE_LABELS).map(([key, label]) => {
+      const family = [
+        "SENTENCE_COMPLETION",
+        "SUMMARY_COMPLETION",
+        "NOTE_COMPLETION",
+        "TABLE_COMPLETION",
+        "FLOW_CHART_COMPLETION",
+      ].includes(key)
+        ? QUESTION_FAMILY_LABELS.FILL_BLANK
+        : QUESTION_FAMILY_LABELS.MATCHING;
+      return [key, `${family} — ${label}`];
+    })
+  ),
+};
+
+const getQuestionTypeDisplay = (type) => {
+  if (QUESTION_SUBTYPE_LABELS[type]) {
+    const isFill = [
+      "SENTENCE_COMPLETION",
+      "SUMMARY_COMPLETION",
+      "NOTE_COMPLETION",
+      "TABLE_COMPLETION",
+      "FLOW_CHART_COMPLETION",
+    ].includes(type);
+    const family = isFill ? QUESTION_FAMILY_LABELS.FILL_BLANK : QUESTION_FAMILY_LABELS.MATCHING;
+    const subtype = QUESTION_SUBTYPE_LABELS[type];
+    return { family, subtype, full: `${family} — ${subtype}` };
+  }
+  const full = QUESTION_TYPE_LABELS[type] || type;
+  return { family: full, subtype: "", full };
 };
 
 const TEMPLATES = {
@@ -145,8 +205,8 @@ const TEMPLATES = {
 // - Otherwise qType is already a specific sub-type.
 const resolveSubType = (qType, existing) => {
   if (subTypesByFamily[qType]) {
-    if (existing?.questionType && qType === "FILL_IN_THE_BLANK" &&
-        subTypesByFamily.FILL_IN_THE_BLANK.find((s) => s.key === existing.questionType)) {
+    if (existing?.questionType && qType === "FILL_BLANK" &&
+        subTypesByFamily.FILL_BLANK.find((s) => s.key === existing.questionType)) {
       return existing.questionType;
     }
     if (existing?.questionType && qType === "MATCHING" &&
@@ -233,4 +293,13 @@ const validateMetadata = (qType, metadata) => {
   return { ok: Object.keys(errors).length === 0, errors };
 };
 
-export { subTypesByFamily, TEMPLATES, resolveSubType, validateMetadata };
+export {
+  subTypesByFamily,
+  QUESTION_TYPE_LABELS,
+  QUESTION_FAMILY_LABELS,
+  QUESTION_SUBTYPE_LABELS,
+  getQuestionTypeDisplay,
+  TEMPLATES,
+  resolveSubType,
+  validateMetadata,
+};

@@ -1,27 +1,30 @@
-import React from "react";
-import { SKILL_META, StackedButton, SkillSwitcher } from "./editorUI";
+import React, { useState } from "react";
+import { Modal } from "antd";
+import { SKILL_META, StackedButton } from "./editorUI";
+import TestInfoEditor from "@/components/test/teacher/TestInfoEditor";
 
 export function EditorHeader({
   skill,
-  onSkillChange,
   tab,
   onTabChange,
   exam,
   onPreview,
   onImportPdf,
   onPublish,
+  onExamUpdate,
   busy = false,
 }) {
   const meta = SKILL_META[skill];
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const hasContentTab = skill === "READING";
   const contentLabel =
     skill === "READING"
-      ? "📄 Passage"
+      ? "Passage"
       : skill === "LISTENING"
-      ? "🎧 Audio & Script"
+      ? "Audio & Script"
       : skill === "WRITING"
-      ? "🖊️ Prompt"
-      : "🗣️ Topics & Questions";
+      ? "Prompt"
+      : "Topics & Questions";
   const questionsLabel =
     skill === "WRITING" || skill === "SPEAKING" ? null : "❓ Questions";
 
@@ -32,7 +35,6 @@ export function EditorHeader({
     ...(questionsLabel
       ? [{ id: "questions", label: questionsLabel, count: null }]
       : [{ id: "questions", label: contentLabel, count: null }]),
-    { id: "settings", label: "⚙️ Settings", count: null },
   ];
 
   return (
@@ -59,7 +61,7 @@ export function EditorHeader({
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <h1 className="text-lg font-black text-[#1e1b4b] truncate">
-              {meta.icon} {exam?.title || "Untitled test"}
+              {exam?.title || "Untitled test"}
             </h1>
             <span className="text-[10px] font-extrabold uppercase bg-[#fef3c7] text-[#b45309] px-2 py-0.5 rounded-full">
               Draft
@@ -67,17 +69,28 @@ export function EditorHeader({
           </div>
         </div>
 
-        <SkillSwitcher value={skill} onChange={onSkillChange} />
-
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="flex items-center gap-3 px-4 py-2 rounded-2xl border-2 border-[#e2e8f0] bg-[#f8fafc] shadow-[0_2px_0_#cbd5e1] text-left hover:border-[#6366f1] active:translate-y-[2px] transition-all"
+          >
+            <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
+            <span>
+              <span className="block text-[10px] font-extrabold uppercase tracking-wider text-[#64748b]">Settings</span>
+              <span className="block text-xs font-black text-[#1e1b4b]">
+                {exam?.level || "EASY"} · {exam?.duration || 0} min · {exam?.numberQuestion || 0} Qs
+              </span>
+            </span>
+          </button>
           <StackedButton tone="ghost" onClick={onPreview}>
-            👁 Preview
+            Preview
           </StackedButton>
           <StackedButton tone="cyan" onClick={onImportPdf} disabled={busy}>
-            📄 Import PDF
+            Import PDF
           </StackedButton>
           <StackedButton tone="indigo" onClick={onPublish} disabled={busy}>
-            🚀 Publish
+            Publish
           </StackedButton>
         </div>
       </div>
@@ -108,6 +121,19 @@ export function EditorHeader({
           </button>
         ))}
       </div>
+
+      <Modal
+        open={settingsOpen}
+        onCancel={() => setSettingsOpen(false)}
+        footer={null}
+        width={920}
+        centered
+        destroyOnHidden
+        title={<span className="text-[#1e1b4b] font-black">Test settings</span>}
+        className="[&_.ant-modal-content]:rounded-[28px] [&_.ant-modal-content]:shadow-none [&_.ant-modal-content]:border-0 [&_.ant-modal-header]:rounded-t-[28px] [&_.ant-modal-header]:bg-[#eef2ff]"
+      >
+        <TestInfoEditor exam={exam} onUpdate={onExamUpdate} defaultEditing />
+      </Modal>
     </header>
   );
 }

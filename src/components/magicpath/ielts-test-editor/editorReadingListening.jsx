@@ -23,6 +23,7 @@ import {
   TEMPLATES,
   resolveSubType as _resolveSubType,
   validateMetadata,
+  getQuestionTypeDisplay,
 } from "./questionTypeMeta";
 import useQuestionDraft from "./useQuestionDraft";
 
@@ -32,7 +33,21 @@ import TFNGForm from "@/components/test/teacher/Detail/TFNGForm";
 import YesNoNotGivenForm from "@/components/test/teacher/Detail/YesNoNotGivenForm";
 import ShortAnswerForm from "@/components/test/teacher/Detail/ShortAnswerForm";
 import FillBlankForm from "@/components/test/teacher/Detail/FillBlankForm";
+import FillSharedEditor from "@/components/test/teacher/Detail/FillSharedEditor";
+import {
+  isFillFamily,
+  defaultSharedForQType,
+  getSharedField,
+  generateTableHTML,
+  parseTableHTML,
+} from "@/components/test/teacher/Detail/fillInsertHelpers";
 import MatchingForm from "@/components/test/teacher/Detail/MatchingForm";
+import MatchingPoolEditor from "./MatchingPoolEditor";
+import {
+  isMatchingQType,
+  getPoolKey,
+  getDefaultPool,
+} from "./matchingHelpers";
 import LabelingForm from "@/components/test/teacher/Detail/LabelingForm";
 import OtherForm from "@/components/test/teacher/Detail/OtherForm";
 
@@ -101,6 +116,34 @@ const FAMILY_OF = {
   MATCHING_SENTENCE_ENDINGS: "MATCHING",
 };
 const getFamilyFromQType = (qType) => FAMILY_OF[qType] || qType;
+
+const TypeBadge = ({ type, compact = false }) => {
+  const display = getQuestionTypeDisplay(type);
+  if (!display.subtype) {
+    return (
+      <span className="px-2 py-0.5 rounded-lg bg-[#eef2ff] text-[#4338ca] text-[10px] font-extrabold uppercase">
+        {display.full}
+      </span>
+    );
+  }
+  if (compact) {
+    return (
+      <span className="px-2 py-0.5 rounded-lg bg-[#eef2ff] text-[#4338ca] text-[10px] font-extrabold uppercase">
+        {display.full}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="px-2 py-0.5 rounded-lg bg-[#eef2ff] text-[#4338ca] text-[10px] font-extrabold uppercase">
+        {display.family}
+      </span>
+      <span className="px-2 py-0.5 rounded-lg bg-[#ecfeff] text-[#0e7490] text-[10px] font-extrabold uppercase">
+        {display.subtype}
+      </span>
+    </span>
+  );
+};
 
 export function QuestionGroups({ idTest, isListening = false, onChange, exam: examProp }) {
   const { user } = useAuth();
@@ -322,8 +365,8 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
                         <div className="font-extrabold text-[#1e1b4b] text-sm truncate">
                           {g.title || meta.label}
                         </div>
-                        <div className="text-[10px] font-bold text-[#64748b] mt-0.5">
-                          {meta.label}
+                        <div className="mt-1">
+                          <TypeBadge type={g.questionType} compact />
                         </div>
                       </div>
                       <span
@@ -440,6 +483,188 @@ function GroupEditor({ group, onSave }) {
   //   stagedEdit: Map<questionId, { payload, draftKey }>
   const [stagedNew, setStagedNew] = useState([]);
   const [stagedEdit, setStagedEdit] = useState({});
+  // Shared pool for the four matching sub-types. Stored as an object
+  // { [poolKey]: array } so the same shape can be merged into each
+  // question's metadata (and consumed by MatchingForm via pool.headings,
+  // pool.paragraphLabels, etc.).
+  const [matchingPool, setMatchingPool] = useState(() => {
+    if (!isMatchingQType(group.questionType)) return null;
+    const firstQ = (Array.isArray(questions) ? questions : [])[0];
+    const md = firstQ?.metadata || {};
+    const key = getPoolKey(group.questionType);
+    const fromQ = key === "paragraphLabels" ? md.paragraphLabels : md[key];
+    const arr = (Array.isArray(fromQ) && fromQ.length > 0) ? fromQ : getDefaultPool(group.questionType);
+    // Backfill _uid on object-shape items so PoolItemRow keeps a stable key
+    // across re-renders (otherwise typing a char would remount the row and
+    // steal focus).
+    const withUid = Array.isArray(arr)
+      ? arr.map((it) =>
+          it && typeof it === "object" && !it._uid
+            ? { ...it, _uid: `row-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }
+            : it
+        )
+      : arr;
+    return { [key]: withUid };
+  });
+
+  // Re-hydrate the pool from the first question's metadata AFTER the
+  // questions array loads from the API. The useState initializer above
+  // runs only once at mount when `questions` is still `[]`, so we need a
+  // follow-up effect to seed from real data on reopen.
+  useEffect(() => {
+    if (!isMatchingQType(group.questionType)) return;
+    if (!Array.isArray(questions) || questions.length === 0) return;
+    const firstQ = questions[0];
+    const md = firstQ?.metadata || {};
+    const key = getPoolKey(group.questionType);
+    const fromQ = key === "paragraphLabels" ? md.paragraphLabels : md[key];
+    if (Array.isArray(fromQ) && fromQ.length > 0) {
+      // Backfill _uid on object-shape items so row keys stay stable on type.
+      const fromQUid = fromQ.map((it) =>
+        it && typeof it === "object" && !it._uid
+          ? { ...it, _uid: `row-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }
+          : it
+      );
+      setMatchingPool((prev) => {
+        const prevArr = prev?.[key];
+        const defaultArr = getDefaultPool(group.questionType);
+        // Avoid clobbering a pool the teacher has already edited in this session.
+        if (Array.isArray(prevArr) && prevArr.length > 0 && prevArr !== defaultArr) {
+          return prev;
+        }
+        return { ...(prev || {}), [key]: fromQUid };
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questions, group.questionType]);
+
+  // =====================================================================
+  // FILL family group-shared state
+  // ---------------------------------------------------------------------
+  // The 5 FILL sub-types (SENTENCE / SUMMARY / NOTE / TABLE / FLOW_CHART)
+  // share a single content (sentence, paragraph, table grid) across every
+  // question in the group. We hold that shared content here at the group
+  // level, hydrate it from the first question's metadata on load, and
+  // broadcast changes into every question's metadata via a separate
+  // useEffect (mirrors the matchingPool pattern above).
+  // =====================================================================
+  const [fillShared, setFillShared] = useState(() => {
+    if (!isFillFamily(group.questionType)) return null;
+    return defaultSharedForQType(group.questionType);
+  });
+
+  // Re-hydrate fillShared from the first question's metadata after the
+  // questions array loads. Guard against clobbering teacher edits.
+  useEffect(() => {
+    if (!isFillFamily(group.questionType)) return;
+    if (!Array.isArray(questions) || questions.length === 0) return;
+    const firstQ = questions[0];
+    const md = firstQ?.metadata || {};
+    setFillShared((prev) => {
+      // If teacher has already typed something, don't clobber.
+      if (prev && prev.fullText && prev.fullText.trim()) return prev;
+      const qType = group.questionType;
+      const sharedField = getSharedField(qType);
+      let fullText = "";
+      if (qType === "TABLE_COMPLETION") {
+        // Table: the grid is encoded as HTML in the question's `content` field.
+        // (We don't store a string in metadata for table.)
+        const parsed = parseTableHTML(firstQ?.content || "");
+        if (parsed) {
+          return {
+            ...(prev || defaultSharedForQType(qType)),
+            tableGrid: parsed.grid,
+            tableRows: parsed.rows,
+            tableCols: parsed.cols,
+            fullText: "",
+            maxWords: Number(md.maxWords) || prev?.maxWords || 1,
+            hasWordBank: !!md.hasWordBank,
+            wordBank: md.wordBank || prev?.wordBank || [],
+          };
+        }
+        return prev || defaultSharedForQType(qType);
+      }
+      fullText = (sharedField && md[sharedField]) || "";
+      return {
+        ...(prev || defaultSharedForQType(qType)),
+        fullText,
+        maxWords: Number(md.maxWords) || prev?.maxWords || 1,
+        hasWordBank: !!md.hasWordBank,
+        wordBank: md.wordBank || prev?.wordBank || [],
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questions, group.questionType]);
+
+  // Broadcast shared changes into every question's metadata + staged slots.
+  useEffect(() => {
+    if (!isFillFamily(group.questionType)) return;
+    if (!fillShared) return;
+    const qType = group.questionType;
+    const sharedField = getSharedField(qType);
+
+    const buildMetadata = (md = {}) => {
+      const next = { ...md, maxWords: fillShared.maxWords };
+      if (fillShared.hasWordBank) {
+        next.hasWordBank = true;
+        next.wordBank = fillShared.wordBank || [];
+      } else {
+        next.hasWordBank = false;
+        delete next.wordBank;
+      }
+      if (qType !== "TABLE_COMPLETION" && qType !== "SENTENCE_COMPLETION" && sharedField) {
+        next[sharedField] = fillShared.fullText;
+      }
+      return next;
+    };
+
+    setQuestions((qs) =>
+      qs.map((q) => ({
+        ...q,
+        metadata: buildMetadata(q.metadata || {}),
+        // For TABLE_COMPLETION the HTML table lives in `content`, not metadata.
+        ...(qType === "TABLE_COMPLETION"
+          ? { content: generateTableHTML(fillShared.tableGrid) }
+          : {}),
+      }))
+    );
+
+    setStagedNew((arr) =>
+      arr.map((s) => {
+        if (!s.payload) return s;
+        return {
+          ...s,
+          payload: {
+            ...s.payload,
+            metadata: buildMetadata(s.payload.metadata || {}),
+            ...(qType === "TABLE_COMPLETION"
+              ? { content: generateTableHTML(fillShared.tableGrid) }
+              : {}),
+          },
+        };
+      })
+    );
+
+    setStagedEdit((m) => {
+      const next = { ...m };
+      Object.keys(next).forEach((id) => {
+        if (!next[id]?.payload) return;
+        next[id] = {
+          ...next[id],
+          payload: {
+            ...next[id].payload,
+            metadata: buildMetadata(next[id].payload.metadata || {}),
+            ...(qType === "TABLE_COMPLETION"
+              ? { content: generateTableHTML(fillShared.tableGrid) }
+              : {}),
+          },
+        };
+      });
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fillShared?.fullText, fillShared?.maxWords, fillShared?.hasWordBank, JSON.stringify(fillShared?.wordBank), JSON.stringify(fillShared?.tableGrid), group.questionType]);
+
   const initRef = useRef(false);
   // Confirm dialog state (controlled modal — antd v5 + React 19 has issues with static Modal.confirm)
   const [confirm, setConfirm] = useState(null); // { title, content, danger, onOk } | null
@@ -490,6 +715,52 @@ function GroupEditor({ group, onSave }) {
     });
   };
 
+  // Broadcast the shared matching pool to all questions, staged-new slots,
+  // and staged-edit payloads. Runs whenever the pool changes.
+  useEffect(() => {
+    if (!isMatchingQType(group.questionType)) return;
+    const key = getPoolKey(group.questionType);
+    if (!key) return;
+    const poolArr = matchingPool?.[key];
+    if (!Array.isArray(poolArr)) return;
+    setQuestions((qs) =>
+      qs.map((q) => ({
+        ...q,
+        metadata: { ...(q.metadata || {}), [key]: poolArr },
+      }))
+    );
+    setStagedNew((arr) =>
+      arr.map((s) => {
+        if (!s.payload) return s; // empty placeholder: no payload to update
+        return {
+          ...s,
+          payload: {
+            ...s.payload,
+            metadata: { ...(s.payload.metadata || {}), [key]: poolArr },
+          },
+        };
+      })
+    );
+    setStagedEdit((m) => {
+      const next = { ...m };
+      Object.keys(next).forEach((id) => {
+        if (!next[id]?.payload) return;
+        next[id] = {
+          ...next[id],
+          payload: {
+            ...next[id].payload,
+            metadata: {
+              ...(next[id].payload.metadata || {}),
+              [key]: poolArr,
+            },
+          },
+        };
+      });
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchingPool, group.questionType]);
+
   // When the user changes the quantity input, sync the slot count.
   // - Top up empty placeholders if new total > current staged count
   // - Trim trailing EMPTY placeholders (only!) if new total < current
@@ -531,6 +802,19 @@ function GroupEditor({ group, onSave }) {
       return next;
     });
   }, [quantity, questions.length, group.idGroupOfQuestions]);
+
+  // When the user clicks "+ Add blank/question", we bump quantity, the
+  // slot-seeding useEffect creates the new stagedNew entry, and this effect
+  // then auto-opens that new slot's form so the teacher can type immediately.
+  const [pendingOpenSlot, setPendingOpenSlot] = useState(false);
+  useEffect(() => {
+    if (!pendingOpenSlot) return;
+    if (!Array.isArray(stagedNew) || stagedNew.length === 0) return;
+    const last = stagedNew[stagedNew.length - 1];
+    if (last?.payload) return; // already filled (shouldn't happen, defensive)
+    setActiveForm({ mode: "create", question: null, draftKey: last.draftKey, slotLocalId: last.localId });
+    setPendingOpenSlot(false);
+  }, [pendingOpenSlot, stagedNew]);
 
   const saveGroup = async () => {
     setSaving(true);
@@ -885,6 +1169,36 @@ function GroupEditor({ group, onSave }) {
         </button>
       </div>
 
+      {isMatchingQType(group.questionType) && (
+        <div className="pt-3">
+          <MatchingPoolEditor
+            qType={group.questionType}
+            pool={matchingPool?.[getPoolKey(group.questionType)] || []}
+            onPoolChange={(arr) => {
+              const k = getPoolKey(group.questionType);
+              setMatchingPool((prev) => ({ ...(prev || {}), [k]: arr }));
+            }}
+          />
+        </div>
+      )}
+
+      {isFillFamily(group.questionType) && group.questionType !== "SENTENCE_COMPLETION" && fillShared && (
+        <div className="pt-3">
+          <FillSharedEditor
+            qType={group.questionType}
+            shared={fillShared}
+            onSharedChange={setFillShared}
+            questionNumbers={(() => {
+              // Use existing question IDs as N. New staged slots have
+              // temporary localIds; map them to position-in-group numbers
+              // (questions.length + idx + 1) once added.
+              const existing = questions.map((q, i) => i + 1);
+              return existing;
+            })()}
+          />
+        </div>
+      )}
+
       {/* Questions list */}
       <div className="pt-3 border-t-2 border-[#e6e6ed] space-y-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -948,11 +1262,14 @@ function GroupEditor({ group, onSave }) {
                       {i + 1}
                     </div>
                     <div className="flex-1 min-w-0">
-                      {staged && (
-                        <div className="text-[9px] font-black uppercase tracking-wider text-[#b45309] mb-0.5">
-                          ✏️ Modified — not saved
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                        <TypeBadge type={q.questionType || group.questionType} compact />
+                        {staged && (
+                          <span className="text-[9px] font-black uppercase tracking-wider text-[#b45309]">
+                            ✏️ Modified — not saved
+                          </span>
+                        )}
+                      </div>
                       <div className="text-sm font-semibold text-[#1e1b4b] leading-relaxed">
                         {q.content || q.textQuestion || (
                           <span className="text-[#be123c] italic text-[12px] font-bold">
@@ -1012,10 +1329,13 @@ function GroupEditor({ group, onSave }) {
                       <QuestionQuickForm
                         key={`edit-${q.idQuestion}`}
                         qType={group.questionType}
+                        pool={matchingPool || {}}
                         mode="edit"
                         groupId={group.idGroupOfQuestions}
                         draftKey={`edit-${q.idQuestion}`}
+                        questionIndex={i}
                         existing={q}
+                        fillShared={fillShared}
                         onUpdate={(payload) => handleStageEdit(payload, `edit-${q.idQuestion}`)}
                         onCancel={() => setActiveForm(null)}
                       />
@@ -1076,8 +1396,11 @@ function GroupEditor({ group, onSave }) {
                         </button>
                       ) : hasContent ? (
                         <>
-                          <div className="text-[9px] font-black uppercase tracking-wider text-[#4338ca] mb-0.5">
-                            🆕 New — not saved
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                            <TypeBadge type={slot.payload.questionType || group.questionType} compact />
+                            <span className="text-[9px] font-black uppercase tracking-wider text-[#4338ca]">
+                              🆕 New — not saved
+                            </span>
                           </div>
                           <div className="text-sm font-semibold text-[#1e1b4b] leading-relaxed">
                             {slot.payload.content}
@@ -1143,10 +1466,13 @@ function GroupEditor({ group, onSave }) {
                       <QuestionQuickForm
                         key={slot.draftKey}
                         qType={group.questionType}
+                        pool={matchingPool || {}}
                         mode="create"
                         groupId={group.idGroupOfQuestions}
                         draftKey={slot.draftKey}
+                        questionIndex={questions.length + idx}
                         initialPayload={slot.payload}
+                        fillShared={fillShared}
                         onAddToGroup={(payload) => handleStageNew(payload, slot.draftKey, slot.localId)}
                         onCancel={() => setActiveForm(null)}
                       />
@@ -1157,6 +1483,24 @@ function GroupEditor({ group, onSave }) {
             })}
           </div>
         )}
+
+        {/* Quick-add button. FILL family is "blank" in IELTS wording; others use "question". */}
+        {(() => {
+          const isFill = FAMILY_OF[group.questionType] === "FILL_BLANK";
+          const handleAdd = () => {
+            setQuantity((q) => Math.min(50, (Number(q) || 0) + 1));
+            setPendingOpenSlot(true);
+          };
+          return (
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border-2 border-dashed border-[#6366f1]/40 bg-white text-[#6366f1] text-xs font-black uppercase tracking-wider hover:border-[#6366f1] hover:bg-[#eef2ff] transition-colors"
+            >
+              <span className="text-base leading-none">+</span> {isFill ? "Add blank" : "Add question"}
+            </button>
+          );
+        })()}
       </div>
 
       <Modal
@@ -1200,14 +1544,17 @@ function GroupEditor({ group, onSave }) {
 // =====================================================================
 function QuestionQuickForm({
   qType,
+  pool = {},
   mode = "create",
   groupId,
   draftKey,
+  questionIndex = 0,
   existing = null,
   initialPayload = null,
   onAddToGroup,
   onUpdate,
   onCancel,
+  fillShared = null,
 }) {
   const initialSubType = (() => {
     if (existing?.questionType) return existing.questionType;
@@ -1261,10 +1608,12 @@ function QuestionQuickForm({
   });
 
   const safeMetadata = metadata ?? {};
-  // Map BE enum (e.g. SENTENCE_COMPLETION) → family (FILL_BLANK) so the
-  // sub-type selector renders for groups saved with a SPECIFIC sub-type too.
+  // Sub-type selector: only when `qType` is itself a family key
+  // (FILL_BLANK / MATCHING). Once the group is saved with a SPECIFIC
+  // sub-type (e.g. MATCHING_HEADING) the user already chose at group
+  // creation — don't let them re-pick a different sub-type per question.
   const family = getFamilyFromQType(qType);
-  const isFamily = family === "FILL_BLANK" || family === "MATCHING";
+  const isFamily = qType === "FILL_BLANK" || qType === "MATCHING";
   const effectiveType = isFamily ? subType : qType;
 
   // For TFNG / YNNG, the BE requires BOTH `content` (top-level) AND
@@ -1299,12 +1648,20 @@ function QuestionQuickForm({
       case "NOTE_COMPLETION":
       case "TABLE_COMPLETION":
       case "FLOW_CHART_COMPLETION":
-        return <FillBlankForm {...common} subType={effectiveType} />;
+        return (
+          <FillBlankForm
+            {...common}
+            subType={effectiveType}
+            readOnlyText={effectiveType === "TABLE_COMPLETION" ? generateTableHTML(fillShared?.tableGrid) : fillShared?.fullText || ""}
+            wordBank={fillShared?.wordBank || []}
+            hasWordBank={!!fillShared?.hasWordBank}
+          />
+        );
       case "MATCHING_HEADING":
       case "MATCHING_INFORMATION":
       case "MATCHING_FEATURES":
       case "MATCHING_SENTENCE_ENDINGS":
-        return <MatchingForm {...common} qType={effectiveType} />;
+        return <MatchingForm {...common} qType={effectiveType} pool={pool} questionIndex={questionIndex} />;
       case "DIAGRAM_LABELING":
         return <LabelingForm {...common} />;
       case "OTHER":
@@ -1381,7 +1738,7 @@ function QuestionQuickForm({
                     : "border-[#e6e6ed] text-[#64748b] hover:border-[#c7d2fe]"
                 }`}
               >
-                {s.label}
+                {getQuestionTypeDisplay(s.key).full}
               </button>
             );
           })}
@@ -1392,6 +1749,10 @@ function QuestionQuickForm({
 
   return (
     <div className="bg-white rounded-2xl border-2 border-[#6366f1] p-3 space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <TypeBadge type={effectiveType} />
+      </div>
+
       {/* Sub-type selector (only for FILL / MATCHING families) */}
       {isFamily && renderSubTypeSelector()}
 
@@ -1471,23 +1832,32 @@ function QuestionQuickForm({
 // Add Group Modal (question type + count + title + instructions)
 // =====================================================================
 function AddGroupModal({ onClose, onCreated, partId, defaultFrom = 1 }) {
-  const [selected, setSelected] = useState("MCQ");
+  // Two pieces of state:
+  // - selectedFamily: canvas family key (one of typeMeta keys: MCQ, TFNG, MATCHING, ...).
+  //   Drives the tile highlight AND whether the sub-type selector shows.
+  // - selectedSubType: BE enum chosen inside the sub-type selector
+  //   (e.g. MATCHING_HEADING). null = use the family's default BE sub-type.
+  const [selectedFamily, setSelectedFamily] = useState("MCQ");
+  const [selectedSubType, setSelectedSubType] = useState(null);
   const [quantity, setQuantity] = useState(4);
   const [title, setTitle] = useState("");
   const [instructions, setInstructions] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Picking a family resets any prior sub-type so we always start with the
+  // family's default BE enum.
+  const handleSelectFamily = (familyKey) => {
+    setSelectedFamily(familyKey);
+    setSelectedSubType(null);
+  };
+
   const handleCreate = async () => {
     setBusy(true);
     try {
-      // If user picked a sub-type, `selected` is already a BE enum
-      // (e.g. SUMMARY_COMPLETION). Otherwise translate canvas → BE.
-      const isSubType = Object.values(subTypesByFamily)
-        .flat()
-        .some((s) => s.key === selected);
-      const beType = isSubType
-        ? selected
-        : TYPE_CANVAS_TO_BACKEND[selected] || "OTHER";
+      // Sub-type (if chosen) takes precedence over the family default.
+      const beType = selectedSubType
+        || TYPE_CANVAS_TO_BACKEND[selectedFamily]
+        || "OTHER";
       await createGroupOfQuestionsAPI({
         idPart: partId,
         questionType: beType,
@@ -1529,11 +1899,11 @@ function AddGroupModal({ onClose, onCreated, partId, defaultFrom = 1 }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {Object.keys(typeMeta).map((t) => {
               const meta = typeMeta[t];
-              const sel = selected === t;
+              const sel = selectedFamily === t;
               return (
                 <button
                   key={t}
-                  onClick={() => setSelected(t)}
+                  onClick={() => handleSelectFamily(t)}
                   className={`p-3 rounded-2xl border-2 text-left transition-all ${
                     sel
                       ? "border-[#6366f1] bg-[#eef2ff] shadow-[0_3px_0_#4338ca]"
@@ -1556,20 +1926,20 @@ function AddGroupModal({ onClose, onCreated, partId, defaultFrom = 1 }) {
             })}
           </div>
 
-          {/* Sub-type selector (only for FILL_IN_THE_BLANK / MATCHING) */}
-          {subTypesByFamily[selected] && (
+          {/* Sub-type selector (only for FILL_BLANK / MATCHING families) */}
+          {subTypesByFamily[selectedFamily] && (
             <div className="mt-4">
               <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
                 Choose a more specific sub-type
               </span>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {subTypesByFamily[selected].map((s) => {
-                  const active = selected === s.key;
+                {subTypesByFamily[selectedFamily].map((s) => {
+                  const active = selectedSubType === s.key;
                   return (
                     <button
                       key={s.key}
                       type="button"
-                      onClick={() => setSelected(s.key)}
+                      onClick={() => setSelectedSubType(s.key)}
                       className={`px-3 py-2 rounded-xl border-2 text-xs font-extrabold transition-all text-left ${
                         active
                           ? "border-[#6366f1] bg-[#eef2ff] text-[#4338ca]"
