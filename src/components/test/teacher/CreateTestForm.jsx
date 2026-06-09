@@ -32,12 +32,26 @@ const CreateTestForm = ({ onSuccess }) => {
   };
 
   const handleSubmit = async () => {
+    // Validate duration client-side: teacher enters minutes, backend
+    // stores seconds. Convert to seconds before sending.
+    const minutes = Number(formData.duration);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      message.error("Vui lòng nhập thời lượng hợp lệ (phút).");
+      return;
+    }
+    if (minutes > 60) {
+      message.error("Thời lượng tối đa là 60 phút.");
+      return;
+    }
+    const seconds = Math.round(minutes * 60);
+
     try {
       setLoading(true);
-      const res = await createTestAPI(formData);
+      const payload = { ...formData, duration: seconds };
+      const res = await createTestAPI(payload);
       if (res?.data) {
         message.success("Tạo đề thành công!");
-        onSuccess(res.data); // Gửi dữ liệu test đã tạo ra ngoài
+        onSuccess(res.data);
       } else {
         message.error("Tạo đề thất bại, vui lòng thử lại.");
         console.log("Response data:", res?.data);
@@ -80,9 +94,12 @@ const CreateTestForm = ({ onSuccess }) => {
         />
 
         <Input
-          placeholder="Thời lượng (phút)"
+          placeholder="Thời lượng (phút, tối đa 60)"
           value={formData.duration}
           onChange={(e) => handleChange("duration", e.target.value)}
+          type="number"
+          min={1}
+          max={60}
         />
 
         <Input
