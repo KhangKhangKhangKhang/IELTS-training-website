@@ -129,10 +129,10 @@ export function EditorHeader({
         width={920}
         centered
         destroyOnHidden
-        title={<span className="text-[#1e1b4b] font-black">Test settings</span>}
-        className="[&_.ant-modal-content]:rounded-[28px] [&_.ant-modal-content]:shadow-none [&_.ant-modal-content]:border-0 [&_.ant-modal-header]:rounded-t-[28px] [&_.ant-modal-header]:bg-[#eef2ff]"
+        closable={false}
+        className="[&_.ant-modal-content]:!bg-transparent [&_.ant-modal-content]:!shadow-none [&_.ant-modal-content]:!border-0 [&_.ant-modal-content]:!p-0 [&_.ant-modal-body]:!p-0"
       >
-        <TestInfoEditor exam={exam} onUpdate={onExamUpdate} defaultEditing />
+        <TestInfoEditor exam={exam} onUpdate={onExamUpdate} defaultEditing onClose={() => setSettingsOpen(false)} />
       </Modal>
     </header>
   );

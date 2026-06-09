@@ -24,7 +24,7 @@ import { useNavigate } from "react-router";
 const { TextArea: AntTextArea } = Input;
 const { Option } = Select;
 
-const TestInfoEditor = ({ exam, onUpdate, defaultEditing = false }) => {
+const TestInfoEditor = ({ exam, onUpdate, defaultEditing = false, onClose }) => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(defaultEditing);
   const [loading, setLoading] = useState(false);
@@ -177,7 +177,7 @@ const TestInfoEditor = ({ exam, onUpdate, defaultEditing = false }) => {
             Keep timing, level, and question count aligned with the IELTS test setup.
           </p>
         </div>
-        <Button type="text" icon={<CloseOutlined />} onClick={() => setIsEditing(false)}>
+        <Button type="text" icon={<CloseOutlined />} onClick={() => (onClose ? onClose() : setIsEditing(false))}>
           Close
         </Button>
       </div>
