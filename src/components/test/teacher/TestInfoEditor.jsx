@@ -39,19 +39,19 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
 
   const [form] = Form.useForm();
 
-  // State lưu trữ File Object thực sự
+  // State to hold the actual File object
   const [newAudioFile, setNewAudioFile] = useState(null);
 
-  // --- FIX CACHE: State để lưu phiên bản audio ---
+  // --- FIX CACHE: State to hold audio version ---
   const [audioVersion, setAudioVersion] = useState(Date.now());
 
-  // Lấy URL gốc
+  // Get raw URL
   const rawAudioSrc = exam?.audio || exam?.audioUrl;
 
-  // Reset version khi chuyển sang đề thi khác
+  // Reset version when switching tests
   useEffect(() => {
     if (exam) {
-      setAudioVersion(Date.now()); // Reset cache buster khi load đề mới
+      setAudioVersion(Date.now()); // Reset cache buster when loading new test
       form.setFieldsValue({
         title: exam.title,
         description: exam.description,
@@ -62,7 +62,7 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
     }
   }, [exam, form]);
 
-  // Tạo URL có gắn đuôi timestamp để chống cache
+  // Append timestamp to URL to bypass cache
   const audioSrcWithCache = rawAudioSrc
     ? `${rawAudioSrc}?v=${audioVersion}`
     : null;
@@ -85,7 +85,7 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
     try {
       const values = await form.validateFields();
       if (!exam?.idTest || !exam?.idUser)
-        return message.error("Thiếu thông tin");
+        return message.error("Missing information");
 
       setLoading(true);
 
@@ -105,20 +105,20 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
       const res = await updateTestInfoAPI(exam.idTest, formData);
 
       if (res?.data) {
-        message.success("Cập nhật thành công!");
+        message.success("Updated successfully!");
         setNewAudioFile(null);
         setIsEditing(false);
 
-        // --- FIX CACHE: Cập nhật timestamp ngay lập tức ---
+        // --- FIX CACHE: Update timestamp immediately ---
         setAudioVersion(Date.now());
 
         if (onUpdate) onUpdate(res.data);
       } else {
-        message.error("Cập nhật thất bại.");
+        message.error("Update failed.");
       }
     } catch (error) {
       console.error(error);
-      message.error("Lỗi khi lưu.");
+      message.error("Save error.");
     } finally {
       setLoading(false);
     }
@@ -149,7 +149,7 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
                 <ClockCircleOutlined /> {exam.duration}p
               </span>
               <span>
-                <QuestionCircleOutlined /> {exam.numberQuestion} câu
+                <QuestionCircleOutlined /> {exam.numberQuestion} questions
               </span>
             </Space>
           </div>
@@ -170,13 +170,13 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
         </div>
 
         <div className="shrink-0">
-          <Tooltip title="Chỉnh sửa thông tin đề">
+          <Tooltip title="Edit test info">
             <Button
               type="primary"
               icon={<EditOutlined />}
               onClick={() => setIsEditing(true)}
             >
-              Sửa thông tin
+              Edit info
             </Button>
           </Tooltip>
         </div>
@@ -191,14 +191,14 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
       bodyStyle={{ padding: "16px 24px" }}
       title={
         <div className="flex justify-between items-center">
-          <span>Chỉnh sửa thông tin đề thi</span>
+          <span>Edit test info thi</span>
           <Button
             type="text"
             icon={<CloseOutlined />}
             danger
             onClick={() => setIsEditing(false)}
           >
-            Đóng
+            Close
           </Button>
         </div>
       }
@@ -208,7 +208,7 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
           <div className="flex-1 mr-8">
             <Form.Item
               name="title"
-              label="Tên đề thi"
+              label="Test title"
               rules={[{ required: true }]}
             >
               <Input size="large" prefix={<FileTextOutlined />} />
@@ -221,13 +221,13 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
             loading={loading}
             className="mt-8 bg-green-600 hover:bg-green-500 border-green-600"
           >
-            Lưu & Đóng
+            Save & Close
           </Button>
         </div>
 
         <Row gutter={24}>
           <Col span={14}>
-            <Form.Item name="description" label="Mô tả">
+            <Form.Item name="description" label="Description">
               <AntTextArea rows={4} showCount maxLength={500} />
             </Form.Item>
 
@@ -236,9 +236,9 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
               <div className="p-4 bg-blue-50 rounded border border-blue-100 mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-semibold text-blue-800">
-                    <SoundOutlined /> File Audio
+                    <SoundOutlined /> Audio File
                   </span>
-                  {newAudioFile && <Tag color="green">Đã chọn file mới</Tag>}
+                  {newAudioFile && <Tag color="green">New file selected</Tag>}
                 </div>
 
                 <Upload
@@ -250,10 +250,10 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
                 >
                   <Button icon={<UploadOutlined />}>
                     {newAudioFile
-                      ? "Đổi file khác"
+                      ? "Change file"
                       : rawAudioSrc
-                      ? "Thay đổi Audio hiện tại"
-                      : "Tải Audio"}
+                      ? "Replace current audio"
+                      : "Upload audio"}
                   </Button>
                 </Upload>
               </div>
@@ -263,13 +263,13 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
           <Col span={10}>
             <Card
               type="inner"
-              title="Cấu hình"
+              title="Settings"
               size="small"
               className="bg-gray-50"
             >
               <Row gutter={16}>
                 <Col span={12}>
-                  <Form.Item name="level" label="Độ khó">
+                  <Form.Item name="level" label="Difficulty">
                     <Select>
                       <Option value="EASY">Easy</Option>
                       <Option value="MEDIUM">Medium</Option>
@@ -278,12 +278,12 @@ const TestInfoEditor = ({ exam, onUpdate }) => {
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item name="duration" label="Thời gian (phút)">
+                  <Form.Item name="duration" label="Duration (min)">
                     <InputNumber min={1} className="w-full" />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
-                  <Form.Item name="numberQuestion" label="Số câu hỏi">
+                  <Form.Item name="numberQuestion" label="Number of questions">
                     <InputNumber
                       min={1}
                       max={getMaxQuestions()}

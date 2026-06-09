@@ -135,3 +135,17 @@ export const saveGrammarViolationAPI = async (data) => {
   const res = await API.post('/grammar/violation', data);
   return res.data;
 };
+
+// Learning summary for the student Grammar hero card
+export const getGrammarLearningSummaryAPI = async (idUser) => {
+  const res = await API.get(`/grammar/learning-summary/${idUser}`);
+  return res.data;
+};
+
+// Topics list for a category with proficiency/accuracy
+export const getGrammarLearningTopicsAPI = async (idUser, idGrammarCategory) => {
+  const res = await API.get(
+    `/grammar/learning-topics/${idUser}/${idGrammarCategory}`
+  );
+  return res.data;
+};

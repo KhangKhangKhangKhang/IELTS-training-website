@@ -1,12 +1,28 @@
 const LEGACY_GROUP_TO_BACKEND_TYPE = {
+  // Legacy / canvas keys
   MCQ: "MULTIPLE_CHOICE",
   TFNG: "TRUE_FALSE_NOT_GIVEN",
   YES_NO_NOTGIVEN: "YES_NO_NOT_GIVEN",
+  YES_NO_NOT_GIVEN: "YES_NO_NOT_GIVEN",
   MATCHING: "MATCHING_FEATURES",
   FILL_BLANK: "SENTENCE_COMPLETION",
   LABELING: "DIAGRAM_LABELING",
   SHORT_ANSWER: "SHORT_ANSWER",
-  OTHER: "SHORT_ANSWER",
+  OTHER: "OTHER",
+  // Pass-through: backend enum values (caller may already send BE format)
+  MULTIPLE_CHOICE: "MULTIPLE_CHOICE",
+  TRUE_FALSE_NOT_GIVEN: "TRUE_FALSE_NOT_GIVEN",
+  YES_NO_NOT_GIVEN: "YES_NO_NOT_GIVEN",
+  MATCHING_HEADING: "MATCHING_HEADING",
+  MATCHING_INFORMATION: "MATCHING_INFORMATION",
+  MATCHING_FEATURES: "MATCHING_FEATURES",
+  MATCHING_SENTENCE_ENDINGS: "MATCHING_SENTENCE_ENDINGS",
+  SENTENCE_COMPLETION: "SENTENCE_COMPLETION",
+  SUMMARY_COMPLETION: "SUMMARY_COMPLETION",
+  NOTE_COMPLETION: "NOTE_COMPLETION",
+  TABLE_COMPLETION: "TABLE_COMPLETION",
+  FLOW_CHART_COMPLETION: "FLOW_CHART_COMPLETION",
+  DIAGRAM_LABELING: "DIAGRAM_LABELING",
 };
 
 const BACKEND_TO_LEGACY_GROUP_TYPE = {
@@ -618,6 +634,24 @@ const buildMetadataFromLegacy = (question, legacyType, groupContext = {}) => {
         hasWordBank: wordBank.length > 0,
         wordBank,
         correctAnswers: ensureCorrectAnswers([correctText]),
+      },
+    };
+  }
+
+  if (legacyType === "OTHER") {
+    const correctTexts = ensureCorrectAnswers(
+      answers.map((ans) => ans?.answer_text).filter(Boolean).length > 0
+        ? answers.map((ans) => ans?.answer_text)
+        : [contentText]
+    );
+
+    return {
+      questionType: "OTHER",
+      metadata: {
+        type: "OTHER",
+        maxWords: 50,
+        correctAnswers: correctTexts,
+        notes: toStringSafe(question?.notes || question?.gradingNotes || ""),
       },
     };
   }

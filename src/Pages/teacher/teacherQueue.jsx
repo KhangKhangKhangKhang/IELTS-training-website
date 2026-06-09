@@ -23,8 +23,8 @@ import {
   Spin,
   Tabs,
   Form,
-  InputNumber,
-  Input,
+  PrintputNumber,
+  Printput,
   Collapse,
 } from "antd";
 import {
@@ -33,7 +33,7 @@ import {
   CheckCircleOutlined,
 } from "@ant-design/icons";
 
-const { TextArea } = Input;
+const { TextArea } = Printput;
 
 const TeacherQueuePage = () => {
   const { user } = useAuth();
@@ -74,7 +74,7 @@ const TeacherQueuePage = () => {
       setCompletedTickets(rawArray);
     } catch (err) {
       console.error("Failed to fetch completed tickets:", err);
-      message.error("Không thể tải lịch sử ticket.");
+      message.error("Failed to load ticket history.");
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ const TeacherQueuePage = () => {
       setPendingTickets(res.data || []);
     } catch (err) {
       console.error("Failed to fetch tickets:", err);
-      message.error("Không thể tải danh sách ticket.");
+      message.error("Failed to load ticket list.");
     } finally {
       setLoading(false);
     }
@@ -109,7 +109,7 @@ const TeacherQueuePage = () => {
       setClaimedTickets(ticketArray);
     } catch (err) {
       console.error("Failed to fetch claimed tickets:", err);
-      message.error("Không thể tải danh sách ticket đã nhận.");
+      message.error("Failed to load claimed tickets.");
     } finally {
       setLoading(false);
     }
@@ -120,11 +120,11 @@ const TeacherQueuePage = () => {
     setClaimingId(idTicket);
     try {
       await claimTicketAPI(user.idUser, idTicket);
-      message.success("Đã nhận ticket thành công!");
+      message.success("Ticket claimed successfully!");
       fetchPendingTickets();
     } catch (err) {
       console.error(err);
-      message.error("Không thể nhận ticket. Vui lòng thử lại.");
+      message.error("Failed to claim ticket. Please try again.");
     } finally {
       setClaimingId(null);
     }
@@ -135,12 +135,12 @@ const TeacherQueuePage = () => {
     setClaimingId(idTicket);
     try {
       await unclaimTicketAPI(user.idUser, idTicket);
-      message.success("Đã bỏ nhận ticket.");
+      message.success("Ticket returned.");
       fetchClaimedTickets();
       fetchPendingTickets();
     } catch (err) {
       console.error(err);
-      message.error("Không thể bỏ nhận ticket.");
+      message.error("Failed to return ticket.");
     } finally {
       setClaimingId(null);
     }
@@ -155,7 +155,7 @@ const TeacherQueuePage = () => {
       // Task prompts are already in res.data.test.writingTasks / speakingTasks
     } catch (err) {
       console.error("Failed to fetch ticket detail:", err);
-      message.error("Không thể tải chi tiết ticket.");
+      message.error("Failed to load ticket detail.");
     } finally {
       setTicketLoading(false);
     }
@@ -174,7 +174,7 @@ const TeacherQueuePage = () => {
       form.resetFields();
     } catch (err) {
       console.error("Failed to fetch ticket detail:", err);
-      message.error("Không thể tải chi tiết ticket.");
+      message.error("Failed to load ticket detail.");
     } finally {
       setTicketLoading(false);
       setLoadingPrompts(false);
@@ -199,7 +199,7 @@ const TeacherQueuePage = () => {
           pronunciation: values.pronunciation,
         },
       });
-      message.success("Đã nộp điểm thành công!");
+      message.success("Score submitted successfully!");
       setScoringModalVisible(false);
       setSelectedTicket(null);
       setTicketDetail(null);
@@ -207,7 +207,7 @@ const TeacherQueuePage = () => {
       fetchClaimedTickets();
     } catch (err) {
       console.error(err);
-      message.error("Không thể nộp điểm. Vui lòng thử lại.");
+      message.error("Failed to submit score. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -223,12 +223,12 @@ const TeacherQueuePage = () => {
           generalFeedback: values.feedback,
         },
       });
-      message.success("Đã nộp điểm thành công!");
+      message.success("Score submitted successfully!");
       viewForm.resetFields();
       fetchClaimedTickets();
     } catch (err) {
       console.error(err);
-      message.error("Không thể nộp điểm. Vui lòng thử lại.");
+      message.error("Failed to submit score. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -263,7 +263,7 @@ const TeacherQueuePage = () => {
   const pendingColumns = [
     {
       title: "ID",
-      dataIndex: "idTicket",
+      dataPrintdex: "idTicket",
       key: "idTicket",
       width: 100,
       render: (id) => (
@@ -271,26 +271,26 @@ const TeacherQueuePage = () => {
       ),
     },
     {
-      title: "Loại",
-      dataIndex: "type",
+      title: "Type",
+      dataPrintdex: "type",
       key: "type",
       width: 100,
       render: (type) => <Tag color={getTypeColor(type)}>{type || "N/A"}</Tag>,
     },
     {
-      title: "Học viên",
-      dataIndex: "studentName",
+      title: "Student",
+      dataPrintdex: "studentName",
       key: "studentName",
       width: 150,
     },
     {
-      title: "Bài test",
-      dataIndex: "testTitle",
+      title: "Test",
+      dataPrintdex: "testTitle",
       key: "testTitle",
     },
     {
       title: "Band AI",
-      dataIndex: "aiBandScore",
+      dataPrintdex: "aiBandScore",
       key: "aiBandScore",
       width: 100,
       render: (score) => (
@@ -298,8 +298,8 @@ const TeacherQueuePage = () => {
       ),
     },
     {
-      title: "Trạng thái",
-      dataIndex: "status",
+      title: "Status",
+      dataPrintdex: "status",
       key: "status",
       width: 120,
       render: (status) => (
@@ -307,23 +307,23 @@ const TeacherQueuePage = () => {
       ),
     },
     {
-      title: "Ngày yêu cầu",
-      dataIndex: "createdAt",
+      title: "Request date",
+      dataPrintdex: "createdAt",
       key: "createdAt",
       width: 150,
       render: (date) =>
         date ? new Date(date).toLocaleDateString("vi-VN") : "N/A",
     },
     {
-      title: "Giáo viên",
-      dataIndex: "teacherName",
+      title: "Teacher",
+      dataPrintdex: "teacherName",
       key: "teacherName",
       width: 130,
       render: (name) =>
-        name || <span className="text-gray-400">Chưa nhận</span>,
+        name || <span className="text-gray-400">Unclaimed</span>,
     },
     {
-      title: "Hành động",
+      title: "Action",
       key: "action",
       width: 180,
       render: (_, record) => (
@@ -333,7 +333,7 @@ const TeacherQueuePage = () => {
             icon={<EyeOutlined />}
             onClick={() => handleViewTicket(record)}
           >
-            Xem
+            View
           </Button>
           {record.status === "PENDING" && (
             <Button
@@ -342,7 +342,7 @@ const TeacherQueuePage = () => {
               loading={claimingId === record.idTicket}
               onClick={() => handleClaimTicket(record.idTicket)}
             >
-              Nhận
+              Claim
             </Button>
           )}
         </div>
@@ -353,7 +353,7 @@ const TeacherQueuePage = () => {
   const claimedColumns = [
     {
       title: "ID",
-      dataIndex: "idTicket",
+      dataPrintdex: "idTicket",
       key: "idTicket",
       width: 100,
       render: (id) => (
@@ -361,26 +361,26 @@ const TeacherQueuePage = () => {
       ),
     },
     {
-      title: "Loại",
-      dataIndex: "type",
+      title: "Type",
+      dataPrintdex: "type",
       key: "type",
       width: 100,
       render: (type) => <Tag color={getTypeColor(type)}>{type || "N/A"}</Tag>,
     },
     {
-      title: "Học viên",
-      dataIndex: "studentName",
+      title: "Student",
+      dataPrintdex: "studentName",
       key: "studentName",
       width: 150,
     },
     {
-      title: "Bài test",
-      dataIndex: "testTitle",
+      title: "Test",
+      dataPrintdex: "testTitle",
       key: "testTitle",
     },
     {
       title: "Band AI",
-      dataIndex: "aiBandScore",
+      dataPrintdex: "aiBandScore",
       key: "aiBandScore",
       width: 100,
       render: (score) => (
@@ -388,8 +388,8 @@ const TeacherQueuePage = () => {
       ),
     },
     {
-      title: "Trạng thái",
-      dataIndex: "status",
+      title: "Status",
+      dataPrintdex: "status",
       key: "status",
       width: 120,
       render: (status) => (
@@ -397,15 +397,15 @@ const TeacherQueuePage = () => {
       ),
     },
     {
-      title: "Ngày nhận",
-      dataIndex: "claimedAt",
+      title: "Claimed date",
+      dataPrintdex: "claimedAt",
       key: "claimedAt",
       width: 150,
       render: (date) =>
         date ? new Date(date).toLocaleDateString("vi-VN") : "N/A",
     },
     {
-      title: "Hành động",
+      title: "Action",
       key: "action",
       width: 200,
       render: (_, record) => (
@@ -415,7 +415,7 @@ const TeacherQueuePage = () => {
             icon={<EyeOutlined />}
             onClick={() => handleViewTicket(record)}
           >
-            Xem
+            View
           </Button>
           {record.status === "CLAIMED" && record.teacherId === user?.idUser && (
             <Button
@@ -423,7 +423,7 @@ const TeacherQueuePage = () => {
               type="primary"
               onClick={() => handleOpenScoring(record)}
             >
-              Chấm bài
+              Grade
             </Button>
           )}
         </div>
@@ -434,7 +434,7 @@ const TeacherQueuePage = () => {
   const completedColumns = [
     {
       title: "ID",
-      dataIndex: "idTicket",
+      dataPrintdex: "idTicket",
       key: "idTicket",
       width: 100,
       render: (id) => (
@@ -442,26 +442,26 @@ const TeacherQueuePage = () => {
       ),
     },
     {
-      title: "Loại",
-      dataIndex: "type",
+      title: "Type",
+      dataPrintdex: "type",
       key: "type",
       width: 100,
       render: (type) => <Tag color={getTypeColor(type)}>{type || "N/A"}</Tag>,
     },
     {
-      title: "Học viên",
-      dataIndex: "studentName",
+      title: "Student",
+      dataPrintdex: "studentName",
       key: "studentName",
       width: 150,
     },
     {
-      title: "Bài test",
-      dataIndex: "testTitle",
+      title: "Test",
+      dataPrintdex: "testTitle",
       key: "testTitle",
     },
     {
       title: "Band AI",
-      dataIndex: "aiBandScore",
+      dataPrintdex: "aiBandScore",
       key: "aiBandScore",
       width: 100,
       render: (score) => (
@@ -470,7 +470,7 @@ const TeacherQueuePage = () => {
     },
     {
       title: "Band GV",
-      dataIndex: "teacherBandScore",
+      dataPrintdex: "teacherBandScore",
       key: "teacherBandScore",
       width: 100,
       render: (score) => (
@@ -479,25 +479,25 @@ const TeacherQueuePage = () => {
     },
     {
       title: "Commission",
-      dataIndex: "commissionAmount",
+      dataPrintdex: "commissionAmount",
       key: "commissionAmount",
       width: 100,
       render: (amount) => (
         <span className="text-orange-600 font-medium">
-          {amount ? `${amount.toLocaleString()}đ` : "-"}
+          {amount ? `${amount.toLocaleString()} VND` : "-"}
         </span>
       ),
     },
     {
-      title: "Ngày chấm",
-      dataIndex: "submittedAt",
+      title: "Graded date",
+      dataPrintdex: "submittedAt",
       key: "submittedAt",
       width: 120,
       render: (date) =>
         date ? new Date(date).toLocaleDateString("vi-VN") : "N/A",
     },
     {
-      title: "Hành động",
+      title: "Action",
       key: "action",
       width: 100,
       render: (_, record) => (
@@ -506,7 +506,7 @@ const TeacherQueuePage = () => {
           icon={<EyeOutlined />}
           onClick={() => handleViewTicket(record)}
         >
-          Xem
+          View
         </Button>
       ),
     },
@@ -524,10 +524,10 @@ const TeacherQueuePage = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white md:text-3xl">
-                Hàng đợi chấm bài
+                Grading queue
               </h1>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 md:text-base">
-                Danh sách các bài Writing/Speaking cần được chấm bởi giáo viên.
+                List of Writing/Speaking tests waiting for teacher grading.
               </p>
             </div>
           </div>
@@ -545,40 +545,40 @@ const TeacherQueuePage = () => {
               items={[
                 {
                   key: "pending",
-                  label: "Tất cả",
+                  label: "All",
                   children: (
                     <Table
                       columns={pendingColumns}
                       dataSource={pendingTickets}
                       rowKey="idTicket"
                       pagination={{ pageSize: 10 }}
-                      locale={{ emptyText: "Không có ticket nào." }}
+                      locale={{ emptyText: "No tickets." }}
                     />
                   ),
                 },
                 {
                   key: "claimed",
-                  label: "Đã nhận",
+                  label: "Received",
                   children: (
                     <Table
                       columns={claimedColumns}
                       dataSource={claimedTickets}
                       rowKey="idTicket"
                       pagination={{ pageSize: 10 }}
-                      locale={{ emptyText: "Không có ticket đã nhận." }}
+                      locale={{ emptyText: "No claimed tickets." }}
                     />
                   ),
                 },
                 {
                   key: "history",
-                  label: "Lịch sử",
+                  label: "History",
                   children: (
                     <Table
                       columns={completedColumns}
                       dataSource={completedTickets}
                       rowKey="idTicket"
                       pagination={{ pageSize: 10 }}
-                      locale={{ emptyText: "Chưa có bài nào được chấm." }}
+                      locale={{ emptyText: "No graded tests yet." }}
                     />
                   ),
                 },
@@ -606,7 +606,7 @@ const TeacherQueuePage = () => {
                   setTicketDetail(null);
                 }}
               >
-                Nhận ticket
+                Claim ticket
               </Button>
               <Button
                 onClick={() => {
@@ -614,7 +614,7 @@ const TeacherQueuePage = () => {
                   setTicketDetail(null);
                 }}
               >
-                Đóng
+                Close
               </Button>
             </div>
           ) : (
@@ -624,12 +624,12 @@ const TeacherQueuePage = () => {
                 setTicketDetail(null);
               }}
             >
-              Đóng
+              Close
             </Button>
           )
         }
         width={800}
-        title={<span className="text-lg font-bold">Chi tiết Ticket</span>}
+        title={<span className="text-lg font-bold">Detail Ticket</span>}
       >
         {ticketLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -642,15 +642,15 @@ const TeacherQueuePage = () => {
                 <Descriptions.Item label="ID Ticket">
                   <span className="font-mono">{ticketDetail.idTicket}</span>
                 </Descriptions.Item>
-                <Descriptions.Item label="Loại">
+                <Descriptions.Item label="Type">
                   <Tag color={getTypeColor(ticketDetail.type)}>
                     {ticketDetail.type}
                   </Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="Học viên">
+                <Descriptions.Item label="Student">
                   {ticketDetail.testResult?.user?.nameUser || "N/A"}
                 </Descriptions.Item>
-                <Descriptions.Item label="Bài test">
+                <Descriptions.Item label="Test">
                   {ticketDetail.testResult?.test?.title || "N/A"}
                 </Descriptions.Item>
                 <Descriptions.Item label="Band AI">
@@ -658,7 +658,7 @@ const TeacherQueuePage = () => {
                     {ticketDetail.aiBandScore || "N/A"}
                   </span>
                 </Descriptions.Item>
-                <Descriptions.Item label="Trạng thái">
+                <Descriptions.Item label="Status">
                   <Tag color={getStatusColor(ticketDetail.status)}>
                     {ticketDetail.status}
                   </Tag>
@@ -675,7 +675,7 @@ const TeacherQueuePage = () => {
                       <div className="flex gap-4">
                         <div className="flex-1 bg-slate-50 p-4 rounded-lg border border-slate-200 max-h-[350px] overflow-y-auto">
                           <h4 className="font-semibold mb-2 flex items-center gap-2">
-                            📝 Đề bài
+                            📝 Test
                           </h4>
                           <p className="text-sm text-slate-600 whitespace-pre-wrap mb-2">
                             {task.instructions}
@@ -690,7 +690,7 @@ const TeacherQueuePage = () => {
                         </div>
                         <div className="flex-1 bg-blue-50 p-4 rounded-lg border border-blue-100 max-h-[350px] overflow-y-auto">
                           <h4 className="font-semibold mb-2 flex items-center gap-2">
-                            👤 Bài làm
+                            👤 Submission
                           </h4>
                           {/* Try testResult.writingSubmissions first, fallback to submissionContent */}
                           {(() => {
@@ -716,7 +716,7 @@ const TeacherQueuePage = () => {
                             }
                             return (
                               <p className="text-sm text-slate-400 italic">
-                                Chưa có bài làm
+                                No submission yet
                               </p>
                             );
                           })()}
@@ -760,7 +760,7 @@ const TeacherQueuePage = () => {
                   {/* Right: Student Submission */}
                   <div className="flex-1 bg-blue-50 p-4 rounded-lg border border-blue-100 max-h-[300px] overflow-y-auto">
                     <h4 className="font-semibold mb-3 flex items-center gap-2">
-                      👤 Bài làm của học viên
+                      👤 Student submission
                     </h4>
                     {ticketDetail.testResult?.speakingSubmissions?.length >
                     0 ? (
@@ -781,7 +781,7 @@ const TeacherQueuePage = () => {
                       </div>
                     ) : (
                       <p className="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed">
-                        {ticketDetail.submissionContent || "Không có nội dung"}
+                        {ticketDetail.submissionContent || "No content"}
                       </p>
                     )}
                   </div>
@@ -870,7 +870,7 @@ const TeacherQueuePage = () => {
                   return collapseItems.length > 0 ? (
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
                       <h4 className="font-semibold mb-3 flex items-center gap-2 text-blue-800">
-                        🤖 Phản hồi AI
+                        🤖 AI Feedback
                       </h4>
                       <Collapse
                         items={collapseItems}
@@ -896,7 +896,7 @@ const TeacherQueuePage = () => {
               ticketDetail.status === "IN_PROGRESS" ? (
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-100 mt-4">
                   <h4 className="font-semibold mb-3 flex items-center gap-2 text-purple-800">
-                    📝 Phản hồi giáo viên
+                    📝 Teacher feedback
                   </h4>
                   <Form
                     form={viewForm}
@@ -907,9 +907,9 @@ const TeacherQueuePage = () => {
                       <Form.Item
                         name="bandScore"
                         label="Band Score (0-9)"
-                        rules={[{ required: true, message: "Nhập điểm" }]}
+                        rules={[{ required: true, message: "Enter score" }]}
                       >
-                        <InputNumber
+                        <PrintputNumber
                           min={0}
                           max={9}
                           step={0.5}
@@ -920,12 +920,12 @@ const TeacherQueuePage = () => {
                     </div>
                     <Form.Item
                       name="feedback"
-                      label="Nhận xét"
-                      rules={[{ required: true, message: "Nhập nhận xét" }]}
+                      label="Feedback"
+                      rules={[{ required: true, message: "Enter feedback" }]}
                     >
-                      <Input.TextArea
+                      <Printput.TextArea
                         rows={3}
-                        placeholder="Nhập phản hồi cho học viên..."
+                        placeholder="Enter feedback for student..."
                       />
                     </Form.Item>
                     <Button
@@ -934,7 +934,7 @@ const TeacherQueuePage = () => {
                       loading={submitting}
                       className="bg-purple-600"
                     >
-                      Nộp điểm
+                      Submit score
                     </Button>
                   </Form>
                 </div>
@@ -942,7 +942,7 @@ const TeacherQueuePage = () => {
                 ticketDetail.teacherBandScore && (
                   <div className="bg-green-50 p-4 rounded-lg border border-green-100 mt-4">
                     <h4 className="font-semibold mb-2 text-green-800">
-                      ✅ Đã chấm điểm
+                      ✅ Graded
                     </h4>
                     <p className="text-sm">
                       <span className="font-bold">Band Score:</span>{" "}
@@ -974,7 +974,7 @@ const TeacherQueuePage = () => {
           setTestPrompts(null);
           form.resetFields();
         }}
-        title={<span className="text-lg font-bold">Chấm bài</span>}
+        title={<span className="text-lg font-bold">Grade test</span>}
         width={1000}
         bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}
         footer={
@@ -988,14 +988,14 @@ const TeacherQueuePage = () => {
                 form.resetFields();
               }}
             >
-              Hủy
+              Cancel
             </Button>
             <Button
               type="primary"
               loading={submitting}
               onClick={handleSubmitScore}
             >
-              Nộp điểm
+              Submit score
             </Button>
           </div>
         }
@@ -1008,17 +1008,17 @@ const TeacherQueuePage = () => {
           ticketDetail && (
             <div className="space-y-4">
               <Descriptions bordered column={2} size="small">
-                <Descriptions.Item label="Loại">
+                <Descriptions.Item label="Type">
                   <Tag color={getTypeColor(ticketDetail.type)}>
                     {ticketDetail.type}
                   </Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="Học viên">
+                <Descriptions.Item label="Student">
                   {ticketDetail.testResult?.user?.nameUser ||
                     selectedTicket?.studentName ||
                     "N/A"}
                 </Descriptions.Item>
-                <Descriptions.Item label="Bài test" span={2}>
+                <Descriptions.Item label="Test" span={2}>
                   {ticketDetail.testResult?.test?.title ||
                     selectedTicket?.testTitle ||
                     "N/A"}
@@ -1030,7 +1030,7 @@ const TeacherQueuePage = () => {
                       "N/A"}
                   </span>
                 </Descriptions.Item>
-                <Descriptions.Item label="Trạng thái">
+                <Descriptions.Item label="Status">
                   <Tag color={getStatusColor(ticketDetail.status)}>
                     {ticketDetail.status}
                   </Tag>
@@ -1047,7 +1047,7 @@ const TeacherQueuePage = () => {
                       <div className="flex gap-4">
                         <div className="flex-1 bg-slate-50 p-4 rounded-lg border border-slate-200 max-h-[350px] overflow-y-auto">
                           <h4 className="font-semibold mb-2 flex items-center gap-2">
-                            📝 Đề bài
+                            📝 Test
                           </h4>
                           <p className="text-sm text-slate-600 whitespace-pre-wrap mb-2">
                             {task.instructions}
@@ -1062,7 +1062,7 @@ const TeacherQueuePage = () => {
                         </div>
                         <div className="flex-1 bg-blue-50 p-4 rounded-lg border border-blue-100 max-h-[350px] overflow-y-auto">
                           <h4 className="font-semibold mb-2 flex items-center gap-2">
-                            👤 Bài làm
+                            👤 Submission
                           </h4>
                           {(() => {
                             const submissions =
@@ -1086,7 +1086,7 @@ const TeacherQueuePage = () => {
                             }
                             return (
                               <p className="text-sm text-slate-400 italic">
-                                Chưa có bài làm
+                                No submission yet
                               </p>
                             );
                           })()}
@@ -1137,7 +1137,7 @@ const TeacherQueuePage = () => {
                   {/* Right: Student Submission */}
                   <div className="flex-1 bg-blue-50 p-4 rounded-lg border border-blue-100 max-h-[350px] overflow-y-auto">
                     <h4 className="font-semibold mb-3 flex items-center gap-2">
-                      👤 Bài làm của học viên
+                      👤 Student submission
                     </h4>
                     {ticketDetail.testResult?.speakingSubmissions?.length >
                     0 ? (
@@ -1158,7 +1158,7 @@ const TeacherQueuePage = () => {
                       </div>
                     ) : (
                       <p className="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed">
-                        {ticketDetail.submissionContent || "Không có nội dung"}
+                        {ticketDetail.submissionContent || "No content"}
                       </p>
                     )}
                   </div>
@@ -1247,7 +1247,7 @@ const TeacherQueuePage = () => {
                   return collapseItems.length > 0 ? (
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
                       <h4 className="font-semibold mb-3 flex items-center gap-2 text-blue-800">
-                        🤖 Phản hồi AI
+                        🤖 AI Feedback
                       </h4>
                       <Collapse
                         items={collapseItems}
@@ -1270,22 +1270,22 @@ const TeacherQueuePage = () => {
 
               {/* Teacher Scoring Form */}
               <div className="border-t pt-4 mt-4">
-                <h4 className="font-semibold mb-3">Điền điểm và phản hồi:</h4>
+                <h4 className="font-semibold mb-3">Fill in score and feedback:</h4>
                 <Form form={form} layout="vertical">
                   <Form.Item
                     name="bandScore"
                     label="Band Score (0 - 9)"
                     rules={[
-                      { required: true, message: "Vui lòng nhập điểm" },
+                      { required: true, message: "Please enter score" },
                       {
                         type: "number",
                         min: 0,
                         max: 9,
-                        message: "Điểm phải từ 0 đến 9",
+                        message: "Score must be 0-9",
                       },
                     ]}
                   >
-                    <InputNumber
+                    <PrintputNumber
                       min={0}
                       max={9}
                       step={0.5}
@@ -1300,60 +1300,60 @@ const TeacherQueuePage = () => {
                         name="taskResponse"
                         label="Task Response"
                         rules={[
-                          { required: true, message: "Vui lòng nhập phản hồi" },
+                          { required: true, message: "Please enter feedback" },
                         ]}
                       >
                         <TextArea
                           rows={2}
-                          placeholder="Phản hồi về việc phát triển ý tưởng, ví dụ..."
+                          placeholder="Feedback on idea development, e.g..."
                         />
                       </Form.Item>
                       <Form.Item
                         name="coherenceAndCohesion"
                         label="Coherence & Cohesion"
                         rules={[
-                          { required: true, message: "Vui lòng nhập phản hồi" },
+                          { required: true, message: "Please enter feedback" },
                         ]}
                       >
                         <TextArea
                           rows={2}
-                          placeholder="Phản hồi về tổ chức, liên kết câu, đoạn..."
+                          placeholder="Feedback on organization, sentence/paragraph linking..."
                         />
                       </Form.Item>
                       <Form.Item
                         name="lexicalResource"
                         label="Lexical Resource"
                         rules={[
-                          { required: true, message: "Vui lòng nhập phản hồi" },
+                          { required: true, message: "Please enter feedback" },
                         ]}
                       >
                         <TextArea
                           rows={2}
-                          placeholder="Phản hồi về từ vựng..."
+                          placeholder="Feedback on vocabulary..."
                         />
                       </Form.Item>
                       <Form.Item
                         name="grammaticalRangeAndAccuracy"
                         label="Grammatical Range & Accuracy"
                         rules={[
-                          { required: true, message: "Vui lòng nhập phản hồi" },
+                          { required: true, message: "Please enter feedback" },
                         ]}
                       >
                         <TextArea
                           rows={2}
-                          placeholder="Phản hồi về ngữ pháp..."
+                          placeholder="Feedback on grammar..."
                         />
                       </Form.Item>
                       <Form.Item
                         name="generalFeedback"
                         label="General Feedback"
                         rules={[
-                          { required: true, message: "Vui lòng nhập phản hồi" },
+                          { required: true, message: "Please enter feedback" },
                         ]}
                       >
                         <TextArea
                           rows={3}
-                          placeholder="Nhận xét tổng quát..."
+                          placeholder="General feedback..."
                         />
                       </Form.Item>
                     </>
@@ -1363,60 +1363,60 @@ const TeacherQueuePage = () => {
                         name="fluencyAndCoherence"
                         label="Fluency & Coherence"
                         rules={[
-                          { required: true, message: "Vui lòng nhập phản hồi" },
+                          { required: true, message: "Please enter feedback" },
                         ]}
                       >
                         <TextArea
                           rows={2}
-                          placeholder="Phản hồi về sự lưu loát, mạch lạc..."
+                          placeholder="Feedback on fluency, coherence..."
                         />
                       </Form.Item>
                       <Form.Item
                         name="lexicalResource"
                         label="Lexical Resource"
                         rules={[
-                          { required: true, message: "Vui lòng nhập phản hồi" },
+                          { required: true, message: "Please enter feedback" },
                         ]}
                       >
                         <TextArea
                           rows={2}
-                          placeholder="Phản hồi về từ vựng..."
+                          placeholder="Feedback on vocabulary..."
                         />
                       </Form.Item>
                       <Form.Item
                         name="grammaticalRangeAndAccuracy"
                         label="Grammatical Range & Accuracy"
                         rules={[
-                          { required: true, message: "Vui lòng nhập phản hồi" },
+                          { required: true, message: "Please enter feedback" },
                         ]}
                       >
                         <TextArea
                           rows={2}
-                          placeholder="Phản hồi về ngữ pháp..."
+                          placeholder="Feedback on grammar..."
                         />
                       </Form.Item>
                       <Form.Item
                         name="pronunciation"
                         label="Pronunciation"
                         rules={[
-                          { required: true, message: "Vui lòng nhập phản hồi" },
+                          { required: true, message: "Please enter feedback" },
                         ]}
                       >
                         <TextArea
                           rows={2}
-                          placeholder="Phản hồi về phát âm..."
+                          placeholder="Feedback on pronunciation..."
                         />
                       </Form.Item>
                       <Form.Item
                         name="generalFeedback"
                         label="General Feedback"
                         rules={[
-                          { required: true, message: "Vui lòng nhập phản hồi" },
+                          { required: true, message: "Please enter feedback" },
                         ]}
                       >
                         <TextArea
                           rows={3}
-                          placeholder="Nhận xét tổng quát..."
+                          placeholder="General feedback..."
                         />
                       </Form.Item>
                     </>

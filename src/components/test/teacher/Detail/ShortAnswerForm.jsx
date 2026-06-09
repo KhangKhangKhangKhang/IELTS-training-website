@@ -1,332 +1,83 @@
-import React, { useState, useEffect } from "react";
-import { Button, Input, message, Spin } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
-import {
-  getQuestionsByIdGroupAPI,
-  getAnswersByIdQuestionAPI,
-  updateAnswerAPI,
-  createManyQuestion,
-  updateManyQuestionAPI,
-} from "@/services/apiTest";
-import RichTextEditor from "@/components/ui/RichTextEditor";
+import React from "react";
+import { Input, InputNumber, Tag } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 
-const ShortAnswerForm = ({ idGroup, groupData, questionNumberOffset = 0 }) => {
-  const [loadedQuestions, setLoadedQuestions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [hasQuestionsLoaded, setHasQuestionsLoaded] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [formQuestions, setFormQuestions] = useState([
-    { content: "", answer_text: "" },
-  ]);
+// SHORT_ANSWER
+// BE metadata: { maxWords: number, correctAnswers: string[] }
+const defaultValue = () => ({
+  maxWords: 1,
+  correctAnswers: [""],    type: "SHORT_ANSWER",
+  });
 
-  // Initialize form questions based on quantity when group is first created
-  useEffect(() => {
-    if (
-      groupData?.quantity &&
-      !hasQuestionsLoaded &&
-      loadedQuestions.length === 0
-    ) {
-      const initialQuestions = Array(groupData.quantity)
-        .fill(null)
-        .map(() => ({
-          content: "",
-          answer_text: "",
-        }));
-      setFormQuestions(initialQuestions);
-    }
-  }, [groupData?.quantity, hasQuestionsLoaded, loadedQuestions.length]);
+const ShortAnswerForm = ({ value = defaultValue(), onChange }) => {
+  const update = (patch) => onChange({ ...value, ...patch });
 
-  useEffect(() => {
-    if (idGroup) {
-      loadQuestions();
-    }
-  }, [idGroup]);
-
-  const loadQuestions = async () => {
-    try {
-      setLoading(true);
-      const res = await getQuestionsByIdGroupAPI(idGroup);
-      const group = res?.data?.[0];
-
-      if (!group || !group.question || group.question.length === 0) {
-        setLoadedQuestions([]);
-        setHasQuestionsLoaded(false);
-      } else {
-        const withAnswers = await Promise.all(
-          group.question.map(async (q) => {
-            try {
-              const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
-              const ansData = ansRes?.data?.[0];
-              return {
-                ...q,
-                idAnswer: ansData?.idAnswer || null,
-                answer_text: ansData?.answer_text || "",
-              };
-            } catch (err) {
-              return { ...q, idAnswer: null, answer_text: "" };
-            }
-          })
-        );
-
-        setLoadedQuestions(withAnswers);
-        setHasQuestionsLoaded(true);
-      }
-    } catch (err) {
-      console.error("Error loading questions:", err);
-      setLoadedQuestions([]);
-      setHasQuestionsLoaded(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddQuestion = () => {
-    setFormQuestions([...formQuestions, { content: "", answer_text: "" }]);
-  };
-
-  const handleChangeQuestion = (qIndex, value) => {
-    const updated = [...formQuestions];
-    updated[qIndex].content = value;
-    setFormQuestions(updated);
-  };
-
-  const handleChangeAnswer = (qIndex, value) => {
-    const updated = [...formQuestions];
-    updated[qIndex].answer_text = value;
-    setFormQuestions(updated);
-  };
-
-  const handleSaveAll = async () => {
-    try {
-      setSaving(true);
-
-      const questionsPayload = [];
-
-      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
-        const q = formQuestions[qIdx];
-        if (!q.content || !q.content.trim()) {
-          message.warning(`Câu ${qIdx + 1} không có nội dung`);
-          continue;
-        }
-
-        if (!q.answer_text) {
-          message.warning(`Câu ${qIdx + 1} không có đáp án`);
-          continue;
-        }
-
-        questionsPayload.push({
-          idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart || null,
-          numberQuestion:
-            questionNumberOffset + loadedQuestions.length + qIdx + 1,
-          content: q.content,
-          answers: [
-            {
-              answer_text: q.answer_text,
-              matching_key: null,
-              matching_value: null,
-            },
-          ],
-        });
-      }
-
-      if (questionsPayload.length === 0) {
-        message.error("Không có câu hỏi hợp lệ để lưu");
-        return;
-      }
-
-      await createManyQuestion({ questions: questionsPayload });
-      message.success("Đã lưu tất cả câu hỏi trả lời ngắn!");
-
-      setFormQuestions([{ content: "", answer_text: "" }]);
-      await loadQuestions();
-    } catch (err) {
-      console.error(err);
-      message.error("Lưu câu hỏi thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteQuestion = async (idQuestion, index) => {
-    try {
-      const updated = loadedQuestions.filter((_, idx) => idx !== index);
-      setLoadedQuestions(updated);
-      message.success("Đã xóa câu hỏi");
-    } catch (err) {
-      console.error(err);
-      message.error("Xóa câu hỏi thất bại");
-    }
-  };
-
-  const handleEditGroup = () => {
-    const editForm = loadedQuestions.map((q) => ({
-      idQuestion: q.idQuestion,
-      content: q.content,
-      answer_text: q.answer_text,
-    }));
-    setFormQuestions(editForm);
-    setIsEditMode(true);
-    setHasQuestionsLoaded(false);
-  };
-
-  const handleSaveEdit = async () => {
-    try {
-      setSaving(true);
-      const questionsPayload = [];
-
-      for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
-        const q = formQuestions[qIdx];
-        if (!q.content || !q.content.trim()) {
-          message.warning(`Câu ${qIdx + 1} không có nội dung`);
-          continue;
-        }
-        if (!q.answer_text) {
-          message.warning(`Câu ${qIdx + 1} không có đáp án`);
-          continue;
-        }
-
-        questionsPayload.push({
-          idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart || null,
-          numberQuestion: qIdx + 1,
-          content: q.content,
-          answers: [
-            {
-              answer_text: q.answer_text,
-              matching_key: null,
-              matching_value: null,
-            },
-          ],
-          idQuestion: q.idQuestion,
-        });
-      }
-
-      if (questionsPayload.length === 0) {
-        message.error("Không có câu hỏi hợp lệ để lưu");
-        return;
-      }
-
-      await updateManyQuestionAPI({ questions: questionsPayload });
-      message.success("Đã cập nhật câu hỏi!");
-
-      setIsEditMode(false);
-      setFormQuestions([{ content: "", answer_text: "" }]);
-      await loadQuestions();
-    } catch (err) {
-      console.error(err);
-      message.error("Cập nhật câu hỏi thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-6">
-        <Spin tip="Đang tải câu hỏi..." />
-      </div>
+  const setAnswer = (idx, text) => {
+    const correctAnswers = value.correctAnswers.map((a, i) =>
+      i === idx ? text : a
     );
-  }
+    update({ correctAnswers });
+  };
 
-  if (hasQuestionsLoaded && loadedQuestions.length > 0) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Câu hỏi đã có</h3>
-          <Button type="primary" onClick={handleEditGroup}>
-            ✎ Chỉnh sửa
-          </Button>
-        </div>
-        {loadedQuestions.map((q, index) => (
-          <div
-            key={q.idQuestion}
-            className="border p-4 rounded bg-white shadow-sm"
-          >
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <span className="font-semibold" dangerouslySetInnerHTML={{
-                  __html: `Câu ${q.numberQuestion}: ${q.content}`
-                }} />
-                <div className="text-sm text-gray-600 mt-1">
-                  Đáp án: <span className="font-medium">{q.answer_text}</span>
-                </div>
-              </div>
-              <Button
-                type="text"
-                danger
-                size="small"
-                icon={<DeleteOutlined />}
-                onClick={() => handleDeleteQuestion(q.idQuestion, index)}
-              />
-            </div>
-          </div>
-        ))}
+  const addAnswer = () => {
+    update({ correctAnswers: [...value.correctAnswers, ""] });
+  };
 
-        <div className="flex gap-2 pt-4 border-t">
-          <Button type="primary" onClick={() => setHasQuestionsLoaded(false)}>
-            + Thêm câu hỏi
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const removeAnswer = (idx) => {
+    if (value.correctAnswers.length <= 1) return;
+    update({
+      correctAnswers: value.correctAnswers.filter((_, i) => i !== idx),
+    });
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">
-          {isEditMode ? "Chỉnh sửa câu hỏi" : "Tạo câu hỏi trả lời ngắn"}
-        </h3>
-        {isEditMode && (
-          <Button
-            onClick={() => {
-              setIsEditMode(false);
-              setFormQuestions([{ content: "", answer_text: "" }]);
-              setHasQuestionsLoaded(true);
-            }}
-          >
-            Hủy
-          </Button>
-        )}
+    <div className="space-y-3">
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Max words
+        </span>
+        <InputNumber
+          min={1}
+          max={20}
+          value={value.maxWords}
+          onChange={(v) => update({ maxWords: Number(v) || 1 })}
+          className="w-32"
+        />
       </div>
-      {formQuestions.map((q, qIndex) => (
-        <div key={qIndex} className="border p-4 rounded bg-white shadow-sm">
-          <div className="font-semibold mb-2">
-            Câu{" "}
-            {isEditMode
-              ? qIndex + 1
-              : questionNumberOffset + loadedQuestions.length + qIndex + 1}
-          </div>
 
-          <RichTextEditor
-            value={q.content}
-            onChange={(html) => handleChangeQuestion(qIndex, html)}
-            placeholder="Nhập nội dung câu hỏi (có thể định dạng text)..."
-            minHeight="80px"
-          />
-
-          <div className="mt-3 flex items-center gap-3">
-            <span className="text-sm text-gray-600">Đáp án:</span>
-            <Input
-              placeholder="Nhập đáp án"
-              value={q.answer_text}
-              onChange={(e) => handleChangeAnswer(qIndex, e.target.value)}
-            />
-          </div>
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Acceptable answers (case-insensitive)
+        </span>
+        <div className="space-y-1.5">
+          {value.correctAnswers.map((ans, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Tag color="green" className="shrink-0">
+                {i + 1}
+              </Tag>
+              <Input
+                value={ans}
+                onChange={(e) => setAnswer(i, e.target.value)}
+                placeholder="Type an acceptable answer..."
+                size="small"
+              />
+              {value.correctAnswers.length > 1 && (
+                <button
+                  onClick={() => removeAnswer(i)}
+                  className="w-7 h-7 rounded-lg hover:bg-[#fff1f2] text-[#fb7185] text-xs shrink-0"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
         </div>
-      ))}
-
-      <div className="flex gap-3">
-        <Button onClick={handleAddQuestion}>+ Thêm câu hỏi</Button>
-        <Button
-          type="primary"
-          onClick={isEditMode ? handleSaveEdit : handleSaveAll}
-          loading={saving}
+        <button
+          onClick={addAnswer}
+          className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-[#6366f1] uppercase tracking-wide hover:underline"
         >
-          {isEditMode ? "Cập nhật" : "Lưu"}
-        </Button>
+          <PlusOutlined /> Add acceptable answer
+        </button>
       </div>
     </div>
   );

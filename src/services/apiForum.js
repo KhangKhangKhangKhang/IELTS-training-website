@@ -54,9 +54,16 @@ export const getModerationQueueAPI = async (idUser) => {
   return res.data;
 };
 
-export const getAllCommentsByPostAPI = async (idForumPost) => {
+export const getModerationHistoryAPI = async (idUser) => {
+  const res = await API.get(`/forum-post/moderation-history/${idUser}`);
+  return res.data;
+};
+
+export const getAllCommentsByPostAPI = async (idForumPost, idUser) => {
+  const resolved = resolveCurrentUserId(idUser);
+  const qs = resolved ? `?idUser=${encodeURIComponent(resolved)}` : "";
   const res = await API.get(
-    `/forum-comment/get-all-by-idForumPost/${idForumPost}`
+    `/forum-comment/get-all-by-idForumPost/${idForumPost}${qs}`
   );
   return res.data;
 };
@@ -135,6 +142,18 @@ export const deletePostAPI = async (idForumPost, idUser) => {
   const res = await API.delete(
     `/forum-post/delete-forum-post/${idForumPost}`,
     buildDeleteConfig(idUser)
+  );
+  return res.data;
+};
+
+export const moderatorDeletePostAPI = async (idForumPost, idUser, note) => {
+  const resolved = resolveCurrentUserId(idUser);
+  const config = resolved
+    ? { data: { idUser: resolved, note: note?.trim() || undefined } }
+    : undefined;
+  const res = await API.delete(
+    `/forum-post/moderator-delete-forum-post/${idForumPost}/${resolved}`,
+    config
   );
   return res.data;
 };

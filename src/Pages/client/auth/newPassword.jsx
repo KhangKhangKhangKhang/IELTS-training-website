@@ -45,7 +45,7 @@ const NewPassword = () => {
       const res = await resetPasswordAPI({
         email,
         otp,
-        password,
+        newPassword: password,
         confirmPassword,
       });
       if (res) {

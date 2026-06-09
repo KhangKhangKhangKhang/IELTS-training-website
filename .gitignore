@@ -25,5 +25,7 @@ dist-ssr
 *.sw?
 
 .env.development
+.env.production
+.env
 
 package-lock.json

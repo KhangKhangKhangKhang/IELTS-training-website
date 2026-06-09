@@ -14,7 +14,7 @@ import { Spin } from "antd";
 
 // ✅ OPTIMIZED: Lazy load all page components for better performance
 const HomePage = lazy(() => import("./Pages/client/homePage"));
-const Statistic = lazy(() => import("./Pages/client/statistic"));
+const Statistic = lazy(() => import("./Pages/client/forum"));
 const Vocabulary = lazy(() => import("./Pages/client/vocabulary"));
 const Profile = lazy(() => import("./Pages/client/profile"));
 const UserList = lazy(() => import("./Pages/teacher/userList"));
@@ -38,7 +38,7 @@ const VocabDaily = lazy(() => import("./Pages/client/VocabDaily"));
 const StudyPlanner = lazy(() => import("./Pages/client/studyPlanner"));
 const AdminDashboard = lazy(() => import("./Pages/admin/adminDashboard"));
 const TeacherReviewHistory = lazy(() => import("./Pages/client/teacherReviewHistory"));
-const TeacherQueue = lazy(() => import("./Pages/teacher/teacherQueue"));
+const TeacherQueue = lazy(() => import("./Pages/teacher/TeacherQueueView"));
 const TeacherReviewManager = lazy(() => import("./Pages/admin/teacherReviewManager"));
 
 // Loading fallback component

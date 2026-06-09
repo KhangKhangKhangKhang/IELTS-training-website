@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import GrammarStudentView from "./grammar/GrammarStudentView";
+import GrammarTeacherView from "./grammar/GrammarTeacherView";
 import {
   Plus,
   Search,
@@ -81,6 +83,16 @@ const Grammar = () => {
 
   const isAdminOrTeacher = user?.role === "ADMIN" || user?.role === "GIAOVIEN";
   const isTeacher = user?.role === "GIAOVIEN";
+
+  // Student view: learning canvas.
+  if (!isAdminOrTeacher) {
+    return <GrammarStudentView />;
+  }
+
+  // Teacher/Admin view: management canvas with full CRUD.
+  if (isAdminOrTeacher) {
+    return <GrammarTeacherView />;
+  }
 
   // Grammar stats state
   const [grammarStats, setGrammarStats] = useState(null);

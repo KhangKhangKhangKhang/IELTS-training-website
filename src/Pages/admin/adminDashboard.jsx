@@ -256,7 +256,7 @@ const AdminDashboard = () => {
       message.success("Policy saved successfully.");
     } catch (err) {
       console.error("Error saving policy:", err);
-      message.error("Không thể lưu cấu hình policy.");
+      message.error("Cannot save policy config.");
     } finally {
       setPolicySaving(false);
     }
@@ -269,7 +269,7 @@ const AdminDashboard = () => {
         writing: commission.writing,
         speaking: commission.speaking,
       });
-      message.success("Đã lưu cấu hình commission thành công!");
+      message.success("Commission config saved successfully!");
 
       // Refresh audit logs
       const auditData = await getAuditLogsAPI({ limit: 10 });
@@ -277,7 +277,7 @@ const AdminDashboard = () => {
       setAuditTotal(auditData.total || 0);
     } catch (err) {
       console.error("Error saving commission:", err);
-      message.error("Không thể lưu cấu hình commission.");
+      message.error("Cannot save commission config.");
     } finally {
       setCommissionSaving(false);
     }
@@ -287,7 +287,7 @@ const AdminDashboard = () => {
     setStudyPlannerSaving(true);
     try {
       await updateStudyPlannerConfigAPI(studyPlannerConfig);
-      message.success("Đã lưu cấu hình Study Planner thành công!");
+      message.success("Study Planner config saved successfully!");
 
       // Refresh audit logs
       const auditData = await getAuditLogsAPI({ limit: 10 });
@@ -295,7 +295,7 @@ const AdminDashboard = () => {
       setAuditTotal(auditData.total || 0);
     } catch (err) {
       console.error("Error saving study planner config:", err);
-      message.error("Không thể lưu cấu hình Study Planner.");
+      message.error("Cannot save Study Planner config.");
     } finally {
       setStudyPlannerSaving(false);
     }
@@ -676,7 +676,7 @@ const AdminDashboard = () => {
 
             <Form layout="vertical" className="mt-4">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <Form.Item label="Writing (VNĐ)">
+                <Form.Item label="Writing (VND)">
                   <InputNumber
                     min={0}
                     step={10000}
@@ -688,7 +688,7 @@ const AdminDashboard = () => {
                   />
                 </Form.Item>
 
-                <Form.Item label="Speaking (VNĐ)">
+                <Form.Item label="Speaking (VND)">
                   <InputNumber
                     min={0}
                     step={10000}
@@ -710,7 +710,7 @@ const AdminDashboard = () => {
           {/* Study Planner Configuration */}
           <Card className="border-0 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">Study Planner Config</h2>
-            <p className="mt-1 text-sm text-slate-600">Cấu hình thuật toán lập lộ trình học tập.</p>
+            <p className="mt-1 text-sm text-slate-600">Configure the study-plan algorithm.</p>
 
             <Form layout="vertical" className="mt-4">
               <div className="mb-4">
@@ -745,7 +745,7 @@ const AdminDashboard = () => {
                       vocabMinutes: Number(value || 8)
                     }))}
                     className="!w-full"
-                    addonAfter="phút"
+                    addonAfter="min"
                   />
                 </Form.Item>
 
@@ -759,7 +759,7 @@ const AdminDashboard = () => {
                       grammarFloorMinutes: Number(value || 5)
                     }))}
                     className="!w-full"
-                    addonAfter="phút"
+                    addonAfter="min"
                   />
                 </Form.Item>
               </div>
@@ -800,7 +800,7 @@ const AdminDashboard = () => {
                     />
                   </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Priority weights được tính tự động theo band của user</p>
+                <p className="text-xs text-slate-500 mt-1">Priority weights are calculated automatically from user band</p>
               </div>
 
               <Button type="primary" onClick={handleSaveStudyPlannerConfig} loading={studyPlannerSaving}>

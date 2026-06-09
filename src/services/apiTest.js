@@ -200,6 +200,11 @@ export const deleteGroupOfQuestionsAPI = async (idGroupOfQuestions) => {
   return res.data;
 };
 
+export const deleteQuestionAPI = async (idQuestion) => {
+  const res = await API.delete(`/question/delete-question/${idQuestion}`);
+  return res.data;
+};
+
 //get
 export const getAllPartByIdAPI = async (idTest) => {
   const res = await API.get(`/part/get-all-part-by-idTest/${idTest}`);
@@ -209,9 +214,14 @@ export const getAllPartByIdAPI = async (idTest) => {
 export const getPartByIdAPI = async (idPart) => {
   const res = await API.get(`/part/get-one/${idPart}`);
 
-  return normalizeEnvelope(res.data, (parts) =>
-    (Array.isArray(parts) ? parts : []).map((part) => normalizePartForLegacy(part))
-  );
+  // findUnique returns a single object (NOT array). Normalize to legacy
+  // shape: { data: <normalizedPart>, message, status }
+  const inner = res.data?.data !== undefined ? res.data.data : res.data;
+  const normalized = inner ? normalizePartForLegacy(inner) : null;
+  return {
+    ...res.data,
+    data: normalized,
+  };
 };
 export const getQuestionsByIdGroupAPI = async (idGroupOfQuestions) => {
   const res = await API.get(`/question-group/get-by-id/${idGroupOfQuestions}`);

@@ -1,279 +1,300 @@
-import React, { useState, useEffect } from "react";
-import { Button, Input, Select, message, Card } from "antd";
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import {
-  getQuestionsByIdGroupAPI,
-  getAnswersByIdQuestionAPI,
-  createManyQuestion,
-  updateManyQuestionAPI,
-} from "@/services/apiTest";
-import RichTextEditor from "@/components/ui/RichTextEditor";
+import React from "react";
+import { Input, Select, InputNumber } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 
-const { Option } = Select;
+// Generic Matching wrapper that switches sub-type
+// Sub-types: MATCHING_HEADING, MATCHING_INFORMATION, MATCHING_FEATURES, MATCHING_SENTENCE_ENDINGS
+// Each has its own default metadata shape; the form dispatches by `qType`.
 
-const MatchingForm = ({
-  idGroup,
-  groupData,
-  questionNumberOffset = 0,
-  onRefresh,
-}) => {
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  // 1. POOL OPTIONS: Danh sách các lựa chọn chung (A, B, C...)
-  // [{ key: "A", text: "Nội dung A" }, { key: "B", text: "Nội dung B" }]
-  const [optionsPool, setOptionsPool] = useState([]);
-
-  // 2. QUESTIONS: Danh sách câu hỏi
-  // [{ content: "Câu hỏi 1", correctKey: "A" }]
-  const [questions, setQuestions] = useState([]);
-
-  // Load dữ liệu khi sửa
-  useEffect(() => {
-    if (idGroup) loadData();
-  }, [idGroup]);
-
-  // Khởi tạo mặc định khi tạo mới
-  useEffect(() => {
-    if (
-      groupData?.quantity &&
-      questions.length === 0 &&
-      optionsPool.length === 0
-    ) {
-      // Tạo options mặc định A, B, C...
-      const defaultOptions = Array(groupData.quantity)
-        .fill(null)
-        .map((_, i) => ({
-          key: String.fromCharCode(65 + i),
-          text: "",
-        }));
-      setOptionsPool(defaultOptions);
-
-      // Tạo câu hỏi rỗng
-      const defaultQuestions = Array(groupData.quantity)
-        .fill(null)
-        .map(() => ({
-          content: "",
-          correctKey: undefined,
-        }));
-      setQuestions(defaultQuestions);
-    }
-  }, [groupData]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const res = await getQuestionsByIdGroupAPI(idGroup);
-      const group = res?.data?.[0];
-
-      if (group && group.question?.length > 0) {
-        // Lấy Options Pool từ câu hỏi đầu tiên (vì câu nào cũng lưu full options)
-        const firstQId = group.question[0].idQuestion;
-        const firstAnsRes = await getAnswersByIdQuestionAPI(firstQId);
-
-        // Reconstruct Options Pool
-        const loadedOptions = (firstAnsRes?.data || [])
-          .map((a) => ({ key: a.matching_key, text: a.answer_text }))
-          .sort((a, b) => a.key.localeCompare(b.key));
-
-        setOptionsPool(loadedOptions);
-
-        // Load từng câu hỏi để biết câu nào chọn key nào
-        const loadedQ = await Promise.all(
-          group.question.map(async (q) => {
-            const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
-            const answers = ansRes?.data || [];
-            // Tìm đáp án đúng (có value là CORRECT)
-            const correctAns = answers.find(
-              (a) => a.matching_value === "CORRECT"
-            );
-
-            return {
-              idQuestion: q.idQuestion,
-              numberQuestion: q.numberQuestion,
-              content: q.content,
-              correctKey: correctAns ? correctAns.matching_key : undefined,
-            };
-          })
-        );
-
-        setQuestions(loadedQ);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+// MATCHING_HEADING
+// { headings: [{label, text}], paragraphRef: string, correctHeadingIndex: number }
+const MatchingHeadingForm = ({ value, onChange }) => {
+  const update = (patch) => onChange({ ...value, ...patch });
+  const headings = value.headings || [];
+  const setHeadingText = (idx, text) => {
+    update({ headings: headings.map((h, i) => (i === idx ? { ...h, text } : h)) });
   };
-
-  // --- HANDLERS ---
-  const handleOptionChange = (idx, val) => {
-    const newPool = [...optionsPool];
-    newPool[idx].text = val;
-    setOptionsPool(newPool);
-  };
-
-  const handleAddOption = () => {
-    const nextChar = String.fromCharCode(65 + optionsPool.length);
-    setOptionsPool([...optionsPool, { key: nextChar, text: "" }]);
-  };
-
-  const handleRemoveOption = (idx) => {
-    const newPool = optionsPool.filter((_, i) => i !== idx);
-    setOptionsPool(newPool);
-  };
-
-  const handleQuestionChange = (idx, field, val) => {
-    const newQ = [...questions];
-    newQ[idx][field] = val;
-    setQuestions(newQ);
-  };
-
-  // --- SAVE ---
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-
-      const payload = questions.map((q, index) => {
-        // LOGIC QUAN TRỌNG:
-        // Mỗi câu hỏi sẽ chứa TOÀN BỘ danh sách options trong answers
-        // Để Frontend lúc làm bài hiển thị đủ list A, B, C, D...
-        const answersPayload = optionsPool.map((opt) => ({
-          // 1. answer_text: Lưu nội dung (Ví dụ: "1233214")
-          answer_text: opt.text,
-
-          // 2. matching_key: Lưu ký tự (Ví dụ: "B")
-          matching_key: opt.key,
-
-          // 3. matching_value: Lưu "CORRECT" nếu đúng, null nếu sai (theo yêu cầu của bạn)
-          matching_value: opt.key === q.correctKey ? "CORRECT" : null,
-        }));
-
-        return {
-          idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart,
-          idQuestion: q.idQuestion || null,
-          numberQuestion: q.numberQuestion || questionNumberOffset + index + 1,
-          content: q.content,
-          answers: answersPayload, // Gửi full options cho mỗi câu
-        };
-      });
-
-      const toUpdate = payload.filter((p) => p.idQuestion);
-      const toCreate = payload.filter((p) => !p.idQuestion);
-
-      const promises = [];
-      if (toUpdate.length > 0)
-        promises.push(updateManyQuestionAPI({ questions: toUpdate }));
-      if (toCreate.length > 0)
-        promises.push(createManyQuestion({ questions: toCreate }));
-
-      await Promise.all(promises);
-      message.success("Lưu Matching thành công!");
-      if (onRefresh) onRefresh();
-      loadData(); // Reload lại để đồng bộ ID
-    } catch (err) {
-      console.error(err);
-      message.error("Lưu thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
-    <div className="space-y-6 pb-4">
-      {/* 1. Nhập danh sách lựa chọn */}
-      <Card
-        title="Bước 1: Tạo danh sách lựa chọn (Options)"
-        size="small"
-        className="bg-blue-50 border-blue-200"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {optionsPool.map((opt, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <div className="bg-white border px-3 py-1 rounded font-bold text-blue-600 w-12 text-center shrink-0">
-                {opt.key}
-              </div>
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Paragraph reference (e.g. "Paragraph A")
+        </span>
+        <Input
+          value={value.paragraphRef}
+          onChange={(e) => update({ paragraphRef: e.target.value })}
+          placeholder="Paragraph A"
+        />
+      </label>
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Headings (more than paragraphs)
+        </span>
+        <div className="space-y-1.5">
+          {headings.map((h, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="font-extrabold text-[#1e1b4b] w-6 text-center text-xs">
+                {h.label}
+              </span>
               <Input
-                placeholder={`Nội dung cho ${opt.key}`}
-                value={opt.text}
-                onChange={(e) => handleOptionChange(idx, e.target.value)}
-              />
-              <Button
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleRemoveOption(idx)}
+                value={h.text}
+                onChange={(e) => setHeadingText(i, e.target.value)}
+                placeholder="Heading text"
+                size="small"
               />
             </div>
           ))}
         </div>
-        <Button
-          type="dashed"
-          icon={<PlusOutlined />}
-          onClick={handleAddOption}
-          className="mt-3"
+        <button
+          onClick={() =>
+            update({
+              headings: [
+                ...headings,
+                { label: `H${headings.length + 1}`, text: "" },
+              ],
+            })
+          }
+          className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-[#6366f1] uppercase tracking-wide hover:underline"
         >
-          Thêm lựa chọn
-        </Button>
-      </Card>
-
-      {/* 2. Ghép câu hỏi */}
-      <Card title="Bước 2: Câu hỏi & Đáp án đúng" size="small">
-        {questions.map((q, idx) => (
-          <div key={idx} className="mb-4 pb-4 border-b last:border-0">
-            <div className="font-bold text-gray-600 mb-2">
-              Câu {q.numberQuestion || questionNumberOffset + idx + 1}
-            </div>
-            <div className="flex gap-4 items-start">
-              <div className="flex-1">
-                <RichTextEditor
-                  value={q.content}
-                  onChange={(html) =>
-                    handleQuestionChange(idx, "content", html)
-                  }
-                  placeholder="Nhập nội dung câu hỏi (có thể định dạng text)..."
-                  minHeight="80px"
-                />
-              </div>
-              <div className="w-[200px]">
-                <Select
-                  className="w-full"
-                  placeholder="Chọn đáp án đúng"
-                  value={q.correctKey}
-                  onChange={(val) =>
-                    handleQuestionChange(idx, "correctKey", val)
-                  }
-                >
-                  {optionsPool.map((opt) => (
-                    <Option key={opt.key} value={opt.key}>
-                      <strong>{opt.key}.</strong>{" "}
-                      {opt.text
-                        ? opt.text.length > 15
-                          ? opt.text.substring(0, 15) + "..."
-                          : opt.text
-                        : "(Trống)"}
-                    </Option>
-                  ))}
-                </Select>
-              </div>
-            </div>
-          </div>
-        ))}
-      </Card>
-
-      <div className="flex justify-end pt-2">
-        <Button
-          type="primary"
-          size="large"
-          onClick={handleSave}
-          loading={saving}
-        >
-          Lưu Matching
-        </Button>
+          <PlusOutlined /> Add heading
+        </button>
+      </div>
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Correct heading
+        </span>
+        <Select
+          className="w-full"
+          value={value.correctHeadingIndex}
+          onChange={(v) => update({ correctHeadingIndex: Number(v) })}
+          options={headings.map((h, i) => ({ value: i, label: h.label }))}
+          placeholder="Pick the correct heading"
+        />
       </div>
     </div>
   );
+};
+
+// MATCHING_INFORMATION
+// { statement, paragraphLabels: string[], correctParagraph: string }
+const MatchingInfoForm = ({ value, onChange }) => {
+  const update = (patch) => onChange({ ...value, ...patch });
+  const labels = value.paragraphLabels || [];
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Statement to match
+        </span>
+        <Input.TextArea
+          value={value.statement}
+          onChange={(e) => update({ statement: e.target.value })}
+          rows={2}
+        />
+      </label>
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Paragraph labels (A, B, C…)
+        </span>
+        <div className="space-y-1.5">
+          {labels.map((l, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                value={l}
+                onChange={(e) =>
+                  update({
+                    paragraphLabels: labels.map((x, j) => (i === j ? e.target.value : x)),
+                  })
+                }
+                placeholder="A"
+                size="small"
+                className="w-24"
+              />
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() =>
+            update({
+              paragraphLabels: [...labels, String.fromCharCode(65 + labels.length)],
+            })
+          }
+          className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-[#6366f1] uppercase tracking-wide hover:underline"
+        >
+          <PlusOutlined /> Add label
+        </button>
+      </div>
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Correct paragraph
+        </span>
+        <Select
+          className="w-full"
+          value={value.correctParagraph}
+          onChange={(v) => update({ correctParagraph: v })}
+          options={labels.map((l) => ({ value: l, label: l }))}
+          placeholder="Pick the correct paragraph"
+        />
+      </div>
+    </div>
+  );
+};
+
+// MATCHING_FEATURES
+// { statement, features: [{label, text}], correctFeatureLabel: string }
+const MatchingFeaturesForm = ({ value, onChange }) => {
+  const update = (patch) => onChange({ ...value, ...patch });
+  const features = value.features || [];
+  const setFeatureText = (idx, text) => {
+    update({ features: features.map((f, i) => (i === idx ? { ...f, text } : f)) });
+  };
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Statement
+        </span>
+        <Input.TextArea
+          value={value.statement}
+          onChange={(e) => update({ statement: e.target.value })}
+          rows={2}
+        />
+      </label>
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Features / people
+        </span>
+        <div className="space-y-1.5">
+          {features.map((f, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="font-extrabold text-[#1e1b4b] w-6 text-center text-xs">
+                {f.label}
+              </span>
+              <Input
+                value={f.text}
+                onChange={(e) => setFeatureText(i, e.target.value)}
+                size="small"
+              />
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() =>
+            update({
+              features: [
+                ...features,
+                { label: `F${features.length + 1}`, text: "" },
+              ],
+            })
+          }
+          className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-[#6366f1] uppercase tracking-wide hover:underline"
+        >
+          <PlusOutlined /> Add feature
+        </button>
+      </div>
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Correct feature
+        </span>
+        <Select
+          className="w-full"
+          value={value.correctFeatureLabel}
+          onChange={(v) => update({ correctFeatureLabel: v })}
+          options={features.map((f) => ({ value: f.label, label: f.label }))}
+          placeholder="Pick the correct feature"
+        />
+      </div>
+    </div>
+  );
+};
+
+// MATCHING_SENTENCE_ENDINGS
+// { sentenceStem: string, endings: [{label, text}], correctEndingLabel: string }
+const MatchingSentenceEndingsForm = ({ value, onChange }) => {
+  const update = (patch) => onChange({ ...value, ...patch });
+  const endings = value.endings || [];
+  const setEndingText = (idx, text) => {
+    update({ endings: endings.map((e, i) => (i === idx ? { ...e, text } : e)) });
+  };
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Sentence stem (beginning)
+        </span>
+        <Input.TextArea
+          value={value.sentenceStem}
+          onChange={(e) => update({ sentenceStem: e.target.value })}
+          rows={2}
+          placeholder="e.g. The capital of France is…"
+        />
+      </label>
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Possible endings
+        </span>
+        <div className="space-y-1.5">
+          {endings.map((e, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="font-extrabold text-[#1e1b4b] w-6 text-center text-xs">
+                {e.label}
+              </span>
+              <Input
+                value={e.text}
+                onChange={(e) => setEndingText(i, e.target.value)}
+                size="small"
+              />
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() =>
+            update({
+              endings: [
+                ...endings,
+                { label: `E${endings.length + 1}`, text: "" },
+              ],
+            })
+          }
+          className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-[#6366f1] uppercase tracking-wide hover:underline"
+        >
+          <PlusOutlined /> Add ending
+        </button>
+      </div>
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Correct ending
+        </span>
+        <Select
+          className="w-full"
+          value={value.correctEndingLabel}
+          onChange={(v) => update({ correctEndingLabel: v })}
+          options={endings.map((e) => ({ value: e.label, label: e.label }))}
+          placeholder="Pick the correct ending"
+        />
+      </div>
+    </div>
+  );
+};
+
+const MatchingForm = (props) => {
+  const { qType, ...rest } = props;
+  switch (qType) {
+    case "MATCHING_HEADING":
+      return <MatchingHeadingForm {...rest} />;
+    case "MATCHING_INFORMATION":
+      return <MatchingInfoForm {...rest} />;
+    case "MATCHING_FEATURES":
+      return <MatchingFeaturesForm {...rest} />;
+    case "MATCHING_SENTENCE_ENDINGS":
+      return <MatchingSentenceEndingsForm {...rest} />;
+    default:
+      return (
+        <div className="text-xs text-[#94a3b8] italic">
+          Unsupported matching sub-type: {qType}
+        </div>
+      );
+  }
 };
 
 export default MatchingForm;
