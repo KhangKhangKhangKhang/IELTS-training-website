@@ -166,3 +166,16 @@ export const getTestResultAndAnswersAPI = async (idTestResult) => {
 
   return withTopLevelAliases(res.data);
 };
+
+/**
+ * Get the user's best band score and last finishedAt for each test.
+ * Lightweight payload (select-only 3 columns) — used by the /test
+ * discovery page to render the "Best band" card block.
+ * Returns: { data: { [idTest]: { maxBand, lastFinishedAt } } }
+ */
+export const getBestBandByTestAPI = async (idUser) => {
+  const res = await API.get(
+    `/user-test-result/get-best-band-by-test/${idUser}`
+  );
+  return res.data;
+};

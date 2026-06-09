@@ -1,94 +1,163 @@
-import React, { useState, useEffect } from "react";
-import { Input, Select, Row, Col, Spin, Modal, message } from "antd"; // Thêm Modal, message
-import { SearchOutlined } from "@ant-design/icons";
-import ExamSelector from "@/components/test/examSelector";
-import ExamCard from "@/components/test/examCard";
-import { getAPITest } from "@/services/apiTest";
-import { StartTestAPI } from "@/services/apiDoTest"; // Import API Start
+import React, { useState, useEffect, useMemo } from "react";
+import { Modal, message, Spin } from "antd";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/context/authContext";
+import { getAPITest } from "@/services/apiTest";
+import { StartTestAPI, getBestBandByTestAPI } from "@/services/apiDoTest";
+import {
+  IELTSTestDiscoveryScreen,
+} from "@/components/magicpath/ielts-test-discovery-screen/IELTSTestDiscoveryScreen";
+import {
+  mapTestTypeToSkill,
+  mapLevelToDiff,
+  formatDuration,
+  isNewByRecency,
+  getSkillCounts,
+  getCachedUserStats,
+  setCachedUserStats,
+} from "@/components/test/testDiscoveryUtils";
 
 const TestPage = () => {
-  const [testType, setTestType] = useState("Tất cả");
-  const [exams, setExams] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
-
-  // State cho Modal xác nhận
-  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [selectedExam, setSelectedExam] = useState(null);
-  const [startingTest, setStartingTest] = useState(false); // Loading khi đang gọi API Start
-
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // UI filter state (lives at the page level so the design component can
+  // remain a controlled, presentational piece).
+  const [skill, setSkill] = useState("all");
+  const [diff, setDiff] = useState("all");
+  const [search, setSearch] = useState("");
+  const [view, setView] = useState("grid");
+
+  // Data state
+  const [exams, setExams] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [userStatsById, setUserStatsById] = useState({});
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  // Confirm flow (preserved exactly from the previous page)
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [selectedExam, setSelectedExam] = useState(null);
+  const [startingTest, setStartingTest] = useState(false);
+
+  // Effect A: blocking — fetch the test list. Page renders as soon as this
+  // resolves (server-cached 1h on the backend, so typically <100ms after
+  // the first hit).
   useEffect(() => {
+    let cancelled = false;
     const fetchExams = async () => {
       setLoading(true);
       try {
         const res = await getAPITest();
-        setExams(res.data);
+        if (!cancelled) setExams(res?.data || []);
       } catch (error) {
         console.error("Lỗi tải dữ liệu:", error);
+        if (!cancelled) message.error("Không tải được danh sách đề thi.");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchExams();
-  }, [testType]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const filteredExams = Array.isArray(exams)
-    ? exams
-      .filter((exam) => {
-        const matchTestType =
-          testType === "Tất cả" || exam.testType === testType;
-        const matchSearch =
-          exam.title.toLowerCase().includes(searchText.toLowerCase()) ||
-          exam.description.toLowerCase().includes(searchText.toLowerCase());
-        return matchTestType && matchSearch;
-      })
-      .sort((a, b) => {
-        if (sortBy === "newest")
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        if (sortBy === "level") return b.level - a.level;
-        return 0;
-      })
-    : [];
+  // Effect B: non-blocking — fetch the per-user best-band stats. Fired
+  // in parallel with Effect A (mount → both run). Cards that depend on
+  // userStatsById show a neutral state until this resolves.
+  useEffect(() => {
+    if (!user?.idUser) {
+      setUserStatsById({});
+      return;
+    }
+    const cached = getCachedUserStats(user.idUser);
+    if (cached) {
+      setUserStatsById(cached);
+      return;
+    }
+    let cancelled = false;
+    setStatsLoading(true);
+    (async () => {
+      try {
+        const res = await getBestBandByTestAPI(user.idUser);
+        const data = res?.data || {};
+        if (!cancelled) {
+          setUserStatsById(data);
+          setCachedUserStats(user.idUser, data);
+        }
+      } catch (error) {
+        console.error("Lỗi tải user stats:", error);
+        if (!cancelled) setUserStatsById({});
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.idUser]);
 
-  // 1. Khi click vào đề -> Mở Modal xác nhận (chưa navigate vội)
-  const handleExamClick = (exam) => {
+  // Map raw exam objects → DiscoveryTestItem shape the design component
+  // expects. Memoized so the filter bar / typing in the search box
+  // doesn't re-map the entire list on every keystroke.
+  const discoveryTests = useMemo(() => {
+    return (exams || []).map((e) => {
+      const stats = userStatsById[e.idTest];
+      const dur = formatDuration(e.duration);
+      return {
+        id: e.idTest,
+        title: e.title,
+        img: e.img || null,
+        skill: mapTestTypeToSkill(e.testType),
+        difficulty: mapLevelToDiff(e.level),
+        duration: dur.label.replace(" phút", ""), // numeric minutes for the card
+        questions: e.numberQuestion || 0,
+        attempts: e.attempts || 0,
+        avgBand: e.avgBand ?? null,
+        bestBand: stats ? Number(stats.maxBand) || null : null,
+        lastFinishedAt: stats?.lastFinishedAt
+          ? new Date(stats.lastFinishedAt).toISOString()
+          : null,
+        isNew: isNewByRecency(exams, e, 5),
+      };
+    });
+  }, [exams, userStatsById]);
+
+  const counts = useMemo(() => getSkillCounts(exams), [exams]);
+
+  // === Confirm flow (unchanged from previous page) =====================
+  const handleStartClick = (test) => {
     if (!user) {
       navigate("/login");
       return;
     }
-    setSelectedExam(exam);
+    // The design component passes a DiscoveryTestItem; map back to the
+    // shape the existing confirm modal uses (it expects the raw API test
+    // fields).
+    const raw = exams.find((e) => e.idTest === test.id);
+    if (!raw) {
+      message.error("Không tìm thấy thông tin đề thi.");
+      return;
+    }
+    setSelectedExam(raw);
     setConfirmModalOpen(true);
   };
 
-  // 2. Khi bấm OK ở Modal -> Gọi API Start -> Có data -> Navigate
   const handleConfirmStart = async () => {
     if (!user?.idUser || !selectedExam) return;
-
     setStartingTest(true);
     try {
-      // Gọi API Start Test
       const res = await StartTestAPI(user.idUser, selectedExam.idTest, {});
-
-      // Kiểm tra data trả về
-      const testResultData = res?.data;
-
+      const testResultData = res?.data?.data ?? res?.data;
       if (testResultData?.idTestResult) {
         message.success("Bắt đầu làm bài!");
         setConfirmModalOpen(false);
-
-        // Navigate và truyền idTestResult qua state
         navigate("/doTest", {
           state: {
             idTest: selectedExam.idTest,
             testType: selectedExam.testType,
             duration: selectedExam.duration,
-            initialTestResult: testResultData, // Truyền cục data này qua bên kia
+            initialTestResult: testResultData,
           },
         });
       } else {
@@ -102,122 +171,48 @@ const TestPage = () => {
     }
   };
 
+  // === Render =========================================================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto">
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center mb-4">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl mr-4 shadow-lg shadow-blue-500/25">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
-                Làm Đề Thi IELTS
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400 mt-1">
-                Chọn đề thi phù hợp và bắt đầu luyện tập ngay
-              </p>
-            </div>
-          </div>
+    <div className="relative">
+      {loading && exams.length === 0 ? (
+        <div className="min-h-screen flex items-center justify-center bg-[#fafafc]">
+          <Spin size="large" tip="Đang tải đề thi..." />
         </div>
+      ) : (
+        <IELTSTestDiscoveryScreen
+          tests={discoveryTests}
+          counts={counts}
+          userStatsById={userStatsById}
+          statsLoading={statsLoading}
+          skill={skill}
+          setSkill={setSkill}
+          diff={diff}
+          setDiff={setDiff}
+          search={search}
+          setSearch={setSearch}
+          view={view}
+          setView={setView}
+          onStartTest={handleStartClick}
+        />
+      )}
 
-        {/* Filter Bar */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg dark:shadow-slate-900/50 mb-8 border border-slate-200 dark:border-slate-700">
-          <Row gutter={[16, 16]} align="bottom">
-            <Col xs={24} md={8}>
-              <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">
-                Loại đề thi
-              </label>
-              <ExamSelector className="dark:text-slate-300" currentType={testType} onTypeChange={setTestType} />
-            </Col>
-            <Col xs={24} md={10}>
-              <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">Tìm kiếm</label>
-              <Input
-                size="large"
-                placeholder="Nhập tên đề hoặc mô tả..."
-                prefix={<SearchOutlined className="text-slate-400" />}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="rounded-xl"
-              />
-            </Col>
-            <Col xs={24} md={6}>
-              <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">Sắp xếp</label>
-              <Select
-                size="large"
-                className="w-full"
-                value={sortBy}
-                onChange={setSortBy}
-                options={[
-                  { value: "newest", label: "Mới nhất" },
-                  { value: "level", label: "Theo cấp độ" },
-                ]}
-              />
-            </Col>
-          </Row>
-        </div>
-
-        {/* Results count */}
-        {!loading && (
-          <div className="mb-6 flex items-center justify-between">
-            <p className="text-slate-600 dark:text-slate-400">
-              Tìm thấy <span className="font-bold text-blue-600 dark:text-blue-400">{filteredExams.length}</span> đề thi
-            </p>
-          </div>
-        )}
-
-        {loading ? (
-          <div className="text-center py-20">
-            <Spin size="large" />
-            <p className="mt-4 text-slate-500 dark:text-slate-400">Đang tải đề thi...</p>
-          </div>
-        ) : (
-          <Row gutter={[24, 24]}>
-            {filteredExams.map((exam) => (
-              <Col key={exam.idTest} xs={24} sm={12} lg={8} xl={6}>
-                <ExamCard
-                  exam={exam}
-                  onExamClick={() => handleExamClick(exam)} // Gọi hàm mở modal
-                />
-              </Col>
-            ))}
-          </Row>
-        )}
-
-        {!loading && filteredExams.length === 0 && (
-          <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
-            <div className="bg-slate-100 dark:bg-slate-700 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">Không tìm thấy đề thi</h3>
-            <p className="text-slate-500 dark:text-slate-400">Thử tìm kiếm với từ khóa khác hoặc thay đổi bộ lọc</p>
-          </div>
-        )}
-
-        {/* Modal Xác nhận Start Test */}
-        <Modal
-          title="Xác nhận làm bài"
-          open={confirmModalOpen}
-          onOk={handleConfirmStart}
-          onCancel={() => setConfirmModalOpen(false)}
-          confirmLoading={startingTest}
-          okText="Bắt đầu ngay"
-          cancelText="Hủy"
-        >
-          <p>
-            Bạn có chắc chắn muốn bắt đầu làm đề thi:{" "}
-            <strong>{selectedExam?.title}</strong>?
-          </p>
-          <p className="text-gray-500 text-sm mt-2">
-            Thời gian làm bài sẽ được tính ngay khi bạn nhấn Bắt đầu.
-          </p>
-        </Modal>
-      </div>
+      <Modal
+        title="Xác nhận làm bài"
+        open={confirmModalOpen}
+        onOk={handleConfirmStart}
+        onCancel={() => setConfirmModalOpen(false)}
+        confirmLoading={startingTest}
+        okText="Bắt đầu ngay"
+        cancelText="Hủy"
+      >
+        <p>
+          Bạn có chắc chắn muốn bắt đầu làm đề thi:{" "}
+          <strong>{selectedExam?.title}</strong>?
+        </p>
+        <p className="text-gray-500 text-sm mt-2">
+          Thời gian làm bài sẽ được tính ngay khi bạn nhấn Bắt đầu.
+        </p>
+      </Modal>
     </div>
   );
 };
