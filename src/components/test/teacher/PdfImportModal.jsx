@@ -89,11 +89,11 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
 
   const beforeUpload = (uploadedFile) => {
     if (uploadedFile.type !== "application/pdf") {
-      message.error("Chỉ chấp nhận file PDF!");
+      message.error("Only PDF files are accepted!");
       return false;
     }
     if (uploadedFile.size > 20 * 1024 * 1024) {
-      message.error("File PDF phải nhỏ hơn 20MB!");
+      message.error("PDF file must be smaller than 20MB!");
       return false;
     }
     setFile(uploadedFile);
@@ -102,7 +102,7 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
 
   const handleExtract = async () => {
     if (!file) {
-      message.warning("Vui lòng chọn file PDF!");
+      message.warning("Please choose a PDF file!");
       return;
     }
 
@@ -123,10 +123,10 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
       setRawPdfUrl(result.rawPdfUrl || "");
       setEditData(result.rawData);
       setCurrentStep(1);
-      message.success("Trích xuất PDF thành công!");
+      message.success("PDF extracted successfully!");
     } catch (error) {
       console.error("Extract error:", error);
-      message.error(error?.response?.data?.message || "Trích xuất PDF thất bại!");
+      message.error(error?.response?.data?.message || "PDF extraction failed!");
     } finally {
       setUploading(false);
     }
@@ -141,10 +141,10 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
         status: "REVIEWED",
       });
       setStatus("REVIEWED");
-      message.success("Đã lưu chỉnh sửa!");
+      message.success("Edits saved!");
     } catch (error) {
       console.error("Save session error:", error);
-      message.error("Lưu chỉnh sửa thất bại!");
+      message.error("Save edits failed!");
     }
   };
 
@@ -152,21 +152,21 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
     if (!idSession) return;
 
     if (!user?.idUser) {
-      message.error("Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.");
+      message.error("User info not found. Please log in again.");
       return;
     }
 
     try {
       setSaving(true);
       const result = await savePdfExamSessionAPI(idSession, user.idUser);
-      message.success(`Đã lưu đề thi mới! Đang chuyển đến trang chỉnh sửa...`);
+      message.success(`New test saved! Redirecting to edit page...`);
 
       // Navigate to the newly created test's edit page
       navigate(`/teacher/testManager/testEdit/${result.idTest}`);
       handleClose();
     } catch (error) {
       console.error("Save to DB error:", error);
-      message.error(error?.response?.data?.message || "Lưu vào DB thất bại!");
+      message.error(error?.response?.data?.message || "Save to DB failed!");
     } finally {
       setSaving(false);
     }
@@ -180,7 +180,7 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
 
     try {
       await deletePdfExamSessionAPI(idSession);
-      message.info("Đã hủy phiên import");
+      message.info("Import session cancelled");
       handleClose();
     } catch (error) {
       console.error("Discard error:", error);
@@ -205,8 +205,8 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
         <p className="text-4xl mb-2">
           <FilePdfOutlined />
         </p>
-        <p className="text-base">Click hoặc kéo thả file PDF vào đây</p>
-        <p className="text-xs text-gray-400">Dung lượng tối đa: 20MB</p>
+        <p className="text-base">Click or drag & drop a PDF file here</p>
+        <p className="text-xs text-gray-400">Max size: 20MB</p>
       </Dragger>
 
       {file && (
@@ -221,11 +221,11 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
         </div>
       )}
 
-      <Divider>Thông tin đề thi</Divider>
+      <Divider>Test info</Divider>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Loại đề thi</label>
+          <label className="block text-sm font-medium mb-1">Test type</label>
           <Select
             value={selectedTestType}
             onChange={setSelectedTestType}
@@ -235,7 +235,7 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Cấp độ</label>
+          <label className="block text-sm font-medium mb-1">Level</label>
           <Select
             value={selectedLevel}
             onChange={setSelectedLevel}
@@ -247,11 +247,11 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Tiêu đề (tùy chọn)</label>
+        <label className="block text-sm font-medium mb-1">Title (optional)</label>
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Nhập tiêu đề đề thi..."
+          placeholder="Enter the test title..."
           disabled={uploading}
         />
       </div>
@@ -265,7 +265,7 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
         block
         size="large"
       >
-        {uploading ? "Đang trích xuất..." : "Trích xuất PDF"}
+        {uploading ? "Extracting..." : "Extract PDF"}
       </Button>
     </div>
   );
@@ -284,13 +284,13 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
           icon={<EditOutlined />}
           onClick={() => setIsEditing(!isEditing)}
         >
-          {isEditing ? "Hủy sửa" : "Sửa"}
+          {isEditing ? "Cancel edit" : "Edit"}
         </Button>
       </div>
 
       {warnings && warnings.length > 0 && (
         <Alert
-          message="Cảnh báo"
+          message="Warnings"
           description={
             <ul className="list-disc list-inside text-sm">
               {warnings.map((w, i) => (
@@ -307,8 +307,8 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
       {isEditing ? (
         <div className="space-y-4">
           <Alert
-            message="Chế độ chỉnh sửa"
-            description="Bạn đang sửa dữ liệu trích xuất. Sau khi sửa xong, nhấn 'Lưu chỉnh sửa' để cập nhật."
+            message="Edit mode"
+            description="You are editing the extracted data. When done, press 'Save edits' to update."
             type="info"
           />
           <Input.TextArea
@@ -327,7 +327,7 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
             onClick={handleSaveSession}
             block
           >
-            Lưu chỉnh sửa
+            Save edits
           </Button>
         </div>
       ) : (
@@ -349,7 +349,7 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
           block
           size="large"
         >
-          {saving ? "Đang lưu..." : "Lưu vào đề thi"}
+          {saving ? "Saving..." : "Save into test"}
         </Button>
         <Button
           danger
@@ -357,12 +357,12 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
           onClick={handleDiscard}
           disabled={saving}
         >
-          Hủy
+          Cancel
         </Button>
       </div>
 
       <Button block onClick={() => setCurrentStep(0)} disabled={saving}>
-        Quay lại (Upload lại file khác)
+        Back (Upload a different file)
       </Button>
     </div>
   );
@@ -372,7 +372,7 @@ const PdfImportModal = ({ visible, onClose, idTest, testType, exam, onImportSucc
       title={
         <div className="flex items-center gap-2">
           <FilePdfOutlined className="text-red-500" />
-          <span>Import đề thi từ PDF</span>
+          <span>Import test from PDF</span>
         </div>
       }
       open={visible}

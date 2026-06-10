@@ -68,7 +68,7 @@ const TeacherReviewManager = () => {
       setAssignMode(modeRes.mode || 'MANUAL');
     } catch (err) {
       console.error('Error fetching data:', err);
-      message.error('Không thể tải dữ liệu.');
+      message.error('Failed to load data.');
     } finally {
       setLoading(false);
     }
@@ -80,10 +80,10 @@ const TeacherReviewManager = () => {
     try {
       await updateAssignModeAPI(newMode);
       setAssignMode(newMode);
-      message.success(`Đã chuyển sang chế độ ${newMode === 'AUTO' ? 'tự động' : 'thủ công'}`);
+      message.success(`Switched to mode ${newMode === 'AUTO' ? 'auto' : 'manual'}`);
     } catch (err) {
       console.error('Error updating mode:', err);
-      message.error('Không thể cập nhật chế độ.');
+      message.error('Cannot update mode.');
     } finally {
       setUpdatingMode(false);
     }
@@ -109,15 +109,15 @@ const TeacherReviewManager = () => {
   const getStatusText = (status) => {
     switch (status?.toUpperCase()) {
       case 'PENDING':
-        return 'Chờ';
+        return 'Pending';
       case 'CLAIMED':
-        return 'Đã nhận';
+        return 'Received';
       case 'IN_PROGRESS':
-        return 'Đang chấm';
+        return 'Grading';
       case 'COMPLETED':
-        return 'Hoàn thành';
+        return 'Completed';
       case 'CANCELLED':
-        return 'Đã hủy';
+        return 'Cancelled';
       default:
         return status;
     }
@@ -126,7 +126,7 @@ const TeacherReviewManager = () => {
   const columns = [
     {
       title: 'ID',
-      dataIndex: 'idTicket',
+      dataPrintdex: 'idTicket',
       key: 'idTicket',
       width: 100,
       render: (id) => (
@@ -134,7 +134,7 @@ const TeacherReviewManager = () => {
       ),
     },
     {
-      title: 'Học viên',
+      title: 'Student',
       key: 'student',
       render: (_, record) => (
         <div>
@@ -145,18 +145,18 @@ const TeacherReviewManager = () => {
       ),
     },
     {
-      title: 'Loại',
-      dataIndex: 'type',
+      title: 'Type',
+      dataPrintdex: 'type',
       key: 'type',
       width: 80,
       render: (type) => (
         <Tag color={type === 'WRITING' ? 'blue' : 'purple'}>
-          {type === 'WRITING' ? 'Viết' : 'Nói'}
+          {type === 'WRITING' ? 'Writing' : 'Speaking'}
         </Tag>
       ),
     },
     {
-      title: 'Bài test',
+      title: 'Test',
       key: 'test',
       render: (_, record) => (
         <span>{record.testResult?.test?.title || 'N/A'}</span>
@@ -164,7 +164,7 @@ const TeacherReviewManager = () => {
     },
     {
       title: 'Band AI',
-      dataIndex: 'aiBandScore',
+      dataPrintdex: 'aiBandScore',
       key: 'aiBandScore',
       width: 70,
       render: (score) => (
@@ -175,7 +175,7 @@ const TeacherReviewManager = () => {
     },
     {
       title: 'Band GV',
-      dataIndex: 'teacherBandScore',
+      dataPrintdex: 'teacherBandScore',
       key: 'teacherBandScore',
       width: 70,
       render: (score) => (
@@ -185,8 +185,8 @@ const TeacherReviewManager = () => {
       ),
     },
     {
-      title: 'Trạng thái',
-      dataIndex: 'status',
+      title: 'Status',
+      dataPrintdex: 'status',
       key: 'status',
       width: 100,
       render: (status) => (
@@ -194,28 +194,28 @@ const TeacherReviewManager = () => {
       ),
     },
     {
-      title: 'Giáo viên',
+      title: 'Teacher',
       key: 'teacher',
       width: 120,
       render: (_, record) =>
         record.teacher?.nameUser || (
-          <span className="text-gray-400">Chưa có</span>
+          <span className="text-gray-400">Not yet</span>
         ),
     },
     {
       title: 'Commission',
-      dataIndex: 'commissionAmount',
+      dataPrintdex: 'commissionAmount',
       key: 'commissionAmount',
       width: 100,
       render: (amount) => (
         <span className="text-orange-600 font-medium">
-          {amount ? `${amount.toLocaleString()}đ` : '-'}
+          {amount ? `${amount.toLocaleString()} VND` : '-'}
         </span>
       ),
     },
     {
-      title: 'Ngày',
-      dataIndex: 'createdAt',
+      title: 'Date',
+      dataPrintdex: 'createdAt',
       key: 'createdAt',
       width: 100,
       render: (date) =>
@@ -235,23 +235,23 @@ const TeacherReviewManager = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white md:text-3xl">
-                  Quản lý Chấm bài Giáo viên
+                  Manage Teacher Grading
                 </h1>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Theo dõi và quản lý các yêu cầu chấm bài
+                  Track and manage grading requests
                 </p>
               </div>
             </div>
 
             {/* Assign Mode Toggle */}
             <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-700 p-3 rounded-lg">
-              <span className="text-sm font-medium">Chế độ phân công:</span>
+              <span className="text-sm font-medium">Assignment mode:</span>
               <Switch
                 checked={assignMode === 'AUTO'}
                 onChange={handleToggleAssignMode}
                 loading={updatingMode}
-                checkedChildren="Tự động"
-                unCheckedChildren="Thủ công"
+                checkedChildren="Auto"
+                unCheckedChildren="Manual"
               />
             </div>
           </div>
@@ -262,7 +262,7 @@ const TeacherReviewManager = () => {
           <Col xs={12} sm={6}>
             <Card size="small">
               <Statistic
-                title="Đang chờ"
+                title="Pending"
                 value={stats.pending}
                 valueStyle={{ color: '#fa8c16' }}
                 prefix={<ClockCircleOutlined />}
@@ -272,7 +272,7 @@ const TeacherReviewManager = () => {
           <Col xs={12} sm={6}>
             <Card size="small">
               <Statistic
-                title="Đã nhận"
+                title="Received"
                 value={stats.claimed}
                 valueStyle={{ color: '#1890ff' }}
                 prefix={<TeamOutlined />}
@@ -282,7 +282,7 @@ const TeacherReviewManager = () => {
           <Col xs={12} sm={6}>
             <Card size="small">
               <Statistic
-                title="Đang chấm"
+                title="Grading"
                 value={stats.inProgress}
                 valueStyle={{ color: '#13c2c2' }}
                 prefix={<DashboardOutlined />}
@@ -292,7 +292,7 @@ const TeacherReviewManager = () => {
           <Col xs={12} sm={6}>
             <Card size="small">
               <Statistic
-                title="Hoàn thành"
+                title="Completed"
                 value={stats.completed}
                 valueStyle={{ color: '#52c41a' }}
                 prefix={<CheckCircleOutlined />}
@@ -302,7 +302,7 @@ const TeacherReviewManager = () => {
         </Row>
 
         {/* Teachers Load */}
-        <Card title="Tải công việc của Giáo viên" size="small">
+        <Card title="Teacher workload" size="small">
           <div className="flex flex-wrap gap-4">
             {teachers.map((teacher) => (
               <div
@@ -324,12 +324,12 @@ const TeacherReviewManager = () => {
             activeKey={activeTab}
             onChange={setActiveTab}
             items={[
-              { key: 'ALL', label: `Tất cả (${stats.pending + stats.claimed + stats.inProgress + stats.completed + stats.cancelled})` },
-              { key: 'PENDING', label: `Chờ (${stats.pending})` },
-              { key: 'CLAIMED', label: `Đã nhận (${stats.claimed})` },
-              { key: 'IN_PROGRESS', label: `Đang chấm (${stats.inProgress})` },
-              { key: 'COMPLETED', label: `Hoàn thành (${stats.completed})` },
-              { key: 'CANCELLED', label: `Đã hủy (${stats.cancelled})` },
+              { key: 'ALL', label: `All (${stats.pending + stats.claimed + stats.inProgress + stats.completed + stats.cancelled})` },
+              { key: 'PENDING', label: `Pending (${stats.pending})` },
+              { key: 'CLAIMED', label: `Received (${stats.claimed})` },
+              { key: 'IN_PROGRESS', label: `Grading (${stats.inProgress})` },
+              { key: 'COMPLETED', label: `Completed (${stats.completed})` },
+              { key: 'CANCELLED', label: `Cancelled (${stats.cancelled})` },
             ]}
           />
 
