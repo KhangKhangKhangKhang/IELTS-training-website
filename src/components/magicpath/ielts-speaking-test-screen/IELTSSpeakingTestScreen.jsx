@@ -70,6 +70,8 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
   const [prepSeconds, setPrepSeconds] = useState(60);
   const [notes, setNotes] = useState('');
   const [audioBlobs, setAudioBlobs] = useState({ part1: null, part2: null, part3: null });
+  const [recordedPart1Ids, setRecordedPart1Ids] = useState([]); // indices of recorded questions
+  const [recordedPart3Ids, setRecordedPart3Ids] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [currentPart1Idx, setCurrentPart1Idx] = useState(0);
   const [currentPart3Idx, setCurrentPart3Idx] = useState(0);
@@ -83,17 +85,10 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
   };
 
   // Indices of part1/part3 questions that have been recorded.
-  // Approximation: when audioBlobs changes, we know "this part is done" but not which exact idx.
-  // For now, treat any recorded blob as "the currently displayed question was recorded".
-  // (The QuestionNavigator will show the active question as done; once user moves past it, the prev is still considered done via the order they recorded.)
-  const getCompletedPart1Ids = () => {
-    if (!audioBlobs.part1) return [];
-    return [currentPart1Idx];
-  };
-  const getCompletedPart3Ids = () => {
-    if (!audioBlobs.part3) return [];
-    return [currentPart3Idx];
-  };
+  // Tracked explicitly so the navigator chip coloring stays correct for questions
+  // 1..N-1 even when the single audioBlobs slot has been overwritten by a later recording.
+  const getCompletedPart1Ids = () => recordedPart1Ids;
+  const getCompletedPart3Ids = () => recordedPart3Ids;
 
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
@@ -110,8 +105,14 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const phaseKey = phase === 'part1' ? 'part1' : phase === 'cuecard-talk' ? 'part2' : phase === 'part3' ? 'part3' : null;
+        const phaseKey = activeTab; // 'part1' | 'part2' | 'part3' — derived from activeTab, not phase
         if (phaseKey) setAudioBlobs((prev) => ({ ...prev, [phaseKey]: blob }));
+        if (phaseKey === 'part1') {
+          setRecordedPart1Ids((prev) => (prev.includes(currentPart1Idx) ? prev : [...prev, currentPart1Idx]));
+        }
+        if (phaseKey === 'part3') {
+          setRecordedPart3Ids((prev) => (prev.includes(currentPart3Idx) ? prev : [...prev, currentPart3Idx]));
+        }
         streamRef.current?.getTracks().forEach((t) => t.stop());
       };
       recorder.start();
@@ -121,7 +122,7 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
       console.error('mic error', e);
       toast.error('Không thể truy cập microphone. Vui lòng cho phép trong trình duyệt.');
     }
-  }, [phase]);
+  }, [activeTab, currentPart1Idx, currentPart3Idx]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -152,7 +153,7 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
 
   // Upload audio blob when stops
   useEffect(() => {
-    const phaseKey = phase === 'part1' ? 'part1' : phase === 'cuecard-talk' ? 'part2' : phase === 'part3' ? 'part3' : null;
+    const phaseKey = activeTab; // 'part1' | 'part2' | 'part3' — derived from activeTab, not phase
     if (!phaseKey || !testResultId) return;
     const blob = audioBlobs[phaseKey];
     if (!blob) return;
