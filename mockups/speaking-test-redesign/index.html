@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Speaking Test Redesign — Mockup</title>
+<style>
+  /* Design tokens (giống source) */
+  :root {
+    --indigo-50:#eef2ff; --indigo-100:#e0e7ff; --indigo-200:#a5b4fc; --indigo-500:#6366f1; --indigo-600:#4f46e5; --indigo-700:#4338ca; --indigo-800:#312e81; --indigo-900:#1e1b4b; --indigo-950:#0b0a1f;
+    --coral-300:#fda4af; --coral-500:#fb7185; --coral-600:#e11d48; --coral-700:#be123c;
+    --amber-300:#fcd34d; --amber-500:#f59e0b; --amber-700:#b45309;
+    --emerald-500:#10b981; --emerald-50:#d1fae5; --emerald-700:#047857;
+    --slate-400:#94a3b8; --slate-500:#64748b; --slate-600:#475569;
+    --gray-50:#fafafc; --gray-100:#f1f1f6; --gray-200:#e6e6ed;
+    --shadow-card:0 2px 0 var(--gray-200);
+    --shadow-card-indigo:0 3px 0 var(--indigo-700);
+    --shadow-card-coral:0 4px 0 var(--coral-600);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gray-50);color:var(--indigo-900)}
+  .font-nunito{font-family:'Nunito','Plus Jakarta Sans',sans-serif}
+
+  /* Layout */
+  .app{min-height:100vh;display:flex;flex-direction:column}
+  header.sticky{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-bottom:2px solid var(--gray-200)}
+  .header-row{max-width:1440px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .logo{width:40px;height:40px;border-radius:16px;background:linear-gradient(135deg,var(--indigo-500),#a855f7);box-shadow:0 3px 0 var(--indigo-700);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .title-meta .eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--slate-500)}
+  .title-meta h1{font-size:14px;font-weight:800;margin:0}
+  .tabs{display:flex;gap:8px;flex:1;justify-content:center;min-width:300px;overflow-x:auto}
+  .timer{font-family:'JetBrains Mono','Courier New',monospace;font-weight:900;font-size:18px;padding:8px 16px;border-radius:16px;border:2px solid var(--indigo-200);background:var(--indigo-50);color:var(--indigo-700);box-shadow:0 3px 0 var(--indigo-200);display:flex;align-items:center;gap:8px}
+  .btn{padding:10px 20px;border-radius:16px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:13px;border:none;cursor:pointer;transition:transform .08s,filter .12s}
+  .btn:active{transform:translateY(2px)}
+  .btn-coral{background:var(--coral-500);color:#fff;box-shadow:0 4px 0 var(--coral-600)}
+  .btn-coral:hover{filter:brightness(1.1)}
+  .btn-coral:disabled{opacity:.5;cursor:not-allowed}
+  .btn-indigo{background:var(--indigo-500);color:#fff;box-shadow:0 4px 0 var(--indigo-700)}
+  .btn-indigo:hover{filter:brightness(1.1)}
+  .btn-indigo:disabled{opacity:.5;cursor:not-allowed}
+  .btn-ghost{background:#fff;color:var(--indigo-500);border:2px solid var(--gray-200);box-shadow:0 2px 0 var(--gray-200)}
+  .btn-ghost:disabled{opacity:.5;cursor:not-allowed}
+  .btn-green{background:var(--emerald-500);color:#fff;box-shadow:0 4px 0 var(--emerald-700)}
+
+  /* Main grid */
+  main{flex:1;max-width:1440px;width:100%;margin:0 auto;padding:24px;display:grid;grid-template-columns:1fr;gap:24px}
+  @media(min-width:1024px){main{grid-template-columns:300px 1fr 280px}}
+  aside{position:sticky;top:88px;align-self:start}
+
+  /* PartTab states */
+  .parttab{display:flex;align-items:center;gap:12px;padding:8px 16px;border-radius:16px;border:2px solid var(--gray-200);background:#fff;flex:none;cursor:pointer;transition:all .12s;font-family:inherit;color:inherit}
+  .parttab .num{width:32px;height:32px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;background:var(--gray-100);color:var(--slate-500)}
+  .parttab .label{font-size:12px;font-weight:800;color:var(--slate-500)}
+  .parttab .sub{font-size:10px;color:var(--slate-500)}
+  .parttab.active{background:var(--indigo-50);border-color:var(--indigo-500);box-shadow:0 2px 0 var(--indigo-700)}
+  .parttab.active .num{background:var(--indigo-500);color:#fff}
+  .parttab.active .label{color:var(--indigo-700)}
+  .parttab.done{background:var(--emerald-50);border-color:rgba(16,185,129,.4)}
+  .parttab.done .num{background:var(--emerald-500);color:#fff}
+  .parttab.done .label{color:var(--emerald-700)}
+  .parttab.locked{filter:grayscale(.7);opacity:.7;cursor:not-allowed;position:relative}
+  .parttab.locked .num::after{content:'🔒';font-size:12px}
+
+  /* QuestionPartScreen */
+  .center-card{background:#fff;border-radius:24px;border:2px solid var(--gray-200);box-shadow:var(--shadow-card);padding:24px}
+  .center-card .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+  .center-card .head .label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--indigo-500)}
+  .center-card .head .rec-pill{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:12px;background:#fff1f2;color:var(--coral-600);font-size:11px;font-weight:800;text-transform:uppercase}
+  .center-card .head .rec-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--coral-500)}
+  .center-card .head .rec-pill .dot.live{animation:pulse 1.2s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+  .center-card h2{font-size:28px;font-weight:900;margin:0 0 20px;line-height:1.2}
+  .mic-card{background:linear-gradient(135deg,var(--indigo-900),var(--indigo-800));border-radius:24px;padding:24px;color:#fff}
+  .livewave{display:flex;align-items:center;justify-content:center;gap:3px;height:64px;width:100%}
+  .livewave .bar{flex:1;max-width:6px;background:linear-gradient(to top,var(--coral-500),var(--amber-500));border-radius:999px;transform-origin:center;transform:scaleY(.3)}
+  .livewave.live .bar{animation:wave .8s ease-in-out infinite}
+  @keyframes wave{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1.2)}}
+  .mic-row{display:flex;align-items:center;justify-content:space-between;margin-top:16px}
+  .mic-row .meta{font-size:11px}
+  .mic-row .meta .o{opacity:.7;font-size:10px}
+  .mic-row .meta .v{font-weight:800;display:flex;align-items:center;gap:6px}
+  .mic-row .meta .v .dot{width:8px;height:8px;border-radius:50%;background:#fff;opacity:.5}
+  .mic-row .meta .v .dot.on{background:var(--emerald-500);opacity:1;animation:pulse 1.2s infinite}
+  .mic-btn{width:80px;height:80px;border-radius:24px;background:#fff;color:var(--coral-500);box-shadow:0 4px 0 rgba(0,0,0,.25);border:none;font-size:30px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .mic-btn.rec{background:var(--coral-500);color:#fff;box-shadow:0 4px 0 var(--coral-600)}
+  .mic-row .right{text-align:right}
+  .mic-row .right .v{font-family:'JetBrains Mono','Courier New',monospace;font-size:18px}
+  .center-card .footer-nav{border-top:2px solid var(--gray-200);margin:20px -24px -24px;padding:16px 24px;background:var(--gray-50);border-bottom-left-radius:24px;border-bottom-right-radius:24px;display:flex;align-items:center;gap:12px}
+  .center-card .footer-nav .center{flex:1;text-align:center;font-size:12px;font-weight:800;color:var(--slate-500)}
+  .center-card .footer-nav .center .ok{color:var(--emerald-500)}
+
+  /* QuestionNavigator */
+  .nav-card{background:#fff;border-radius:24px;border:2px solid var(--gray-200);box-shadow:var(--shadow-card);padding:16px}
+  .nav-card .eyebrow{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--indigo-500);margin-bottom:12px}
+  .nav-card .qchip{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:12px;border:2px solid transparent;background:var(--gray-50);margin-bottom:6px;cursor:pointer;transition:all .12s}
+  .nav-card .qchip:hover{border-color:var(--indigo-200)}
+  .nav-card .qchip.active{background:var(--indigo-50);border-color:var(--indigo-500);box-shadow:0 2px 0 var(--indigo-700)}
+  .nav-card .qchip.done{background:var(--emerald-50)}
+  .nav-card .qchip .num{width:24px;height:24px;border-radius:8px;background:var(--indigo-500);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none}
+  .nav-card .qchip.done .num{background:var(--emerald-500)}
+  .nav-card .qchip.active .num{background:var(--indigo-700)}
+  .nav-card .qchip .text{font-size:12px;font-weight:600;line-height:1.4;color:var(--indigo-900);flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+  /* Aside phải */
+  .right-card{background:#fff;border-radius:24px;border:2px solid var(--gray-200);box-shadow:var(--shadow-card);padding:16px}
+  .right-card .tip{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--slate-500)}
+
+  /* Footer demo controls */
+  .demo{position:fixed;bottom:0;left:0;right:0;background:var(--indigo-900);color:#fff;padding:12px 24px;display:flex;align-items:center;justify-content:center;gap:12px;z-index:50;border-top:2px solid var(--indigo-700)}
+  .demo .label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;opacity:.7}
+  .demo button{background:var(--amber-500);color:var(--indigo-900);border:none;padding:8px 14px;border-radius:12px;font-weight:800;font-size:12px;cursor:pointer;box-shadow:0 3px 0 var(--amber-700)}
+  .demo button.done{background:var(--emerald-500);color:#fff;box-shadow:0 3px 0 var(--emerald-700)}
+  .demo button:hover{filter:brightness(1.1)}
+  .demo .reset{background:var(--coral-500);color:#fff;box-shadow:0 3px 0 var(--coral-600)}
+
+  /* Part 2 specific (cue card) */
+  .prep-banner{background:linear-gradient(to right,#fef3c7,#fff1f2);border-bottom:2px solid var(--gray-200);padding:16px 24px;display:flex;align-items:center;gap:12px}
+  .prep-banner .icon{font-size:24px;animation:pulse 1.4s infinite}
+  .prep-banner .eyebrow{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--amber-700)}
+  .prep-banner .body{font-size:13px;font-weight:800}
+  .prep-banner .timer-big{margin-left:auto;padding:8px 16px;border-radius:16px;background:#fef3c7;border:2px solid var(--amber-500);box-shadow:0 3px 0 var(--amber-700);color:var(--amber-700);font-family:'JetBrains Mono',monospace;font-weight:900;font-size:20px}
+  .cuecard{background:linear-gradient(135deg,var(--indigo-50),#fff,#fff1f2);border-radius:24px;padding:24px;border:2px solid var(--indigo-200);box-shadow:0 3px 0 var(--indigo-200);position:relative;overflow:hidden}
+  .cuecard .badge{position:absolute;top:0;right:0;padding:6px 12px;border-bottom-left-radius:16px;background:var(--indigo-500);color:#fff;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;box-shadow:0 2px 0 var(--indigo-700)}
+  .cuecard h2{font-size:24px;font-weight:900;margin:0 0 16px;line-height:1.25}
+  .cuecard .bullets-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);margin-bottom:8px}
+  .cuecard ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+  .cuecard li{display:flex;align-items:flex-start;gap:10px;font-size:13px;font-weight:600;line-height:1.5}
+  .cuecard li .b{width:22px;height:22px;border-radius:8px;background:var(--indigo-500);color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none}
+  .notes-area{width:100%;min-height:180px;padding:16px;border-radius:16px;border:2px solid var(--gray-200);font-family:inherit;font-size:13px;line-height:1.6;resize:none;outline:none;background:#fff}
+  .notes-area:focus{border-color:var(--indigo-500);box-shadow:0 0 0 4px rgba(99,102,241,.18)}
+
+  .help-text{font-size:12px;color:var(--slate-500);font-weight:600}
+  .help-text .ok{color:var(--emerald-500);font-weight:800}
+  .locked-overlay{position:relative;pointer-events:none}
+  .locked-overlay::before{content:'';position:absolute;inset:0;background:rgba(255,255,255,.55);z-index:2;border-radius:24px}
+  .locked-banner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--indigo-900);color:#fff;padding:16px 24px;border-radius:16px;z-index:3;font-size:13px;font-weight:800;box-shadow:0 4px 0 var(--indigo-700);text-align:center}
+  .locked-banner .lock{font-size:24px;margin-bottom:4px}
+  .part2-grid{display:grid;gap:20px;grid-template-columns:1fr}
+  @media(min-width:768px){.part2-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header class="sticky">
+    <div class="header-row">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="logo">🦉</div>
+        <div class="title-meta">
+          <div class="eyebrow">IELTS Speaking</div>
+          <h1>Mock Test 14 · Band 7 Target</h1>
+        </div>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <!-- render bằng JS -->
+      </div>
+
+      <div class="timer">⏱ <span id="timer">12:45</span></div>
+
+      <button class="btn btn-coral" id="finishBtn">Kết thúc</button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <!-- Aside trái: QuestionNavigator -->
+    <aside id="asideLeft"></aside>
+
+    <!-- Center: render theo activeTab -->
+    <section id="center"></section>
+
+    <!-- Aside phải -->
+    <aside>
+      <div class="right-card">
+        <div class="tip">Sau khi nộp, điểm AI sẽ hiển thị ở trang kết quả.</div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Demo controls -->
+  <div class="demo">
+    <span class="label">Demo controls (click để test tab unlock):</span>
+    <button id="toggleP1" onclick="togglePart(1)">✓ Part 1: chưa xong</button>
+    <button id="toggleP2" onclick="togglePart(2)">🔒 Part 2: locked</button>
+    <button class="reset" onclick="resetAll()">↻ Reset</button>
+  </div>
+</div>
+
+<script>
+// === Mock data ===
+const DATA = {
+  part1: {
+    label: 'Part 1', sub: 'Introduction', badge: 'Câu hỏi cá nhân · 4-5 phút',
+    questions: [
+      'What do you usually do in your free time?',
+      'Do you prefer reading books or watching movies? Why?',
+      'Tell me about your hometown. What do you like most about it?',
+      'What kind of food do you enjoy eating?',
+    ]
+  },
+  part2: {
+    label: 'Part 2', sub: 'Cue card · 2 phút', badge: 'Long turn',
+    cueCard: {
+      topic: 'Describe a memorable journey you have taken.',
+      bullets: [
+        'Where you went',
+        'Who you went with',
+        'What you did during the journey',
+        'And explain why this journey was memorable for you',
+      ]
+    }
+  },
+  part3: {
+    label: 'Part 3', sub: 'Discussion', badge: 'Câu hỏi abstract · 4-5 phút',
+    questions: [
+      'How do you think technology has changed the way people spend their free time?',
+      'Do you think people spend less time outdoors nowadays than in the past?',
+      'What are the advantages of travelling to new places?',
+      'How might travel change in the future?',
+    ]
+  }
+};
+
+// === State ===
+let activeTab = 'part1';
+let part1Idx = 0;
+let part3Idx = 0;
+let part2Phase = 'prep'; // 'prep' | 'talk'
+let completed = { part1: false, part2: false, part3: false };
+let part1Answered = [false, false, false, false]; // per question
+let part3Answered = [false, false, false, false];
+
+// === Helpers ===
+function isUnlocked(part){
+  if(part==='part1') return true;
+  if(part==='part2') return completed.part1 || DATA.part1.questions.length===0;
+  if(part==='part3') return completed.part2;
+}
+function tabState(part){
+  const unlocked = isUnlocked(part);
+  const active = activeTab===part;
+  const done = completed[part];
+  if(active && !done) return 'active';
+  if(done) return 'done';
+  if(unlocked) return 'available';
+  return 'locked';
+}
+
+// === Render Tabs ===
+function renderTabs(){
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  ['part1','part2','part3'].forEach(p=>{
+    const d = DATA[p];
+    const st = tabState(p);
+    const el = document.createElement('button');
+    el.className = `parttab ${st==='active'?'active':''} ${st==='done'?'done':''} ${st==='locked'?'locked':''}`;
+    el.innerHTML = `
+      <div class="num">${st==='done'?'✓':(p==='part1'?1:p==='part2'?2:3)}</div>
+      <div>
+        <div class="label">${d.label}</div>
+        <div class="sub">${d.sub}</div>
+      </div>
+    `;
+    el.onclick = () => {
+      if(st==='locked'){
+        const need = p==='part2'?'Part 1':'Part 2';
+        showToast(`🔒 Hoàn thành ${need} trước`);
+        return;
+      }
+      activeTab = p;
+      renderAll();
+    };
+    tabs.appendChild(el);
+  });
+}
+
+// === Render Aside trái: QuestionNavigator ===
+function renderNavigator(){
+  const el = document.getElementById('asideLeft');
+  const part = activeTab;
+  const d = DATA[part];
+  if(part==='part2'){
+    el.innerHTML = `
+      <div class="nav-card">
+        <div class="eyebrow">📋 ${d.badge}</div>
+        <div class="help-text">Part 2 là 1 cue card dài 1-2 phút. Không có danh sách câu hỏi riêng lẻ.</div>
+      </div>
+    `;
+    return;
+  }
+  const qs = d.questions;
+  const idx = part==='part1'?part1Idx:part3Idx;
+  const answered = part==='part1'?part1Answered:part3Answered;
+  el.innerHTML = `
+    <div class="nav-card">
+      <div class="eyebrow">📋 Câu hỏi · ${d.label}</div>
+      ${qs.map((q,i)=>{
+        const cls = i===idx?'active':(answered[i]?'done':'');
+        return `<div class="qchip ${cls}" onclick="jumpTo(${part==='part1'?'part1Idx':'part3Idx'}, ${i})">
+          <div class="num">${answered[i]?'✓':(i+1)}</div>
+          <div class="text">${q}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+// === Render Center ===
+function renderCenter(){
+  const el = document.getElementById('center');
+  const part = activeTab;
+  const unlocked = isUnlocked(part);
+  if(!unlocked){
+    el.innerHTML = `
+      <div class="center-card locked-overlay" style="min-height:400px;position:relative">
+        <div class="locked-banner">
+          <div class="lock">🔒</div>
+          Hoàn thành ${part==='part2'?'Part 1':'Part 2'} trước
+        </div>
+      </div>
+    `;
+    return;
+  }
+  if(part==='part1' || part==='part3'){
+    el.innerHTML = renderQuestionPart(part);
+  } else {
+    el.innerHTML = renderPart2();
+  }
+}
+
+function renderQuestionPart(part){
+  const d = DATA[part];
+  const idx = part==='part1'?part1Idx:part3Idx;
+  const answered = part==='part1'?part1Answered:part3Answered;
+  const total = d.questions.length;
+  const q = d.questions[idx];
+  const isLast = idx===total-1;
+  const sub = part==='part1'?'Introduction':'Discussion';
+  return `
+    <div class="center-card">
+      <div class="head">
+        <div>
+          <div class="label">${d.label} · ${sub} · Câu ${idx+1}/${total}</div>
+        </div>
+        <div class="rec-pill">
+          <div class="dot live"></div>
+          REC 0:${String(Math.floor(Math.random()*60)).padStart(2,'0')}
+        </div>
+      </div>
+      <h2 class="font-nunito">${q}</h2>
+
+      <div class="mic-card">
+        <div class="livewave live">
+          ${Array.from({length:48}).map(()=>`<div class="bar" style="height:${10+Math.random()*30}px"></div>`).join('')}
+        </div>
+        <div class="mic-row">
+          <div class="meta">
+            <div class="o">Mic input</div>
+            <div class="v"><span class="dot on"></span> Đang ghi</div>
+          </div>
+          <button class="mic-btn rec" onclick="toggleRecord('${part}')">⏸</button>
+          <div class="meta right">
+            <div class="o">Duration</div>
+            <div class="v">0:${String(Math.floor(Math.random()*60)).padStart(2,'0')}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-nav">
+        <button class="btn btn-ghost" ${idx===0?'disabled':''} onclick="prev()">← Câu trước</button>
+        <div class="center">
+          ${answered[idx]?'<span class="ok">✓ Đã ghi âm</span>':'Bấm mic để trả lời'}
+        </div>
+        <button class="btn btn-indigo" ${!answered[idx]?'disabled':''} onclick="next()">
+          ${isLast ? (part==='part1'?'Qua Part 2 →':'Nộp bài ✓') : 'Câu tiếp →'}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderPart2(){
+  if(part2Phase==='prep'){
+    return `
+      <div class="center-card" style="padding:0;overflow:hidden">
+        <div class="prep-banner">
+          <div class="icon">⏳</div>
+          <div>
+            <div class="eyebrow">Đang chuẩn bị</div>
+            <div class="body">Bạn có 1 phút để ghi chú & lên ý</div>
+          </div>
+          <div class="timer-big">0:54</div>
+        </div>
+        <div style="padding:24px" class="part2-grid">
+          <div class="cuecard">
+            <div class="badge">Cue Card</div>
+            <h2 class="font-nunito">${DATA.part2.cueCard.topic}</h2>
+            <div class="bullets-title">You should say:</div>
+            <ul>
+              ${DATA.part2.cueCard.bullets.map((b,i)=>`<li><div class="b">${i+1}</div><span>${b}</span></li>`).join('')}
+            </ul>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);margin-bottom:8px">📝 Ghi chú nhanh</div>
+            <textarea class="notes-area" placeholder="Gạch đầu dòng các ý chính..."></textarea>
+            <div class="help-text" style="margin-top:6px">💡 Ghi chú sẽ ẩn khi bắt đầu nói</div>
+          </div>
+        </div>
+        <div class="footer-nav" style="margin:0;border-top:2px solid var(--gray-200)">
+          <div class="help-text">Hệ thống tự động chuyển khi hết thời gian</div>
+          <button class="btn btn-indigo" onclick="part2Phase='talk'; renderAll()">Bắt đầu nói ngay</button>
+        </div>
+      </div>
+    `;
+  }
+  // talk phase
+  return `
+    <div class="center-card" style="padding:0;overflow:hidden">
+      <div style="background:linear-gradient(to right,var(--indigo-50),#fff);border-bottom:2px solid var(--gray-200);padding:16px 24px;display:flex;align-items:center;gap:12px">
+        <div style="font-size:24px">🎙</div>
+        <div>
+          <div class="eyebrow" style="color:var(--indigo-500)">Đang ghi âm · Part 2</div>
+          <div class="body">Nói trong 1-2 phút</div>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+          <div class="rec-pill"><div class="dot live"></div>REC</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-weight:900;font-size:18px">1:14</div>
+        </div>
+      </div>
+      <div style="padding:24px;display:flex;flex-direction:column;gap:20px">
+        <div style="background:var(--gray-50);border-radius:16px;padding:20px;border:2px solid var(--gray-200)">
+          <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-500);margin-bottom:8px">Đề bài</div>
+          <div style="font-size:16px;font-weight:800" class="font-nunito">${DATA.part2.cueCard.topic}</div>
+        </div>
+        <div class="mic-card">
+          <div class="livewave live">${Array.from({length:48}).map(()=>`<div class="bar" style="height:${10+Math.random()*30}px"></div>`).join('')}</div>
+          <div class="mic-row">
+            <div class="meta"><div class="o">Mic input</div><div class="v"><span class="dot on"></span> Tốt</div></div>
+            <button class="mic-btn rec" onclick="toggleRecord('part2')">⏸</button>
+            <div class="meta right"><div class="o">Duration</div><div class="v">1:14</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-nav" style="margin:0;border-top:2px solid var(--gray-200)">
+        <button class="btn btn-ghost">↻ Thu lại</button>
+        <div class="center">Tối đa 2 phút · Tối thiểu nên nói 1 phút</div>
+        <button class="btn btn-indigo" onclick="completePart2()">Hoàn thành ✓</button>
+      </div>
+    </div>
+  `;
+}
+
+// === Actions ===
+function prev(){
+  if(activeTab==='part1' && part1Idx>0) part1Idx--;
+  if(activeTab==='part3' && part3Idx>0) part3Idx--;
+  renderAll();
+}
+function next(){
+  if(activeTab==='part1'){
+    part1Answered[part1Idx] = true;
+    if(part1Idx < DATA.part1.questions.length-1){
+      part1Idx++;
+    } else {
+      // mark part 1 done
+      completed.part1 = true;
+      activeTab = 'part2';
+    }
+  } else if(activeTab==='part3'){
+    part3Answered[part3Idx] = true;
+    if(part3Idx < DATA.part3.questions.length-1){
+      part3Idx++;
+    } else {
+      completed.part3 = true;
+      showToast('🎉 Đã nộp bài!');
+    }
+  }
+  renderAll();
+}
+function jumpTo(varName, idx){
+  if(varName==='part1Idx') part1Idx = idx;
+  if(varName==='part3Idx') part3Idx = idx;
+  renderAll();
+}
+function toggleRecord(part){
+  showToast(`🎙 Mic toggle (${part}) — chỉ là mock`);
+}
+function completePart2(){
+  completed.part2 = true;
+  part2Phase = 'prep';
+  activeTab = 'part3';
+  renderAll();
+}
+function togglePart(p){
+  if(p===1){
+    if(!completed.part1){
+      part1Answered = part1Answered.map(()=>true);
+      completed.part1 = true;
+    } else {
+      part1Answered = part1Answered.map(()=>false);
+      completed.part1 = false;
+    }
+    document.getElementById('toggleP1').className = completed.part1?'done':'';
+    document.getElementById('toggleP1').textContent = completed.part1?'✓ Part 1: đã xong':'✓ Part 1: chưa xong';
+  }
+  if(p===2){
+    if(!completed.part2){
+      completed.part2 = true;
+    } else {
+      completed.part2 = false;
+    }
+    document.getElementById('toggleP2').className = completed.part2?'done':'';
+    document.getElementById('toggleP2').textContent = completed.part2?'✓ Part 2: đã xong':'🔒 Part 2: locked';
+  }
+  renderAll();
+}
+function resetAll(){
+  completed = {part1:false,part2:false,part3:false};
+  part1Answered = [false,false,false,false];
+  part3Answered = [false,false,false,false];
+  part1Idx=0; part3Idx=0; part2Phase='prep'; activeTab='part1';
+  document.getElementById('toggleP1').className = '';
+  document.getElementById('toggleP1').textContent = '✓ Part 1: chưa xong';
+  document.getElementById('toggleP2').className = '';
+  document.getElementById('toggleP2').textContent = '🔒 Part 2: locked';
+  renderAll();
+}
+function renderAll(){
+  renderTabs();
+  renderNavigator();
+  renderCenter();
+}
+
+// Toast mini
+let toastEl=null;
+function showToast(msg){
+  if(toastEl) toastEl.remove();
+  toastEl = document.createElement('div');
+  toastEl.textContent = msg;
+  toastEl.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:var(--indigo-900);color:#fff;padding:12px 20px;border-radius:12px;font-weight:800;font-size:13px;z-index:100;box-shadow:0 4px 0 var(--indigo-700)';
+  document.body.appendChild(toastEl);
+  setTimeout(()=>toastEl.remove(), 2000);
+}
+
+// Init
+renderAll();
+</script>
+</body>
+</html>
