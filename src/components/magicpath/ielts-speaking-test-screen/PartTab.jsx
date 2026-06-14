@@ -1,17 +1,21 @@
 // Clickable tab pill for the speaking test header.
 // Four visual states: done (✓ green), active (indigo border), available (white),
 // locked (grayscale + 🔒). Clicking a locked tab does nothing (parent decides).
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const PartTab = ({ done, active, available, locked, label, sub, num, onClick }) => {
+  void available; // spec signature includes available; not consumed here
   const [showTip, setShowTip] = useState(false);
-  // eslint-disable-next-line no-unused-vars
-  const _available = available;
+  const tipTimerRef = useRef(null);
+  useEffect(() => () => {
+    if (tipTimerRef.current) clearTimeout(tipTimerRef.current);
+  }, []);
   const stateClass = active ? 'active' : done ? 'done' : '';
   const handle = () => {
     if (locked) {
       setShowTip(true);
-      setTimeout(() => setShowTip(false), 1500);
+      if (tipTimerRef.current) clearTimeout(tipTimerRef.current);
+      tipTimerRef.current = setTimeout(() => setShowTip(false), 1500);
       return;
     }
     onClick?.();
@@ -21,7 +25,7 @@ const PartTab = ({ done, active, available, locked, label, sub, num, onClick }) 
       <button
         type="button"
         onClick={handle}
-        disabled={false}
+        aria-disabled={locked}
         className={`flex items-center gap-3 px-4 py-2 rounded-2xl border-2 flex-none font-[inherit] text-[inherit] ${
           stateClass === 'active'
             ? 'bg-[#eef2ff] border-[#6366f1] shadow-[0_2px_0_#4338ca]'
