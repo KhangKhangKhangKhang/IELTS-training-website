@@ -29,6 +29,7 @@ const QuestionNavigator = ({ part, partLabel, badge, questions, currentIdx, comp
             <button
               key={q.id ?? i}
               type="button"
+              aria-current={isActive ? 'true' : undefined}
               onClick={() => onJump?.(i)}
               className={`w-full text-left flex items-start gap-2 px-2 py-1.5 rounded-lg border-2 transition-colors ${
                 isActive
