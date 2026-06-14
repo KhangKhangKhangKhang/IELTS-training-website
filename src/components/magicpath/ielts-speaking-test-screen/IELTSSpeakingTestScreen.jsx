@@ -211,9 +211,33 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
           </div>
 
           <div className="flex-1 flex justify-center gap-2 overflow-x-auto min-w-[300px]">
-            <PhasePill done={phase === 'part1'} active={phase === 'part1'} label="Part 1" sub="Introduction" num="1" />
-            <PhasePill done={['part3', 'done'].includes(phase)} active={['cuecard-prep', 'cuecard-talk'].includes(phase)} label="Part 2" sub="Cue card · 2 phút" num="2" />
-            <PhasePill done={phase === 'done'} active={phase === 'part3'} label="Part 3" sub="Discussion" num="3" />
+            <PartTab
+              done={audioBlobs.part1 !== null}
+              active={activeTab === 'part1'}
+              locked={!isUnlocked('part1')}
+              label="Part 1"
+              sub="Introduction"
+              num="1"
+              onClick={() => setActiveTab('part1')}
+            />
+            <PartTab
+              done={audioBlobs.part2 !== null}
+              active={activeTab === 'part2'}
+              locked={!isUnlocked('part2')}
+              label="Part 2"
+              sub="Cue card · 2 phút"
+              num="2"
+              onClick={() => setActiveTab('part2')}
+            />
+            <PartTab
+              done={audioBlobs.part3 !== null}
+              active={activeTab === 'part3'}
+              locked={!isUnlocked('part3')}
+              label="Part 3"
+              sub="Discussion"
+              num="3"
+              onClick={() => setActiveTab('part3')}
+            />
           </div>
 
           <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl font-mono font-black text-lg border-2 ${phase === 'cuecard-prep' ? 'bg-[#fef3c7] text-[#b45309] border-[#f59e0b] shadow-[0_3px_0_#b45309]' : 'bg-[#eef2ff] text-[#4338ca] border-[#a5b4fc] shadow-[0_3px_0_#a5b4fc]'}`}>
