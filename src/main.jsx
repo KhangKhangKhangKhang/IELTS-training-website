@@ -26,6 +26,7 @@ const ForgetPassword = lazy(() => import("./Pages/client/auth/forgetPassword"));
 const LandingPage = lazy(() => import("./Pages/landingPage"));
 const Test = lazy(() => import("./Pages/client/test/testReview"));
 const TestDetail = lazy(() => import("./Pages/client/test/testDetail"));
+const TestResultReview = lazy(() => import("./Pages/client/test/testResultReview"));
 const StartingPage = lazy(() => import("./Pages/StartingPage"));
 const TestManager = lazy(() => import("./Pages/teacher/test/testManager"));
 const TestCreate = lazy(() => import("./Pages/teacher/test/testCreate"));
@@ -82,6 +83,7 @@ const router = createBrowserRouter([
           { path: "statistic", element: <LazyRoute Component={Statistic} /> },
           { path: "vocabulary", element: <LazyRoute Component={Vocabulary} /> },
           { path: "test", element: <LazyRoute Component={Test} /> },
+          { path: "test/review/:id", element: <LazyRoute Component={TestResultReview} /> },
           { path: "doTest", element: <LazyRoute Component={TestDetail} /> },
           { path: "profile", element: <LazyRoute Component={Profile} /> },
           // startingPage moved to standalone route above
