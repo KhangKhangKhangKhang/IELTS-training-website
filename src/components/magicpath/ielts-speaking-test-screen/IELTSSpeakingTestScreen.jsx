@@ -269,45 +269,33 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
 
         <section className="space-y-4">
           <AnimatePresence mode="wait">
-            {phase === 'part1' && (
-              <motion.div key="part1" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] p-6">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#6366f1] mb-2">Part 1 · Câu {currentPart1Idx + 1}/{part1Questions.length}</div>
-                <h2 className="text-2xl font-black text-[#1e1b4b] mb-5" style={{ fontFamily: 'Nunito' }}>{part1Questions[currentPart1Idx]?.question}</h2>
-
-                <div className="bg-gradient-to-br from-[#1e1b4b] to-[#312e81] rounded-3xl p-6 text-white">
-                  <LiveWave recording={recording} />
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="text-xs">
-                      <div className="opacity-80">Mic input</div>
-                      <div className="font-extrabold flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${recording ? 'bg-[#10b981]' : 'bg-[#64748b]'}`} /> {recording ? 'Đang ghi' : 'Sẵn sàng'}</div>
-                    </div>
-                    <button onClick={() => (recording ? stopRecording() : startRecording())} className={`w-20 h-20 rounded-3xl flex items-center justify-center text-3xl active:translate-y-[2px] transition-all ${recording ? 'bg-[#fb7185] text-white shadow-[0_4px_0_#e11d48] active:shadow-[0_2px_0_#e11d48]' : 'bg-white text-[#fb7185] shadow-[0_4px_0_rgba(0,0,0,0.25)] active:shadow-[0_2px_0_rgba(0,0,0,0.25)]'}`}>
-                      {recording ? '⏸' : '🎙'}
-                    </button>
-                    <div className="text-xs text-right">
-                      <div className="opacity-80">Duration</div>
-                      <div className="font-extrabold font-mono">{fmt(recSeconds)}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t-2 border-[#e6e6ed] p-4 bg-[#fafafc] flex items-center gap-3 mt-4 rounded-b-3xl">
-                  <StackedButton tone="ghost" disabled={currentPart1Idx === 0} onClick={() => setCurrentPart1Idx((i) => Math.max(0, i - 1))}>← Câu trước</StackedButton>
-                  <div className="flex-1 text-center text-xs font-bold text-[#64748b]">
-                    {audioBlobs.part1 ? <span className="text-[#10b981]">✓ Đã ghi âm</span> : 'Bấm mic để trả lời'}
-                  </div>
-                  <StackedButton tone="indigo" disabled={!audioBlobs.part1} onClick={() => {
+            {activeTab === 'part1' && phase === 'part1' && (
+              <motion.div key={`part1-${currentPart1Idx}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                <QuestionPartScreen
+                  partNumber={1}
+                  partLabel="Introduction"
+                  questions={part1Questions}
+                  currentIdx={currentPart1Idx}
+                  audioKey="part1"
+                  audioBlob={audioBlobs.part1}
+                  recording={recording}
+                  recSeconds={recSeconds}
+                  LiveWave={LiveWave}
+                  onToggleRecord={() => (recording ? stopRecording() : startRecording())}
+                  onPrev={() => setCurrentPart1Idx((i) => Math.max(0, i - 1))}
+                  onNext={() => {
                     if (currentPart1Idx < part1Questions.length - 1) {
                       setCurrentPart1Idx((i) => i + 1);
                     } else {
+                      setActiveTab('part2');
                       setPhase('cuecard-prep');
                     }
-                  }}>{currentPart1Idx < part1Questions.length - 1 ? 'Câu tiếp →' : 'Qua Part 2 →'}</StackedButton>
-                </div>
+                  }}
+                />
               </motion.div>
             )}
 
-            {phase === 'cuecard-prep' && (
+            {activeTab === 'part2' && phase === 'cuecard-prep' && (
               <motion.div key="prep" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] overflow-hidden">
                 <div className="px-6 py-4 bg-gradient-to-r from-[#fef3c7] to-[#fff1f2] border-b-2 border-[#e6e6ed] flex items-center gap-3">
                   <div className="text-2xl animate-pulse">⏳</div>
@@ -353,7 +341,7 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
               </motion.div>
             )}
 
-            {phase === 'cuecard-talk' && (
+            {activeTab === 'part2' && phase === 'cuecard-talk' && (
               <motion.div key="talk" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] overflow-hidden">
                 <div className="px-6 py-4 bg-gradient-to-r from-[#eef2ff] to-white border-b-2 border-[#e6e6ed] flex items-center gap-3">
                   <div className="text-2xl">🎙</div>
@@ -411,42 +399,29 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
               </motion.div>
             )}
 
-            {phase === 'part3' && (
-              <motion.div key="part3" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] p-6">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#6366f1] mb-2">Part 3 · Câu {currentPart3Idx + 1}/{part3Questions.length}</div>
-                <h2 className="text-2xl font-black text-[#1e1b4b] mb-5" style={{ fontFamily: 'Nunito' }}>{part3Questions[currentPart3Idx]?.question}</h2>
-
-                <div className="bg-gradient-to-br from-[#1e1b4b] to-[#312e81] rounded-3xl p-6 text-white">
-                  <LiveWave recording={recording} />
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="text-xs">
-                      <div className="opacity-80">Mic input</div>
-                      <div className="font-extrabold flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${recording ? 'bg-[#10b981]' : 'bg-[#64748b]'}`} /> {recording ? 'Đang ghi' : 'Sẵn sàng'}</div>
-                    </div>
-                    <button onClick={() => (recording ? stopRecording() : startRecording())} className={`w-20 h-20 rounded-3xl flex items-center justify-center text-3xl active:translate-y-[2px] transition-all ${recording ? 'bg-[#fb7185] text-white shadow-[0_4px_0_#e11d48] active:shadow-[0_2px_0_#e11d48]' : 'bg-white text-[#fb7185] shadow-[0_4px_0_rgba(0,0,0,0.25)] active:shadow-[0_2px_0_rgba(0,0,0,0.25)]'}`}>
-                      {recording ? '⏸' : '🎙'}
-                    </button>
-                    <div className="text-xs text-right">
-                      <div className="opacity-80">Duration</div>
-                      <div className="font-extrabold font-mono">{fmt(recSeconds)}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t-2 border-[#e6e6ed] p-4 bg-[#fafafc] flex items-center gap-3 mt-4 rounded-b-3xl">
-                  <StackedButton tone="ghost" disabled={currentPart3Idx === 0} onClick={() => setCurrentPart3Idx((i) => Math.max(0, i - 1))}>← Câu trước</StackedButton>
-                  <div className="flex-1 text-center text-xs font-bold text-[#64748b]">
-                    {audioBlobs.part3 ? <span className="text-[#10b981]">✓ Đã ghi âm</span> : 'Bấm mic để trả lời'}
-                  </div>
-                  <StackedButton tone="indigo" disabled={!audioBlobs.part3} onClick={() => {
+            {activeTab === 'part3' && phase === 'part3' && (
+              <motion.div key={`part3-${currentPart3Idx}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                <QuestionPartScreen
+                  partNumber={3}
+                  partLabel="Discussion"
+                  questions={part3Questions}
+                  currentIdx={currentPart3Idx}
+                  audioKey="part3"
+                  audioBlob={audioBlobs.part3}
+                  recording={recording}
+                  recSeconds={recSeconds}
+                  LiveWave={LiveWave}
+                  onToggleRecord={() => (recording ? stopRecording() : startRecording())}
+                  onPrev={() => setCurrentPart3Idx((i) => Math.max(0, i - 1))}
+                  onNext={() => {
                     if (currentPart3Idx < part3Questions.length - 1) {
                       setCurrentPart3Idx((i) => i + 1);
                     } else {
                       setPhase('done');
                       handleSubmit();
                     }
-                  }}>{currentPart3Idx < part3Questions.length - 1 ? 'Câu tiếp →' : 'Nộp bài ✓'}</StackedButton>
-                </div>
+                  }}
+                />
               </motion.div>
             )}
 
