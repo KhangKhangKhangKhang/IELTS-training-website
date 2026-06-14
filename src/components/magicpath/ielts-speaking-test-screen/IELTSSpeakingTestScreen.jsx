@@ -253,41 +253,18 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
 
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[300px_1fr_280px] gap-6">
         <aside className="space-y-4 lg:sticky lg:top-[88px] lg:self-start">
-          <div className="bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4338ca] text-white rounded-3xl shadow-[0_3px_0_#0b0a1f] p-6 overflow-hidden relative">
-            <div className="absolute -top-8 -right-8 w-40 h-40 bg-[#6366f1]/30 rounded-full blur-2xl" />
-            <div className="relative flex flex-col items-center text-center">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#fb7185] via-[#f59e0b] to-[#fbbf24] flex items-center justify-center text-5xl shadow-[0_4px_0_rgba(0,0,0,0.3)]">👨‍🏫</div>
-                <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#10b981] rounded-full ring-4 ring-[#1e1b4b] flex items-center justify-center text-xs">●</span>
-              </div>
-              <div className="mt-3 text-[10px] font-bold uppercase tracking-wider opacity-80">AI Examiner</div>
-              <div className="text-lg font-black" style={{ fontFamily: 'Nunito' }}>Mark</div>
-              <div className="text-xs opacity-80 mt-1">British accent · Cambridge-trained</div>
-              <div className="mt-5 w-full p-3 rounded-2xl bg-white/10 text-left">
-                <div className="text-[10px] font-bold uppercase tracking-wider opacity-80 mb-1">Đang nói:</div>
-                <div className="text-sm font-semibold leading-relaxed">
-                  {phase === 'part1' && part1Questions[currentPart1Idx]?.question}
-                  {phase === 'cuecard-prep' && 'Now I\'m going to give you a topic and I\'d like you to talk about it for one to two minutes...'}
-                  {phase === 'cuecard-talk' && 'You should talk for 1-2 minutes...'}
-                  {phase === 'part3' && part3Questions[currentPart3Idx]?.question}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] p-4">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[#6366f1] mb-2">📋 Phần 1 đã hoàn thành</div>
-            <div className="space-y-1.5">
-              {part1Questions.filter((_, i) => i < currentPart1Idx).map((q) => (
-                <div key={q.id} className="flex items-start gap-2 px-2 py-1.5 rounded-lg bg-[#fafafc]">
-                  <div className="w-5 h-5 rounded bg-[#10b981] text-white text-[10px] flex items-center justify-center flex-none mt-0.5">✓</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-[#1e1b4b] truncate">{q.question}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <QuestionNavigator
+            part={activeTab}
+            partLabel={activeTab === 'part1' ? 'Part 1' : activeTab === 'part3' ? 'Part 3' : 'Part 2'}
+            badge={activeTab === 'part1' ? 'Câu hỏi cá nhân · 4-5 phút' : activeTab === 'part3' ? 'Câu hỏi abstract · 4-5 phút' : 'Long turn'}
+            questions={activeTab === 'part1' ? part1Questions : activeTab === 'part3' ? part3Questions : []}
+            currentIdx={activeTab === 'part1' ? currentPart1Idx : activeTab === 'part3' ? currentPart3Idx : 0}
+            completedIds={activeTab === 'part1' ? getCompletedPart1Ids() : activeTab === 'part3' ? getCompletedPart3Ids() : []}
+            onJump={(idx) => {
+              if (activeTab === 'part1') setCurrentPart1Idx(idx);
+              if (activeTab === 'part3') setCurrentPart3Idx(idx);
+            }}
+          />
         </aside>
 
         <section className="space-y-4">
