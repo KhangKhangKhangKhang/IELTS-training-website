@@ -3,8 +3,10 @@
 // locked (grayscale + 🔒). Clicking a locked tab does nothing (parent decides).
 import { useState } from 'react';
 
-const PartTab = ({ done, active, locked, label, sub, num, onClick }) => {
+const PartTab = ({ done, active, available, locked, label, sub, num, onClick }) => {
   const [showTip, setShowTip] = useState(false);
+  // eslint-disable-next-line no-unused-vars
+  const _available = available;
   const stateClass = active ? 'active' : done ? 'done' : '';
   const handle = () => {
     if (locked) {
