@@ -171,7 +171,7 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
   }, [audioBlobs]);
 
   const handleSubmit = async () => {
-    if (submitting) return;
+    if (submitting) return false;
     setSubmitting(true);
     try {
       // ensure all blobs uploaded
@@ -187,10 +187,12 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
       const result = await finishSpeakingTest(testResultId, userId, new FormData());
       toast.success('Nộp bài thành công!');
       if (onSubmitSuccess) onSubmitSuccess(result);
+      return true;
     } catch (e) {
       console.error('finish speaking failed', e);
       toast.error('Nộp bài thất bại.');
       setSubmitting(false);
+      return false;
     }
   };
 
@@ -269,7 +271,7 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
 
         <section className="space-y-4">
           <AnimatePresence mode="wait">
-            {activeTab === 'part1' && phase === 'part1' && (
+            {activeTab === 'part1' && phase !== 'done' && (
               <motion.div key={`part1-${currentPart1Idx}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                 <QuestionPartScreen
                   partNumber={1}
@@ -394,12 +396,12 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
                   <div className="flex-1 text-center text-xs font-bold text-[#64748b]">
                     {audioBlobs.part2 ? <span className="text-[#10b981]">✓ Đã lưu audio</span> : 'Tối đa 2 phút · Tối thiểu nên nói 1 phút'}
                   </div>
-                  <StackedButton tone="indigo" disabled={!audioBlobs.part2} onClick={() => { setPhase('part3'); setCurrentPart3Idx(0); }}>Hoàn thành ✓</StackedButton>
+                  <StackedButton tone="indigo" disabled={!audioBlobs.part2} onClick={() => { setActiveTab('part3'); setPhase('part3'); setCurrentPart3Idx(0); }}>Hoàn thành ✓</StackedButton>
                 </div>
               </motion.div>
             )}
 
-            {activeTab === 'part3' && phase === 'part3' && (
+            {activeTab === 'part3' && phase !== 'done' && (
               <motion.div key={`part3-${currentPart3Idx}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                 <QuestionPartScreen
                   partNumber={3}
@@ -413,12 +415,13 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
                   LiveWave={LiveWave}
                   onToggleRecord={() => (recording ? stopRecording() : startRecording())}
                   onPrev={() => setCurrentPart3Idx((i) => Math.max(0, i - 1))}
-                  onNext={() => {
+                  onNext={async () => {
                     if (currentPart3Idx < part3Questions.length - 1) {
                       setCurrentPart3Idx((i) => i + 1);
                     } else {
-                      setPhase('done');
-                      handleSubmit();
+                      // Don't flip to 'done' until submit actually succeeds (handleSubmit toasts on failure).
+                      const success = await handleSubmit();
+                      if (success) setPhase('done');
                     }
                   }}
                 />
