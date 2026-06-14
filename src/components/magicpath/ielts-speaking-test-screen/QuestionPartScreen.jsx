@@ -20,6 +20,8 @@ const QuestionPartScreen = ({
   onNext,
   onJump,            // (idx) => void — used by parent for QuestionNavigator integration; not invoked here
 }) => {
+  void audioKey; // spec signature includes audioKey; parent keys audio state off it, not consumed here
+  void onJump; // spec signature includes onJump; consumed by parent (QuestionNavigator), not by this component
   const total = questions.length;
   const q = questions[currentIdx];
   const isFirst = currentIdx === 0;
