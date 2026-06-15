@@ -149,7 +149,9 @@ export const IELTSListeningTestScreen = ({ testData, testResultId, userId, initi
       const start = idx === 0 ? 1 : (() => { let c = 1; for (let i = 0; i < idx; i++) { c += (parts[i]?.questionGroups || []).reduce((acc, g) => acc + (g?.questions || g?.question || []).length, 0); } return c; })();
       const end = start + groupQs.length - 1;
       return {
-        id: s.id ?? idx + 1,
+        // Render index theo vị trí trong parts (Section 1, 2, …) thay vì
+        // s.id UUID từ BE — UUID dùng nội bộ cho key, không phải label.
+        id: idx + 1,
         title: s.title || `Section ${idx + 1}`,
         context: s.context || s.description || s?.passage?.content || '',
         questionRange: [start, Math.max(end, start)],
