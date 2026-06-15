@@ -173,7 +173,11 @@ const AppTopbar = ({
   const searchRef = useRef(null);
 
   // Fetch notifications (silent fail, refresh every 60s + on window focus)
+  // Stop polling once the user is logged out — otherwise the axios 401 refresh
+  // path clears the cookies (line 42-44) and we keep firing 401s on a 60s loop.
+  const authed = !!user && !!Cookies.get("accessToken");
   const fetchNotifs = async () => {
+    if (!authed) return;
     try {
       const res = await getNotificationsAPI();
       setNotifList(res.items);
@@ -184,6 +188,11 @@ const AppTopbar = ({
   };
 
   useEffect(() => {
+    if (!authed) {
+      setNotifList([]);
+      setNotifCount(0);
+      return;
+    }
     if (notificationCount != null) {
       // external prop wins (manual override)
       setNotifCount(notificationCount);
@@ -198,7 +207,7 @@ const AppTopbar = ({
       window.removeEventListener("focus", onFocus);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notificationCount]);
+  }, [notificationCount, authed]);
 
   const a = ACCENTS[accent] || ACCENTS.indigo;
 
@@ -222,7 +231,6 @@ const AppTopbar = ({
     Cookies.remove("accessToken");
     Cookies.remove("user");
     Cookies.remove("refreshToken");
-    setIsProfileOpen(false);
     navigate(logoutRedirect);
   };
 
@@ -423,7 +431,11 @@ const AppTopbar = ({
                 <div className="hidden lg:flex items-center gap-1.5">
                   {showXp && <XpWidget />}
                   {showStreak && (
-                    <StreakWidget onClick={() => setIsProfileOpen(true)} />
+                    <StreakWidget
+                      onClick={() => {
+                        if (onOpenProfile) onOpenProfile();
+                      }}
+                    />
                   )}
                   {rightSlot}
                 </div>

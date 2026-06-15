@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Input, Checkbox } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
+import { resolveActiveIdx } from "./fillInsertHelpers";
+import InteractiveSharedPreview from "./InteractiveSharedPreview";
 
 // FLOW_CHART_COMPLETION
 // BE metadata: { stepLabel, maxWords, hasWordBank, wordBank?, correctAnswers[], fullFlowText? }
 //
 // Group-level FillSharedEditor owns the shared flow text and word bank.
-// This per-question form is answer-only with an optional override.
+// This per-question form is answer-only with an optional override,
+// plus click-to-jump on each [Step N] in the shared text.
 
 const defaultValue = () => ({
   stepLabel: "",
@@ -17,32 +20,13 @@ const defaultValue = () => ({
   fullFlowText: "",
 });
 
-const SharedPreview = ({ label, text }) => {
-  if (!text) {
-    return (
-      <div className="rounded-xl border-2 border-dashed border-[#cbd5e1] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#94a3b8] italic">
-        Empty — type the shared flow text at the group level above.
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-xl border-2 border-[#cffafe] bg-[#f0f9ff] px-3 py-2">
-      <div className="text-[9px] font-extrabold uppercase tracking-wider text-[#0e7490] mb-0.5">
-        {label} (from group)
-      </div>
-      <div className="text-sm text-[#0c4a6e] font-medium leading-relaxed whitespace-pre-wrap">
-        {text}
-      </div>
-    </div>
-  );
-};
-
 const FlowChartCompletionForm = ({
   value,
   onChange,
   readOnlyText = "",
   wordBank = [],
   hasWordBank = false,
+  questionIndex = 0,
 }) => {
   const v = value || defaultValue();
   const correctAnswers = Array.isArray(v.correctAnswers) ? v.correctAnswers : [""];
@@ -50,6 +34,7 @@ const FlowChartCompletionForm = ({
     () => !!(v.fullFlowText && v.fullFlowText !== readOnlyText)
   );
   const update = (patch) => onChange({ ...v, ...patch });
+  const answerRefs = useRef([]);
 
   const setAnswer = (idx, text) => {
     update({
@@ -69,9 +54,40 @@ const FlowChartCompletionForm = ({
     }
   };
 
+  // Click-to-jump: focus the answer input for step N + sync stepLabel.
+  // Note: FLOW_CHART regex accepts both [N] and [Step N] — when the
+  // teacher clicks a button we always write the bare number to stepLabel
+  // (consistent with how blanks are numbered in the BE).
+  const focusAnswer = (n) => {
+    const idx = n - 1;
+    const el = answerRefs.current[idx];
+    if (el) {
+      el.focus();
+      if (typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+    if (String(v.stepLabel) !== String(n)) {
+      update({ stepLabel: String(n) });
+    }
+  };
+
+  // Active step: prefer stepLabel, fallback questionIndex + 1.
+  const activeIdx = resolveActiveIdx(
+    v.stepLabel,
+    questionIndex,
+    "FLOW_CHART_COMPLETION"
+  );
+
   return (
     <div className="space-y-3">
-      <SharedPreview label="Shared flow text" text={readOnlyText} />
+      <InteractiveSharedPreview
+        label="Shared flow text"
+        text={readOnlyText}
+        subType="FLOW_CHART_COMPLETION"
+        activeIdx={activeIdx}
+        onSelect={focusAnswer}
+      />
 
       <label className="block">
         <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
@@ -128,27 +144,48 @@ const FlowChartCompletionForm = ({
           Acceptable answers
         </span>
         <div className="space-y-1.5">
-          {correctAnswers.map((ans, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Input
-                value={ans}
-                onChange={(e) => setAnswer(i, e.target.value)}
-                size="small"
-              />
-              {correctAnswers.length > 1 && (
-                <button
-                  onClick={() =>
-                    update({
-                      correctAnswers: correctAnswers.filter((_, j) => j !== i),
-                    })
-                  }
-                  className="w-7 h-7 rounded-lg hover:bg-[#fff1f2] text-[#fb7185] text-xs shrink-0"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          ))}
+          {correctAnswers.map((ans, i) => {
+            const stepNum = activeIdx != null ? activeIdx + i : null;
+            return (
+              <div key={i} className="flex items-center gap-2">
+                {stepNum != null && (
+                  <span
+                    className={`flex-none inline-flex items-center justify-center min-w-[1.5rem] h-7 px-1.5 rounded-md font-mono font-black text-[10px] ${
+                      i === 0
+                        ? "bg-[#f59e0b] text-white"
+                        : "bg-white text-[#b45309] border border-[#fde68a]"
+                    }`}
+                    title={
+                      i === 0
+                        ? `Answer for step ${activeIdx}`
+                        : `Extra acceptable answer for step ${activeIdx}`
+                    }
+                  >
+                    {stepNum}
+                  </span>
+                )}
+                <Input
+                  ref={(el) => (answerRefs.current[i] = el)}
+                  value={ans}
+                  onChange={(e) => setAnswer(i, e.target.value)}
+                  size="small"
+                  placeholder={i === 0 ? "Type the answer the student types" : "Alternative acceptable answer"}
+                />
+                {correctAnswers.length > 1 && (
+                  <button
+                    onClick={() =>
+                      update({
+                        correctAnswers: correctAnswers.filter((_, j) => j !== i),
+                      })
+                    }
+                    className="w-7 h-7 rounded-lg hover:bg-[#fff1f2] text-[#fb7185] text-xs shrink-0"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
         <button
           onClick={() => update({ correctAnswers: [...correctAnswers, ""] })}

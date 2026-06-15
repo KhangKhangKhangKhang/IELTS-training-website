@@ -1802,6 +1802,7 @@ function QuestionQuickForm({
           <FillBlankForm
             {...common}
             subType={effectiveType}
+            questionIndex={questionIndex}
             readOnlyText={effectiveType === "TABLE_COMPLETION" ? generateTableHTML(fillShared?.tableGrid) : fillShared?.fullText || ""}
             wordBank={fillShared?.wordBank || []}
             hasWordBank={!!fillShared?.hasWordBank}
