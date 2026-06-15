@@ -4,7 +4,10 @@ import { inputCls } from "@/components/magicpath/ielts-test-editor/editorUI";
 
 // MCQ (MULTIPLE_CHOICE)
 // BE metadata: { options: [{label, text}], correctOptionIndexes: number[], isMultiSelect: boolean }
-const LABELS = ["A", "B", "C", "D", "E", "F"];
+// Max 8 options (A-H) — covers Cambridge Listening "Choose TWO from A-E"
+// and Reading headings pools that go up to 8.
+const LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+const MAX_OPTIONS = 8;
 
 const defaultValue = () => ({
   type: "MULTIPLE_CHOICE",
@@ -24,7 +27,7 @@ const MCQForm = ({ value = defaultValue(), onChange }) => {
   };
 
   const addOption = () => {
-    if (value.options.length >= 6) return;
+    if (value.options.length >= MAX_OPTIONS) return;
     const next = LABELS[value.options.length];
     update({
       options: [...value.options, { label: next, text: "" }],
@@ -107,7 +110,7 @@ const MCQForm = ({ value = defaultValue(), onChange }) => {
         })}
       </div>
 
-      {value.options.length < 6 && (
+      {value.options.length < MAX_OPTIONS && (
         <button
           onClick={addOption}
           className="text-xs font-extrabold text-[#6366f1] uppercase tracking-wide hover:underline"

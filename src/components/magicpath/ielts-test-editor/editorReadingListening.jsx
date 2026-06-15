@@ -25,6 +25,13 @@ import {
   validateMetadata,
   getQuestionTypeDisplay,
 } from "./questionTypeMeta";
+import {
+  LISTENING_SECTIONS,
+  getSectionForPartIdx,
+  getAllowedTypesForSection,
+  getAllowedTypesLabels,
+} from "./listeningConfig";
+import { validateTotalQuestionCount } from "./testLimits";
 import useQuestionDraft from "./useQuestionDraft";
 
 // Per-type question editors (14 BE sub-types → 12 component files)
@@ -117,8 +124,8 @@ const FAMILY_OF = {
 };
 const getFamilyFromQType = (qType) => FAMILY_OF[qType] || qType;
 
-const TypeBadge = ({ type, compact = false }) => {
-  const display = getQuestionTypeDisplay(type);
+const TypeBadge = ({ type, compact = false, skill = null }) => {
+  const display = getQuestionTypeDisplay(type, skill);
   if (!display.subtype) {
     return (
       <span className="px-2 py-0.5 rounded-lg bg-[#eef2ff] text-[#4338ca] text-[10px] font-extrabold uppercase">
@@ -145,16 +152,14 @@ const TypeBadge = ({ type, compact = false }) => {
   );
 };
 
-export function QuestionGroups({ idTest, isListening = false, onChange, exam: examProp }) {
+export function QuestionGroups({ idTest, isListening = false, onChange, exam: examProp, externalParts, externalActivePartId, skillLimits = null, testTotalQuestions = 0 }) {
   const { user } = useAuth();
-  const {
-    parts,
-    activePartId,
-    setActivePartId,
-    createPart,
-    getPartDetail,
-    loading,
-  } = useParts();
+  const ctx = useParts();
+  // Prefer props (direct from IELTSTestEditor) over context — context can lag
+  const parts = externalParts ?? ctx.parts;
+  const activePartId = externalActivePartId ?? ctx.activePartId;
+  const { setActivePartId, createPart, getPartDetail, loading: ctxLoading } = ctx;
+  const loading = externalParts ? false : ctxLoading;
 
   const [activePartDetail, setActivePartDetail] = useState(null);
   const [confirm, setConfirm] = useState(null); // { title, content, danger, onOk } | null
@@ -183,6 +188,13 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
       } catch {}
     })();
   }, [idTest, examProp]);
+
+  // Auto-select first part if none selected but parts exist
+  useEffect(() => {
+    if (!activePartId && parts.length > 0) {
+      setActivePartId(parts[0].idPart);
+    }
+  }, [activePartId, parts, setActivePartId]);
 
   // Load part detail (with groups) when activePart changes
   useEffect(() => {
@@ -235,6 +247,29 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
     }
   };
 
+  const handleDeletePart = (idPart) => {
+    const part = parts.find((p) => p.idPart === idPart);
+    const label = part?.namePart || `Part ${parts.findIndex((p) => p.idPart === idPart) + 1}`;
+    setConfirm({
+      title: "Delete part?",
+      content: `Delete "${label}" and ALL its question groups + questions? This cannot be undone.`,
+      okText: "Delete",
+      danger: true,
+      onOk: async () => {
+        try {
+          await deletePartAPI(idPart);
+          message.success(`Part "${label}" deleted`);
+          if (activePartId === idPart) setActivePartId(null);
+          // Refresh parts list via context reload
+          window.location.reload();
+        } catch (e) {
+          console.error(e);
+          message.error("Delete part failed");
+        }
+      },
+    });
+  };
+
   const handleDeleteGroup = (g) => {
     const meta = typeMeta[TYPE_BACKEND_TO_CANVAS[g.questionType]] || typeMeta.OTHER;
     setConfirm({
@@ -272,28 +307,74 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
       <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] p-4">
         <div className="flex items-center gap-2 flex-wrap">
           <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#94a3b8] mr-2">
-            Part:
+            {isListening ? "Section:" : "Part:"}
           </div>
-          {parts.map((p) => (
-            <button
-              key={p.idPart}
-              onClick={() => setActivePartId(p.idPart)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                activePartId === p.idPart
-                  ? "bg-[#6366f1] text-white shadow-[0_3px_0_#4338ca]"
-                  : "bg-[#f1f1f6] text-[#64748b] hover:bg-[#e6e6ed]"
-              }`}
-            >
-              {p.namePart || `Part ${parts.indexOf(p) + 1}`}
-            </button>
-          ))}
+          {parts.map((p, idx) => {
+            const sec = isListening ? getSectionForPartIdx(idx) : null;
+            const label =
+              isListening && sec
+                ? sec.name
+                : p.namePart || `Part ${idx + 1}`;
+            const subLabel = sec
+              ? `${sec.context}${sec.speakerHint ? " · " + sec.speakerHint : ""}`
+              : null;
+            const active = activePartId === p.idPart;
+            const pillTone = sec
+              ? active
+                ? `bg-gradient-to-r ${sec.tone} text-white ${sec.accentShadow}`
+                : `${sec.bgAccent} ${sec.textAccent} hover:opacity-80`
+              : active
+                ? "bg-[#6366f1] text-white shadow-[0_3px_0_#4338ca]"
+                : "bg-[#f1f1f6] text-[#64748b] hover:bg-[#e6e6ed]";
+            return (
+              <div key={p.idPart} className="relative group">
+                <button
+                  onClick={() => setActivePartId(p.idPart)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all flex flex-col items-start ${pillTone}`}
+                  title={subLabel || ""}
+                >
+                  <span>{label}</span>
+                  {sec && (
+                    <span
+                      className={`text-[8px] font-bold uppercase tracking-wider mt-0.5 ${
+                        active ? "text-white/80" : sec.textAccent + " opacity-70"
+                      }`}
+                    >
+                      {sec.short} · {p.quantity || 0}/{sec.targetQty} q
+                    </span>
+                  )}
+                </button>
+                {/* Small red X floating above the right edge */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeletePart(p.idPart);
+                  }}
+                  title="Delete part"
+                  aria-label="Delete part"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#ef4444] text-white text-[10px] font-black flex items-center justify-center shadow-[0_2px_0_#b91c1c] hover:scale-110 hover:bg-[#dc2626] transition-all z-10"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
           <button
             onClick={handleCreatePart}
-            disabled={creatingPart}
+            disabled={
+              creatingPart ||
+              (isListening && parts.length >= LISTENING_SECTIONS.length)
+            }
             data-testid="add-part-btn"
-            className="px-3 py-1.5 rounded-xl text-xs font-extrabold border-2 border-dashed border-[#c7d2fe] text-[#6366f1] hover:bg-[#eef2ff]"
+            className="px-3 py-1.5 rounded-xl text-xs font-extrabold border-2 border-dashed border-[#c7d2fe] text-[#6366f1] hover:bg-[#eef2ff] disabled:opacity-40 disabled:cursor-not-allowed"
+            title={
+              isListening && parts.length >= LISTENING_SECTIONS.length
+                ? "IELTS Listening has 4 sections maximum"
+                : ""
+            }
           >
-            + Add Part
+            + Add {isListening ? "Section" : "Part"}
           </button>
         </div>
       </div>
@@ -302,7 +383,7 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
         <div className="text-center text-[#94a3b8] py-12 font-bold">
           Loading...
         </div>
-      ) : !activePartId ? (
+      ) : parts.length === 0 ? (
         <div className="bg-white rounded-3xl border-2 border-dashed border-[#e6e6ed] p-12 text-center">
           <div className="text-4xl mb-2">📋</div>
           <div className="font-extrabold text-[#1e1b4b]">
@@ -317,7 +398,16 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
         </div>
       ) : (
         <>
-          {isListening && <ListeningAudioCard exam={exam} partDetail={activePartDetail} />}
+          {isListening && (
+            <ListeningAudioCard
+              exam={exam}
+              partDetail={activePartDetail}
+              sectionMeta={(() => {
+                const idx = parts.findIndex((p) => p.idPart === activePartId);
+                return isListening ? getSectionForPartIdx(idx) : null;
+              })()}
+            />
+          )}
 
           <div className="flex items-center justify-between">
             <div>
@@ -339,6 +429,9 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
               const total = Number(g.quantity) || 0;
               const complete = total > 0;
               const open = expanded === g.idGroupOfQuestions;
+              // Pass skill context so NOTE_COMPLETION renders as "Form"
+              // in the group-header badge when the test is Listening.
+              const groupSkill = isListening ? "LISTENING" : "READING";
               return (
                 <div
                   key={g.idGroupOfQuestions}
@@ -366,7 +459,7 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
                           {g.title || meta.label}
                         </div>
                         <div className="mt-1">
-                          <TypeBadge type={g.questionType} compact />
+                          <TypeBadge type={g.questionType} compact skill={groupSkill} />
                         </div>
                       </div>
                       <span
@@ -404,6 +497,8 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
                     <GroupEditor
                       group={g}
                       onSave={refreshActivePart}
+                      skill={isListening ? "LISTENING" : "READING"}
+                      skillLimits={skillLimits}
                     />
                   )}
                 </div>
@@ -430,9 +525,28 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
               onCreated={async () => {
                 setShowAdd(false);
                 await refreshActivePart();
+                // Refresh parts list so the parent's `testTotalQuestions`
+                // (derived from parts[]._count.questions) re-derives for the
+                // next modal open. Without this, `otherPartsTotal` stays
+                // stale and a second group can blow past the per-skill cap.
+                await ctx?.refreshParts?.();
               }}
               partId={activePartId}
               defaultFrom={(groupsWithRange.at(-1)?.[1] || 0) + 1}
+              isListening={isListening}
+              partIdx={parts.findIndex((p) => p.idPart === activePartId)}
+              skillLimits={skillLimits}
+              testTotalQuestions={testTotalQuestions}
+              // Qty from OTHER parts in the test (so the new total check
+              // can compare testTotal = otherParts + this group against
+              // the per-skill cap).
+              otherPartsTotal={(() => {
+                const thisPartQty = groupsWithRange.reduce(
+                  (s, g) => s + (Number(g.quantity) || 0),
+                  0
+                );
+                return Math.max(0, Number(testTotalQuestions || 0) - thisPartQty);
+              })()}
             />
           )}
         </>
@@ -464,10 +578,17 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
 // =====================================================================
 // Group editor (inline): edit title, instructions, quantity
 // =====================================================================
-function GroupEditor({ group, onSave }) {
+function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
   const [title, setTitle] = useState(group.title || "");
   const [instructions, setInstructions] = useState(group.instructions || "");
-  const [quantity, setQuantity] = useState(Number(group.quantity) || 0);
+  // Per-group quantity. No per-section min/max — the only cap is the
+  // per-skill TOTAL question cap (e.g. Listening ≤ 40 across the whole
+  // test). `validateTotalQuestionCount` catches overflow on Save.
+  const initialQty = (() => {
+    const fromGroup = Number(group.quantity) || 0;
+    return fromGroup > 0 ? fromGroup : 1;
+  })();
+  const [quantity, setQuantity] = useState(initialQty);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -842,7 +963,23 @@ function GroupEditor({ group, onSave }) {
     instructions !== (group.instructions || "") ||
     Number(quantity) !== (Number(group.quantity) || 0);
 
-  const canSave = isDirty && !saving && title.trim().length > 0;
+  // Per-group quantity: no per-section min/max. The only ceiling is the
+  // per-skill TOTAL question cap (Listening ≤ 40, Reading ≤ 40). We don't
+  // compute that here (we don't have a view of other parts' totals from
+  // this component) — it's enforced in the parent editor before Save.
+  const qtyMin = 1;
+  const qtyMax = (() => {
+    const cap = Number(skillLimits?.totalQuestions) || 0;
+    // For L/R: cap is 40, but a single group can theoretically hold the
+    // whole test, so use 50 as a soft per-group ceiling and rely on the
+    // parent's totalCap to catch overflows.
+    if (cap > 0) return Math.min(50, cap);
+    return 50; // Writing/Speaking aren't qty-based
+  })();
+  const qtyErrorMsg = null; // surfaced by parent on save
+
+  const canSave =
+    isDirty && !saving && title.trim().length > 0 && Number(quantity) >= qtyMin && Number(quantity) <= qtyMax;
 
   const refreshQuestions = async () => {
     const res = await getQuestionsByIdGroupAPI(group.idGroupOfQuestions);
@@ -1105,15 +1242,25 @@ function GroupEditor({ group, onSave }) {
         <label className="block">
           <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
             Number of questions
+            {skillLimits && skillLimits.totalQuestions > 0 && (
+              <span className="ml-2 text-[10px] font-bold normal-case tracking-normal text-[#94a3b8]">
+                (test total max {skillLimits.totalQuestions})
+              </span>
+            )}
           </span>
           <input
             type="number"
-            min={0}
-            max={50}
+            min={qtyMin}
+            max={qtyMax}
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value) || 0)}
-            className={inputCls()}
+            className={`${inputCls()} ${qtyErrorMsg ? "border-[#ef4444]" : ""}`}
           />
+          {qtyErrorMsg && (
+            <p className="text-[10px] text-[#ef4444] mt-1 font-extrabold">
+              ⚠ {qtyErrorMsg}
+            </p>
+          )}
         </label>
       </div>
       <label className="block">
@@ -1263,7 +1410,7 @@ function GroupEditor({ group, onSave }) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                        <TypeBadge type={q.questionType || group.questionType} compact />
+                        <TypeBadge type={q.questionType || group.questionType} compact skill={skill} />
                         {staged && (
                           <span className="text-[9px] font-black uppercase tracking-wider text-[#b45309]">
                             ✏️ Modified — not saved
@@ -1329,6 +1476,7 @@ function GroupEditor({ group, onSave }) {
                       <QuestionQuickForm
                         key={`edit-${q.idQuestion}`}
                         qType={group.questionType}
+                        skill={skill}
                         pool={matchingPool || {}}
                         mode="edit"
                         groupId={group.idGroupOfQuestions}
@@ -1397,7 +1545,7 @@ function GroupEditor({ group, onSave }) {
                       ) : hasContent ? (
                         <>
                           <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                            <TypeBadge type={slot.payload.questionType || group.questionType} compact />
+                            <TypeBadge type={slot.payload.questionType || group.questionType} compact skill={skill} />
                             <span className="text-[9px] font-black uppercase tracking-wider text-[#4338ca]">
                               🆕 New — not saved
                             </span>
@@ -1466,6 +1614,7 @@ function GroupEditor({ group, onSave }) {
                       <QuestionQuickForm
                         key={slot.draftKey}
                         qType={group.questionType}
+                        skill={skill}
                         pool={matchingPool || {}}
                         mode="create"
                         groupId={group.idGroupOfQuestions}
@@ -1546,6 +1695,7 @@ function QuestionQuickForm({
   qType,
   pool = {},
   mode = "create",
+  skill = null,
   groupId,
   draftKey,
   questionIndex = 0,
@@ -1750,7 +1900,7 @@ function QuestionQuickForm({
   return (
     <div className="bg-white rounded-2xl border-2 border-[#6366f1] p-3 space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
-        <TypeBadge type={effectiveType} />
+        <TypeBadge type={effectiveType} skill={skill} />
       </div>
 
       {/* Sub-type selector (only for FILL / MATCHING families) */}
@@ -1831,18 +1981,57 @@ function QuestionQuickForm({
 // =====================================================================
 // Add Group Modal (question type + count + title + instructions)
 // =====================================================================
-function AddGroupModal({ onClose, onCreated, partId, defaultFrom = 1 }) {
+function AddGroupModal({ onClose, onCreated, partId, defaultFrom = 1, isListening = false, partIdx = 0, skillLimits = null, otherPartsTotal = 0, testTotalQuestions = 0 }) {
   // Two pieces of state:
   // - selectedFamily: canvas family key (one of typeMeta keys: MCQ, TFNG, MATCHING, ...).
   //   Drives the tile highlight AND whether the sub-type selector shows.
   // - selectedSubType: BE enum chosen inside the sub-type selector
   //   (e.g. MATCHING_HEADING). null = use the family's default BE sub-type.
-  const [selectedFamily, setSelectedFamily] = useState("MCQ");
-  const [selectedSubType, setSelectedSubType] = useState(null);
-  const [quantity, setQuantity] = useState(4);
+  // Listening: per-section allowed-type filter. We compute the set of BE
+  // sub-types the active section permits, then translate that back to
+  // canvas family keys for the tile grid + sub-type selector.
+  const sectionMeta = isListening ? getSectionForPartIdx(partIdx) : null;
+  const allowedBeTypes = isListening
+    ? getAllowedTypesForSection(partIdx)
+    : null; // null = no filter (Reading / generic)
+  const allowedFamilies = useMemo(() => {
+    if (!isListening || !allowedBeTypes) return null; // no filter
+    const set = new Set();
+    Object.entries(TYPE_BACKEND_TO_CANVAS).forEach(([be, fam]) => {
+      if (allowedBeTypes.includes(be)) set.add(fam);
+    });
+    return set;
+  }, [isListening, allowedBeTypes]);
+  const defaultFamily = (() => {
+    if (isListening) {
+      // First allowed family key from typeMeta order so we land on something
+      // common for the section (e.g. S1 → FILL_BLANK, S2/S3 → MCQ).
+      const order = ["FILL_BLANK", "MCQ", "MATCHING", "LABELING", "SHORT_ANSWER", "OTHER"];
+      return order.find((f) => allowedFamilies && allowedFamilies.has(f)) || "MCQ";
+    }
+    return "MCQ";
+  })();
+  // For S1 the canonical FILL sub-type is Form (NOTE_COMPLETION in BE).
+  // Auto-pick it so the saved group surfaces as "Form" in the badge.
+  const defaultSubType = isListening && partIdx === 0 ? "NOTE_COMPLETION" : null;
+  const [selectedFamily, setSelectedFamily] = useState(defaultFamily);
+  const [selectedSubType, setSelectedSubType] = useState(defaultSubType);
+  // Per-group quantity min is 1 (a single MCQ in a Part 4 is fine).
+  // Per-PART min (5) is enforced by the section total in `validateTotalQuestionCount`
+  // / `validatePartQuestionCount`, not on this input.
+  const [quantity, setQuantity] = useState(1);
   const [title, setTitle] = useState("");
   const [instructions, setInstructions] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Per-group bounds. Min is 1. Max is the per-skill test-total cap
+  // (Listening 40, Reading 40). One group can theoretically hold the whole
+  // test, so we don't pre-truncate by what's already used. The final
+  // `validateTotalQuestionCount` check on Save catches overflow.
+  const qtyMin = 1;
+  const qtyMax = Number(skillLimits?.totalQuestions) > 0
+    ? Number(skillLimits.totalQuestions)
+    : 50; // Writing/Speaking aren't qty-based
 
   // Picking a family resets any prior sub-type so we always start with the
   // family's default BE enum.
@@ -1852,28 +2041,83 @@ function AddGroupModal({ onClose, onCreated, partId, defaultFrom = 1 }) {
   };
 
   const handleCreate = async () => {
+    // Per-group guard: 1+ and within per-group cap.
+    const qty = Number(quantity) || 0;
+    if (qty < 1) {
+      message.warning("Each group must have at least 1 question");
+      return;
+    }
+    if (qty > qtyMax) {
+      message.warning(`Maximum ${qtyMax} questions per group`);
+      return;
+    }
+    // Per-TEST guard: the new total (testTotalQuestions already used + this
+    // group) must still be within the per-skill cap (Listening ≤ 40, Reading
+    // ≤ 40). There is no per-section min/max — teachers distribute freely.
+    const newTestTotal = Number(testTotalQuestions || 0) + qty;
+    const testCheck = validateTotalQuestionCount(
+      isListening ? "LISTENING" : "READING",
+      newTestTotal
+    );
+    if (!testCheck.ok) {
+      message.warning(testCheck.message);
+      return;
+    }
+    // BE rejects create-question-group with 400 "title should not be empty"
+    // (BE validation, see contractAdapters / apiTest). Auto-generate a
+    // sensible default so teachers who skip the field still get a valid save.
+    const beType = selectedSubType
+      || TYPE_CANVAS_TO_BACKEND[selectedFamily]
+      || "OTHER";
+    const skillForLabel = isListening ? "LISTENING" : "READING";
+    const typeLabel = getQuestionTypeDisplay(beType, skillForLabel).full;
+    const finalTitle = (title || "").trim() ||
+      `Questions ${defaultFrom}–${defaultFrom + qty - 1}: ${typeLabel}`;
     setBusy(true);
     try {
       // Sub-type (if chosen) takes precedence over the family default.
-      const beType = selectedSubType
-        || TYPE_CANVAS_TO_BACKEND[selectedFamily]
-        || "OTHER";
+      // beType is computed above so the auto-title and the API call stay in sync.
       await createGroupOfQuestionsAPI({
         idPart: partId,
         questionType: beType,
-        title,
+        title: finalTitle,
         instructions,
-        quantity: Number(quantity) || 0,
+        quantity: qty,
         order: defaultFrom,
       });
       message.success("Group created");
       onCreated?.();
-    } catch {
-      message.error("Create group failed");
+    } catch (e) {
+      const detail = e?.response?.data?.message || e?.message || "Unknown error";
+      message.error(`Create group failed: ${Array.isArray(detail) ? detail.join(", ") : detail}`);
     } finally {
       setBusy(false);
     }
   };
+
+  // Filtered family list for the tile grid.
+  const familyKeysToShow = useMemo(() => {
+    if (!allowedFamilies) return Object.keys(typeMeta);
+    return Object.keys(typeMeta).filter((k) => allowedFamilies.has(k));
+  }, [allowedFamilies]);
+
+  // Filtered sub-type list inside the family selector. FILL_BLANK / MATCHING
+  // show a sub-type picker; for Listening we also gate by section. In S1 we
+  // also relabel "Note" → "Form" so the teacher sees the Cambridge term.
+  const subTypeKeysToShow = useMemo(() => {
+    const list = subTypesByFamily[selectedFamily];
+    if (!list) return null;
+    let filtered = list;
+    if (isListening && allowedBeTypes) {
+      filtered = filtered.filter((s) => allowedBeTypes.includes(s.key));
+    }
+    if (isListening && partIdx === 0) {
+      filtered = filtered.map((s) =>
+        s.key === "NOTE_COMPLETION" ? { ...s, label: "Form completion" } : s
+      );
+    }
+    return filtered;
+  }, [selectedFamily, isListening, allowedBeTypes, partIdx]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1887,6 +2131,17 @@ function AddGroupModal({ onClose, onCreated, partId, defaultFrom = 1 }) {
             <h3 className="text-xl font-black text-[#1e1b4b]">
               Choose question type
             </h3>
+            {sectionMeta && (
+              <div className="mt-1 flex items-center gap-2 flex-wrap">
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${sectionMeta.bgAccent} ${sectionMeta.textAccent}`}>
+                  {sectionMeta.name}
+                </span>
+                <span className="text-[10px] font-bold text-[#64748b]">
+                  {sectionMeta.context}
+                  {sectionMeta.speakerHint ? " · " + sectionMeta.speakerHint : ""}
+                </span>
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -1896,8 +2151,39 @@ function AddGroupModal({ onClose, onCreated, partId, defaultFrom = 1 }) {
           </button>
         </div>
         <div className="p-6 max-h-[60vh] overflow-y-auto">
+          {/* Listening: hint banner explaining which types this section allows */}
+          {isListening && sectionMeta && (
+            <div className={`mb-4 rounded-2xl border-2 ${sectionMeta.bgAccent} border-[#e6e6ed] p-3`}>
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#94a3b8] mb-1">
+                Typical question types for {sectionMeta.name}
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {getAllowedTypesLabels(partIdx).map((label) => (
+                  <span
+                    key={label}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-[#e6e6ed] text-[#4338ca]"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <div className="text-[10px] text-[#64748b] mt-1.5 font-medium">
+                Sections in IELTS Listening usually hold 10 questions · target {sectionMeta.targetQty} for {sectionMeta.short}
+              </div>
+              {sectionMeta.idx === 0 && (
+                <div className="text-[10px] text-[#1e1b4b] mt-1 font-bold">
+                  💡 Form (điền tên, SĐT, địa chỉ) là dạng phổ biến nhất Part 1.
+                </div>
+              )}
+              {sectionMeta.idx === 1 && (
+                <div className="text-[10px] text-[#1e1b4b] mt-1 font-bold">
+                  💡 Plan/Map labelling: chọn kind = map/plan/diagram trong form, điền nhiều labels trên 1 ảnh.
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {Object.keys(typeMeta).map((t) => {
+            {familyKeysToShow.map((t) => {
               const meta = typeMeta[t];
               const sel = selectedFamily === t;
               return (
@@ -1927,13 +2213,13 @@ function AddGroupModal({ onClose, onCreated, partId, defaultFrom = 1 }) {
           </div>
 
           {/* Sub-type selector (only for FILL_BLANK / MATCHING families) */}
-          {subTypesByFamily[selectedFamily] && (
+          {subTypeKeysToShow && subTypeKeysToShow.length > 0 && (
             <div className="mt-4">
               <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
                 Choose a more specific sub-type
               </span>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {subTypesByFamily[selectedFamily].map((s) => {
+                {subTypeKeysToShow.map((s) => {
                   const active = selectedSubType === s.key;
                   return (
                     <button
@@ -1957,11 +2243,16 @@ function AddGroupModal({ onClose, onCreated, partId, defaultFrom = 1 }) {
             <div>
               <label className="text-xs font-bold uppercase text-[#64748b] block mb-1.5">
                 Number of questions
+                {skillLimits && skillLimits.totalQuestions > 0 && (
+                  <span className="ml-2 text-[10px] font-bold normal-case text-[#94a3b8]">
+                    (test total max {skillLimits.totalQuestions}, {qtyMax} left)
+                  </span>
+                )}
               </label>
               <input
                 type="number"
-                min={1}
-                max={50}
+                min={qtyMin}
+                max={qtyMax}
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value) || 0)}
                 className={inputCls()}
@@ -2015,23 +2306,62 @@ function AddGroupModal({ onClose, onCreated, partId, defaultFrom = 1 }) {
 }
 
 // =====================================================================
-// Listening: audio card (read-only display; upload is via TestInfoEditor)
+// Listening: audio card
+// ---------------------------------------------------------------------
+// Per-section audio is the canonical IELTS model (S1..S4 each have their
+// own recording). Today the BE only stores one audioUrl at the exam level,
+// so we read it from there as a fallback and surface a clear "section
+// audio pending" hint so teachers understand the visual scaffolding.
 // =====================================================================
-function ListeningAudioCard({ exam, partDetail }) {
-  const audioUrl = exam?.audioUrl || exam?.audio || null;
+function ListeningAudioCard({ exam, partDetail, sectionMeta }) {
+  // Prefer per-section audio (BE-side part.audioUrl), fall back to
+  // exam-level audioUrl, then legacy `exam.audio`. None → placeholder.
+  const audioUrl =
+    partDetail?.audioUrl ||
+    exam?.audioUrl ||
+    exam?.audio ||
+    null;
+  const hasPerSectionAudio = !!partDetail?.audioUrl;
+  const meta = sectionMeta || {
+    name: "Section",
+    short: "S?",
+    context: "Listening",
+    speakerHint: "",
+    accent: "bg-[#06b6d4]",
+    accentShadow: "shadow-[0_2px_0_#0891b2]",
+    textAccent: "text-[#0e7490]",
+    bgAccent: "bg-[#ecfeff]",
+  };
   return (
-    <div className="bg-white rounded-3xl border-2 border-[#06b6d4] shadow-[0_3px_0_#0891b2] p-4">
+    <div className={`bg-white rounded-3xl border-2 ${meta.accent} ${meta.accentShadow} p-4`}>
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-2xl bg-[#06b6d4] text-white flex items-center justify-center text-lg flex-none shadow-[0_2px_0_#0891b2]">
+        <div className={`w-11 h-11 rounded-2xl ${meta.accent} text-white flex items-center justify-center text-lg flex-none shadow-[0_2px_0_rgba(0,0,0,0.15)]`}>
           🎧
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-extrabold text-[#1e1b4b] text-sm">
-            Test audio
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="font-extrabold text-[#1e1b4b] text-sm">
+              {meta.name} audio
+            </div>
+            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${meta.bgAccent} ${meta.textAccent}`}>
+              {meta.context}
+            </span>
+            {meta.speakerHint && (
+              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#f1f1f6] text-[#64748b]">
+                🎙 {meta.speakerHint}
+              </span>
+            )}
           </div>
-          <div className="text-xs text-[#64748b] font-medium truncate">
-            {audioUrl ? audioUrl : "No audio yet — upload in the Settings tab"}
+          <div className="text-xs text-[#64748b] font-medium truncate mt-0.5">
+            {audioUrl
+              ? audioUrl
+              : "No audio yet — upload in the Settings tab (test-level audio)"}
           </div>
+          {!hasPerSectionAudio && audioUrl && (
+            <div className="text-[10px] text-[#b45309] font-bold mt-0.5">
+              ⚠ Currently using test-level audio for all 4 sections. Per-section upload pending backend support.
+            </div>
+          )}
         </div>
         {audioUrl && (
           <audio controls src={audioUrl} className="h-9" />
