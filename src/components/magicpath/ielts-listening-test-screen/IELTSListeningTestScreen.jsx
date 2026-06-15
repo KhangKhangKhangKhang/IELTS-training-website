@@ -30,6 +30,11 @@ function StackedButton({ children, tone = 'indigo', onClick, size = 'md', disabl
 }
 
 function PaletteCell({ num, state, active, onClick }) {
+  // Force numeric label. Nếu BE/adapter lỡ để UUID vào đây thì vẫn
+  // hiển thị số thay vì UUID.
+  const label = typeof num === "number" || (typeof num === "string" && /^\d+$/.test(num))
+    ? num
+    : "?";
   const base = 'relative w-9 h-9 rounded-xl text-xs font-extrabold transition-all border-2 flex items-center justify-center';
   let cls = '';
   if (active) cls = 'bg-[#6366f1] text-white border-[#4338ca] shadow-[0_3px_0_#4338ca] scale-110';
@@ -38,7 +43,7 @@ function PaletteCell({ num, state, active, onClick }) {
   else cls = 'bg-white text-[#64748b] border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] hover:border-[#6366f1]';
   return (
     <button onClick={onClick} className={`${base} ${cls}`}>
-      {num}
+      {label}
       {state === 'flagged' && <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#fb7185] rounded-full ring-2 ring-white" />}
     </button>
   );
@@ -172,7 +177,8 @@ export const IELTSListeningTestScreen = ({ testData, testResultId, userId, initi
       const options = (q.options && q.options.length > 0) ? q.options : wordBank;
       return {
         id: q.id || q.questionNumber || idx + 1,
-        displayNum: idx + 1,
+        // Ưu tiên displayNum từ adapter (số thứ tự BE) trước, fallback idx+1
+        displayNum: q.displayNum ?? idx + 1,
         type: q.type || q.questionType || 'FILL_BLANK',
         prompt: q.prompt || q.content || q.questionText || '',
         options,
@@ -514,7 +520,7 @@ export const IELTSListeningTestScreen = ({ testData, testResultId, userId, initi
           <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-extrabold text-[#1e1b4b]">Question Palette</h3>
-              <span className="text-[10px] font-bold uppercase tracking-wide text-[#64748b]">{questions[0]?.id} - {questions[questions.length - 1]?.id}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wide text-[#64748b]">{questions[0]?.displayNum ?? "?"} - {questions[questions.length - 1]?.displayNum ?? "?"}</span>
             </div>
             <div className="grid grid-cols-5 gap-1.5 mb-4">
               {questions.map((q) => (
