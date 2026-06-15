@@ -1,6 +1,7 @@
 import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import "react-toastify/dist/ReactToastify.css";
 
 import { AuthProvider } from "./context/authContext";
 import { ThemeProvider } from "./context/themeContext";
@@ -11,6 +12,7 @@ import Navbar from "./components/ui/navBar/navBar";
 import NavbarTeacher from "./components/ui/navBar/navBarTeacher";
 import NavbarAdmin from "./components/ui/navBar/navBarAdmin";
 import { Spin } from "antd";
+import { ToastContainer } from "react-toastify";
 
 // ✅ OPTIMIZED: Lazy load all page components for better performance
 const HomePage = lazy(() => import("./Pages/client/homePage"));
@@ -26,6 +28,7 @@ const ForgetPassword = lazy(() => import("./Pages/client/auth/forgetPassword"));
 const LandingPage = lazy(() => import("./Pages/landingPage"));
 const Test = lazy(() => import("./Pages/client/test/testReview"));
 const TestDetail = lazy(() => import("./Pages/client/test/testDetail"));
+const DoTest = lazy(() => import("./Pages/client/test/doTest"));
 const TestResultReview = lazy(() => import("./Pages/client/test/testResultReview"));
 const StartingPage = lazy(() => import("./Pages/StartingPage"));
 const TestManager = lazy(() => import("./Pages/teacher/test/testManager"));
@@ -84,7 +87,7 @@ const router = createBrowserRouter([
           { path: "vocabulary", element: <LazyRoute Component={Vocabulary} /> },
           { path: "test", element: <LazyRoute Component={Test} /> },
           { path: "test/review/:id", element: <LazyRoute Component={TestResultReview} /> },
-          { path: "doTest", element: <LazyRoute Component={TestDetail} /> },
+          { path: "doTest", element: <LazyRoute Component={DoTest} /> },
           { path: "profile", element: <LazyRoute Component={Profile} /> },
           // startingPage moved to standalone route above
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
@@ -144,7 +147,7 @@ const router = createBrowserRouter([
           { path: "test", element: <LazyRoute Component={Test} /> },
           { path: "profile", element: <LazyRoute Component={Profile} /> },
           { path: "userList", element: <LazyRoute Component={UserList} /> },
-          { path: "doTest", element: <LazyRoute Component={TestDetail} /> },
+          { path: "doTest", element: <LazyRoute Component={DoTest} /> },
           { path: "dashboard", element: <LazyRoute Component={TeacherDashboard} /> },
           { path: "testManager/testCreate", element: <LazyRoute Component={TestCreate} /> },
           { path: "testManager/testEdit/:id", element: <LazyRoute Component={TestEdit} /> },
@@ -169,5 +172,6 @@ createRoot(document.getElementById("root")).render(
         <RouterProvider router={router} />
       </AuthProvider>
     </ThemeProvider>
+    <ToastContainer position="top-right" autoClose={3000} theme="colored" />
   </StrictMode>
 );
