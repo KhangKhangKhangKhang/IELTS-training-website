@@ -142,15 +142,24 @@ const normalizePart = (part, answersMap) => {
   const partName = part.namePart ?? part.title ?? "";
   const cleanTitle = looksLikeUUID(partName) ? "" : partName;
 
+  // Passage title cũng có thể bị leak UUID
+  const rawPassageTitle =
+    part.passage?.title ?? part.passageTitle ?? "";
+  const cleanPassageTitle = looksLikeUUID(rawPassageTitle)
+    ? ""
+    : rawPassageTitle;
+
   return {
     ...part,
     id: part.id ?? part.idPart,
     title: cleanTitle,
     audioUrl: part.audioUrl ?? part.audio_url ?? part.listeningAudio ?? null,
-    passage: part.passage ?? {
-      title: part.passageTitle ?? "",
-      content: part.passageContent ?? part.content ?? "",
-    },
+    passage: part.passage
+      ? { ...part.passage, title: cleanPassageTitle }
+      : {
+          title: cleanPassageTitle,
+          content: part.passageContent ?? part.content ?? "",
+        },
     questionGroups: normalizedGroups,
     // Keep alias cho cả 2 phía
     groupOfQuestions: normalizedGroups,
@@ -172,8 +181,13 @@ export const toMagicpathShape = (testData, answersMap = {}) => {
     .map((p) => normalizePart(p, safeMap))
     .filter(Boolean);
 
+  // Top-level test title — bỏ qua nếu BE lỡ để UUID
+  const rawTitle = testData.title ?? testData.name ?? "";
+  const cleanTestTitle = looksLikeUUID(rawTitle) ? "" : rawTitle;
+
   return {
     ...testData,
+    title: cleanTestTitle,
     parts: normalizedParts,
   };
 };
