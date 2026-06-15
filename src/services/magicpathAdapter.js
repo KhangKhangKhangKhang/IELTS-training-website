@@ -64,13 +64,18 @@ const normalizeQuestion = (q, answersMap) => {
   const backendType = q.questionType || q.type || "";
   const legacyType = mapBackendQuestionTypeToLegacyGroupType(backendType);
 
-  // ID chuẩn hoá — ưu tiên questionNumber (BE số thứ tự) trước các UUID id
-  // để palette render "1, 2, 3" thay vì UUID. Fallback cuối cùng vẫn là q.id
-  // nếu test cũ chỉ có id.
-  const numericId = Number(q.questionNumber);
-  const id = Number.isFinite(numericId) && numericId > 0
-    ? numericId
-    : (q.id ?? q.idQuestion ?? q.questionId ?? q.questionNumber);
+  // ID chuẩn hoá — id này dùng làm key React + gửi lên BE làm idQuestion.
+  // PHẢI là id thực trong DB (UUID hoặc id cũ). KHÔNG dùng questionNumber
+  // vì questionNumber chỉ là số thứ tự hiển thị, không phải primary key
+  // — gửi questionNumber lên BE sẽ FK violation khi createMany UserAnswer.
+  const id = q.id ?? q.idQuestion ?? q.questionId ?? q.questionNumber;
+
+  // displayNum là số thứ tự hiển thị trên palette + header, tách riêng
+  // khỏi `id` để không nhầm giữa "id thực" và "số thứ tự". UI đọc
+  // displayNum, submit/keys đọc id.
+  const displayNum = Number.isFinite(Number(q.questionNumber)) && Number(q.questionNumber) > 0
+    ? Number(q.questionNumber)
+    : null;
 
   // Prompt
   const prompt = q.prompt ?? q.content ?? q.questionText ?? q.text ?? "";
@@ -102,6 +107,7 @@ const normalizeQuestion = (q, answersMap) => {
   return {
     ...q,
     id,
+    displayNum,
     type: legacyType,
     questionType: backendType,
     prompt,
