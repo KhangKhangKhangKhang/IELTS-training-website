@@ -208,13 +208,6 @@ export const IELTSGrammarPage = ({
   };
 
   // Fallback demo topics if API hasn't loaded yet
-  const renderedTopics =
-    paginatedTopics && paginatedTopics.length
-      ? paginatedTopics
-      : topics.length
-      ? topics
-      : demoTopics;
-  const topicsTotal = topics.length || demoTopics.length;
   const demoTopics = [
     {
       id: 1,
@@ -277,6 +270,13 @@ export const IELTSGrammarPage = ({
       status: "locked",
     },
   ];
+  const renderedTopics =
+    paginatedTopics && paginatedTopics.length
+      ? paginatedTopics
+      : topics.length
+      ? topics
+      : demoTopics;
+  const topicsTotal = topics.length || demoTopics.length;
   const currentTopic = renderedTopics.find((t) => t.status === "current");
   const stats = {
     mastered: summary?.mastered ?? 24,
