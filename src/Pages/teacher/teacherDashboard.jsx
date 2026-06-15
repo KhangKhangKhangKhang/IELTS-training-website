@@ -299,6 +299,7 @@ const TeacherDashboard = () => {
     () =>
       topStreaks.slice(0, 5).map((s, i) => ({
         rank: i + 1,
+        idUser: s.idUser,
         name: s.nameUser,
         avatar: s.avatar,
         avatarColor: AVATAR_PALETTE[i % AVATAR_PALETTE.length],
@@ -687,7 +688,7 @@ const TeacherDashboard = () => {
               )}
               {topStreaksRanked.map((s) => (
                 <div
-                  key={s.name}
+                  key={s.idUser || `${s.name}-${s.rank}`}
                   className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#fffaf5] transition-colors"
                 >
                   <div

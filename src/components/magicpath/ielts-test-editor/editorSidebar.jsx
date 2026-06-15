@@ -32,12 +32,18 @@ export function EditorSidebar({
   activeIdx = 0,
   onSelect,
   onCreate,
+  onDelete,
   exam,
   totalQuestions = 0,
   targetQuestions = 0,
+  skillLimits = null,
+  totalPartCapMessage = null,
+  totalQuestionCapMessage = null,
 }) {
   const meta = SKILL_META[skill];
-  const list = parts && parts.length > 0 ? parts : STATIC_PARTS[skill];
+  // WRITING / SPEAKING have hard-coded demo parts; READING / LISTENING use live data only
+  const isDemo = skill === "WRITING" || skill === "SPEAKING";
+  const list = parts && parts.length > 0 ? parts : isDemo ? STATIC_PARTS[skill] : [];
   const partWord =
     skill === "LISTENING" ? "Section" : skill === "WRITING" ? "Task" : "Part";
 
@@ -83,47 +89,104 @@ export function EditorSidebar({
               ? "bg-[#10b981]"
               : "bg-[#94a3b8]";
           return (
-            <button
+            <div
               key={p.id || p.name}
-              onClick={() => onSelect && onSelect(i)}
-              className={`w-full px-3 py-2.5 rounded-xl text-sm flex items-center gap-2.5 transition-all text-left ${
+              className={`group relative w-full rounded-xl flex items-center transition-all ${
                 active
                   ? "bg-[#eef2ff] text-[#4338ca]"
                   : "text-[#64748b] hover:bg-[#f1f1f6]"
               }`}
             >
-              <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black flex-none ${
-                  active
-                    ? "bg-[#6366f1] text-white"
-                    : "bg-white border-2 border-[#e6e6ed] text-[#64748b]"
-                }`}
+              <button
+                onClick={() => onSelect && onSelect(i)}
+                className="flex-1 min-w-0 px-3 py-2.5 text-sm flex items-center gap-2.5 text-left rounded-xl"
               >
-                {i + 1}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-extrabold truncate">{p.name}</div>
-                <div className="text-[10px] flex items-center gap-1 mt-0.5">
-                  <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-                  <span>{p.meta}</span>
+                <div
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black flex-none ${
+                    active
+                      ? "bg-[#6366f1] text-white"
+                      : "bg-white border-2 border-[#e6e6ed] text-[#64748b]"
+                  }`}
+                >
+                  {i + 1}
                 </div>
-              </div>
-            </button>
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold truncate">{p.name}</div>
+                  <div className="text-[10px] flex items-center gap-1 mt-0.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                    <span>{p.meta}</span>
+                  </div>
+                </div>
+              </button>
+              {active && onDelete && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(p.id);
+                  }}
+                  title={`Delete ${p.name}`}
+                  aria-label={`Delete ${p.name}`}
+                  className="mr-2 w-7 h-7 rounded-lg bg-white border-2 border-[#fecdd3] text-[#fb7185] hover:bg-[#fff1f2] hover:border-[#fb7185] flex-none flex items-center justify-center text-xs font-black"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           );
         })}
 
-        {onCreate && (
-          <button
-            onClick={onCreate}
-            className="w-full mt-2 px-3 py-2 rounded-xl text-xs font-bold border-2 border-dashed border-[#e6e6ed] text-[#64748b] hover:border-[#6366f1] hover:text-[#6366f1] active:scale-[0.98] transition-all"
-          >
-            + Add {partWord}
-          </button>
-        )}
+        {onCreate && (() => {
+          // Listening is capped at 4 sections (S1..S4); Reading is open-ended.
+          const isListeningCapped = skill === "LISTENING" && list.length >= 4;
+          return (
+            <button
+              onClick={onCreate}
+              disabled={isListeningCapped}
+              title={isListeningCapped ? "IELTS Listening has 4 sections (S1–S4)" : ""}
+              className="w-full mt-2 px-3 py-2 rounded-xl text-xs font-bold border-2 border-dashed border-[#e6e6ed] text-[#64748b] hover:border-[#6366f1] hover:text-[#6366f1] active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#e6e6ed] disabled:hover:text-[#64748b]"
+            >
+              + Add {partWord}{isListeningCapped ? " (4 max)" : ""}
+            </button>
+          );
+        })()}
 
         <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#94a3b8] px-3 py-2 pt-4">
           Overview
         </div>
+
+        {/* Per-skill validation banners (cap violations) */}
+        {skillLimits && (
+          <div className="mx-1 mb-2 rounded-2xl border-2 border-[#e6e6ed] bg-white p-2.5 space-y-1.5">
+            <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#94a3b8]">
+              {skillLimits.label} limits
+            </div>
+            {skillLimits.totalQuestions > 0 ? (
+              <>
+                <div className="text-[10px] text-[#1e1b4b] font-bold">
+                  {totalQuestions}/{skillLimits.totalQuestions} questions
+                </div>
+                <div className="text-[10px] text-[#64748b]">
+                  Max {skillLimits.totalParts} {skillLimits.partWord.toLowerCase()}s
+                </div>
+              </>
+            ) : (
+              <div className="text-[10px] text-[#64748b]">
+                {skillLimits.totalParts} {skillLimits.partWord.toLowerCase()}s max
+              </div>
+            )}
+            {totalPartCapMessage && (
+              <div className="text-[10px] text-[#be123c] font-extrabold bg-[#fff1f2] border border-[#fecdd3] rounded-lg px-1.5 py-1">
+                ⚠ {totalPartCapMessage}
+              </div>
+            )}
+            {totalQuestionCapMessage && (
+              <div className="text-[10px] text-[#be123c] font-extrabold bg-[#fff1f2] border border-[#fecdd3] rounded-lg px-1.5 py-1">
+                ⚠ {totalQuestionCapMessage}
+              </div>
+            )}
+          </div>
+        )}
         <div className="mx-1 rounded-2xl border-2 border-[#e6e6ed] bg-[#fafafc] p-3 space-y-3">
           <div className="flex items-center gap-3">
             <div className="relative w-14 h-14 rounded-2xl bg-white border-2 border-[#e6e6ed] flex items-center justify-center shadow-[0_2px_0_#e6e6ed]">

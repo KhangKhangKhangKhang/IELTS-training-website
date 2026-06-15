@@ -62,7 +62,7 @@ const QUESTION_TYPE_LABELS = {
   ),
 };
 
-const getQuestionTypeDisplay = (type) => {
+const getQuestionTypeDisplay = (type, contextSkill = null) => {
   if (QUESTION_SUBTYPE_LABELS[type]) {
     const isFill = [
       "SENTENCE_COMPLETION",
@@ -72,7 +72,14 @@ const getQuestionTypeDisplay = (type) => {
       "FLOW_CHART_COMPLETION",
     ].includes(type);
     const family = isFill ? QUESTION_FAMILY_LABELS.FILL_BLANK : QUESTION_FAMILY_LABELS.MATCHING;
-    const subtype = QUESTION_SUBTYPE_LABELS[type];
+    // In IELTS Listening, "NOTE_COMPLETION" is colloquially the "Form" sub-type
+    // (Part 1 is dominated by form-filling: name, phone, address). When the
+    // teacher is editing a Listening test, surface "Form" so the badge matches
+    // Cambridge conventions.
+    const subtype =
+      type === "NOTE_COMPLETION" && contextSkill === "LISTENING"
+        ? "Form"
+        : QUESTION_SUBTYPE_LABELS[type];
     return { family, subtype, full: `${family} — ${subtype}` };
   }
   const full = QUESTION_TYPE_LABELS[type] || type;
@@ -184,12 +191,15 @@ const TEMPLATES = {
   },
   DIAGRAM_LABELING: {
     type: "DIAGRAM_LABELING",
+    kind: "diagram", // 'diagram' | 'map' | 'plan' (IELTS: map = area map, plan = building layout)
     imageUrl: "",
-    labelCoordinate: { x: 50, y: 50 },
-    pointLabel: "",
+    // Multi-label: a single image can carry N labels (IELTS Part 2 maps/plans
+    // typically have 5-8 fillable points).
+    labels: [
+      { label: "1", x: 50, y: 50, correctAnswers: [""] },
+    ],
     hasWordBank: false,
     wordBank: [],
-    correctAnswers: [""],
   },
   OTHER: {
     type: "OTHER",
@@ -203,6 +213,14 @@ const TEMPLATES = {
 // - If qType is a family (FILL_IN_THE_BLANK / MATCHING), pick the first
 //   sub-type by default (or the existing.questionType if editing).
 // - Otherwise qType is already a specific sub-type.
+// Single-label lookup (with skill-aware override for NOTE_COMPLETION → "Form"
+// in Listening). Use this in places that only need the short label, not the
+// full family+subtype display.
+const getSubtypeLabel = (key, contextSkill = null) => {
+  if (key === "NOTE_COMPLETION" && contextSkill === "LISTENING") return "Form";
+  return QUESTION_SUBTYPE_LABELS[key] || null;
+};
+
 const resolveSubType = (qType, existing) => {
   if (subTypesByFamily[qType]) {
     if (existing?.questionType && qType === "FILL_BLANK" &&
@@ -281,9 +299,15 @@ const validateMetadata = (qType, metadata) => {
     if (!md.correctEndingLabel) errors.correct = "Pick the correct ending";
   } else if (qType === "DIAGRAM_LABELING") {
     if (!md.imageUrl) errors.image = "Image is required";
-    if (!md.pointLabel?.trim()) errors.pointLabel = "Point label is required";
-    if (!md.correctAnswers?.some((a) => a?.trim())) {
-      errors.answers = "At least one answer is required";
+    if (!Array.isArray(md.labels) || md.labels.length === 0) {
+      errors.labels = "Add at least one label on the image";
+    } else {
+      md.labels.forEach((l, i) => {
+        if (!l?.label?.trim()) errors[`label_${i}_text`] = `Label #${i + 1} needs a name (e.g. "1", "A")`;
+        if (!Array.isArray(l?.correctAnswers) || !l.correctAnswers.some((a) => a?.trim())) {
+          errors[`label_${i}_answer`] = `Label #${i + 1} needs at least one correct answer`;
+        }
+      });
     }
   } else if (qType === "OTHER") {
     if (!md.correctAnswers?.some((a) => a?.trim())) {
@@ -299,6 +323,7 @@ export {
   QUESTION_FAMILY_LABELS,
   QUESTION_SUBTYPE_LABELS,
   getQuestionTypeDisplay,
+  getSubtypeLabel,
   TEMPLATES,
   resolveSubType,
   validateMetadata,

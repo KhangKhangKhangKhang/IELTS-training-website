@@ -9,10 +9,17 @@ import { WritingEditor } from "./editorWriting";
 import { SpeakingEditor } from "./editorSpeaking";
 import { PartsProvider } from "./partsContext";
 import {
+  getLimits,
+  validateTotalQuestionCount,
+  validateTotalPartCount,
+} from "./testLimits";
+import {
   getAllPartByIdAPI,
   getPartByIdAPI,
   createPartAPI,
+  deletePartAPI,
 } from "@/services/apiTest";
+import { message, Modal } from "antd";
 
 const SKILL_FROM_TYPE = {
   READING: "READING",
@@ -49,12 +56,30 @@ export const IELTSTestEditor = ({
       setPartsLoading(true);
       const res = await getAllPartByIdAPI(idTest);
       const arr = res?.data || [];
-      setParts(arr);
+      // The list endpoint only includes `_count.questions` and NOT the
+      // groupOfQuestions[].quantity rows. We need actual group quantities
+      // to compute the test total question count for the per-skill cap.
+      // Fetch each part detail in parallel and merge.
+      const details = await Promise.all(
+        arr.map((p) =>
+          getPartDetail(p.idPart)
+            .then((d) => d || p)
+            .catch(() => p)
+        )
+      );
+      // Merge the detailed part (with questionGroups) into the lightweight
+      // list entry, keeping list metadata.
+      const enriched = arr.map((light, i) => ({
+        ...light,
+        questionGroups: details[i]?.questionGroups || details[i]?.groupOfQuestions || [],
+        groupOfQuestions: details[i]?.questionGroups || details[i]?.groupOfQuestions || [],
+      }));
+      setParts(enriched);
       // Don't auto-shift activePartId here; only set if none selected.
-      if (!activePartId && arr.length > 0) {
-        setActivePartId(arr[0].idPart);
+      if (!activePartId && enriched.length > 0) {
+        setActivePartId(enriched[0].idPart);
       }
-      return arr;
+      return enriched;
     } catch (e) {
       console.error(e);
       return [];
@@ -77,9 +102,15 @@ export const IELTSTestEditor = ({
   }, []);
 
   const createPart = useCallback(async () => {
+    // Listening: name parts "Section 1..4" with the per-skill convention.
+    // Reading: keep generic "Part N".
+    const namePart =
+      skill === "LISTENING"
+        ? `Section ${parts.length + 1}`
+        : `Part ${parts.length + 1}`;
     const res = await createPartAPI({
       idTest,
-      namePart: `Part ${parts.length + 1}`,
+      namePart,
       order: parts.length,
     });
     const newPart = res?.data;
@@ -89,7 +120,45 @@ export const IELTSTestEditor = ({
       setActivePartId(newPart.idPart);
     }
     return newPart;
-  }, [idTest, parts]);
+  }, [idTest, parts, skill]);
+
+  const handleDeletePart = useCallback(
+    (idPart) => {
+      const idx = parts.findIndex((p) => p.idPart === idPart);
+      const label = parts[idx]?.namePart || `Part ${idx + 1}`;
+      Modal.confirm
+        ? Modal.confirm({
+            title: "Delete part?",
+            content: `Delete "${label}" and ALL its question groups + questions? This cannot be undone.`,
+            okText: "Delete",
+            okButtonProps: { danger: true },
+            centered: true,
+            async onOk() {
+              try {
+                await deletePartAPI(idPart);
+                message.success(`Part "${label}" deleted`);
+                if (activePartId === idPart) setActivePartId(null);
+                await refreshParts();
+              } catch (e) {
+                console.error(e);
+                message.error("Delete part failed");
+              }
+            },
+          })
+        : (async () => {
+            if (!window.confirm(`Delete "${label}" and all its content?`)) return;
+            try {
+              await deletePartAPI(idPart);
+              message.success(`Part "${label}" deleted`);
+              if (activePartId === idPart) setActivePartId(null);
+              await refreshParts();
+            } catch {
+              message.error("Delete part failed");
+            }
+          })();
+    },
+    [parts, activePartId, refreshParts]
+  );
 
   const partsCtx = useMemo(
     () => ({
@@ -118,11 +187,40 @@ export const IELTSTestEditor = ({
     }
   }, [exam?.testType]);
 
+  // Derive per-part question count. Sources (in priority order):
+  //   1. Prisma `_count.questions` (preferred — already aggregated by BE)
+  //   2. Sum of groupOfQuestions[].quantity on the part
+  //   3. Legacy `p.quantity` field
+  const derivePartQty = (p) => {
+    const fromCount = Number(p?._count?.questions ?? 0);
+    if (fromCount > 0) return fromCount;
+    const groups = Array.isArray(p?.groupOfQuestions)
+      ? p.groupOfQuestions
+      : Array.isArray(p?.questionGroups) ? p.questionGroups : [];
+    const fromGroups = groups.reduce(
+      (s, g) => s + (Number(g?.quantity) || 0),
+      0
+    );
+    if (fromGroups > 0) return fromGroups;
+    return Number(p?.quantity ?? 0) || 0;
+  };
+
   const totalQuestions =
     (skill === "READING" || skill === "LISTENING"
-      ? parts.reduce((sum, p) => sum + (p.quantity || 0), 0)
+      ? parts.reduce((sum, p) => sum + derivePartQty(p), 0)
       : 0) || 0;
-  const targetQuestions = Number(exam?.numberQuestion) || 0;
+
+  // Per-skill limits (L=40 q across 4 sections, R=40 q across 3 parts, etc.)
+  const skillLimits = getLimits(skill);
+  // targetQuestions takes the test's numberQuestion (server-set) and falls
+  // back to the per-skill hard target (L=40, R=40, others 0).
+  const targetQuestions =
+    Number(exam?.numberQuestion) || skillLimits.totalQuestions || 0;
+
+  // Total-part cap: refuse to create a 5th section / 4th reading part.
+  const totalPartCap = validateTotalPartCount(skill, parts.length);
+  // Total-question cap: warn when current total > per-skill max.
+  const totalQuestionCap = validateTotalQuestionCount(skill, totalQuestions);
 
   // Build sidebar part list per skill
   const sidebarParts = (() => {
@@ -150,11 +248,43 @@ export const IELTSTestEditor = ({
         status: "editing",
       }));
     }
+    if (skill === "LISTENING") {
+      // Listening: 4 sections, audio on every section. There is no per-section
+      // target — questions are distributed freely across sections, capped only
+      // by the per-skill total (40 across the whole test).
+      return (parts || []).map((p, i) => {
+        const qty = derivePartQty(p);
+        const sectionNames = ["Section 1", "Section 2", "Section 3", "Section 4"];
+        const sectionContexts = [
+          "Social · 2 speakers",
+          "Social monologue",
+          "Educational · 2-4 speakers",
+          "Academic monologue",
+        ];
+        return {
+          id: p.idPart,
+          name: sectionNames[i] || p.namePart || `Section ${i + 1}`,
+          meta: `${qty} q · 🎧 ${sectionContexts[i] || "audio"}`,
+          status: qty > 0 ? "editing" : "todo",
+        };
+      });
+    }
+    if (skill === "READING") {
+      return (parts || []).map((p, i) => {
+        const qty = derivePartQty(p);
+        return {
+          id: p.idPart,
+          name: p.namePart || `Part ${i + 1}`,
+          meta: `${qty} q`,
+          status: qty > 0 ? "editing" : "todo",
+        };
+      });
+    }
     return (parts || []).map((p, i) => ({
       id: p.idPart,
       name: p.namePart || `Part ${i + 1}`,
-      meta: `${p.quantity || 0} questions`,
-      status: p.quantity > 0 ? "editing" : "todo",
+      meta: `${derivePartQty(p)} questions`,
+      status: derivePartQty(p) > 0 ? "editing" : "todo",
     }));
   })();
 
@@ -185,6 +315,10 @@ export const IELTSTestEditor = ({
               isListening={skill === "LISTENING"}
               onChange={setSidebarState}
               exam={exam}
+              externalParts={parts}
+              externalActivePartId={activePartId}
+              skillLimits={skillLimits}
+              testTotalQuestions={totalQuestions}
             />
           )}
         </PartsProvider>
@@ -208,9 +342,13 @@ export const IELTSTestEditor = ({
         activeIdx={activeSidebarIdx}
         onSelect={handleSidebarSelect}
         onCreate={skill === "READING" || skill === "LISTENING" ? createPart : undefined}
+        onDelete={skill === "READING" || skill === "LISTENING" ? handleDeletePart : undefined}
         exam={exam}
         totalQuestions={totalQuestions}
         targetQuestions={targetQuestions}
+        skillLimits={skillLimits}
+        totalPartCapMessage={totalPartCap.ok ? null : totalPartCap.message}
+        totalQuestionCapMessage={totalQuestionCap.ok ? null : totalQuestionCap.message}
       />
 
       <main className="flex-1 min-w-0 flex flex-col">

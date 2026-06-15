@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Input, InputNumber, Checkbox } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
+import { resolveActiveIdx } from "./fillInsertHelpers";
+import InteractiveSharedPreview from "./InteractiveSharedPreview";
 
 // SUMMARY_COMPLETION
 // BE metadata: { blankLabel, maxWords, hasWordBank, wordBank?, correctAnswers[], fullParagraph? }
@@ -9,7 +11,9 @@ import { PlusOutlined } from "@ant-design/icons";
 //   - fullParagraph (shared summary text with [N] placeholders)
 //   - maxWords
 //   - hasWordBank + wordBank
-// This per-question form is now answer-only.
+// This per-question form is answer-only — but with click-to-jump
+// interactivity so the teacher can click `[14]` in the shared
+// paragraph to focus the answer for blank 14.
 
 const defaultValue = () => ({
   blankLabel: "",
@@ -20,32 +24,13 @@ const defaultValue = () => ({
   fullParagraph: "",
 });
 
-const SharedPreview = ({ label, text }) => {
-  if (!text) {
-    return (
-      <div className="rounded-xl border-2 border-dashed border-[#cbd5e1] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#94a3b8] italic">
-        Empty — type the shared summary at the group level above.
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-xl border-2 border-[#cffafe] bg-[#f0f9ff] px-3 py-2">
-      <div className="text-[9px] font-extrabold uppercase tracking-wider text-[#0e7490] mb-0.5">
-        {label} (from group)
-      </div>
-      <div className="text-sm text-[#0c4a6e] font-medium leading-relaxed whitespace-pre-wrap">
-        {text}
-      </div>
-    </div>
-  );
-};
-
 const SummaryCompletionForm = ({
   value,
   onChange,
   readOnlyText = "",
   wordBank = [],
   hasWordBank = false,
+  questionIndex = 0,
 }) => {
   const v = value || defaultValue();
   const correctAnswers = Array.isArray(v.correctAnswers) ? v.correctAnswers : [""];
@@ -53,6 +38,9 @@ const SummaryCompletionForm = ({
     () => !!(v.fullParagraph && v.fullParagraph !== readOnlyText)
   );
   const update = (patch) => onChange({ ...v, ...patch });
+  // Refs to each answer input — used by InteractiveSharedPreview to focus
+  // the right input when the teacher clicks a [N] in the shared text.
+  const answerRefs = useRef([]);
 
   const setAnswer = (idx, text) => {
     update({
@@ -72,9 +60,45 @@ const SummaryCompletionForm = ({
     }
   };
 
+  // Click-to-jump: focus the answer input for blank N (1-based).
+  // We also update blankLabel to N so the active highlight follows
+  // the clicked blank — and scroll the input into view (smooth) so
+  // the teacher can see which input just got focused when the shared
+  // text is long.
+  const focusAnswer = (n) => {
+    const idx = n - 1;
+    const el = answerRefs.current[idx];
+    if (el) {
+      el.focus();
+      if (typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+    // Sync blankLabel → n so the indigo highlight follows. Use string
+    // for the input, but keep resolveActiveIdx reading Number(blankLabel).
+    if (String(v.blankLabel) !== String(n)) {
+      update({ blankLabel: String(n) });
+    }
+  };
+
+  // Which blank is "active" for this question:
+  //   - blankLabel set → use that number
+  //   - blankLabel empty → fallback questionIndex + 1 (1-based)
+  const activeIdx = resolveActiveIdx(
+    v.blankLabel,
+    questionIndex,
+    "SUMMARY_COMPLETION"
+  );
+
   return (
     <div className="space-y-3">
-      <SharedPreview label="Shared summary" text={readOnlyText} />
+      <InteractiveSharedPreview
+        label="Shared summary"
+        text={readOnlyText}
+        subType="SUMMARY_COMPLETION"
+        activeIdx={activeIdx}
+        onSelect={focusAnswer}
+      />
 
       <label className="block">
         <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
@@ -132,27 +156,48 @@ const SummaryCompletionForm = ({
           Acceptable answers
         </span>
         <div className="space-y-1.5">
-          {correctAnswers.map((ans, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Input
-                value={ans}
-                onChange={(e) => setAnswer(i, e.target.value)}
-                size="small"
-              />
-              {correctAnswers.length > 1 && (
-                <button
-                  onClick={() =>
-                    update({
-                      correctAnswers: correctAnswers.filter((_, j) => j !== i),
-                    })
-                  }
-                  className="w-7 h-7 rounded-lg hover:bg-[#fff1f2] text-[#fb7185] text-xs shrink-0"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          ))}
+          {correctAnswers.map((ans, i) => {
+            const blankNum = activeIdx != null ? activeIdx + i : null;
+            return (
+              <div key={i} className="flex items-center gap-2">
+                {blankNum != null && (
+                  <span
+                    className={`flex-none inline-flex items-center justify-center min-w-[1.5rem] h-7 px-1.5 rounded-md font-mono font-black text-[10px] ${
+                      i === 0
+                        ? "bg-[#4338ca] text-white"
+                        : "bg-white text-[#4338ca] border border-[#c7d2fe]"
+                    }`}
+                    title={
+                      i === 0
+                        ? `Answer for blank ${activeIdx}`
+                        : `Extra acceptable answer for blank ${activeIdx}`
+                    }
+                  >
+                    {blankNum}
+                  </span>
+                )}
+                <Input
+                  ref={(el) => (answerRefs.current[i] = el)}
+                  value={ans}
+                  onChange={(e) => setAnswer(i, e.target.value)}
+                  size="small"
+                  placeholder={i === 0 ? "Type the answer the student types" : "Alternative acceptable answer"}
+                />
+                {correctAnswers.length > 1 && (
+                  <button
+                    onClick={() =>
+                      update({
+                        correctAnswers: correctAnswers.filter((_, j) => j !== i),
+                      })
+                    }
+                    className="w-7 h-7 rounded-lg hover:bg-[#fff1f2] text-[#fb7185] text-xs shrink-0"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
         <button
           onClick={() => update({ correctAnswers: [...correctAnswers, ""] })}

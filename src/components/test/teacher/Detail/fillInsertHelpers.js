@@ -123,6 +123,85 @@ export const parseTableHTML = (html) => {
   }
 };
 
+// =====================================================================
+// Click-to-jump blank parsing
+// =====================================================================
+//
+// IELTS FILL sub-types use placeholder tokens in the shared text:
+//   - SUMMARY_COMPLETION / NOTE_COMPLETION: "[14]", "[15]", ...
+//   - FLOW_CHART_COMPLETION:                "[Step 1]", "[Step 2]", ...
+//   - SENTENCE_COMPLETION:                   "___" (the literal blank line)
+//   - TABLE_COMPLETION:                      "[N]" inside table cells
+//
+// We split the shared text into typed segments so the form can render
+// each placeholder as a clickable button. Click → focus the answer
+// input for that blank.
+
+// Regex for each sub-type's blank placeholder. Order matters — Step
+// must come before plain number to avoid matching `[Step 14]` as `[14]`.
+const BLANK_REGEX = {
+  SENTENCE_COMPLETION: /___/g,
+  SUMMARY_COMPLETION: /\[(\d+)\]/g,
+  NOTE_COMPLETION: /\[(\d+)\]/g,
+  FLOW_CHART_COMPLETION: /\[(?:Step\s+)?(\d+)\]/gi,
+  TABLE_COMPLETION: /\[(\d+)\]/g,
+};
+
+// Split `text` into an ordered list of segments:
+//   [{ type: 'text', content: '...' }, { type: 'blank', n: 14 }, ...]
+// Returns plain text segments and a 1-based blank number for each match.
+// If `text` is empty or no matches, returns a single text segment.
+export const parseBlanks = (text, subType = "SUMMARY_COMPLETION") => {
+  if (!text || typeof text !== "string") {
+    return text ? [{ type: "text", content: text }] : [];
+  }
+  const re = BLANK_REGEX[subType] || BLANK_REGEX.SUMMARY_COMPLETION;
+  // Reset lastIndex defensively (regex is global)
+  re.lastIndex = 0;
+  const segments = [];
+  let lastIdx = 0;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > lastIdx) {
+      segments.push({ type: "text", content: text.slice(lastIdx, m.index) });
+    }
+    const n = m[1] ? parseInt(m[1], 10) : null;
+    if (n != null && !Number.isNaN(n)) {
+      segments.push({ type: "blank", n, raw: m[0] });
+    } else {
+      // SENTENCE_COMPLETION "___" — no number, increment a local counter
+      const localIdx = segments.filter((s) => s.type === "blank").length + 1;
+      segments.push({ type: "blank", n: localIdx, raw: m[0] });
+    }
+    lastIdx = m.index + m[0].length;
+  }
+  if (lastIdx < text.length) {
+    segments.push({ type: "text", content: text.slice(lastIdx) });
+  }
+  if (segments.length === 0) {
+    segments.push({ type: "text", content: text });
+  }
+  return segments;
+};
+
+// Resolve which blank number the current question is editing.
+//   1. If `blankLabel` (Summary/Note) or `stepLabel` (Flow Chart) is set,
+//      use that number.
+//   2. Otherwise fall back to `questionIndex + 1` (1-based).
+//   3. If both are empty/invalid, return null (no highlight).
+export const resolveActiveIdx = (
+  blankLabel,
+  questionIndex,
+  subType = "SUMMARY_COMPLETION"
+) => {
+  const fromLabel = Number(blankLabel);
+  if (Number.isFinite(fromLabel) && fromLabel > 0) return fromLabel;
+  if (Number.isFinite(questionIndex) && questionIndex >= 0) {
+    return questionIndex + 1;
+  }
+  return null;
+};
+
 // Default empty grid (3 rows × 2 cols) for a new TABLE_COMPLETION group.
 export const defaultTableGrid = (rows = 3, cols = 2) => {
   const grid = [];

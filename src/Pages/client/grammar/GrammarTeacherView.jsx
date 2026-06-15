@@ -4,7 +4,6 @@ import { useAuth } from "@/context/authContext";
 import { IELTSGrammarManagement } from "@/components/magicpath/ielts-grammar-management/IELTSGrammarManagement";
 import {
   getAllGrammarAPI,
-  getSystemCategoriesAPI,
   getGrammarCategoriesUserAPI,
   getGrammarByCategoriesUserAPI,
   createGrammarWithoutCategoryAPI,
@@ -39,16 +38,22 @@ const GrammarTeacherView = () => {
     if (!user?.idUser) return;
     try {
       setLoading(true);
-      const [sysRes, usrRes, allRes] = await Promise.allSettled([
-        getSystemCategoriesAPI(),
+      // BE /grammar-categories/get-user-grammar-categories/:idUser returns BOTH
+      // system (idUser === null) and user-owned categories in one response.
+      // Split client-side so we don't need a separate (non-existent) system endpoint.
+      const [usrRes, allRes] = await Promise.allSettled([
         getGrammarCategoriesUserAPI(user.idUser),
         getAllGrammarAPI(),
       ]);
-      const sys = sysRes.status === "fulfilled" ? sysRes.value?.data?.data || sysRes.value?.data || [] : [];
-      const usr = usrRes.status === "fulfilled" ? usrRes.value?.data?.data || usrRes.value?.data || [] : [];
-      const all = allRes.status === "fulfilled" ? allRes.value?.data?.data || allRes.value?.data || [] : [];
-      setSystemCategories(Array.isArray(sys) ? sys : []);
-      setUserCategories(Array.isArray(usr) ? usr : []);
+      const catsRaw = usrRes.status === "fulfilled"
+        ? (usrRes.value?.data?.data || usrRes.value?.data || [])
+        : [];
+      const cats = Array.isArray(catsRaw) ? catsRaw : [];
+      const sys = cats.filter((c) => c.idUser === null);
+      const usr = cats.filter((c) => c.idUser !== null);
+      const all = allRes.status === "fulfilled" ? (allRes.value?.data?.data || allRes.value?.data || []) : [];
+      setSystemCategories(sys);
+      setUserCategories(usr);
       setAllGrammars(Array.isArray(all) ? all : []);
     } catch (e) {
       message.error("Không thể tải dữ liệu ngữ pháp");
@@ -78,12 +83,19 @@ const GrammarTeacherView = () => {
   // For grammar items, fetch their categories membership on first load
   const [grammarCategoryMap, setGrammarCategoryMap] = useState({});
 
+  // BE expects UUID for idGrammarCategory. Some seed rows ship with slug
+  // strings (e.g. "basic-grammar") which 403 the grammar-by-user-category call.
+  // Filter them out client-side so we don't spam 403s for ids the BE can't resolve.
+  const isUuid = (id) =>
+    typeof id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
   useEffect(() => {
     if (!user?.idUser) return;
     const catIds = [
       ...systemCategories.map((c) => c.idGrammarCategory),
       ...userCategories.map((c) => c.idGrammarCategory),
-    ];
+    ].filter(isUuid);
     if (catIds.length === 0) return;
     (async () => {
       const results = await Promise.allSettled(
