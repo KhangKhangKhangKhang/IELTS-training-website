@@ -4,8 +4,7 @@
 // Logic:
 //   previewMode=true                          → render code cũ (teacher preview)
 //   initialTestResult?.finishedAt            → render code cũ (review mode)
-//   testType === 'SPEAKING'                  → render code cũ (chưa có magicpath speaking)
-//   testType in [LISTENING, READING, WRITING] → render magicpath screen mới
+//   testType in [LISTENING, READING, WRITING, SPEAKING] → render magicpath screen
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -34,6 +33,7 @@ import Speaking from "@/components/test/type/speaking";
 import { IELTSListeningTestScreen } from "@/components/magicpath/ielts-listening-test-screen/IELTSListeningTestScreen";
 import { IELTSReadingTestScreen } from "@/components/magicpath/ielts-reading-test-screen/IELTSReadingTestScreen";
 import { IELTSWritingTestScreen } from "@/components/magicpath/ielts-writing-test-screen/IELTSWritingTestScreen";
+import { IELTSSpeakingTestScreen } from "@/components/magicpath/ielts-speaking-test-screen/IELTSSpeakingTestScreen";
 
 const oldComponents = {
   LISTENING: Listening,
@@ -42,7 +42,7 @@ const oldComponents = {
   SPEAKING: Speaking,
 };
 
-const MAGIC_PATH_TYPES = new Set(["LISTENING", "READING", "WRITING"]);
+const MAGIC_PATH_TYPES = new Set(["LISTENING", "READING", "WRITING", "SPEAKING"]);
 
 const DoTest = () => {
   const location = useLocation();
@@ -226,9 +226,14 @@ const DoTest = () => {
 
   const testDataMagicpath = useMemo(() => {
     if (useOld || !test) return null;
+    // Speaking screen đọc testData.speakingTasks (BE shape) trực tiếp,
+    // không cần qua toMagicpathShape (chỉ normalize Reading/Listening parts).
+    if (resolvedType === "SPEAKING") {
+      return test;
+    }
     const answersMap = buildAnswersMapForMagicpath(userAnswers);
     return toMagicpathShape(test, answersMap);
-  }, [useOld, test, userAnswers]);
+  }, [useOld, test, userAnswers, resolvedType]);
 
   const initialAnswersForMagicpath = useMemo(() => {
     return buildAnswersMapForMagicpath(userAnswers);
@@ -302,7 +307,7 @@ const DoTest = () => {
     );
   }
 
-  // Code cũ (teacher preview, review mode, Speaking)
+  // Code cũ (teacher preview, review mode)
   if (useOld) {
     const OldComp = oldComponents[resolvedType];
     if (!OldComp) {
@@ -352,6 +357,9 @@ const DoTest = () => {
         initialAnswers={initialAnswersForMagicpath}
       />
     );
+  }
+  if (resolvedType === "SPEAKING") {
+    return <IELTSSpeakingTestScreen {...commonProps} />;
   }
   return (
     <div className="text-center py-12 text-gray-500">
