@@ -454,7 +454,10 @@ export const IELTSListeningTestScreen = ({ testData, testResultId, userId, initi
                       <div className="space-y-2.5">
                         {active.options.map((opt, idx) => {
                           const letter = String.fromCharCode(65 + idx);
-                          return <MCQOption key={idx} letter={letter} text={opt} selected={answers[active.id] === letter} onClick={() => setAnswer(active.id, letter)} />;
+                          const label = typeof opt === 'string'
+                            ? opt
+                            : (opt?.text ?? opt?.answer_text ?? opt?.matching_key ?? '');
+                          return <MCQOption key={idx} letter={letter} text={label} selected={answers[active.id] === letter} onClick={() => setAnswer(active.id, letter)} />;
                         })}
                       </div>
                     )}
