@@ -847,6 +847,55 @@ export const mapLegacyAnswerToSubmitItem = (answer, fallbackLegacyType = null) =
   };
 };
 
+/**
+ * Build a legacy-shape answer from a { qid, val, questionType } triplet
+ * so that mapLegacyAnswerToSubmitItem can convert it. This is the shape
+ * that the magicpath test screens must emit for autosave/submit.
+ *
+ * - MCQ / MATCHING / LABELING: emits { matching_key: val, userAnswerType }
+ * - TFNG / YES_NO_NOT_GIVEN: emits { matching_value: val, userAnswerType }
+ * - Fill-in (SENTENCE_COMPLETION, SUMMARY_COMPLETION, ...): emits { answerText, userAnswerType }
+ *
+ * `qid` may be a number or string — it will be stringified.
+ * `userAnswerType` may be either a backend enum (TRUE_FALSE_NOT_GIVEN) or
+ * a legacy alias (TFNG, MCQ, FILL_BLANK, MATCHING, LABELING) — the
+ * adapter normalizes both forms.
+ */
+export const buildLegacyAnswerForAdapter = (qid, val, userAnswerType) => {
+  const idQuestion = toStringSafe(qid);
+  if (!idQuestion || val === undefined || val === null || val === "") {
+    return null;
+  }
+
+  const base = { idQuestion, userAnswerType };
+  const normalized = toStringSafe(userAnswerType).trim().toUpperCase();
+
+  // Selected a letter/index → matching_key (MCQ + all MATCHING_*)
+  if (
+    normalized === "MCQ" ||
+    normalized === "MULTIPLE_CHOICE" ||
+    normalized === "MATCHING" ||
+    normalized.startsWith("MATCHING_") ||
+    normalized === "LABELING" ||
+    normalized === "DIAGRAM_LABELING"
+  ) {
+    return { ...base, matching_key: toStringSafe(val) };
+  }
+
+  // Picked an answer label like TRUE / FALSE / NOT GIVEN / YES / NO
+  if (
+    normalized === "TFNG" ||
+    normalized === "TRUE_FALSE_NOT_GIVEN" ||
+    normalized === "YES_NO_NOT_GIVEN" ||
+    normalized === "YES_NO_NOTGIVEN"
+  ) {
+    return { ...base, matching_value: toStringSafe(val) };
+  }
+
+  // Free text answer
+  return { ...base, answerText: toStringSafe(val) };
+};
+
 export const mapLegacyAnswersToSubmitItems = (answers, fallbackTypeMap = {}) => {
   const grouped = new Map();
 
