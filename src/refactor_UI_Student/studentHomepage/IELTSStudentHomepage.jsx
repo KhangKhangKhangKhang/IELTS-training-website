@@ -1,4 +1,7 @@
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
+import { getSkillOverviewAPI } from "@/services/apiStatistics";
 
 // Stacked button used throughout the homepage hero & recommendations.
 function StackedButton({
@@ -52,14 +55,14 @@ function SkillCard({ icon, name, band, target, color, accent, lessons }) {
         >
           {name}
         </h3>
-        <div className="text-xs text-[#64748b] mb-3">{lessons}</div>
+        {lessons && <div className="text-xs text-[#64748b] mb-3">{lessons}</div>}
 
         <div className="flex items-baseline gap-2 mb-2">
           <span
             className="text-3xl font-black text-[#1e1b4b]"
             style={{ fontFamily: "Nunito" }}
           >
-            {band.toFixed(1)}
+            {band == null ? "—" : band.toFixed(1)}
           </span>
           <span className="text-xs font-bold text-[#64748b]">
             / Band {target}
@@ -114,6 +117,34 @@ function LessonRow({ icon, title, sub, status, badge }) {
 }
 
 export const IELTSStudentHomepage = () => {
+  const { user } = useAuth();
+  const idUser = user?.idUser ?? user?.id;
+  const [skillOverview, setSkillOverview] = useState(null);
+
+  useEffect(() => {
+    if (!idUser) return;
+    let cancelled = false;
+    getSkillOverviewAPI(idUser)
+      .then((res) => {
+        if (cancelled) return;
+        setSkillOverview(res?.data ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSkillOverview(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [idUser]);
+
+  const skillCards = [
+    { key: "reading", icon: "📖", name: "Reading", color: "bg-[#6366f1]", accent: "bg-[#6366f1]" },
+    { key: "listening", icon: "🎧", name: "Listening", color: "bg-[#06b6d4]", accent: "bg-[#06b6d4]" },
+    { key: "writing", icon: "✍️", name: "Writing", color: "bg-[#fb7185]", accent: "bg-[#fb7185]" },
+    { key: "speaking", icon: "🎤", name: "Speaking", color: "bg-[#a855f7]", accent: "bg-[#a855f7]" },
+  ];
+
   return (
     <div className="min-h-screen w-full bg-[#fafafc]">
       {/* Top bar */}
@@ -228,42 +259,20 @@ export const IELTSStudentHomepage = () => {
               </button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <SkillCard
-                icon="📖"
-                name="Reading"
-                band={7.0}
-                target={7.5}
-                color="bg-[#6366f1]"
-                accent="bg-[#6366f1]"
-                lessons="32 / 50 lessons"
-              />
-              <SkillCard
-                icon="🎧"
-                name="Listening"
-                band={6.5}
-                target={7.5}
-                color="bg-[#06b6d4]"
-                accent="bg-[#06b6d4]"
-                lessons="24 / 50 lessons"
-              />
-              <SkillCard
-                icon="✍️"
-                name="Writing"
-                band={6.0}
-                target={7.0}
-                color="bg-[#fb7185]"
-                accent="bg-[#fb7185]"
-                lessons="18 / 40 lessons"
-              />
-              <SkillCard
-                icon="🎤"
-                name="Speaking"
-                band={6.5}
-                target={7.0}
-                color="bg-[#a855f7]"
-                accent="bg-[#a855f7]"
-                lessons="22 / 40 lessons"
-              />
+              {skillCards.map((s) => {
+                const skill = skillOverview?.[s.key];
+                return (
+                  <SkillCard
+                    key={s.key}
+                    icon={s.icon}
+                    name={s.name}
+                    band={skill?.currentBand ?? null}
+                    target={skill?.targetBand ?? 7.0}
+                    color={s.color}
+                    accent={s.accent}
+                  />
+                );
+              })}
             </div>
           </section>
 

@@ -67,3 +67,9 @@ export const updateStudyPlannerConfigAPI = async (config) => {
   const res = await API.put(`/system-config/study-planner/config`, config);
   return res.data;
 };
+
+// 10. Lấy tổng quan 4 kỹ năng (avg band + target band) cho student homepage
+export const getSkillOverviewAPI = async (idUser) => {
+  const res = await API.get(`/statistics/skill-overview/${idUser}`);
+  return res.data;
+};
