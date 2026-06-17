@@ -65,7 +65,7 @@ function SkillCard({ icon, name, band, target, color, accent, lessons }) {
             {band == null ? "—" : band.toFixed(1)}
           </span>
           <span className="text-xs font-bold text-[#64748b]">
-            / Band {target}
+            {target == null ? "Chưa có mục tiêu" : `/ Band ${target.toFixed(1)}`}
           </span>
         </div>
         <div className="h-2 bg-[#f1f1f6] rounded-full overflow-hidden">
@@ -267,7 +267,7 @@ export const IELTSStudentHomepage = () => {
                     icon={s.icon}
                     name={s.name}
                     band={skill?.currentBand ?? null}
-                    target={skill?.targetBand ?? 7.0}
+                    target={skill?.targetBand ?? null}
                     color={s.color}
                     accent={s.accent}
                   />
