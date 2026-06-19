@@ -1,21 +1,69 @@
 // src/Pages/client/grammar/[idGrammar].jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getNextExerciseAPI, submitGrammarAnswerAPI } from "@/services/apiGrammar";
+import { getGrammarPracticeByTopicAPI, submitGrammarAnswerAPI, getGrammarDueReviewsAPI } from "@/services/apiGrammar";
+import { useAuth } from "@/context/authContext";
 import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 
 const GrammarPractice = () => {
   const navigate = useNavigate();
   const { idGrammar } = useParams();
+  const { user } = useAuth();
   const [exercise, setExercise] = useState(null);
   const [userAnswer, setUserAnswer] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showHint, setShowHint] = useState(false);
+  const [dueCount, setDueCount] = useState(0);
+  const [dueMode, setDueMode] = useState(false);
 
   useEffect(() => {
     loadNextExercise();
+    loadDueCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idGrammar]);
+
+  const loadDueCount = async () => {
+    if (!user?.idUser) return;
+    try {
+      const res = await getGrammarDueReviewsAPI(user.idUser, idGrammar);
+      const list = Array.isArray(res?.data) ? res.data : [];
+      setDueCount(list.length);
+    } catch (err) {
+      console.error("Error loading due count:", err);
+      setDueCount(0);
+    }
+  };
+
+  const loadDueExercise = async () => {
+    setLoading(true);
+    setResult(null);
+    setUserAnswer("");
+    setShowHint(false);
+    try {
+      const res = await getGrammarDueReviewsAPI(user.idUser, idGrammar);
+      const list = Array.isArray(res?.data) ? res.data : [];
+      const due = list[0];
+      if (!due) {
+        setDueMode(false);
+        await loadNextExercise();
+        return;
+      }
+      setExercise({
+        idExercise: due.id,
+        idGrammar: due.idGrammar,
+        type: due.type,
+        content: due.content,
+        title: due.title || "Ôn tập",
+        progress: { done: 0, total: list.length },
+      });
+    } catch (err) {
+      console.error("Error loading due exercise:", err);
+      setDueMode(false);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadNextExercise = async () => {
     setLoading(true);
@@ -23,8 +71,21 @@ const GrammarPractice = () => {
     setUserAnswer("");
     setShowHint(false);
     try {
-      const data = await getNextExerciseAPI(idGrammar);
-      setExercise(data);
+      const data = await getGrammarPracticeByTopicAPI(idGrammar, 10);
+      const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      const next = list[0] || null;
+      if (next) {
+        setExercise({
+          idExercise: next.id,
+          idGrammar: next.idGrammar,
+          type: next.type,
+          content: next.content,
+          title: next.title || "Bài tập",
+          progress: { done: 0, total: list.length },
+        });
+      } else {
+        setExercise(null);
+      }
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -42,8 +103,13 @@ const GrammarPractice = () => {
     }
   };
 
-  const handleNext = () => {
-    loadNextExercise();
+  const handleNext = async () => {
+    if (dueMode) {
+      await loadDueExercise();
+      await loadDueCount();
+    } else {
+      loadNextExercise();
+    }
   };
 
   if (loading) {
@@ -81,6 +147,22 @@ const GrammarPractice = () => {
               Bài {exercise.progress.done + 1}/{exercise.progress.total}
             </p>
           </div>
+          {dueCount > 0 && !dueMode && (
+            <button
+              onClick={() => {
+                setDueMode(true);
+                loadDueExercise();
+              }}
+              className="text-xs bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full border border-orange-300 hover:bg-orange-200 font-semibold whitespace-nowrap"
+            >
+              🔔 Có {dueCount} bài cần ôn
+            </button>
+          )}
+          {dueMode && (
+            <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full border border-purple-300 font-semibold whitespace-nowrap">
+              📚 Đang ôn tập
+            </span>
+          )}
           <button
             onClick={() => navigate("/grammar")}
             className="text-sm text-blue-600 hover:text-blue-700"

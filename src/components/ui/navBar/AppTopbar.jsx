@@ -114,7 +114,7 @@ const Avatar = ({ name, src }) => {
 const STUDENT_LINKS = [
   { name: "Trang Chủ", href: "/homepage", icon: Home },
   { name: "Giải Đề", href: "/test", icon: BookOpen },
-  { name: "Diễn đàn", href: "/statistic", icon: BarChart3 },
+  { name: "Diễn đàn", href: "/forum", icon: BarChart3 },
   { name: "Từ Vựng", href: "/vocabulary", icon: BookMarked },
   { name: "Ngữ pháp", href: "/grammar", icon: Album },
   { name: "Lộ trình", href: "/study-planner", icon: Route },
@@ -122,7 +122,7 @@ const STUDENT_LINKS = [
 
 const TEACHER_LINKS = [
   { name: "Trang Chủ", href: "/teacher/homepage", icon: Home },
-  { name: "Diễn đàn", href: "/teacher/statistic", icon: BarChart3 },
+  { name: "Diễn đàn", href: "/teacher/forum", icon: BarChart3 },
   { name: "Quản lý đề", href: "/teacher/testManager", icon: FilePlus2 },
   { name: "Ngữ pháp", href: "/teacher/grammar", icon: Cookie },
   { name: "Duyệt bài", href: "/teacher/moderation", icon: ShieldCheck },

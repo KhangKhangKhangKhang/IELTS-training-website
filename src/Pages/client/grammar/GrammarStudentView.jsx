@@ -112,30 +112,33 @@ const GrammarStudentView = () => {
       usrCount.set(c.idGrammarCategory, (c.grammars || []).length);
     }
 
-    const merged = [
-      ...systemCategories.map((c) => ({
+    // Dedupe by idGrammarCategory — user categories win over system when same id.
+    const byId = new Map();
+    for (const c of systemCategories) {
+      byId.set(c.idGrammarCategory, {
         id: c.idGrammarCategory,
         name: c.name,
         count: sysCount.get(c.idGrammarCategory) || 0,
-        done: 0, // done count needs aggregate call — keep 0 fallback
+        done: 0,
         system: true,
-      })),
-      ...userCategories.map((c) => ({
+      });
+    }
+    for (const c of userCategories) {
+      byId.set(c.idGrammarCategory, {
         id: c.idGrammarCategory,
         name: c.name,
         count: usrCount.get(c.idGrammarCategory) || 0,
         done: 0,
         system: false,
-      })),
-    ];
+      });
+    }
 
-    return merged.map((c, i) => ({
+    return Array.from(byId.values()).map((c, i) => ({
       ...c,
       icon: ICON_POOL[i % ICON_POOL.length],
       color: COLOR_POOL[i % COLOR_POOL.length],
-      done: summary?.weakAreas ? 0 : 0, // simple count: real "done" requires per-category aggregate
     }));
-  }, [systemCategories, userCategories, summary]);
+  }, [systemCategories, userCategories]);
 
   if (loading) {
     return (

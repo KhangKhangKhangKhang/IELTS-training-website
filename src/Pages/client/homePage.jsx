@@ -7,6 +7,8 @@ import {
   getRecomendedTestsAPI,
   getSkillOverviewAPI,
   getTestResultByIdUserAPI,
+  getGrammarWeaknessAPI,
+  getQuestionTypeWeaknessAPI,
 } from "@/services/apiStatistics";
 import { getStreakAPI, userProfileAPI } from "@/services/apiUser";
 import { getStudyPlanAPI } from "@/services/apiStudyPlanner";
@@ -174,6 +176,8 @@ const HomePage = () => {
   const [todayTasks, setTodayTasks] = useState([]);
   const [recommended, setRecommended] = useState([]);
   const [history, setHistory] = useState([]);
+  const [grammarWeakness, setGrammarWeakness] = useState([]);
+  const [questionTypeWeakness, setQuestionTypeWeakness] = useState([]);
 
   // --- UI states ---
   const [loading, setLoading] = useState(true);
@@ -195,9 +199,11 @@ const HomePage = () => {
         getStudyPlanAPI(idUser).catch(() => null),
         getRecomendedTestsAPI(idUser).catch(() => null),
         getTestResultByIdUserAPI(idUser).catch(() => null),
+        getGrammarWeaknessAPI(idUser).catch(() => null),
+        getQuestionTypeWeaknessAPI(idUser).catch(() => null),
       ]);
       if (cancelled) return;
-      const [rProfile, rStreak, rSkill, rOverall, rDaily, rRec, rHist] = results;
+      const [rProfile, rStreak, rSkill, rOverall, rDaily, rRec, rHist, rWeakG, rWeakQ] = results;
       if (rProfile.status === "fulfilled" && rProfile.value?.data) {
         setProfile(rProfile.value.data);
       } else if (user) {
@@ -223,6 +229,14 @@ const HomePage = () => {
       if (rHist.status === "fulfilled") {
         const hist = rHist.value?.data ?? rHist.value ?? [];
         setHistory(Array.isArray(hist) ? hist : []);
+      }
+      if (rWeakG?.status === "fulfilled" && rWeakG.value) {
+        const g = rWeakG.value?.data ?? rWeakG.value;
+        setGrammarWeakness(Array.isArray(g) ? g.slice(0, 3) : []);
+      }
+      if (rWeakQ?.status === "fulfilled" && rWeakQ.value) {
+        const q = rWeakQ.value?.data ?? rWeakQ.value;
+        setQuestionTypeWeakness(Array.isArray(q) ? q.slice(0, 3) : []);
       }
       setLoading(false);
     };
@@ -349,7 +363,7 @@ const HomePage = () => {
                 </div>
               </div>
               <button
-                onClick={() => navigate("/statistic")}
+                onClick={() => navigate("/weakness")}
                 className="text-xs font-bold text-[#6366f1] hover:underline"
               >
                 Chi tiết →
@@ -364,7 +378,7 @@ const HomePage = () => {
                     icon={s.icon}
                     name={s.name}
                     band={skill?.currentBand ?? null}
-                    target={skill?.targetBand ?? 7.0}
+                    target={skill?.targetBand ?? null}
                     color={s.color}
                     accent={s.accent}
                   />
@@ -441,6 +455,98 @@ const HomePage = () => {
               </div>
             )}
           </section>
+
+          {/* --- WEAKNESS --- */}
+          {(grammarWeakness.length > 0 || questionTypeWeakness.length > 0) && (
+            <section className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#fb7185]">
+                    ⚠️ Cần cải thiện
+                  </div>
+                  <h2
+                    className="text-xl font-black text-[#1e1b4b]"
+                    style={{ fontFamily: "Nunito" }}
+                  >
+                    Điểm yếu của bạn
+                  </h2>
+                </div>
+                <button
+                  onClick={() => navigate("/weakness")}
+                  className="text-xs font-bold text-[#6366f1] hover:underline"
+                >
+                  Xem tất cả →
+                </button>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-xs font-extrabold text-[#64748b] mb-2 uppercase tracking-wider">
+                    📚 Ngữ pháp
+                  </h3>
+                  {grammarWeakness.length === 0 ? (
+                    <p className="text-sm text-[#64748b] p-2.5">Chưa có dữ liệu.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {grammarWeakness.map((item, idx) => {
+                        const title = item.title || item.name || "Grammar";
+                        const errCount =
+                          item.violations ?? item.wrongCount ?? item.exercisesWrong ?? 0;
+                        return (
+                          <li
+                            key={item.idGrammar || idx}
+                            onClick={() =>
+                              navigate(
+                                `/grammar-practice?topic=${encodeURIComponent(title)}`
+                              )
+                            }
+                            className="p-2.5 bg-red-50 rounded-xl cursor-pointer hover:bg-red-100 transition-colors flex justify-between items-center border border-red-100"
+                          >
+                            <span className="text-sm font-bold text-[#1e1b4b] truncate flex-1 min-w-0">
+                              {title}
+                            </span>
+                            <span className="text-xs text-red-600 font-extrabold ml-2 flex-none">
+                              {errCount} lỗi
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xs font-extrabold text-[#64748b] mb-2 uppercase tracking-wider">
+                    🎯 Dạng câu
+                  </h3>
+                  {questionTypeWeakness.length === 0 ? (
+                    <p className="text-sm text-[#64748b] p-2.5">Chưa có dữ liệu.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {questionTypeWeakness.map((item, idx) => {
+                        const qType = item.questionType || item.type || "—";
+                        const errorRate =
+                          typeof item.errorRate === "number"
+                            ? Math.round(item.errorRate * 100)
+                            : 0;
+                        return (
+                          <li
+                            key={`${qType}-${idx}`}
+                            className="p-2.5 bg-orange-50 rounded-xl flex justify-between items-center border border-orange-100"
+                          >
+                            <span className="text-sm font-bold text-[#1e1b4b] truncate flex-1 min-w-0">
+                              {qType}
+                            </span>
+                            <span className="text-xs text-orange-600 font-extrabold ml-2 flex-none">
+                              {errorRate}% sai
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* --- RECOMMENDED --- */}
           <section>

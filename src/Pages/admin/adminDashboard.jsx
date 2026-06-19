@@ -350,7 +350,7 @@ const AdminDashboard = () => {
     {
       title: "Inspect learning quality",
       description: "Inspect forum and learning feedback trends.",
-      path: "/admin/statistic",
+      path: "/admin/forum",
       icon: BarChart3,
       color: "text-emerald-600",
       bgColor: "bg-emerald-50",

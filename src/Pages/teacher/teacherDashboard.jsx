@@ -276,7 +276,7 @@ const TeacherDashboard = () => {
   // Quick actions
   const quickActions = [
     { icon: "📝", label: "Create test", hint: "Compose new test", to: "../testManager/testCreate" },
-    { icon: "📊", label: "Report", hint: "Analytics", to: "../statistic" },
+    { icon: "📊", label: "Report", hint: "Analytics", to: "../forum" },
     { icon: "✉️", label: "Invite students", hint: "Add students", to: "../userList" },
     { icon: "💬", label: "Forum", hint: "Moderate", to: "../moderation" },
   ];

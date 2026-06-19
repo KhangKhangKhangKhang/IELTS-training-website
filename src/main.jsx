@@ -38,12 +38,14 @@ const TeacherDashboard = lazy(() => import("./Pages/teacher/teacherDashboard"));
 const ForumModeration = lazy(() => import("./Pages/teacher/forumModeration"));
 const Grammar = lazy(() => import("./Pages/client/grammar"));
 const GrammarPractice = lazy(() => import("./Pages/client/GrammarPractice"));
+const GrammarTopic = lazy(() => import("./Pages/client/grammar/[idGrammar]"));
 const VocabDaily = lazy(() => import("./Pages/client/VocabDaily"));
 const StudyPlanner = lazy(() => import("./Pages/client/studyPlanner"));
 const AdminDashboard = lazy(() => import("./Pages/admin/adminDashboard"));
 const TeacherReviewHistory = lazy(() => import("./Pages/client/teacherReviewHistory"));
 const TeacherQueue = lazy(() => import("./Pages/teacher/TeacherQueueView"));
 const TeacherReviewManager = lazy(() => import("./Pages/admin/teacherReviewManager"));
+const Weakness = lazy(() => import("./Pages/client/Weakness"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -83,7 +85,8 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <LazyRoute Component={HomePage} /> },
           { path: "homepage", element: <LazyRoute Component={HomePage} /> },
-          { path: "statistic", element: <LazyRoute Component={Statistic} /> },
+          { path: "forum", element: <LazyRoute Component={Statistic} /> },
+          { path: "weakness", element: <LazyRoute Component={Weakness} /> },
           { path: "vocabulary", element: <LazyRoute Component={Vocabulary} /> },
           { path: "test", element: <LazyRoute Component={Test} /> },
           { path: "test/review/:id", element: <LazyRoute Component={TestResultReview} /> },
@@ -91,6 +94,7 @@ const router = createBrowserRouter([
           { path: "profile", element: <LazyRoute Component={Profile} /> },
           // startingPage moved to standalone route above
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
+          { path: "grammar/:idGrammar", element: <LazyRoute Component={GrammarTopic} /> },
           { path: "grammar-practice", element: <LazyRoute Component={GrammarPractice} /> },
           { path: "vocab-daily", element: <LazyRoute Component={VocabDaily} /> },
           { path: "study-planner", element: <LazyRoute Component={StudyPlanner} /> },
@@ -111,7 +115,8 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <LazyRoute Component={TeacherDashboard} /> },
           { path: "homepage", element: <LazyRoute Component={TeacherDashboard} /> },
-          { path: "statistic", element: <LazyRoute Component={Statistic} /> },
+          { path: "forum", element: <LazyRoute Component={Statistic} /> },
+          { path: "weakness", element: <LazyRoute Component={Weakness} /> },
           { path: "vocabulary", element: <LazyRoute Component={Vocabulary} /> },
           { path: "test", element: <LazyRoute Component={Test} /> },
           { path: "profile", element: <LazyRoute Component={Profile} /> },
@@ -123,6 +128,7 @@ const router = createBrowserRouter([
           { path: "testManager/testEdit/:id", element: <LazyRoute Component={TestEdit} /> },
           { path: "testManager/testDetail/:id", element: <LazyRoute Component={TestDetail} /> },
           { path: "grammar", element: <LazyRoute Component={Grammar} /> },
+          { path: "grammar/:idGrammar", element: <LazyRoute Component={GrammarTopic} /> },
           { path: "grammar-practice", element: <LazyRoute Component={GrammarPractice} /> },
           { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },
           { path: "teacher-review", element: <LazyRoute Component={TeacherQueue} /> },
@@ -142,7 +148,8 @@ const router = createBrowserRouter([
           { index: true, element: <LazyRoute Component={AdminDashboard} /> },
           { path: "homepage", element: <LazyRoute Component={AdminDashboard} /> },
           { path: "dashboard", element: <LazyRoute Component={AdminDashboard} /> },
-          { path: "statistic", element: <LazyRoute Component={Statistic} /> },
+          { path: "forum", element: <LazyRoute Component={Statistic} /> },
+          { path: "weakness", element: <LazyRoute Component={Weakness} /> },
           { path: "vocabulary", element: <LazyRoute Component={Vocabulary} /> },
           { path: "test", element: <LazyRoute Component={Test} /> },
           { path: "profile", element: <LazyRoute Component={Profile} /> },
