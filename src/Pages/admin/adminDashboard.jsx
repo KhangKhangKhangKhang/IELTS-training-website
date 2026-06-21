@@ -1,12 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { message } from "antd";
 import { IELTSAdminDashboard } from "@/components/magicpath/ielts-admin-dashboard/IELTSAdminDashboard";
-import {
-  getDashboardOverviewAPI,
-  getDashboardSkillPerformanceAPI,
-  getDashboardTopPerformersAPI,
-  getDashboardTopStreaksAPI,
-} from "@/services/apiTeacherDashboard";
+import { getDashboardOverviewAPI } from "@/services/apiTeacherDashboard";
 import { getModerationQueueAPI } from "@/services/apiForum";
 import { getAllUserAPI } from "@/services/apiUser";
 import {
@@ -16,23 +11,14 @@ import {
   updateModerationPolicyAPI,
 } from "@/services/apiTeacherReview";
 import { getAuditLogsAPI } from "@/services/apiAuditLog";
-import {
-  getStudyPlannerConfigAPI,
-  updateStudyPlannerConfigAPI,
-} from "@/services/apiStatistics";
 
 /**
  * AdminDashboard — thin data wrapper around the MagicPath
- * `IELTSAdminDashboard` component. The MagicPath canvas component is purely
- * visual; this layer fetches real APIs and passes derived props down.
+ * `IELTSAdminDashboard` component. Fetches only the APIs that back
+ * currently-rendered sections (no dead fetches, no hardcoded placeholders).
  *
- * MagicPath dashboard renders: header, 4 stat cards, skill breakdown,
- * trend chart, alerts, quick actions, moderation policy, commission config,
- * audit trail.
- *
- * Only the pieces we can actually populate from the live API are wired;
- * anything else (skill bars, trend chart, audit rows) shows the MagicPath
- * placeholder until a real endpoint lands.
+ * Sections rendered: header, 3 stat cards, alerts, quick actions,
+ * moderation policy, commission config, audit trail.
  */
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -47,35 +33,20 @@ const AdminDashboard = () => {
     blockedWords: [],
     reviewSlaHours: 24,
   });
-  const [studyPlannerConfig, setStudyPlannerConfig] = useState(null);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
-        const [
-          ov,
-          _skills,
-          _topPerformers,
-          _topStreaks,
-          usersRes,
-          modRes,
-          auditRes,
-          commissionRes,
-          policyRes,
-          studyPlannerRes,
-        ] = await Promise.allSettled([
-          getDashboardOverviewAPI(),
-          getDashboardSkillPerformanceAPI(),
-          getDashboardTopPerformersAPI(),
-          getDashboardTopStreaksAPI(),
-          getAllUserAPI(),
-          getModerationQueueAPI(),
-          getAuditLogsAPI({ page: 1, limit: 20 }),
-          getCommissionConfigAPI(),
-          getModerationPolicyAPI(),
-          getStudyPlannerConfigAPI(),
-        ]);
+        const [ov, usersRes, modRes, auditRes, commissionRes, policyRes] =
+          await Promise.allSettled([
+            getDashboardOverviewAPI(),
+            getAllUserAPI(),
+            getModerationQueueAPI(),
+            getAuditLogsAPI({ page: 1, limit: 20 }),
+            getCommissionConfigAPI(),
+            getModerationPolicyAPI(),
+          ]);
 
         if (!mounted) return;
 
@@ -99,9 +70,6 @@ const AdminDashboard = () => {
         if (policyRes.status === "fulfilled") {
           const p = policyRes.value;
           if (p) setPolicy(p);
-        }
-        if (studyPlannerRes.status === "fulfilled") {
-          setStudyPlannerConfig(studyPlannerRes.value);
         }
       } catch (err) {
         console.error("AdminDashboard load failed", err);
@@ -144,17 +112,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleSaveStudyPlanner = async (next) => {
-    try {
-      await updateStudyPlannerConfigAPI(next);
-      setStudyPlannerConfig(next);
-      message.success("Đã lưu cấu hình Study Planner");
-    } catch (err) {
-      message.error("Lưu Study Planner thất bại");
-      console.error(err);
-    }
-  };
-
   return (
     <IELTSAdminDashboard
       loading={loading}
@@ -166,11 +123,9 @@ const AdminDashboard = () => {
       topPerformer={topPerformer}
       commission={commission}
       policy={policy}
-      studyPlannerConfig={studyPlannerConfig}
       auditLogs={auditLogs}
       onSaveCommission={handleSaveCommission}
       onSavePolicy={handleSavePolicy}
-      onSaveStudyPlanner={handleSaveStudyPlanner}
       onRefresh={() => window.location.reload()}
     />
   );

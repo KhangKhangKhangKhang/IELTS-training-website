@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Card, Badge, PillButton, StatCard } from './adminUI';
-import { SkillBreakdown, TrendChart } from './adminCharts';
 import { ModerationPolicy, CommissionConfig } from './adminConfig';
 import { AuditTrail } from './adminAudit';
 const QUICK_ACTIONS = [{
@@ -127,17 +126,13 @@ export const IELTSAdminDashboard = (props: Props) => {
           </div>
         </Card>
 
-        {/* Stat cards */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Stat cards (only real data — no hardcoded "—" placeholders) */}
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard label="Tổng người dùng" value={fmt(totalUsers)} icon="👥" tone="indigo" footer={<>
                 <Badge tone="coral">Admin {adminCount}</Badge>
                 <Badge tone="cyan">GV {teacherCount}</Badge>
                 <Badge tone="slate">HV {studentCount}</Badge>
               </>} />
-
-          <StatCard label="Bài thi tháng này" value="—" icon="📝" tone="cyan" footer={<span className="text-xs font-bold text-[#64748b]">
-                Band TB: <span className="text-[#10b981]">—</span>
-              </span>} />
 
           <StatCard label="Chờ kiểm duyệt" value={fmt(pendingModerationCount)} icon="🛡️" tone="amber" footer={<span className="text-xs font-bold text-[#64748b]">
                 Cần xử lý ngay
@@ -147,9 +142,8 @@ export const IELTSAdminDashboard = (props: Props) => {
 
         </section>
 
-        {/* Charts + alerts */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <SkillBreakdown />
+        {/* Alerts + quick actions */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
             <h2 className="text-lg font-extrabold text-[#1e1b4b] mb-4">Cảnh báo vận hành</h2>
             {alerts.length === 0 ? <div className="text-center py-10">
@@ -165,12 +159,7 @@ export const IELTSAdminDashboard = (props: Props) => {
                     </li>)}
               </ul>}
           </Card>
-        </section>
-
-        {/* Trend + quick actions */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <TrendChart />
-          <Card className="lg:col-span-2">
+          <Card>
             <h2 className="text-lg font-extrabold text-[#1e1b4b] mb-4">Tác vụ nhanh</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {QUICK_ACTIONS.map(a => <button key={a.title} onClick={() => handleNav(a.href)} className="flex items-center gap-3 text-left bg-[#f8f8fc] border-2 border-[#e6e6ed] rounded-2xl p-4 hover:border-[#6366f1] hover:-translate-y-0.5 transition-all">
