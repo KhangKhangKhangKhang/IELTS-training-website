@@ -126,7 +126,7 @@ const TeacherReviewManager = () => {
   const columns = [
     {
       title: 'ID',
-      dataPrintdex: 'idTicket',
+      dataIndex: 'idTicket',
       key: 'idTicket',
       width: 100,
       render: (id) => (
@@ -146,7 +146,7 @@ const TeacherReviewManager = () => {
     },
     {
       title: 'Type',
-      dataPrintdex: 'type',
+      dataIndex: 'type',
       key: 'type',
       width: 80,
       render: (type) => (
@@ -164,7 +164,7 @@ const TeacherReviewManager = () => {
     },
     {
       title: 'Band AI',
-      dataPrintdex: 'aiBandScore',
+      dataIndex: 'aiBandScore',
       key: 'aiBandScore',
       width: 70,
       render: (score) => (
@@ -175,7 +175,7 @@ const TeacherReviewManager = () => {
     },
     {
       title: 'Band GV',
-      dataPrintdex: 'teacherBandScore',
+      dataIndex: 'teacherBandScore',
       key: 'teacherBandScore',
       width: 70,
       render: (score) => (
@@ -186,7 +186,7 @@ const TeacherReviewManager = () => {
     },
     {
       title: 'Status',
-      dataPrintdex: 'status',
+      dataIndex: 'status',
       key: 'status',
       width: 100,
       render: (status) => (
@@ -204,7 +204,7 @@ const TeacherReviewManager = () => {
     },
     {
       title: 'Commission',
-      dataPrintdex: 'commissionAmount',
+      dataIndex: 'commissionAmount',
       key: 'commissionAmount',
       width: 100,
       render: (amount) => (
@@ -215,7 +215,7 @@ const TeacherReviewManager = () => {
     },
     {
       title: 'Date',
-      dataPrintdex: 'createdAt',
+      dataIndex: 'createdAt',
       key: 'createdAt',
       width: 100,
       render: (date) =>

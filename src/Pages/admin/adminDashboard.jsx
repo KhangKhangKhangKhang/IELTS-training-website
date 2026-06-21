@@ -347,14 +347,6 @@ const AdminDashboard = () => {
       color: "text-purple-600",
       bgColor: "bg-purple-50",
     },
-    {
-      title: "Inspect learning quality",
-      description: "Inspect forum and learning feedback trends.",
-      path: "/admin/forum",
-      icon: BarChart3,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-    },
   ];
 
   const auditColumns = [
