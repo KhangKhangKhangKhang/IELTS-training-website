@@ -185,7 +185,7 @@ function usePlanContext() {
 
 // === PROGRESSIVE SECTIONS ===
 
-function PlanHeroSection() {
+function PlanHeroSection({ onEdit }) {
   const { plan, loading } = usePlanContext();
   const navigate = useNavigate();
   if (loading) return <Skeleton className="h-44 rounded-3xl" />;
@@ -214,6 +214,14 @@ function PlanHeroSection() {
             >
               Xem điểm yếu
             </button>
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className="bg-white text-[#4338ca] px-4 py-2 rounded-2xl font-extrabold uppercase tracking-wide text-xs shadow-[0_2px_0_rgba(0,0,0,0.25)] active:translate-y-[2px] transition-all"
+              >
+                ✏️ Tinh chỉnh lộ trình
+              </button>
+            )}
           </div>
         </div>
         <div className="hidden md:block text-7xl lg:text-8xl flex-none">🧭</div>
@@ -761,7 +769,7 @@ function DatePickerVN({ value, onChange, minDate }) {
   );
 }
 
-function PlanCreateForm({ idUser, onCreated, currentBand }) {
+function PlanCreateForm({ idUser, onCreated, currentBand, initial, onCancel }) {
   const tomorrow = (() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -774,9 +782,21 @@ function PlanCreateForm({ idUser, onCreated, currentBand }) {
     return d;
   })();
 
-  const [targetBand, setTargetBand] = useState(7.0);
-  const [examDate, setExamDate] = useState(inOneYear);
-  const [studyMinutesPerDay, setStudyMinutesPerDay] = useState(60);
+  // Pre-fill from existing plan if provided, else defaults.
+  const initialExam = (() => {
+    if (initial?.daysUntilExam != null) {
+      const d = new Date();
+      d.setDate(d.getDate() + initial.daysUntilExam);
+      return d;
+    }
+    return inOneYear;
+  })();
+
+  const isEdit = Boolean(initial);
+
+  const [targetBand, setTargetBand] = useState(initial?.targetBand ?? 7.0);
+  const [examDate, setExamDate] = useState(initialExam);
+  const [studyMinutesPerDay, setStudyMinutesPerDay] = useState(initial?.dailyMinutes ?? 60);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -807,8 +827,8 @@ function PlanCreateForm({ idUser, onCreated, currentBand }) {
       });
       onCreated?.();
     } catch (err) {
-      console.error("Failed to create study plan:", err);
-      setError(err?.message || "Không thể tạo lộ trình. Vui lòng thử lại.");
+      console.error("Failed to save study plan:", err);
+      setError(err?.message || "Không thể lưu lộ trình. Vui lòng thử lại.");
     } finally {
       setSubmitting(false);
     }
@@ -817,10 +837,10 @@ function PlanCreateForm({ idUser, onCreated, currentBand }) {
   return (
     <section className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] p-6 sm:p-7">
       <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6366f1] mb-2">
-        🚀 Bắt đầu lộ trình
+        {isEdit ? "✏️ Tinh chỉnh" : "🚀 Bắt đầu lộ trình"}
       </div>
       <h2 className="text-2xl font-black text-[#1e1b4b] mb-1" style={{ fontFamily: "Nunito, sans-serif" }}>
-        Tạo lộ trình của bạn
+        {isEdit ? "Điều chỉnh lộ trình" : "Tạo lộ trình của bạn"}
       </h2>
       <p className="text-sm text-[#64748b] mb-5">
         Nhập 3 thông số để hệ thống sinh lộ trình cá nhân hoá.
@@ -876,13 +896,24 @@ function PlanCreateForm({ idUser, onCreated, currentBand }) {
             {error}
           </p>
         )}
-        <button
-          type="submit"
-          disabled={submitting || daysUntilExam == null}
-          className="w-full bg-gradient-to-br from-[#6366f1] to-[#a855f7] text-white py-3 rounded-2xl font-extrabold uppercase tracking-wide text-sm shadow-[0_4px_0_#4338ca] active:translate-y-[2px] active:shadow-[0_2px_0_#4338ca] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {submitting ? "Đang tạo…" : "🚀 Tạo lộ trình"}
-        </button>
+        <div className="flex gap-2">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 bg-[#f1f1f6] text-[#1e1b4b] py-3 rounded-2xl font-extrabold uppercase tracking-wide text-sm border-2 border-[#e6e6ed] hover:bg-[#e6e6ed] transition-all"
+            >
+              Hủy
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={submitting || daysUntilExam == null}
+            className="flex-1 bg-gradient-to-br from-[#6366f1] to-[#a855f7] text-white py-3 rounded-2xl font-extrabold uppercase tracking-wide text-sm shadow-[0_4px_0_#4338ca] active:translate-y-[2px] active:shadow-[0_2px_0_#4338ca] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {submitting ? "Đang lưu…" : isEdit ? "💾 Lưu thay đổi" : "🚀 Tạo lộ trình"}
+          </button>
+        </div>
       </form>
     </section>
   );
@@ -894,6 +925,7 @@ const StudyPlanner = () => {
   const idUser = user?.idUser;
   const [completionMap, setCompletionMap] = useState({});
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
 
   // Fetch daily completion (không cache, ~50ms). Share xuống các section.
   const refetchCompletion = async () => {
@@ -950,12 +982,30 @@ const StudyPlanner = () => {
     <div className="min-h-screen w-full bg-[#fafafc]">
       <PlanContext.Provider value={{ plan: parentPlan, loading: parentLoading, completionMap }}>
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-          <PlanHeroSection />
+          <PlanHeroSection onEdit={() => setShowEditForm((v) => !v)} />
           <MissingSkillsAlert />
 
           {/* User has no current band yet → must take a placement test first. */}
           {!parentLoading && parentPlan?.currentBand === null && (
             <PlacementTestCTA />
+          )}
+
+          {/* Inline edit form — toggled by hero "Tinh chỉnh" button. */}
+          {showEditForm && parentPlan && parentPlan.currentBand != null && (
+            <PlanCreateForm
+              idUser={idUser}
+              currentBand={parentPlan.currentBand}
+              onCreated={() => {
+                setShowEditForm(false);
+                reloadPlan();
+              }}
+              onCancel={() => setShowEditForm(false)}
+              initial={{
+                targetBand: parentPlan.targetBand,
+                daysUntilExam: parentPlan.daysUntilExam,
+                dailyMinutes: parentPlan.dailyMinutes,
+              }}
+            />
           )}
 
           {/* User has current band but no plan yet → show form to set target/exam/minutes. */}
