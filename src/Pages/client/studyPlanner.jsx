@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/authContext";
-import { getStudyPlanAPI, getDailyCompletionAPI, completeTaskAPI } from "@/services/apiStudyPlanner";
+import { getStudyPlanAPI, getDailyCompletionAPI, completeTaskAPI, calculateStudyPlanAPI } from "@/services/apiStudyPlanner";
 import { Target, CheckCircle, BookOpen, Headphones, PenTool, Mic, Clock, Calendar, TrendingUp, AlertTriangle, Sparkles, Flame } from "lucide-react";
 import { Progress } from "antd";
 import { motion } from "framer-motion";
@@ -644,6 +644,250 @@ function AIRecommendationsSection() {
   );
 }
 
+// === CTA: user needs to take a placement test first ===
+// Shown when currentBand is null. After the user completes any test, BE
+// computes avgBand from userTestResult → plan can be generated.
+function PlacementTestCTA({ idUser }) {
+  const navigate = useNavigate();
+  return (
+    <section className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] p-6 sm:p-7 text-center">
+      <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6366f1] mb-2">
+        🚀 Bắt đầu lộ trình
+      </div>
+      <h2 className="text-2xl font-black text-[#1e1b4b] mb-2" style={{ fontFamily: "Nunito, sans-serif" }}>
+        Làm 1 bài test để xác định trình độ
+      </h2>
+      <p className="text-sm text-[#64748b] mb-5 max-w-md mx-auto">
+        Hệ thống cần điểm trung bình từ ít nhất 1 bài test để sinh lộ trình
+        cá nhân hoá cho bạn. Hoàn thành bất kỳ bài test nào rồi quay lại đây.
+      </p>
+      <button
+        type="button"
+        onClick={() => navigate("/test")}
+        className="bg-gradient-to-br from-[#6366f1] to-[#a855f7] text-white px-6 py-3 rounded-2xl font-extrabold uppercase tracking-wide text-sm shadow-[0_4px_0_#4338ca] active:translate-y-[2px] active:shadow-[0_2px_0_#4338ca] transition-all"
+      >
+        🎯 Làm bài test ngay
+      </button>
+      <p className="text-[11px] text-[#94a3b8] mt-4">
+        Sau khi nộp bài, trang này sẽ tự cập nhật.
+      </p>
+    </section>
+  );
+}
+
+// === Create-plan form ===
+// Shown when user has currentBand but hasn't generated plan yet (e.g. new
+// target/exam date). Posts to /study-planner/calculate, then reloads.
+
+const MONTHS_VI = [
+  "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4",
+  "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8",
+  "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12",
+];
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+// Custom dd/mm/yyyy date picker — 3 styled dropdowns instead of native input.
+// Returns Date | null.
+function DatePickerVN({ value, onChange, minDate }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const init = value || today;
+  const [day, setDay] = useState(init.getDate());
+  const [month, setMonth] = useState(init.getMonth() + 1); // 1-12
+  const [year, setYear] = useState(init.getFullYear());
+
+  const minYear = (minDate || today).getFullYear();
+  const maxYear = minYear + 5;
+  const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i);
+
+  // Days in picked month/year (handles leap year).
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  // Clamp day if user picks Feb 30 etc.
+  const safeDay = Math.min(day, daysInMonth);
+
+  // Apply selection → parent whenever all 3 fields valid.
+  useEffect(() => {
+    if (value) return; // don't override an external reset
+    const picked = new Date(year, month - 1, safeDay);
+    picked.setHours(0, 0, 0, 0);
+    if (minDate && picked.getTime() < minDate.getTime()) return; // skip invalid
+    onChange(picked);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeDay, month, year]);
+
+  const selectCls =
+    "appearance-none bg-white border-2 border-[#e6e6ed] rounded-2xl px-3 py-2.5 text-sm font-bold text-[#1e1b4b] focus:border-[#6366f1] focus:outline-none cursor-pointer hover:border-[#a5b4fc] transition-colors";
+
+  return (
+    <div className="flex gap-2 items-center">
+      <select
+        aria-label="Ngày"
+        className={`${selectCls} flex-1`}
+        value={safeDay}
+        onChange={(e) => setDay(Number(e.target.value))}
+      >
+        {days.map((d) => (
+          <option key={d} value={d}>{pad2(d)}</option>
+        ))}
+      </select>
+      <span className="text-[#94a3b8] font-bold">/</span>
+      <select
+        aria-label="Tháng"
+        className={`${selectCls} flex-[1.4]`}
+        value={month}
+        onChange={(e) => setMonth(Number(e.target.value))}
+      >
+        {MONTHS_VI.map((label, i) => (
+          <option key={i + 1} value={i + 1}>{label}</option>
+        ))}
+      </select>
+      <span className="text-[#94a3b8] font-bold">/</span>
+      <select
+        aria-label="Năm"
+        className={`${selectCls} flex-1`}
+        value={year}
+        onChange={(e) => setYear(Number(e.target.value))}
+      >
+        {years.map((y) => (
+          <option key={y} value={y}>{y}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function PlanCreateForm({ idUser, onCreated, currentBand }) {
+  const tomorrow = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
+  const inOneYear = (() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d;
+  })();
+
+  const [targetBand, setTargetBand] = useState(7.0);
+  const [examDate, setExamDate] = useState(inOneYear);
+  const [studyMinutesPerDay, setStudyMinutesPerDay] = useState(60);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Compute days until exam from picked date (local midnight → midnight of exam date).
+  const daysUntilExam = (() => {
+    if (!examDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exam = new Date(examDate);
+    exam.setHours(0, 0, 0, 0);
+    const diffMs = exam.getTime() - today.getTime();
+    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : null;
+  })();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!idUser) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await calculateStudyPlanAPI({
+        idUser,
+        currentBand: currentBand != null ? Number(currentBand) : null,
+        targetBand: Number(targetBand),
+        daysUntilExam,
+        studyMinutesPerDay: Number(studyMinutesPerDay),
+      });
+      onCreated?.();
+    } catch (err) {
+      console.error("Failed to create study plan:", err);
+      setError(err?.message || "Không thể tạo lộ trình. Vui lòng thử lại.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] p-6 sm:p-7">
+      <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6366f1] mb-2">
+        🚀 Bắt đầu lộ trình
+      </div>
+      <h2 className="text-2xl font-black text-[#1e1b4b] mb-1" style={{ fontFamily: "Nunito, sans-serif" }}>
+        Tạo lộ trình của bạn
+      </h2>
+      <p className="text-sm text-[#64748b] mb-5">
+        Nhập 3 thông số để hệ thống sinh lộ trình cá nhân hoá.
+      </p>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-xs font-extrabold text-[#1e1b4b] mb-1.5">
+            🎯 Target band (0–9)
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={9}
+            step={0.5}
+            value={targetBand}
+            onChange={(e) => setTargetBand(e.target.value)}
+            className="w-full border-2 border-[#e6e6ed] rounded-2xl px-4 py-2.5 text-sm focus:border-[#6366f1] focus:outline-none"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-extrabold text-[#1e1b4b] mb-1.5">
+            📅 Dự kiến ngày thi
+          </label>
+          <DatePickerVN value={examDate} onChange={setExamDate} minDate={tomorrow} />
+          {daysUntilExam != null ? (
+            <p className="text-[11px] text-[#64748b] mt-1.5">
+              Còn <strong className="text-[#6366f1]">{daysUntilExam}</strong> ngày đến kỳ thi
+            </p>
+          ) : (
+            <p className="text-[11px] text-amber-600 mt-1.5">
+              ⚠️ Ngày thi phải sau hôm nay
+            </p>
+          )}
+        </div>
+        <div>
+          <label className="block text-xs font-extrabold text-[#1e1b4b] mb-1.5">
+            ⏱ Phút học mỗi ngày (60–240)
+          </label>
+          <input
+            type="number"
+            min={60}
+            max={240}
+            step={15}
+            value={studyMinutesPerDay}
+            onChange={(e) => setStudyMinutesPerDay(e.target.value)}
+            className="w-full border-2 border-[#e6e6ed] rounded-2xl px-4 py-2.5 text-sm focus:border-[#6366f1] focus:outline-none"
+            required
+          />
+        </div>
+        {error && (
+          <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+            {error}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={submitting || daysUntilExam == null}
+          className="w-full bg-gradient-to-br from-[#6366f1] to-[#a855f7] text-white py-3 rounded-2xl font-extrabold uppercase tracking-wide text-sm shadow-[0_4px_0_#4338ca] active:translate-y-[2px] active:shadow-[0_2px_0_#4338ca] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {submitting ? "Đang tạo…" : "🚀 Tạo lộ trình"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
 const StudyPlanner = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -664,10 +908,12 @@ const StudyPlanner = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idUser]);
 
-  // Listen for test-submitted → refetch completion (no plan refetch — mỗi section tự load)
+  // Listen for test-submitted → refetch completion AND plan (currentBand may
+// become available after the first test, unlocking PlanCreateForm).
   useEffect(() => {
     const onTestSubmitted = () => {
       refetchCompletion();
+      reloadPlan();
     };
     window.addEventListener("test-submitted", onTestSubmitted);
     return () => window.removeEventListener("test-submitted", onTestSubmitted);
@@ -677,7 +923,7 @@ const StudyPlanner = () => {
   // dailyTasks cần cho StatsRowSection + ProgressBarSection + SkillsBreakdown + DailyTasksSection.
   // Tách riêng 1 hook load full plan (KHÔNG cache qua parent state — mỗi sub-component đã tự cache).
   // Nhưng để tránh 8 hook gọi song song, parent load 1 lần + share qua props.
-  const { plan: parentPlan, loading: parentLoading } = useStudyPlan(idUser);
+  const { plan: parentPlan, loading: parentLoading, reload: reloadPlan } = useStudyPlan(idUser);
   const dailyTasks = useMemo(() => parentPlan?.dailyTasks ?? [], [parentPlan?.dailyTasks]);
 
   const handleToggle = async (taskId) => {
@@ -706,6 +952,23 @@ const StudyPlanner = () => {
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
           <PlanHeroSection />
           <MissingSkillsAlert />
+
+          {/* User has no current band yet → must take a placement test first. */}
+          {!parentLoading && parentPlan?.currentBand === null && (
+            <PlacementTestCTA />
+          )}
+
+          {/* User has current band but no plan yet → show form to set target/exam/minutes. */}
+          {!parentLoading &&
+            parentPlan &&
+            parentPlan.currentBand !== null &&
+            (!parentPlan.dailyTasks || parentPlan.dailyTasks.length === 0) && (
+              <PlanCreateForm
+                idUser={idUser}
+                currentBand={parentPlan.currentBand}
+                onCreated={reloadPlan}
+              />
+            )}
 
           {/* Stats row + ProgressBar cần dailyTasks + completionMap. Render khi plan ready */}
           {parentLoading ? (
