@@ -5,6 +5,9 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { AuthProvider } from "./context/authContext";
 import { ThemeProvider } from "./context/themeContext";
+import { SubscriptionProvider } from "./context/SubscriptionContext";
+import SubscriptionPage from "./Pages/client/subscription";
+import SubscriptionReturn from "./Pages/client/subscriptionReturn";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import ProtectedRoute from "./context/auth/protectedRoute";
 import OnlyUserRoute from "./context/auth/onlyUserRoute";
@@ -100,6 +103,8 @@ const router = createBrowserRouter([
           { path: "vocab-daily", element: <LazyRoute Component={VocabDaily} /> },
           { path: "study-planner", element: <LazyRoute Component={StudyPlanner} /> },
           { path: "teacher-review-history", element: <LazyRoute Component={TeacherReviewHistory} /> },
+          { path: "subscription", element: <LazyRoute Component={SubscriptionPage} /> },
+          { path: "subscription/return", element: <LazyRoute Component={SubscriptionReturn} /> },
         ],
       },
     ],
@@ -169,7 +174,9 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ThemeProvider>
       <AuthProvider>
-        <RouterProvider router={router} />
+        <SubscriptionProvider>
+          <RouterProvider router={router} />
+        </SubscriptionProvider>
       </AuthProvider>
     </ThemeProvider>
     <ToastContainer position="top-right" autoClose={3000} theme="colored" />

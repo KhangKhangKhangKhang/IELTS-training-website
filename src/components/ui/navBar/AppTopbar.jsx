@@ -27,6 +27,7 @@ import ChatBotWidget from "./chatBotWidget";
 import Cookies from "js-cookie";
 import StreakWidget from "./StreakWidget";
 import XpWidget from "./xPWidget";
+import SubscriptionNavbarButton from "../../navbar/SubscriptionNavbarButton";
 import { useAuth } from "@/context/authContext";
 import { getNotificationsAPI } from "@/services/apiNotifications";
 
@@ -151,7 +152,7 @@ const AppTopbar = ({
   activeHref,
   onNavigate,
   rightSlot = null,
-  showSearch = true,
+  showSearch = false,
   onSearch,
   notificationCount,
   showXp = false,
@@ -424,6 +425,9 @@ const AppTopbar = ({
                   )}
                 </div>
               )}
+
+              {/* Subscription (Pro) — students only */}
+              {role === "student" && <SubscriptionNavbarButton />}
 
               {/* Role-specific widgets (Xp / Streak) */}
               {(showXp || showStreak || rightSlot) && (
