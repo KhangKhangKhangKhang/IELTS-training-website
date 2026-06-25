@@ -40,6 +40,23 @@ const InteractiveSharedPreview = ({
   activeIdx = null,
   onSelect = null,
 }) => {
+  // Track which blank was just clicked so we can pulse it briefly.
+  // Without this, the indigo highlight changes instantly but the eye
+  // misses it — a 600ms pulse makes the click-to-jump feel obvious.
+  const [pulsedIdx, setPulsedIdx] = React.useState(null);
+  const pulseTimerRef = React.useRef(null);
+
+  React.useEffect(() => () => clearTimeout(pulseTimerRef.current), []);
+
+  const handleSelect = (n) => {
+    if (typeof n === "number") {
+      setPulsedIdx(n);
+      clearTimeout(pulseTimerRef.current);
+      pulseTimerRef.current = setTimeout(() => setPulsedIdx(null), 600);
+    }
+    if (onSelect) onSelect(n);
+  };
+
   if (!text || text.trim() === "") {
     return (
       <div className="rounded-xl border-2 border-dashed border-[#cbd5e1] bg-[#f8fafc] px-3 py-2 text-[11px] text-[#94a3b8] italic">
@@ -63,6 +80,7 @@ const InteractiveSharedPreview = ({
               return <span key={i}>{seg.content}</span>;
             }
             const isActive = activeIdx === seg.n;
+            const isPulsing = pulsedIdx === seg.n;
             const baseBtn =
               "inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1 mx-0.5 rounded-md font-mono font-black text-[11px] align-baseline border-2 transition-all";
             const cls = isActive
@@ -72,8 +90,8 @@ const InteractiveSharedPreview = ({
               <button
                 key={i}
                 type="button"
-                onClick={() => onSelect && onSelect(seg.n)}
-                className={cls}
+                onClick={() => handleSelect(seg.n)}
+                className={`${cls} ${isPulsing ? "animate-pulse ring-2 ring-[#6366f1] ring-offset-1" : ""}`}
                 title={`Focus answer for blank ${seg.n}`}
               >
                 {seg.n}

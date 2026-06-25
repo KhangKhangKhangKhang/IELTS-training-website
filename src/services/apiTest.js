@@ -297,10 +297,22 @@ export const updateQuestionAPI = async (idQuestion, data) => {
 
 export const updateManyQuestionAPI = async (data) => {
   const sourceQuestions = Array.isArray(data?.questions) ? data.questions : [];
-  const mappedQuestions = await mapLegacyQuestionsPayloadToBackend(
-    API,
-    sourceQuestions
+  // Skip the legacy answers[]→metadata mapper when the caller already
+  // produced structured metadata (teacher editor flow). The legacy adapter
+  // rebuilds metadata from scratch from `question.answers[]`, which throws
+  // away teacher-edited fields like `correctAnswers` for SENTENCE_COMPLETION
+  // because new edits have an empty answers[] and the mapper falls back to
+  // `["N/A"]`. Heuristic: caller provides `metadata.type` (typed metadata)
+  // AND no legacy `answers[]` array.
+  const needsLegacyMapping = sourceQuestions.some(
+    (q) => !q?.metadata?.type || Array.isArray(q?.answers)
   );
+  const mappedQuestions = needsLegacyMapping
+    ? await mapLegacyQuestionsPayloadToBackend(API, sourceQuestions)
+    : sourceQuestions.map((q) => ({
+        ...q,
+        idQuestionGroup: q.idGroupOfQuestions || q.idQuestionGroup,
+      }));
 
   const toUpdate = mappedQuestions.filter((question) => !!question.idQuestion);
   const toCreate = mappedQuestions

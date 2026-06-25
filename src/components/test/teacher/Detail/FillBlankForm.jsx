@@ -14,20 +14,20 @@ import TableCompletionForm from "./TableCompletionForm";
 import FlowChartCompletionForm from "./FlowChartCompletionForm";
 
 const FillBlankForm = (props) => {
-  const { subType, questionIndex, ...rest } = props;
+  const { subType, questionIndex, questionNumber, ...rest } = props;
   switch (subType) {
     case "SUMMARY_COMPLETION":
-      return <SummaryCompletionForm {...rest} questionIndex={questionIndex} />;
+      return <SummaryCompletionForm {...rest} questionIndex={questionIndex} questionNumber={questionNumber} />;
     case "NOTE_COMPLETION":
-      return <NoteCompletionForm {...rest} questionIndex={questionIndex} />;
+      return <NoteCompletionForm {...rest} questionIndex={questionIndex} questionNumber={questionNumber} />;
     case "TABLE_COMPLETION":
-      return <TableCompletionForm {...rest} questionIndex={questionIndex} />;
+      return <TableCompletionForm {...rest} questionIndex={questionIndex} questionNumber={questionNumber} />;
     case "FLOW_CHART_COMPLETION":
-      return <FlowChartCompletionForm {...rest} questionIndex={questionIndex} />;
+      return <FlowChartCompletionForm {...rest} questionIndex={questionIndex} questionNumber={questionNumber} />;
     case "SENTENCE_COMPLETION":
     case undefined:
     default:
-      return <SentenceCompletionForm {...rest} questionIndex={questionIndex} />;
+      return <SentenceCompletionForm {...rest} questionIndex={questionIndex} questionNumber={questionNumber} />;
   }
 };
 

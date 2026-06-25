@@ -58,6 +58,35 @@ import {
 import LabelingForm from "@/components/test/teacher/Detail/LabelingForm";
 import OtherForm from "@/components/test/teacher/Detail/OtherForm";
 
+// Inject the BE-required `type` discriminator (z.discriminatedUnion key)
+// into metadata before sending to backend. Also injects `paragraphRef`
+// for MATCHING_HEADING (derived from questionIndex per FE convention:
+// letter A/B/C/... = String.fromCharCode(65 + questionIndex)) and reshapes
+// DIAGRAM_LABELING labels from the form's flat {label, x, y} into the BE's
+// nested {pointLabel, labelCoordinate: {x, y}}.
+const buildBackendMetadata = (effectiveType, rawMetadata, questionIndex = 0) => {
+  const md = { ...(rawMetadata || {}), type: effectiveType };
+  if (effectiveType === "MATCHING_HEADING") {
+    const letter = String.fromCharCode(65 + Math.max(0, Number(questionIndex) || 0));
+    md.paragraphRef = `Paragraph ${letter}`;
+  }
+  if (effectiveType === "DIAGRAM_LABELING") {
+    // FE LabelingForm stores labels as {label, x, y, correctAnswers[]}.
+    // BE schema expects {pointLabel, labelCoordinate:{x,y}, correctAnswers[]}.
+    if (Array.isArray(md.labels)) {
+      md.labels = md.labels.map((l) => ({
+        pointLabel: l?.pointLabel ?? l?.label ?? "1",
+        labelCoordinate: {
+          x: Number(l?.labelCoordinate?.x ?? l?.x ?? 0),
+          y: Number(l?.labelCoordinate?.y ?? l?.y ?? 0),
+        },
+        correctAnswers: Array.isArray(l?.correctAnswers) ? l.correctAnswers : [""],
+      }));
+    }
+  }
+  return md;
+};
+
 export const typeMeta = {
   MCQ: { icon: "🔘", label: "Multiple choice", color: "bg-[#6366f1]", desc: "4 options A/B/C/D" },
   TFNG: { icon: "✓✗", label: "True / False / Not Given", color: "bg-[#10b981]", desc: "True / False / Not Given" },
@@ -307,25 +336,18 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
       <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] p-4">
         <div className="flex items-center gap-2 flex-wrap">
           <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#94a3b8] mr-2">
-            {isListening ? "Section:" : "Part:"}
+            {"Part:"}
           </div>
           {parts.map((p, idx) => {
-            const sec = isListening ? getSectionForPartIdx(idx) : null;
-            const label =
-              isListening && sec
-                ? sec.name
-                : p.namePart || `Part ${idx + 1}`;
-            const subLabel = sec
-              ? `${sec.context}${sec.speakerHint ? " · " + sec.speakerHint : ""}`
-              : null;
+            // Unify: always use namePart || "Part N" for both skills. Drop
+            // the per-section naming that mixed "Section 1..4" into the
+            // Listening tab labels.
+            const label = p.namePart || `Part ${idx + 1}`;
+            const subLabel = null;
             const active = activePartId === p.idPart;
-            const pillTone = sec
-              ? active
-                ? `bg-gradient-to-r ${sec.tone} text-white ${sec.accentShadow}`
-                : `${sec.bgAccent} ${sec.textAccent} hover:opacity-80`
-              : active
-                ? "bg-[#6366f1] text-white shadow-[0_3px_0_#4338ca]"
-                : "bg-[#f1f1f6] text-[#64748b] hover:bg-[#e6e6ed]";
+            const pillTone = active
+              ? "bg-[#6366f1] text-white shadow-[0_3px_0_#4338ca]"
+              : "bg-[#f1f1f6] text-[#64748b] hover:bg-[#e6e6ed]";
             return (
               <div key={p.idPart} className="relative group">
                 <button
@@ -334,15 +356,6 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
                   title={subLabel || ""}
                 >
                   <span>{label}</span>
-                  {sec && (
-                    <span
-                      className={`text-[8px] font-bold uppercase tracking-wider mt-0.5 ${
-                        active ? "text-white/80" : sec.textAccent + " opacity-70"
-                      }`}
-                    >
-                      {sec.short} · {p.quantity || 0}/{sec.targetQty} q
-                    </span>
-                  )}
                 </button>
                 {/* Small red X floating above the right edge */}
                 <button
@@ -374,7 +387,7 @@ export function QuestionGroups({ idTest, isListening = false, onChange, exam: ex
                 : ""
             }
           >
-            + Add {isListening ? "Section" : "Part"}
+            + Add Part
           </button>
         </div>
       </div>
@@ -659,6 +672,31 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions, group.questionType]);
 
+  // Snapshot of the matching pool as loaded from BE (or default).
+  // Used to compute poolDirty in isDirty — without this, heading text edits
+  // don't surface as "unsaved" because `group` prop only carries
+  // title/instructions/quantity. Snapshot once after hydrate finishes,
+  // reset after save.
+  //
+  // Race-avoidance: the hydrate useEffect above runs after `questions`
+  // loads and may overwrite the default pool with BE data. We snapshot
+  // only after `loading` flips false (or after hydrate has had a chance
+  // to run), so we capture the post-hydrate state, not the default.
+  // For brand-new groups with zero questions, snapshot the default pool
+  // so poolDirty still works as soon as the user types.
+  const initialPoolRef = useRef(null);
+  useEffect(() => {
+    if (!isMatchingQType(group.questionType)) return;
+    if (initialPoolRef.current !== null) return; // snapshot once
+    if (loading) return; // wait until questions load (or confirmed empty)
+    const key = getPoolKey(group.questionType);
+    const arr = matchingPool?.[key];
+    if (Array.isArray(arr)) {
+      initialPoolRef.current = JSON.parse(JSON.stringify(arr));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, group.questionType]);
+
   // =====================================================================
   // FILL family group-shared state
   // ---------------------------------------------------------------------
@@ -940,15 +978,64 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
   const saveGroup = async () => {
     setSaving(true);
     try {
-      await updateGroupOfQuestionsAPI(group.idGroupOfQuestions, {
-        idPart: group.idPart,
-        questionType: group.questionType,
-        title,
-        instructions,
-        quantity: Number(quantity) || 0,
-      });
+      const ops = [
+        updateGroupOfQuestionsAPI(group.idGroupOfQuestions, {
+          idPart: group.idPart,
+          questionType: group.questionType,
+          title,
+          instructions,
+          quantity: Number(quantity) || 0,
+        }),
+      ];
+
+      // If the matching pool drifted, broadcast it into every question's
+      // metadata. Pool is shared across the whole group, so a single heading
+      // edit must PATCH every question to stay consistent on the BE side.
+      if (poolDirty && isMatchingQType(group.questionType)) {
+        const key = getPoolKey(group.questionType);
+        const poolArr = matchingPool?.[key];
+        if (Array.isArray(poolArr) && Array.isArray(questions) && questions.length > 0) {
+          const updates = questions
+            .filter((q) => q?.idQuestion)
+            .map((q, qIdx) => ({
+              idQuestion: q.idQuestion,
+              idGroupOfQuestions: group.idGroupOfQuestions,
+              idPart: group.idPart,
+              content: q.content,
+              questionType: q.questionType,
+              typeQuestion: q.typeQuestion,
+              metadata: buildBackendMetadata(
+                q.questionType || group.questionType,
+                { ...(q.metadata || {}), [key]: poolArr },
+                qIdx
+              ),
+              order: q.order ?? 0,
+              questionNumber: q.questionNumber,
+            }));
+          if (updates.length > 0) {
+            ops.push(updateManyQuestionAPI({ questions: updates }));
+          }
+        }
+      }
+
+      await Promise.all(ops);
+
+      // Refresh questions so local state mirrors BE (matters when PATCH
+      // rewrote metadata). Skip when there were no questions to refresh.
+      if (Array.isArray(questions) && questions.length > 0) {
+        await refreshQuestions();
+      }
+
       message.success("Group saved");
       setSavedAt(Date.now());
+      // Reset snapshot so the next save doesn't re-PATCH unless pool drifts.
+      if (poolDirty) {
+        const key = getPoolKey(group.questionType);
+        const arr = matchingPool?.[key];
+        if (Array.isArray(arr)) {
+          initialPoolRef.current = JSON.parse(JSON.stringify(arr));
+        }
+      }
       onSave?.();
     } catch {
       message.error("Save group failed");
@@ -957,11 +1044,23 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
     }
   };
 
-  // Dirty detection: any unsaved change vs original group values
+  // Dirty detection: any unsaved change vs original group values.
+  // Pool drift counts as dirty too — the matchingPool lives in local state
+  // but the `group` prop snapshot doesn't include it, so we compare against
+  // initialPoolRef taken right after hydrate.
+  const poolDirty = (() => {
+    if (!isMatchingQType(group.questionType)) return false;
+    if (initialPoolRef.current == null) return false;
+    const key = getPoolKey(group.questionType);
+    const current = matchingPool?.[key];
+    return JSON.stringify(current) !== JSON.stringify(initialPoolRef.current);
+  })();
+
   const isDirty =
     title !== (group.title || "") ||
     instructions !== (group.instructions || "") ||
-    Number(quantity) !== (Number(group.quantity) || 0);
+    Number(quantity) !== (Number(group.quantity) || 0) ||
+    poolDirty;
 
   // Per-group quantity: no per-section min/max. The only ceiling is the
   // per-skill TOTAL question cap (Listening ≤ 40, Reading ≤ 40). We don't
@@ -1106,11 +1205,18 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
         instructions !== (group.instructions || "");
       // Build creates with fresh questionNumber. Skip empty placeholders.
       const baseNumber = questions.length + 1;
+      // Index → question for deriving questionIndex per question (used by
+      // buildBackendMetadata to set paragraphRef for MATCHING_HEADING).
+      const indexByQuestionId = new Map(questions.map((q, i) => [q.idQuestion, i]));
       const toCreate = filledSlots.map((s, idx) => ({
         content: s.payload.content,
         questionType: s.payload.questionType,
         typeQuestion: s.payload.typeQuestion,
-        metadata: s.payload.metadata,
+        metadata: buildBackendMetadata(
+          s.payload.questionType,
+          s.payload.metadata,
+          questions.length + idx
+        ),
         idGroupOfQuestions: group.idGroupOfQuestions,
         idPart: group.idPart,
         questionNumber: baseNumber + idx,
@@ -1130,7 +1236,11 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
             content: payload.content,
             questionType: payload.questionType,
             typeQuestion: payload.typeQuestion,
-            metadata: payload.metadata,
+            metadata: buildBackendMetadata(
+              payload.questionType,
+              payload.metadata,
+              indexByQuestionId.get(id) ?? 0
+            ),
             order: orig.order ?? 0,
             questionNumber: orig.questionNumber,
           };
@@ -1270,8 +1380,8 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
         <textarea
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
-          rows={2}
-          className={`${inputCls()} resize-none`}
+          rows={5}
+          className={`${inputCls()} resize-y min-h-[7rem]`}
           placeholder="Enter instructions for this question group..."
         />
       </label>
@@ -1336,11 +1446,18 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
             shared={fillShared}
             onSharedChange={setFillShared}
             questionNumbers={(() => {
-              // Use existing question IDs as N. New staged slots have
-              // temporary localIds; map them to position-in-group numbers
-              // (questions.length + idx + 1) once added.
-              const existing = questions.map((q, i) => i + 1);
-              return existing;
+              // Use the actual questionNumber (e.g. 10, 11, 12) when set,
+              // so [N] placeholders in the shared summary match what the
+              // student sees (e.g. "[10]" not "[1]"). Falls back to
+              // position-in-group (1, 2, 3, ...) for new staged slots
+              // that haven't been assigned a server-side number yet.
+              // Also include stagedNew slots so the [N] buttons show up
+              // immediately for empty groups (no questions saved yet).
+              const totalSlots = questions.length + stagedNew.length;
+              return Array.from({ length: totalSlots }, (_, i) => {
+                const q = questions[i];
+                return Number(q?.questionNumber) || i + 1;
+              });
             })()}
           />
         </div>
@@ -1405,6 +1522,16 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
                   }`}
                 >
                   <div className="flex items-start gap-3 p-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        isOpen
+                          ? setActiveForm(null)
+                          : setActiveForm({ mode: "edit", question: q, draftKey: `edit-${q.idQuestion}` })
+                      }
+                      className="flex items-start gap-3 flex-1 min-w-0 text-left cursor-pointer"
+                      title={isOpen ? "Collapse" : "Edit"}
+                    >
                     <div className="w-8 h-8 rounded-xl bg-[#6366f1] text-white shadow-[0_2px_0_#4338ca] flex items-center justify-center font-black text-xs flex-none">
                       {i + 1}
                     </div>
@@ -1442,20 +1569,27 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
                         </div>
                       )}
                     </div>
+                    </button>
                     <button
-                      onClick={() =>
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
                         isOpen
                           ? setActiveForm(null)
-                          : setActiveForm({ mode: "edit", question: q, draftKey: `edit-${q.idQuestion}` })
-                      }
+                          : setActiveForm({ mode: "edit", question: q, draftKey: `edit-${q.idQuestion}` });
+                      }}
                       className="w-7 h-7 rounded-lg hover:bg-[#eef2ff] flex items-center justify-center text-[#6366f1] flex-none"
-                      title="Edit"
+                      title={isOpen ? "Collapse" : "Edit"}
                     >
-                      ✎
+                      {isOpen ? "▾" : "✎"}
                     </button>
                     {staged ? (
                       <button
-                        onClick={() => handleDiscardStagedEdit(q.idQuestion, edit.draftKey)}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDiscardStagedEdit(q.idQuestion, edit.draftKey);
+                        }}
                         className="w-7 h-7 rounded-lg hover:bg-[#fff1f2] flex items-center justify-center text-[#fb7185] flex-none"
                         title="Discard changes"
                       >
@@ -1463,7 +1597,11 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleDeleteQuestion(q)}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteQuestion(q);
+                        }}
                         className="w-7 h-7 rounded-lg hover:bg-[#fff1f2] flex items-center justify-center text-[#fb7185] flex-none"
                         title="Delete"
                       >
@@ -1482,6 +1620,7 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
                         groupId={group.idGroupOfQuestions}
                         draftKey={`edit-${q.idQuestion}`}
                         questionIndex={i}
+                        questionNumber={Number(q?.questionNumber) || i + 1}
                         existing={q}
                         fillShared={fillShared}
                         onUpdate={(payload) => handleStageEdit(payload, `edit-${q.idQuestion}`)}
@@ -1620,6 +1759,10 @@ function GroupEditor({ group, onSave, skill = "READING", skillLimits = null }) {
                         groupId={group.idGroupOfQuestions}
                         draftKey={slot.draftKey}
                         questionIndex={questions.length + idx}
+                        questionNumber={
+                          Number(slot?.payload?.questionNumber) ||
+                          (group.startNumber || 1) + questions.length + idx
+                        }
                         initialPayload={slot.payload}
                         fillShared={fillShared}
                         onAddToGroup={(payload) => handleStageNew(payload, slot.draftKey, slot.localId)}
@@ -1699,6 +1842,7 @@ function QuestionQuickForm({
   groupId,
   draftKey,
   questionIndex = 0,
+  questionNumber,
   existing = null,
   initialPayload = null,
   onAddToGroup,
@@ -1758,6 +1902,13 @@ function QuestionQuickForm({
   });
 
   const safeMetadata = metadata ?? {};
+  // Mirror the freshest state into refs so async handlers (Save Changes click
+  // racing against the typing→onChange cycle) always read what the user just
+  // typed, not a stale closure. See handleSubmit for the race we're guarding.
+  const metadataRef = useRef(metadata);
+  const contentRef = useRef(content);
+  metadataRef.current = metadata;
+  contentRef.current = content;
   // Sub-type selector: only when `qType` is itself a family key
   // (FILL_BLANK / MATCHING). Once the group is saved with a SPECIFIC
   // sub-type (e.g. MATCHING_HEADING) the user already chose at group
@@ -1781,6 +1932,36 @@ function QuestionQuickForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [safeMetadata?.statement, content, effectiveType]);
 
+  // Mirror the matching pool into form metadata for the 4 matching sub-types.
+  // The shared pool (headings/features/endings/paragraphLabels) lives at the
+  // GroupEditor level but per-question metadata must carry a copy so the BE
+  // payload is self-contained. Without this merge, draft-restored questions
+  // (which only persist form fields, not the group-level pool) would submit
+  // metadata without the pool, failing validators downstream.
+  useEffect(() => {
+    if (!isMatchingQType(effectiveType)) return;
+    const POOL_FIELD_BY_QTYPE = {
+      MATCHING_HEADING: "headings",
+      MATCHING_INFORMATION: "paragraphLabels",
+      MATCHING_FEATURES: "features",
+      MATCHING_SENTENCE_ENDINGS: "endings",
+    };
+    const field = POOL_FIELD_BY_QTYPE[effectiveType];
+    const poolArr = pool?.[field];
+    if (!Array.isArray(poolArr)) return;
+    setMetadata((m) => {
+      if (!m) return m;
+      const current = m[field];
+      const sameRef =
+        Array.isArray(current) &&
+        current.length === poolArr.length &&
+        current.every((it, i) => it === poolArr[i]);
+      if (sameRef) return m;
+      return { ...m, [field]: poolArr };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pool, effectiveType]);
+
   // Dispatch the per-type editor
   const renderTypeEditor = () => {
     const common = { value: safeMetadata, onChange: setMetadata };
@@ -1803,6 +1984,7 @@ function QuestionQuickForm({
             {...common}
             subType={effectiveType}
             questionIndex={questionIndex}
+            questionNumber={questionNumber}
             readOnlyText={effectiveType === "TABLE_COMPLETION" ? generateTableHTML(fillShared?.tableGrid) : fillShared?.fullText || ""}
             wordBank={fillShared?.wordBank || []}
             hasWordBank={!!fillShared?.hasWordBank}
@@ -1839,19 +2021,27 @@ function QuestionQuickForm({
       message.warning("Please fill the highlighted fields");
       return;
     }
+    // Read the freshest metadata from the ref, NOT the closure-captured
+    // `safeMetadata`. Under React 19 + AntD v5, the typing→onChange→setMetadata
+    // cycle can race with the next onClick: by the time Save Changes fires,
+    // the component may not have re-rendered yet, so the closure still sees
+    // the pre-typing value. Mirroring state into a ref each render and
+    // reading from the ref in handlers keeps the value the user just typed.
+    const liveMetadata = metadataRef.current ?? safeMetadata;
+    const liveContent = contentRef.current ?? content;
     // For TFNG / YNNG, mirror content → metadata.statement when missing
-    let finalMetadata = safeMetadata;
+    let finalMetadata = liveMetadata;
     if (
       effectiveType === "TRUE_FALSE_NOT_GIVEN" ||
       effectiveType === "YES_NO_NOT_GIVEN"
     ) {
-      finalMetadata = { ...(safeMetadata || {}), statement: safeMetadata?.statement || content };
+      finalMetadata = { ...(liveMetadata || {}), statement: liveMetadata?.statement || liveContent };
     }
     const payload = {
-      content,
+      content: liveContent,
       typeQuestion: effectiveType,
       questionType: effectiveType,
-      metadata: finalMetadata,
+      metadata: buildBackendMetadata(effectiveType, finalMetadata, questionIndex),
     };
     if (mode === "edit") {
       onUpdate?.(payload);
@@ -1945,15 +2135,18 @@ function QuestionQuickForm({
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#94a3b8]">
+        <div className="flex items-center gap-1.5 text-[10px] font-bold">
           {draftSavedAt ? (
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#d1fae5] text-[#065f46] border border-[#10b981]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
               Draft saved
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 opacity-60">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#cbd5e1]" />
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border-2 border-amber-300 animate-pulse"
+              title="You have unsaved changes. Click Save changes to commit."
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
               Not saved as draft
             </span>
           )}

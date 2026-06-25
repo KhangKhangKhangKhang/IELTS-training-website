@@ -230,8 +230,38 @@ const mapMetadataToLegacyAnswers = (metadata, backendQuestionType) => {
 
   if (type === "DIAGRAM_LABELING") {
     const wordBank = toArray(metadata?.wordBank);
-    const correctSet = new Set(toArray(metadata?.correctAnswers).map((ans) => ans.toLowerCase().trim()));
 
+    // Multi-label shape (BE): `labels[]` — each entry has its own
+    // `correctAnswers[]`. Flatten into one legacy answer row per
+    // (label, acceptable answer) tuple so the student-facing renderer can
+    // still consume a flat answers[] list.
+    const labels = toArray(metadata?.labels);
+    const flattened = [];
+    labels.forEach((label, labelIdx) => {
+      const labelKey = toStringSafe(label?.pointLabel || labelIdx + 1);
+      toArray(label?.correctAnswers).forEach((ans, ansIdx) => {
+        const text = toStringSafe(ans).trim();
+        if (!text) return;
+        flattened.push({
+          answer_id: `${labelKey}-${ansIdx + 1}`,
+          answer_text: text,
+          matching_key: labelKey,
+          matching_value: "CORRECT",
+          labelCoordinate: label?.labelCoordinate,
+        });
+      });
+    });
+
+    if (flattened.length > 0) {
+      return { answers: flattened, correct_answers: flattened };
+    }
+
+    // Backwards-compat: legacy single-point payloads used a flat
+    // `correctAnswers[]` on the metadata root. Keep this branch so old
+    // records continue to render.
+    const correctSet = new Set(
+      toArray(metadata?.correctAnswers).map((ans) => ans.toLowerCase().trim())
+    );
     const answers = wordBank.map((item, index) => {
       const key = indexToKey(index) || toStringSafe(item?.id || index + 1);
       const text = toStringSafe(item?.text || item?.id);
@@ -624,16 +654,32 @@ const buildMetadataFromLegacy = (question, legacyType, groupContext = {}) => {
     const imageUrl =
       groupContext?.imageUrl || groupContext?.img || groupContext?.groupImage || EMPTY_IMAGE_FALLBACK;
 
+    // Build a multi-label labels[] array — the BE schema requires it. If
+    // the source question has structured labels, forward them; otherwise
+    // wrap the single correct answer into a one-element labels array.
+    const sourceLabels = Array.isArray(question?.metadata?.labels)
+      ? question.metadata.labels
+      : null;
+    const labels = sourceLabels && sourceLabels.length > 0
+      ? sourceLabels
+      : [
+          {
+            pointLabel: toStringSafe(
+              question?.numberQuestion || question?.questionNumber || "1"
+            ),
+            labelCoordinate: { x: 0, y: 0 },
+            correctAnswers: ensureCorrectAnswers([correctText]),
+          },
+        ];
+
     return {
       questionType: "DIAGRAM_LABELING",
       metadata: {
         type: "DIAGRAM_LABELING",
         imageUrl,
-        labelCoordinate: { x: 0, y: 0 },
-        pointLabel: toStringSafe(question?.numberQuestion || question?.questionNumber || "1"),
+        labels,
         hasWordBank: wordBank.length > 0,
         wordBank,
-        correctAnswers: ensureCorrectAnswers([correctText]),
       },
     };
   }

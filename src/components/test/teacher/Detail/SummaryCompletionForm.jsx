@@ -31,9 +31,33 @@ const SummaryCompletionForm = ({
   wordBank = [],
   hasWordBank = false,
   questionIndex = 0,
+  questionNumber,
 }) => {
   const v = value || defaultValue();
   const correctAnswers = Array.isArray(v.correctAnswers) ? v.correctAnswers : [""];
+
+  // Auto-fill blankLabel from questionNumber on first render if it's empty
+  // OR if it looks like a stale positional value (1, 2, 3...) that doesn't
+  // match the actual questionNumber (e.g. 10, 11, 12, 13). Heuristic: a
+  // blankLabel that's a small integer when questionNumber is much larger
+  // is treated as stale and replaced.
+  React.useEffect(() => {
+    const labelNum = Number(v.blankLabel);
+    const qNum = Number(questionNumber);
+    if (Number.isFinite(qNum) && qNum > 0) {
+      // Replace stale positional labels (1, 2, 3...) with the real
+      // question number when there's a big mismatch.
+      if (!Number.isFinite(labelNum) || (labelNum <= questionIndex + 2 && qNum > questionIndex + 2)) {
+        onChange({ ...v, blankLabel: String(qNum) });
+        return;
+      }
+    }
+    if (!v.blankLabel?.trim()) {
+      const fallback = qNum || (Number.isFinite(questionIndex) ? questionIndex + 1 : 1);
+      onChange({ ...v, blankLabel: String(fallback) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [override, setOverride] = useState(
     () => !!(v.fullParagraph && v.fullParagraph !== readOnlyText)
   );
@@ -157,10 +181,13 @@ const SummaryCompletionForm = ({
         </span>
         <div className="space-y-1.5">
           {correctAnswers.map((ans, i) => {
-            const blankNum = activeIdx != null ? activeIdx + i : null;
+            // Primary answer badge: the actual blank number (e.g. "14").
+            // Alternative badges: "+1", "+2" — make it visually obvious they
+            // belong to the SAME blank, not separate blanks.
+            const showBadge = activeIdx != null;
             return (
               <div key={i} className="flex items-center gap-2">
-                {blankNum != null && (
+                {showBadge && (
                   <span
                     className={`flex-none inline-flex items-center justify-center min-w-[1.5rem] h-7 px-1.5 rounded-md font-mono font-black text-[10px] ${
                       i === 0
@@ -173,7 +200,7 @@ const SummaryCompletionForm = ({
                         : `Extra acceptable answer for blank ${activeIdx}`
                     }
                   >
-                    {blankNum}
+                    {i === 0 ? activeIdx : `+${i}`}
                   </span>
                 )}
                 <Input

@@ -102,12 +102,9 @@ export const IELTSTestEditor = ({
   }, []);
 
   const createPart = useCallback(async () => {
-    // Listening: name parts "Section 1..4" with the per-skill convention.
-    // Reading: keep generic "Part N".
-    const namePart =
-      skill === "LISTENING"
-        ? `Section ${parts.length + 1}`
-        : `Part ${parts.length + 1}`;
+    // Unify naming: always "Part N" regardless of skill (was "Section N" for
+    // Listening before, which made tab labels inconsistent across skills).
+    const namePart = `Part ${parts.length + 1}`;
     const res = await createPartAPI({
       idTest,
       namePart,
@@ -254,17 +251,10 @@ export const IELTSTestEditor = ({
       // by the per-skill total (40 across the whole test).
       return (parts || []).map((p, i) => {
         const qty = derivePartQty(p);
-        const sectionNames = ["Section 1", "Section 2", "Section 3", "Section 4"];
-        const sectionContexts = [
-          "Social · 2 speakers",
-          "Social monologue",
-          "Educational · 2-4 speakers",
-          "Academic monologue",
-        ];
         return {
           id: p.idPart,
-          name: sectionNames[i] || p.namePart || `Section ${i + 1}`,
-          meta: `${qty} q · 🎧 ${sectionContexts[i] || "audio"}`,
+          name: p.namePart || `Part ${i + 1}`,
+          meta: `${qty} q · 🎧 audio`,
           status: qty > 0 ? "editing" : "todo",
         };
       });

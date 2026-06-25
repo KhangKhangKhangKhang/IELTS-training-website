@@ -21,21 +21,45 @@ const SentenceCompletionForm = ({
   value,
   onChange,
 }) => {
+  // CRITICAL: `onChange` is invoked from a child <input> `onInput` handler
+  // which only gives us the DOM event — NOT the latest `value` prop. If we
+  // call `onChange({ ...v, ... })` with a closure-captured `v`, we may
+  // overwrite a value the parent just updated via a *different* input.
+  // Solution: forward the raw input event up as a *patch function* that the
+  // parent can use to merge into its own state. Since we can't change the
+  // parent contract, we read the LATEST value via a ref the parent keeps
+  // updated.
+  //
+  // Pragmatic fix: keep an internal `latestValueRef` that mirrors `value`
+  // and read from IT when building the patch — so we never lose updates
+  // typed into sibling fields or committed by the parent mid-keystroke.
   const v = value || defaultValue();
   const correctAnswers = Array.isArray(v.correctAnswers) ? v.correctAnswers : [""];
   const textareaRef = useRef(null);
-  const update = (patch) => onChange({ ...v, ...patch });
+  const latestValueRef = useRef(v);
+  latestValueRef.current = v;
+
+  const update = (patch) => {
+    // Read from the ref so we always spread the freshest parent state.
+    const base = latestValueRef.current || defaultValue();
+    const merged =
+      typeof patch === "function" ? patch(base) : { ...base, ...patch };
+    onChange(merged);
+  };
   const insertBlank = () => {
     const next = insertAtCursor(textareaRef.current, " ___ ");
     update({ sentenceWithBlank: next });
   };
 
   const setAnswer = (idx, text) => {
-    update({
-      correctAnswers: correctAnswers.map((a, i) =>
-        i === idx ? text : a
+    // Use a functional patch so the parent's existing array is read fresh,
+    // not a closure-captured snapshot.
+    update((cur) => ({
+      ...cur,
+      correctAnswers: (Array.isArray(cur.correctAnswers) ? cur.correctAnswers : [""]).map(
+        (a, i) => (i === idx ? text : a)
       ),
-    });
+    }));
   };
 
   return (
@@ -67,9 +91,15 @@ const SentenceCompletionForm = ({
         </span>
         <div className="space-y-1.5">
           {correctAnswers.map((ans, i) => (
-            <div key={i} className="flex items-center gap-2">
+            // Stable key per slot so AntD Input keeps its identity across
+            // re-renders. Without it, AntD v5 + React 19 can swap the input
+            // element mid-typing, dropping onChange events. We also pass the
+            // latest snapshot of `ans` and a fresh handler via the wrapper
+            // `onAnswerChange` so the closure can't go stale.
+            <div key={`ans-${i}`} className="flex items-center gap-2">
               <Input
-                value={ans}
+                key={`ans-input-${i}`}
+                value={ans ?? ""}
                 onChange={(e) => setAnswer(i, e.target.value)}
                 placeholder="e.g. 1850"
                 size="small"

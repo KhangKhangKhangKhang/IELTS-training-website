@@ -67,6 +67,14 @@ const TextWithPlaceholders = ({
     const next = insertAtCursor(textareaRef.current, ` [${n}] `);
     onSharedChange({ ...shared, fullText: next });
   };
+
+  // Detect dots-only placeholders ("..." or "......") that the teacher
+  // pasted from a printed IELTS book. Those dots aren't clickable — the
+  // [N] buttons below only work when the blank is in [N] format. Show
+  // an inline warning so the teacher knows to replace them.
+  const dotOnlyPattern = /\.{2,}/g;
+  const hasDotOnlyBlanks = dotOnlyPattern.test(shared.fullText || "");
+
   return (
     <div className="space-y-2">
       <textarea
@@ -98,6 +106,14 @@ const TextWithPlaceholders = ({
           </span>
         )}
       </div>
+      {hasDotOnlyBlanks && (
+        <div className="rounded-lg border-2 border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900 leading-snug">
+          <span className="font-extrabold">⚠ Detected "..." placeholders.</span>{" "}
+          Replace each with <code className="font-mono bg-white px-1 rounded">[N]</code>{" "}
+          (e.g. <code className="font-mono">[14]</code>) using the buttons above so blanks
+          are clickable.
+        </div>
+      )}
     </div>
   );
 };
@@ -255,10 +271,18 @@ const WordBank = ({ shared, onSharedChange }) => {
             })
           }
         >
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0e7490]">
+          <span
+            className="text-[10px] font-extrabold uppercase tracking-wider text-[#0e7490]"
+            title="Enable when students pick answers from a list of words you provide. Leave OFF if students write answers from the passage."
+          >
             Use word bank
           </span>
         </Checkbox>
+        <span className="text-[10px] text-[#64748b] italic">
+          {shared.hasWordBank
+            ? "Students pick from your word list."
+            : "Students write answers from the passage."}
+        </span>
       </div>
       {shared.hasWordBank && (
         <div className="space-y-1.5">

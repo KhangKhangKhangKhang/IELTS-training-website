@@ -160,7 +160,6 @@ const TEMPLATES = {
       { label: "iv", text: "" },
       { label: "v", text: "" },
     ],
-    paragraphRef: "",
     correctHeadingIndex: 0,
   },
   MATCHING_INFORMATION: {
@@ -274,9 +273,11 @@ const validateMetadata = (qType, metadata) => {
     if (!md.stepLabel?.trim()) errors.stepLabel = "Step label is required";
     if (!md.correctAnswers?.some((a) => a?.trim())) errors.answers = "At least one answer is required";
   } else if (qType === "MATCHING_HEADING") {
-    if (!md.paragraphRef?.trim()) errors.paragraph = "Paragraph reference required";
-    if (!md.headings?.length || md.headings.some((h) => !h.text?.trim())) {
-      errors.headings = "All headings need text";
+    // Paragraph letter (A/B/C...) is derived from the question's position
+    // (questionIndex) by MatchingForm, not stored on the metadata — so no
+    // paragraphRef field to validate here.
+    if (!md.headings?.length) {
+      errors.headings = "At least one heading is required";
     }
     if (md.correctHeadingIndex == null || md.correctHeadingIndex < 0) {
       errors.correct = "Pick the correct heading";
@@ -287,14 +288,14 @@ const validateMetadata = (qType, metadata) => {
     if (!md.correctParagraph) errors.correct = "Pick the correct paragraph";
   } else if (qType === "MATCHING_FEATURES") {
     if (!md.statement?.trim()) errors.statement = "Statement is required";
-    if (!md.features?.length || md.features.some((f) => !f.text?.trim())) {
-      errors.features = "All features need text";
+    if (!md.features?.length) {
+      errors.features = "At least one feature is required";
     }
     if (!md.correctFeatureLabel) errors.correct = "Pick the correct feature";
   } else if (qType === "MATCHING_SENTENCE_ENDINGS") {
     if (!md.sentenceStem?.trim()) errors.stem = "Sentence stem is required";
-    if (!md.endings?.length || md.endings.some((e) => !e.text?.trim())) {
-      errors.endings = "All endings need text";
+    if (!md.endings?.length) {
+      errors.endings = "At least one ending is required";
     }
     if (!md.correctEndingLabel) errors.correct = "Pick the correct ending";
   } else if (qType === "DIAGRAM_LABELING") {
