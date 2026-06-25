@@ -13,12 +13,18 @@ const GrammarIndex = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [topicsData, recData] = await Promise.all([
+        const [topicsData, recData] = await Promise.allSettled([
           getGrammarTopicsAPI(),
           getGrammarRecommendationsAPI(),
         ]);
-        setTopics(topicsData);
-        setRecommendations(recData);
+        const topics = topicsData.status === "fulfilled" && Array.isArray(topicsData.value)
+          ? topicsData.value
+          : [];
+        const recs = recData.status === "fulfilled" && Array.isArray(recData.value)
+          ? recData.value
+          : [];
+        setTopics(topics);
+        setRecommendations(recs);
       } catch (error) {
         console.error("Error:", error);
       } finally {

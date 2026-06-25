@@ -166,6 +166,13 @@ const Grammar = () => {
         const res = await getGrammarDashboardAPI(user.idUser);
         setGrammarStats(res);
         setWeakAreas(res.weakAreas || []);
+        // Cache dashboard so getGrammarTopicsAPI / getGrammarRecommendationsAPI
+        // (used by grammar/index.jsx) have data to map from.
+        try {
+          localStorage.setItem("grammarDashboard", JSON.stringify(res));
+        } catch {
+          // ignore quota / SSR errors
+        }
       } catch (err) {
         console.error("Failed to fetch grammar stats:", err);
       } finally {
