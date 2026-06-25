@@ -67,7 +67,7 @@ const levelMeta = {
   C2: { tone: "bg-[#fff1f2] text-[#e11d48]", label: "C2 · Thành thạo" },
 };
 
-function StackedButton({ children, tone = "indigo", size = "md", className = "" }) {
+function StackedButton({ children, tone = "indigo", size = "md", className = "", ...rest }) {
   const styles = {
     indigo: "bg-[#6366f1] text-white shadow-[0_4px_0_#4338ca] hover:brightness-110",
     cyan: "bg-[#06b6d4] text-white shadow-[0_4px_0_#0891b2] hover:brightness-110",
@@ -84,6 +84,7 @@ function StackedButton({ children, tone = "indigo", size = "md", className = "" 
       : "px-4 py-2 text-sm";
   return (
     <button
+      {...rest}
       className={`${styles[tone] || styles.indigo} ${sz} font-extrabold uppercase tracking-wide rounded-2xl active:translate-y-[2px] active:shadow-[0_2px_0] transition-all ${className}`}
     >
       {children}
