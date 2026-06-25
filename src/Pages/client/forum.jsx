@@ -6,6 +6,7 @@ import { message, Spin } from "antd";
 import {
   getAllThreadAPI,
   getPostByThreadAPI,
+  getPostsByUserAPI,
   getAllCommentsByPostAPI,
   createPostAPI,
   createCommentAPI,
@@ -76,7 +77,7 @@ const moderationFor = (m) => {
 /*  Thread Sidebar (canvas)                                                   */
 /* ------------------------------------------------------------------------- */
 
-function ThreadSidebar({ threads, selected, onSelect, search, setSearch, onCreateClick }) {
+function ThreadSidebar({ threads, selected, onSelect, search, setSearch, onCreateClick, canCreate }) {
   return (
     <Card className="overflow-hidden flex flex-col h-[640px]">
       <div className="bg-gradient-to-br from-[#6366f1] to-[#4338ca] p-5">
@@ -92,7 +93,7 @@ function ThreadSidebar({ threads, selected, onSelect, search, setSearch, onCreat
               {threads.length} chủ đề
             </p>
           </div>
-          {onCreateClick && (
+          {canCreate && onCreateClick && (
             <button
               onClick={onCreateClick}
               title="Tạo chủ đề mới"
@@ -181,6 +182,7 @@ function PostCard({ post, currentUserId, onReload, isModerator, moderationPath }
   const navigate = useNavigate();
   const isAuthor =
     !!currentUserId && post.user?.idUser === currentUserId;
+  const canEditDelete = isAuthor || isModerator;
 
   // Close menu on outside click
   useEffect(() => {
@@ -196,7 +198,10 @@ function PostCard({ post, currentUserId, onReload, isModerator, moderationPath }
 
   const handleDelete = async () => {
     if (!currentUserId) return;
-    const ok = window.confirm("Xóa bài viết này? Hành động không thể hoàn tác.");
+    const confirmMsg = isAuthor
+      ? "Xóa bài viết này? Hành động không thể hoàn tác."
+      : "Bạn đang xóa bài viết của học viên với quyền quản trị. Hành động không thể hoàn tác.";
+    const ok = window.confirm(confirmMsg);
     if (!ok) return;
     try {
       await deletePostAPI(post.idForumPost, currentUserId);
@@ -309,7 +314,7 @@ function PostCard({ post, currentUserId, onReload, isModerator, moderationPath }
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-10 z-30 w-48 rounded-xl bg-white border-2 border-[#e6e6ed] shadow-[0_4px_0_#e6e6ed] py-1.5 animate-in fade-in slide-in-from-top-2">
-                {isAuthor && (
+                {canEditDelete && (
                   <>
                     <button
                       onClick={() => {
@@ -318,7 +323,7 @@ function PostCard({ post, currentUserId, onReload, isModerator, moderationPath }
                       }}
                       className="w-full text-left px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition flex items-center gap-2"
                     >
-                      <span>✏️</span> Sửa bài viết
+                      <span>✏️</span> {isAuthor ? "Sửa bài viết" : "Sửa (quản trị)"}
                     </button>
                     <button
                       onClick={() => {
@@ -327,11 +332,11 @@ function PostCard({ post, currentUserId, onReload, isModerator, moderationPath }
                       }}
                       className="w-full text-left px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 transition flex items-center gap-2"
                     >
-                      <span>🗑️</span> Xóa bài viết
+                      <span>🗑️</span> {isAuthor ? "Xóa bài viết" : "Xóa (quản trị)"}
                     </button>
                   </>
                 )}
-                {!isAuthor && (
+                {!canEditDelete && (
                   <button
                     onClick={() => {
                       setMenuOpen(false);
@@ -1048,6 +1053,10 @@ const Forum = () => {
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
+  const [activeTab, setActiveTab] = useState("thread"); // "thread" | "mine"
+  const [myPosts, setMyPosts] = useState([]);
+  const [loadingMyPosts, setLoadingMyPosts] = useState(false);
+
   // Load threads
   useEffect(() => {
     let cancelled = false;
@@ -1105,6 +1114,28 @@ const Forum = () => {
     };
   }, [selectedId, currentUserId, reloadTick]);
 
+  // Load "Bài viết của bạn" when tab opens or post changes
+  useEffect(() => {
+    if (activeTab !== "mine" || !currentUserId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadingMyPosts(true);
+        const res = await getPostsByUserAPI(currentUserId);
+        if (cancelled) return;
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        setMyPosts(list);
+      } catch (e) {
+        message.error("Không thể tải bài viết của bạn");
+      } finally {
+        if (!cancelled) setLoadingMyPosts(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, currentUserId, reloadTick]);
+
   const filteredThreads = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return threads;
@@ -1133,6 +1164,7 @@ const Forum = () => {
               onSelect={setSelectedId}
               search={search}
               setSearch={setSearch}
+              canCreate={isModerator}
               onCreateClick={() => setShowCreateThread(true)}
             />
           )}
@@ -1149,21 +1181,53 @@ const Forum = () => {
                     Thảo luận và chia sẻ kinh nghiệm học tập
                   </p>
                 </div>
+                {activeTab === "thread" && (
+                  <button
+                    onClick={() => setShowCompose((v) => !v)}
+                    className="px-5 py-2.5 rounded-2xl bg-[#6366f1] text-white font-extrabold text-sm uppercase tracking-wide shadow-[0_4px_0_#4338ca] hover:brightness-110 active:translate-y-[2px] active:shadow-[0_2px_0_#4338ca] transition-all"
+                  >
+                    + Tạo bài viết
+                  </button>
+                )}
+              </div>
+
+              {/* Tab switcher */}
+              <div className="mt-5 flex items-center gap-2 p-1 bg-[#f1f1f6] rounded-2xl w-full sm:w-fit">
                 <button
-                  onClick={() => setShowCompose((v) => !v)}
-                  className="px-5 py-2.5 rounded-2xl bg-[#6366f1] text-white font-extrabold text-sm uppercase tracking-wide shadow-[0_4px_0_#4338ca] hover:brightness-110 active:translate-y-[2px] active:shadow-[0_2px_0_#4338ca] transition-all"
+                  onClick={() => setActiveTab("thread")}
+                  className={`flex-1 sm:flex-none px-5 py-2 rounded-xl text-sm font-extrabold transition-all ${
+                    activeTab === "thread"
+                      ? "bg-white text-[#6366f1] shadow-[0_2px_0_#e6e6ed]"
+                      : "text-[#64748b] hover:text-[#1e1b4b]"
+                  }`}
                 >
-                  + Tạo bài viết
+                  💬 Thảo luận
+                </button>
+                <button
+                  onClick={() => setActiveTab("mine")}
+                  className={`flex-1 sm:flex-none px-5 py-2 rounded-xl text-sm font-extrabold transition-all ${
+                    activeTab === "mine"
+                      ? "bg-white text-[#6366f1] shadow-[0_2px_0_#e6e6ed]"
+                      : "text-[#64748b] hover:text-[#1e1b4b]"
+                  }`}
+                >
+                  📝 Bài viết của bạn
                 </button>
               </div>
-              {current && (
+
+              {activeTab === "thread" && current && (
                 <div className="mt-4 flex items-center gap-2 text-sm font-bold text-[#6366f1] bg-[#eef2ff] rounded-2xl px-4 py-2.5 w-fit">
                   <span>📌</span> {current.title}
                 </div>
               )}
+              {activeTab === "mine" && (
+                <div className="mt-4 flex items-center gap-2 text-sm font-bold text-[#b45309] bg-[#fff7ed] border border-[#fed7aa] rounded-2xl px-4 py-2.5 w-fit">
+                  <span>ℹ️</span> Hiển thị tất cả bài viết của bạn, bao gồm bài chờ duyệt và bài bị AI từ chối.
+                </div>
+              )}
             </Card>
 
-            {showCompose && current && currentUserId && (
+            {activeTab === "thread" && showCompose && current && currentUserId && (
               <ComposeBox
                 threadId={current.id}
                 currentUserId={currentUserId}
@@ -1171,12 +1235,43 @@ const Forum = () => {
               />
             )}
 
-            {loadingPosts ? (
+            {activeTab === "thread" ? (
+              loadingPosts ? (
+                <div className="flex items-center justify-center py-12">
+                  <Spin size="large" />
+                </div>
+              ) : posts.length > 0 ? (
+                posts.map((p) => (
+                  <PostCard
+                    key={p.idForumPost}
+                    post={p}
+                    currentUserId={currentUserId}
+                    isModerator={isModerator}
+                    moderationPath={
+                      user?.role === "ADMIN"
+                        ? "/admin/moderation"
+                        : "/teacher/moderation"
+                    }
+                    onReload={() => setReloadTick((n) => n + 1)}
+                  />
+                ))
+              ) : (
+                <Card className="p-12 text-center">
+                  <div className="text-5xl mb-3">💭</div>
+                  <h3 className="font-extrabold text-[#1e1b4b] mb-1">
+                    Chưa có bài viết
+                  </h3>
+                  <p className="text-sm text-[#64748b] font-medium">
+                    Hãy là người đầu tiên chia sẻ trong chủ đề này!
+                  </p>
+                </Card>
+              )
+            ) : loadingMyPosts ? (
               <div className="flex items-center justify-center py-12">
                 <Spin size="large" />
               </div>
-            ) : posts.length > 0 ? (
-              posts.map((p) => (
+            ) : myPosts.length > 0 ? (
+              myPosts.map((p) => (
                 <PostCard
                   key={p.idForumPost}
                   post={p}
@@ -1192,12 +1287,12 @@ const Forum = () => {
               ))
             ) : (
               <Card className="p-12 text-center">
-                <div className="text-5xl mb-3">💭</div>
+                <div className="text-5xl mb-3">📝</div>
                 <h3 className="font-extrabold text-[#1e1b4b] mb-1">
-                  Chưa có bài viết
+                  Bạn chưa đăng bài viết nào
                 </h3>
                 <p className="text-sm text-[#64748b] font-medium">
-                  Hãy là người đầu tiên chia sẻ trong chủ đề này!
+                  Chuyển sang tab "Thảo luận" để chia sẻ bài viết đầu tiên.
                 </p>
               </Card>
             )}

@@ -49,6 +49,11 @@ export const getPostByIdAPI = async (idForumPost, idUser) => {
   return res.data;
 };
 
+export const getPostsByUserAPI = async (idUser) => {
+  const res = await API.get(`/forum-post/posts-by-user/${idUser}`);
+  return res.data;
+};
+
 export const getModerationQueueAPI = async (idUser) => {
   const res = await API.get(`/forum-post/moderation-queue/${idUser}`);
   return res.data;
