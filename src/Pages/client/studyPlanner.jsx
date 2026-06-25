@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useContext } from "react";
+import React, { useState, useEffect, useMemo, useContext, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/authContext";
 import { getStudyPlanAPI, getDailyCompletionAPI, completeTaskAPI, calculateStudyPlanAPI } from "@/services/apiStudyPlanner";
@@ -706,6 +706,9 @@ function DatePickerVN({ value, onChange, minDate }) {
   const [day, setDay] = useState(init.getDate());
   const [month, setMonth] = useState(init.getMonth() + 1); // 1-12
   const [year, setYear] = useState(init.getFullYear());
+  // Skip the first useEffect fire (mount) — parent already has the initial
+  // value. Subsequent user interactions should sync back via onChange.
+  const skipNextSync = useRef(true);
 
   const minYear = (minDate || today).getFullYear();
   const maxYear = minYear + 5;
@@ -720,7 +723,10 @@ function DatePickerVN({ value, onChange, minDate }) {
 
   // Apply selection → parent whenever all 3 fields valid.
   useEffect(() => {
-    if (value) return; // don't override an external reset
+    if (skipNextSync.current) {
+      skipNextSync.current = false;
+      return;
+    }
     const picked = new Date(year, month - 1, safeDay);
     picked.setHours(0, 0, 0, 0);
     if (minDate && picked.getTime() < minDate.getTime()) return; // skip invalid
