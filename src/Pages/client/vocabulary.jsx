@@ -32,8 +32,6 @@ import {
 } from "../../services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import FlashcardModal from "@/components/Vocab/FlashcardModal";
-import FillInPractice from "@/components/Vocab/FillInPractice";
-import MultipleChoicePractice from "@/components/Vocab/MultipleChoicePractice";
 import { useSession } from "@/stores/practiceProgress";
 
 // === Color/icon pools (BE doesn't store these) ===
@@ -325,7 +323,6 @@ const Vocabulary = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const practiceMode = searchParams.get("mode");
 
   // === Tab state ===
   const [tab, setTab] = useState("practice"); // 'practice' | 'saved' | 'topics'
@@ -342,8 +339,6 @@ const Vocabulary = () => {
   const [loadingDaily, setLoadingDaily] = useState(false);
 
   // === Realtime practice progress (shared via Zustand) ===
-  const multipleSession = useSession("multiple");
-  const fillSession = useSession("fill");
   const flashcardSession = useSession("flashcard");
 
   // === Modal state ===
@@ -687,17 +682,6 @@ const Vocabulary = () => {
     [savedVocabularies, savedSearch]
   );
 
-  // === Practice mode (full-screen routes) ===
-  if (practiceMode === "fill") {
-    return <PracticeWrapper onBack={handleBackFromPractice}><FillInPractice count={20} onComplete={handleBackFromPractice} /></PracticeWrapper>;
-  }
-  if (practiceMode === "multiple") {
-    return <PracticeWrapper onBack={handleBackFromPractice}><MultipleChoicePractice count={20} onComplete={handleBackFromPractice} /></PracticeWrapper>;
-  }
-  if (practiceMode === "review") {
-    return <PracticeWrapper onBack={handleBackFromPractice}><FillInPractice count={20} onComplete={handleBackFromPractice} /></PracticeWrapper>;
-  }
-
   // === Compute derived stats ===
   const totalLearned = (vocabStats?.tier1Progress?.mastered || 0) + (vocabStats?.tier2Progress?.mastered || 0);
   const totalAvailable = (vocabStats?.tier1Progress?.total || 0) + (vocabStats?.tier2Progress?.total || 0);
@@ -786,7 +770,7 @@ const Vocabulary = () => {
                 <div className="flex items-center gap-2 text-slate-500">
                   <span>Tiến độ:</span>
                   <span className="font-extrabold text-slate-800 dark:text-white">
-                    {(multipleSession?.correct ?? 0) + (fillSession?.correct ?? 0) + (flashcardSession?.correct ?? 0)} / {dueCount + newCount}
+                    {(flashcardSession?.correct ?? 0)} / {dueCount + newCount}
                   </span>
                 </div>
                 <button
@@ -804,15 +788,13 @@ const Vocabulary = () => {
                 Chế độ luyện tập
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                <PracticeModeCard icon="✍️" title="Điền từ" desc="Điền từ vào câu hoàn chỉnh từ ngữ cảnh." count="15 câu · 6 phút" gradient="from-[#06b6d4] to-[#0891b2]" accent="bg-[#06b6d4]" onClick={() => navigate("/vocabulary?mode=fill")} />
-                <PracticeModeCard icon="📝" title="Trắc nghiệm" desc="Chọn đáp án đúng trong 4 lựa chọn." count="20 câu · 8 phút" gradient="from-[#a855f7] to-[#7e22ce]" accent="bg-[#a855f7]" onClick={() => navigate("/vocabulary?mode=multiple")} />
                 <PracticeModeCard icon="👂" title="Listening" desc="Nghe và viết lại từ. Cải thiện cả phát âm." gradient="from-[#fb7185] to-[#e11d48]" accent="bg-[#fb7185]" comingSoon onClick={() => setComingSoon("Listening")} />
                 <PracticeModeCard icon="🔗" title="Matching" desc="Nối từ với nghĩa hoặc định nghĩa." gradient="from-[#f59e0b] to-[#d97706]" accent="bg-[#f59e0b]" comingSoon onClick={() => setComingSoon("Matching")} />
               </div>
             </section>
 
             {/* === Realtime practice results (Zustand) === */}
-            {(multipleSession || fillSession || flashcardSession) && (
+            {(flashcardSession) && (
               <section className="bg-white dark:bg-slate-800 rounded-3xl border-2 border-slate-200 dark:border-slate-700 shadow-[0_3px_0_#e6e6ed] p-5 sm:p-6">
                 <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#10b981] mb-2">
                   📊 Kết quả luyện tập hôm nay
@@ -821,24 +803,6 @@ const Vocabulary = () => {
                   Phiên đang chạy
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {multipleSession && (
-                    <div className="rounded-2xl border-2 border-[#a855f7]/30 bg-[#a855f7]/5 p-4">
-                      <div className="text-xs font-extrabold uppercase tracking-wide text-[#7e22ce] mb-1">📝 Trắc nghiệm</div>
-                      <div className="text-3xl font-black text-[#1e1b4b]" style={{ fontFamily: "Nunito" }}>
-                        {multipleSession.correct}/{multipleSession.total}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-1">đúng</div>
-                    </div>
-                  )}
-                  {fillSession && (
-                    <div className="rounded-2xl border-2 border-[#06b6d4]/30 bg-[#06b6d4]/5 p-4">
-                      <div className="text-xs font-extrabold uppercase tracking-wide text-[#0891b2] mb-1">✍️ Điền từ</div>
-                      <div className="text-3xl font-black text-[#1e1b4b]" style={{ fontFamily: "Nunito" }}>
-                        {fillSession.correct}/{fillSession.total}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-1">đúng</div>
-                    </div>
-                  )}
                   {flashcardSession && (
                     <div className="rounded-2xl border-2 border-[#fb7185]/30 bg-[#fb7185]/5 p-4">
                       <div className="text-xs font-extrabold uppercase tracking-wide text-[#e11d48] mb-1">🎴 Flashcard</div>
@@ -1005,18 +969,6 @@ const Vocabulary = () => {
                       className="px-4 py-2.5 bg-gradient-to-br from-[#f59e0b] to-[#d97706] text-white rounded-2xl font-extrabold uppercase tracking-wide text-xs flex items-center gap-1.5 shadow-[0_3px_0_#b45309] active:translate-y-[1px] active:shadow-[0_2px_0_#b45309] transition-all"
                     >
                       <Sparkles size={16} /> Ôn tập
-                    </button>
-                    <button
-                      onClick={() => navigate("/vocabulary?mode=fill")}
-                      className="px-4 py-2.5 bg-gradient-to-br from-[#06b6d4] to-[#0891b2] text-white rounded-2xl font-extrabold uppercase tracking-wide text-xs flex items-center gap-1.5 shadow-[0_3px_0_#0e7490] active:translate-y-[1px] active:shadow-[0_2px_0_#0e7490] transition-all"
-                    >
-                      <Edit size={16} /> Điền từ
-                    </button>
-                    <button
-                      onClick={() => navigate("/vocabulary?mode=multiple")}
-                      className="px-4 py-2.5 bg-gradient-to-br from-[#a855f7] to-[#7e22ce] text-white rounded-2xl font-extrabold uppercase tracking-wide text-xs flex items-center gap-1.5 shadow-[0_3px_0_#6b21a8] active:translate-y-[1px] active:shadow-[0_2px_0_#6b21a8] transition-all"
-                    >
-                      <CheckCircle2 size={16} /> Trắc nghiệm
                     </button>
                   </div>
                 </div>
