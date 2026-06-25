@@ -296,6 +296,13 @@ export const IELTSListeningTestScreen = ({ testData, testResultId, userId, initi
         duration: totalSeconds - secondsLeft,
       });
       toast.success('Nộp bài thành công!');
+      // Notify other pages (HomePage weakness card) to refetch.
+      try {
+        const { notifyTestSubmitted } = await import('@/lib/testEvents');
+        notifyTestSubmitted({ skillType: 'LISTENING' });
+      } catch {
+        // non-fatal
+      }
       if (onSubmitSuccess) onSubmitSuccess(result);
     } catch (e) {
       console.error('submit failed', e);

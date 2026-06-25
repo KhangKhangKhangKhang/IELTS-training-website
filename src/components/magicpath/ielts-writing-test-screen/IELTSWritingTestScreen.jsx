@@ -37,17 +37,26 @@ export const IELTSWritingTestScreen = ({ testData, testResultId, userId, writing
     const raw = writingTasks || testData?.writingTasks || [];
     if (raw.length === 0) {
       return [
-        { id: 1, title: 'Task 1', prompt: 'No task available.', minWords: 150, imageUrl: null },
-        { id: 2, title: 'Task 2', prompt: 'No task available.', minWords: 250, imageUrl: null },
+        { id: 1, idWritingTask: 'placeholder-1', title: 'Task 1', prompt: 'No task available.', minWords: 150, imageUrl: null },
+        { id: 2, idWritingTask: 'placeholder-2', title: 'Task 2', prompt: 'No task available.', minWords: 250, imageUrl: null },
       ];
     }
-    return raw.map((t, idx) => ({
-      id: t.id ?? idx + 1,
-      title: t.title || (idx === 0 ? 'Task 1' : 'Task 2'),
-      prompt: t.description || t.prompt || t.content || '',
-      minWords: t.minWords || (idx === 0 ? 150 : 250),
-      imageUrl: t.imageUrl || t.image || null,
-    }));
+    return raw.map((t, idx) => {
+      // BE cần idWritingTask (UUID string) để findUnique. Nếu BE không trả,
+      // dùng t.id làm fallback — cảnh báo dev khi shape không match.
+      const idWritingTask = t.idWritingTask || t.id || t.idTask;
+      if (!idWritingTask) {
+        console.warn('Writing task missing idWritingTask/id:', t);
+      }
+      return {
+        id: idx + 1,
+        idWritingTask: String(idWritingTask),
+        title: t.title || (idx === 0 ? 'Task 1' : 'Task 2'),
+        prompt: t.description || t.prompt || t.content || '',
+        minWords: t.minWords || (idx === 0 ? 150 : 250),
+        imageUrl: t.imageUrl || t.image || null,
+      };
+    });
   }, [writingTasks, testData]);
 
   const totalSeconds = (testData?.durationMinutes || 60) * 60;
@@ -91,14 +100,15 @@ export const IELTSWritingTestScreen = ({ testData, testResultId, userId, writing
 
   // Autosave (debounce 2s)
   useEffect(() => {
-    if (!testResultId || !activeTaskId) return;
+    if (!testResultId || !activeTaskId || !activeTask?.idWritingTask) return;
     if (autosaveRef.current) clearTimeout(autosaveRef.current);
     autosaveRef.current = setTimeout(() => {
       const txt = texts[activeTaskId];
       if (!txt) return;
       createWritingSubmissionAPI(
         {
-          idWritingTask: activeTaskId,
+          idUser: userId,
+          idWritingTask: activeTask.idWritingTask,
           submissionText: txt,
           wordCount,
         },
@@ -108,7 +118,7 @@ export const IELTSWritingTestScreen = ({ testData, testResultId, userId, writing
       });
     }, 2000);
     return () => { if (autosaveRef.current) clearTimeout(autosaveRef.current); };
-  }, [texts, activeTaskId, testResultId, wordCount]);
+  }, [texts, activeTaskId, activeTask?.idWritingTask, testResultId, wordCount, userId]);
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -116,12 +126,18 @@ export const IELTSWritingTestScreen = ({ testData, testResultId, userId, writing
     try {
       const result = await FinishTestWritingAPI(testResultId, userId, {
         writingSubmissions: tasks.map((t) => ({
-          idWritingTask: t.id,
+          idWritingTask: t.idWritingTask,
           submissionText: texts[t.id] || '',
         })),
         duration: totalSeconds - secondsLeft,
       });
       toast.success('Nộp bài thành công!');
+      try {
+        const { notifyTestSubmitted } = await import('@/lib/testEvents');
+        notifyTestSubmitted({ skillType: 'WRITING' });
+      } catch {
+        // non-fatal
+      }
       if (onSubmitSuccess) onSubmitSuccess(result);
     } catch (e) {
       console.error('submit writing failed', e);

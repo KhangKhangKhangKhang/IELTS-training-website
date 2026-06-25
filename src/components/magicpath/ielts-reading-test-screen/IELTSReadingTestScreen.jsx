@@ -308,6 +308,12 @@ export const IELTSReadingTestScreen = ({ testData, testResultId, userId, initial
         duration: totalSeconds - secondsLeft,
       });
       toast.success('Nộp bài thành công!');
+      try {
+        const { notifyTestSubmitted } = await import('@/lib/testEvents');
+        notifyTestSubmitted({ skillType: 'READING' });
+      } catch {
+        // non-fatal
+      }
       if (onSubmitSuccess) onSubmitSuccess(result);
     } catch (e) {
       console.error('submit failed', e);

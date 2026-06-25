@@ -187,6 +187,12 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
       }
       const result = await finishSpeakingTest(testResultId, userId, new FormData());
       toast.success('Nộp bài thành công!');
+      try {
+        const { notifyTestSubmitted } = await import('@/lib/testEvents');
+        notifyTestSubmitted({ skillType: 'SPEAKING' });
+      } catch {
+        // non-fatal
+      }
       if (onSubmitSuccess) onSubmitSuccess(result);
       return true;
     } catch (e) {
