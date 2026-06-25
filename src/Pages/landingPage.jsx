@@ -182,34 +182,43 @@ const Hero = () => {
 
         {/* Hero illustration */}
         <div className="relative">
-          <motion.div
-            animate={{ y: [0, -8, 0] }}
-            transition={{ duration: 4, repeat: Infinity }}
-            className="absolute -top-4 right-4 z-10 bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_4px_0_#e6e6ed] p-4 w-56"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-[#10b981] text-white flex items-center justify-center text-sm">
-                ✓
+          <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_5px_0_#e6e6ed] p-6 pt-10 pb-12 relative">
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 4, repeat: Infinity }}
+              className="absolute -top-5 right-4 z-10 bg-white rounded-2xl border-2 border-[#e6e6ed] shadow-[0_4px_0_#e6e6ed] px-4 py-3"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-[#10b981] text-white flex items-center justify-center text-sm font-black">
+                  ✓
+                </div>
+                <div className="leading-tight">
+                  <div className="font-extrabold text-[#1e1b4b] text-sm">
+                    Đúng rồi!
+                  </div>
+                  <div className="text-[10px] text-[#64748b] font-bold">
+                    +10 XP · Streak +1
+                  </div>
+                </div>
               </div>
-              <div className="font-extrabold text-[#1e1b4b] text-sm">
-                Đúng rồi!
+            </motion.div>
+
+            <motion.div
+              animate={{ y: [0, 6, 0] }}
+              transition={{ duration: 5, repeat: Infinity }}
+              className="absolute -bottom-5 -left-5 z-10 bg-gradient-to-br from-[#fb7185] to-[#f59e0b] rounded-2xl shadow-[0_4px_0_#b45309] px-4 py-3 text-white"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-2xl leading-none">🔥</span>
+                <div className="leading-tight">
+                  <div className="text-lg font-black">12</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide opacity-90">
+                    Day streak
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="text-xs text-[#64748b]">+10 XP · Streak +1 ngày</div>
-          </motion.div>
+            </motion.div>
 
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 5, repeat: Infinity }}
-            className="absolute -bottom-4 -left-4 z-10 bg-gradient-to-br from-[#fb7185] to-[#f59e0b] rounded-3xl shadow-[0_4px_0_#b45309] p-4 text-white w-48"
-          >
-            <div className="text-2xl font-black">12 🔥</div>
-            <div className="text-xs font-bold uppercase tracking-wide opacity-90">
-              Day streak
-            </div>
-          </motion.div>
-
-          <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_5px_0_#e6e6ed] p-6 relative">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-[#6366f1]">
