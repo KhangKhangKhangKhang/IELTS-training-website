@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   Plus,
@@ -28,11 +28,13 @@ import {
   getDailySessionAPI,
   getTopicsByUserAPI,
   submitReviewAPI,
+  getAllVocabByUserAPI,
 } from "../../services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import FlashcardModal from "@/components/Vocab/FlashcardModal";
 import FillInPractice from "@/components/Vocab/FillInPractice";
 import MultipleChoicePractice from "@/components/Vocab/MultipleChoicePractice";
+import { useSession } from "@/stores/practiceProgress";
 
 // === Color/icon pools (BE doesn't store these) ===
 const TOPIC_COLOR_POOL = [
@@ -339,6 +341,11 @@ const Vocabulary = () => {
   const [dailySession, setDailySession] = useState(null);
   const [loadingDaily, setLoadingDaily] = useState(false);
 
+  // === Realtime practice progress (shared via Zustand) ===
+  const multipleSession = useSession("multiple");
+  const fillSession = useSession("fill");
+  const flashcardSession = useSession("flashcard");
+
   // === Modal state ===
   const [showFlashcard, setShowFlashcard] = useState(false);
   const [showAddTopic, setShowAddTopic] = useState(false);
@@ -359,7 +366,18 @@ const Vocabulary = () => {
   const [validationErrors, setValidationErrors] = useState({ topic: "", vocabulary: "" });
   const [comingSoon, setComingSoon] = useState(null);
 
-  const handleBackFromPractice = () => setSearchParams({});
+  const handleBackFromPractice = async () => {
+    setSearchParams({});
+    // Refetch daily session to update progress count (0/20 → 1/20, etc.)
+    if (user?.idUser) {
+      try {
+        const res = await getDailySessionAPI(user.idUser, 15);
+        setDailySession(res.data || res);
+      } catch (err) {
+        console.error("Failed to refetch daily session:", err);
+      }
+    }
+  };
 
   // === Fetch topics ===
   useEffect(() => {
@@ -411,27 +429,45 @@ const Vocabulary = () => {
     })();
   }, [user?.idUser]);
 
-  // === Fetch saved vocabularies (flat list of all user vocab) — when Saved tab active ===
+  // === Fetch saved vocabularies (flat list of all user vocab) — single call ===
+  // Replaces previous N+1 loop of getVocabAPI per topic.
+  // Also re-runs on `vocab-saved` event so SaveWordModal saves show up immediately.
+  const loadSavedVocabularies = useCallback(async () => {
+    if (!user?.idUser) return;
+    setLoadingSaved(true);
+    try {
+      const res = await getAllVocabByUserAPI(user.idUser);
+      const list = res?.data ?? res;
+      const arr = Array.isArray(list) ? list : [];
+      // Attach topicName for display in "Saved" tab.
+      const topicMap = new Map(topics.map((t) => [t.idTopic, t.nameTopic]));
+      const enriched = arr.map((v) => ({
+        ...v,
+        topicName: topicMap.get(v.idTopic) || null,
+      }));
+      setSavedVocabularies(enriched);
+    } catch (err) {
+      console.error("Failed to fetch saved vocabularies:", err);
+      setSavedVocabularies([]);
+    } finally {
+      setLoadingSaved(false);
+    }
+  }, [user?.idUser, topics]);
+
   useEffect(() => {
-    if (tab !== "saved" || !user?.idUser || topics.length === 0) return;
-    (async () => {
-      setLoadingSaved(true);
-      try {
-        // Loop all topics → fetch vocab → merge
-        const results = await Promise.all(
-          topics.map((t) => getVocabAPI(t.idTopic).catch(() => ({ data: { data: [] } })))
-        );
-        const merged = results
-          .flatMap((r) => r?.data?.data || [])
-          .map((v) => ({ ...v, topicName: topics.find((t) => t.idTopic === v.idTopic)?.nameTopic }));
-        setSavedVocabularies(merged);
-      } catch (err) {
-        console.error("Failed to fetch saved words:", err);
-      } finally {
-        setLoadingSaved(false);
-      }
-    })();
-  }, [tab, user?.idUser, topics.length]);
+    loadSavedVocabularies();
+  }, [loadSavedVocabularies]);
+
+  // Listen for vocab-saved event from SaveWordModal (dispatched in VocabDaily / FillInPractice)
+  // and re-fetch the flat list so the new word shows up in "Saved" tab without reload.
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const onVocabSaved = () => {
+      loadSavedVocabularies();
+    };
+    window.addEventListener("vocab-saved", onVocabSaved);
+    return () => window.removeEventListener("vocab-saved", onVocabSaved);
+  }, [loadSavedVocabularies]);
 
   // === AI suggest effect ===
   useEffect(() => {
@@ -681,14 +717,14 @@ const Vocabulary = () => {
               <div className="text-5xl sm:text-6xl flex-none">📚</div>
               <div className="flex-1 min-w-0">
                 <div className="text-[10px] font-bold uppercase tracking-wider opacity-90 mb-1">Vocabulary của bạn</div>
-                <div className="flex items-baseline gap-2 mb-2">
+                <div className="flex items-baseline gap-2 mb-1">
                   <span className="text-4xl sm:text-5xl font-black" style={{ fontFamily: "Nunito, sans-serif" }}>
-                    {!loadingStats ? totalLearned : "..."}
+                    {!loadingStats ? savedVocabularies.length : "..."}
                   </span>
-                  <span className="text-xs sm:text-sm font-bold opacity-80">/ {totalAvailable} từ</span>
+                  <span className="text-xs sm:text-sm font-bold opacity-80">từ vựng đã thêm</span>
                 </div>
-                <div className="h-2 bg-white/20 rounded-full overflow-hidden w-full max-w-xs">
-                  <div className="h-full bg-white rounded-full transition-all" style={{ width: `${overallPct}%` }} />
+                <div className="text-xs opacity-80">
+                  {topics.length} chủ đề · {savedVocabularies.length} từ
                 </div>
               </div>
             </div>
@@ -696,7 +732,7 @@ const Vocabulary = () => {
           {/* 3 stat cards dọc (data thật từ API) */}
           <StatCard icon="✓" tone="bg-[#d1fae5] text-[#047857]" value={totalLearned} label="Đã thuộc" loading={loadingStats} />
           <StatCard icon="📚" tone="bg-[#eef2ff] text-[#4338ca]" value={topics.length} label="Chủ đề" loading={loadingTopics} />
-          <StatCard icon="📝" tone="bg-[#fef3c7] text-[#b45309]" value={savedVocabularies.length || vocabularies.length} label="Từ vựng" loading={tab === "saved" ? loadingSaved : false} />
+          <StatCard icon="📝" tone="bg-[#fef3c7] text-[#b45309]" value={savedVocabularies.length} label="Từ vựng" loading={loadingSaved} />
         </section>
 
         {/* === Tab pill (3 tabs: Practice / Saved / Topics) === */}
@@ -749,7 +785,9 @@ const Vocabulary = () => {
               <div className="mt-4 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 text-slate-500">
                   <span>Tiến độ:</span>
-                  <span className="font-extrabold text-slate-800 dark:text-white">0 / {dueCount + newCount}</span>
+                  <span className="font-extrabold text-slate-800 dark:text-white">
+                    {(multipleSession?.correct ?? 0) + (fillSession?.correct ?? 0) + (flashcardSession?.correct ?? 0)} / {dueCount + newCount}
+                  </span>
                 </div>
                 <button
                   onClick={() => navigate("/vocab-daily")}
@@ -765,14 +803,54 @@ const Vocabulary = () => {
               <h2 className="text-lg font-black text-slate-800 dark:text-white mb-3" style={{ fontFamily: "Nunito, sans-serif" }}>
                 Chế độ luyện tập
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                <PracticeModeCard icon="🃏" title="Flashcard" desc="Lật thẻ, đánh giá độ khó. Spaced repetition." count="20 từ · 8 phút" gradient="from-[#6366f1] to-[#a855f7]" accent="bg-[#6366f1]" onClick={handleStartFlashcard} />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 <PracticeModeCard icon="✍️" title="Điền từ" desc="Điền từ vào câu hoàn chỉnh từ ngữ cảnh." count="15 câu · 6 phút" gradient="from-[#06b6d4] to-[#0891b2]" accent="bg-[#06b6d4]" onClick={() => navigate("/vocabulary?mode=fill")} />
                 <PracticeModeCard icon="📝" title="Trắc nghiệm" desc="Chọn đáp án đúng trong 4 lựa chọn." count="20 câu · 8 phút" gradient="from-[#a855f7] to-[#7e22ce]" accent="bg-[#a855f7]" onClick={() => navigate("/vocabulary?mode=multiple")} />
                 <PracticeModeCard icon="👂" title="Listening" desc="Nghe và viết lại từ. Cải thiện cả phát âm." gradient="from-[#fb7185] to-[#e11d48]" accent="bg-[#fb7185]" comingSoon onClick={() => setComingSoon("Listening")} />
                 <PracticeModeCard icon="🔗" title="Matching" desc="Nối từ với nghĩa hoặc định nghĩa." gradient="from-[#f59e0b] to-[#d97706]" accent="bg-[#f59e0b]" comingSoon onClick={() => setComingSoon("Matching")} />
               </div>
             </section>
+
+            {/* === Realtime practice results (Zustand) === */}
+            {(multipleSession || fillSession || flashcardSession) && (
+              <section className="bg-white dark:bg-slate-800 rounded-3xl border-2 border-slate-200 dark:border-slate-700 shadow-[0_3px_0_#e6e6ed] p-5 sm:p-6">
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#10b981] mb-2">
+                  📊 Kết quả luyện tập hôm nay
+                </div>
+                <h2 className="text-lg font-black text-slate-800 dark:text-white mb-4" style={{ fontFamily: "Nunito, sans-serif" }}>
+                  Phiên đang chạy
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {multipleSession && (
+                    <div className="rounded-2xl border-2 border-[#a855f7]/30 bg-[#a855f7]/5 p-4">
+                      <div className="text-xs font-extrabold uppercase tracking-wide text-[#7e22ce] mb-1">📝 Trắc nghiệm</div>
+                      <div className="text-3xl font-black text-[#1e1b4b]" style={{ fontFamily: "Nunito" }}>
+                        {multipleSession.correct}/{multipleSession.total}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">đúng</div>
+                    </div>
+                  )}
+                  {fillSession && (
+                    <div className="rounded-2xl border-2 border-[#06b6d4]/30 bg-[#06b6d4]/5 p-4">
+                      <div className="text-xs font-extrabold uppercase tracking-wide text-[#0891b2] mb-1">✍️ Điền từ</div>
+                      <div className="text-3xl font-black text-[#1e1b4b]" style={{ fontFamily: "Nunito" }}>
+                        {fillSession.correct}/{fillSession.total}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">đúng</div>
+                    </div>
+                  )}
+                  {flashcardSession && (
+                    <div className="rounded-2xl border-2 border-[#fb7185]/30 bg-[#fb7185]/5 p-4">
+                      <div className="text-xs font-extrabold uppercase tracking-wide text-[#e11d48] mb-1">🎴 Flashcard</div>
+                      <div className="text-3xl font-black text-[#1e1b4b]" style={{ fontFamily: "Nunito" }}>
+                        {flashcardSession.correct}/{flashcardSession.total}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">đúng</div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
           </div>
         )}
 
@@ -927,6 +1005,18 @@ const Vocabulary = () => {
                       className="px-4 py-2.5 bg-gradient-to-br from-[#f59e0b] to-[#d97706] text-white rounded-2xl font-extrabold uppercase tracking-wide text-xs flex items-center gap-1.5 shadow-[0_3px_0_#b45309] active:translate-y-[1px] active:shadow-[0_2px_0_#b45309] transition-all"
                     >
                       <Sparkles size={16} /> Ôn tập
+                    </button>
+                    <button
+                      onClick={() => navigate("/vocabulary?mode=fill")}
+                      className="px-4 py-2.5 bg-gradient-to-br from-[#06b6d4] to-[#0891b2] text-white rounded-2xl font-extrabold uppercase tracking-wide text-xs flex items-center gap-1.5 shadow-[0_3px_0_#0e7490] active:translate-y-[1px] active:shadow-[0_2px_0_#0e7490] transition-all"
+                    >
+                      <Edit size={16} /> Điền từ
+                    </button>
+                    <button
+                      onClick={() => navigate("/vocabulary?mode=multiple")}
+                      className="px-4 py-2.5 bg-gradient-to-br from-[#a855f7] to-[#7e22ce] text-white rounded-2xl font-extrabold uppercase tracking-wide text-xs flex items-center gap-1.5 shadow-[0_3px_0_#6b21a8] active:translate-y-[1px] active:shadow-[0_2px_0_#6b21a8] transition-all"
+                    >
+                      <CheckCircle2 size={16} /> Trắc nghiệm
                     </button>
                   </div>
                 </div>
@@ -1087,19 +1177,21 @@ const FeaturedFlashcard = ({ word, onAnswer }) => {
         </div>
       </div>
 
-      {/* 4 button Khó/Tạm/Ổn/Dễ (chỉ hiện khi flipped) */}
+      {/* 4 button Khó/Tạm/Ổn/Dễ (chỉ hiện khi flipped)
+          SM-2 safe: chỉ gửi quality 3,4,5 (BE sẽ reset interval nếu < 3).
+          Khó/Tạm đều map về 3 để tránh reset, vẫn hiển thị khác nhau cho UX. */}
       {flipped && (
         <div className="grid grid-cols-4 gap-2 mt-3">
           <button
-            onClick={(e) => { e.stopPropagation(); onAnswer(1); setFlipped(false); }}
+            onClick={(e) => { e.stopPropagation(); onAnswer(3); setFlipped(false); }}
             className="px-2 py-2 rounded-2xl bg-white border-2 border-[#fb7185] text-[#e11d48] font-extrabold text-[10px] uppercase tracking-wide shadow-[0_2px_0_#fb7185]/30 hover:bg-[#fff1f2] transition-all"
           >😣 Khó</button>
           <button
-            onClick={(e) => { e.stopPropagation(); onAnswer(2); setFlipped(false); }}
+            onClick={(e) => { e.stopPropagation(); onAnswer(3); setFlipped(false); }}
             className="px-2 py-2 rounded-2xl bg-white border-2 border-[#f59e0b] text-[#b45309] font-extrabold text-[10px] uppercase tracking-wide shadow-[0_2px_0_#f59e0b]/30 hover:bg-[#fef3c7] transition-all"
           >🤔 Tạm</button>
           <button
-            onClick={(e) => { e.stopPropagation(); onAnswer(3); setFlipped(false); }}
+            onClick={(e) => { e.stopPropagation(); onAnswer(4); setFlipped(false); }}
             className="px-2 py-2 rounded-2xl bg-white border-2 border-[#06b6d4] text-[#0e7490] font-extrabold text-[10px] uppercase tracking-wide shadow-[0_2px_0_#06b6d4]/30 hover:bg-[#cffafe] transition-all"
           >😊 Ổn</button>
           <button

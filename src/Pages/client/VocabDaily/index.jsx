@@ -415,6 +415,13 @@ const VocabDaily = () => {
         onClose={() => setShowSaveModal(false)}
         word={wordToSave}
         user={user}
+        onSaved={() => {
+          // Dispatch a global event so other pages (e.g. vocabulary.jsx "Saved" tab)
+          // can refresh their cached saved-list without re-mounting.
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("vocab-saved"));
+          }
+        }}
       />
     </div>
   );

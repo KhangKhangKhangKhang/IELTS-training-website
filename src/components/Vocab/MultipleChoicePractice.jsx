@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { getDailyVocabAPI, completeDailyVocabAPI } from "@/services/apiVocab";
+import { getDailyVocabAPI, completeDailyVocabAPI, submitReviewAPI } from "@/services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import { Check, X } from "lucide-react";
+import usePracticeProgress from "@/stores/practiceProgress";
 
 const MultipleChoicePractice = ({ count = 20, onComplete }) => {
   const { user } = useAuth();
@@ -13,6 +14,7 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
   const [loading, setLoading] = useState(true);
   const [isCompleted, setIsCompleted] = useState(false);
   const [summary, setSummary] = useState(null);
+  const { startSession, recordAnswer, incrementCorrect, setCurrentIndex: setStoreIndex, endSession } = usePracticeProgress();
 
   useEffect(() => {
     loadVocab();
@@ -21,10 +23,13 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
   const loadVocab = async () => {
     try {
       const data = await getDailyVocabAPI(user?.idUser, count);
+      const list = Array.isArray(data) ? data : (data?.data ?? []);
+      // Filter out vocab without idVocab to avoid sending undefined to BE
+      const validList = list.filter((w) => w && w.idVocab);
       // Add random options for each word
-      const withOptions = (data || []).map((word, idx) => {
+      const withOptions = validList.map((word, idx) => {
         // Create 4 options: correct + 3 dummy words
-        const dummyWords = data
+        const dummyWords = validList
           .filter((_, i) => i !== idx)
           .slice(0, 3)
           .map(w => w.word);
@@ -33,6 +38,9 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
       });
       setVocabList(withOptions);
       setLoading(false);
+      // Start session in next tick to avoid setState-during-render warning
+      // (Zustand update triggers Vocabulary re-render during MultipleChoice render)
+      queueMicrotask(() => startSession("multiple", withOptions.length));
     } catch (err) {
       console.error(err);
       setLoading(false);
@@ -44,6 +52,20 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
 
     const current = vocabList[currentIndex];
     const isCorrect = option === current.word;
+
+    // Realtime progress: defer Zustand update to next tick to avoid setState-during-render
+    // warning (Zustand update notifies Vocabulary component during MultipleChoice render).
+    queueMicrotask(() => {
+      recordAnswer("multiple", current.idVocab, isCorrect);
+      if (isCorrect) incrementCorrect("multiple");
+    });
+
+    // Save per-answer: send SM-2 review immediately so progress + study plan update each word.
+    // Don't block UI on failure (best-effort, like FillInPractice).
+    const quality = isCorrect ? 5 : 1;
+    submitReviewAPI(current.idVocab, user?.idUser, quality).catch((err) => {
+      console.error(`[MultipleChoice] submitReview failed for ${current.idVocab}:`, err);
+    });
 
     // Use functional update to avoid stale state
     setAnswers(prevAnswers => {
@@ -64,7 +86,9 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
 
   const handleNext = () => {
     if (currentIndex < vocabList.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
+      setStoreIndex("multiple", nextIdx);
       setSelectedAnswer(null);
       setShowResult(false);
     } else {
@@ -78,11 +102,13 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
 
   // Helper to submit results with specific answers object
   const submitResultsInternal = async (answersToSubmit) => {
-    const answerList = Object.entries(answersToSubmit).map(([vocabId, data]) => ({
-      vocabId,
-      isCorrect: data.isCorrect,
-      quality: data.quality || (data.isCorrect ? 5 : 1),
-    }));
+    const answerList = Object.entries(answersToSubmit)
+      .filter(([vocabId]) => vocabId && vocabId !== "undefined")
+      .map(([vocabId, data]) => ({
+        vocabId,
+        isCorrect: data.isCorrect,
+        quality: data.quality || (data.isCorrect ? 5 : 1),
+      }));
     try {
       const result = await completeDailyVocabAPI(user?.idUser, answerList);
       setSummary(result?.summary || { correct: 0, total: 0 });

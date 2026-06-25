@@ -27,6 +27,21 @@ export const getVocabAPI = async (idTopic) => {
   return API.get(`/topic/get-vocabularies-in-topic/${idTopic}`);
 };
 
+// Flat list of ALL vocab for a user across every topic.
+// Prefer this over looping getVocabAPI per topic (N+1).
+// BE: GET /vocabulary/get-all-vocabulary-by-id-user/:idUser
+export const getAllVocabByUserAPI = async (idUser) => {
+  try {
+    const response = await API.get(
+      `/vocabulary/get-all-vocabulary-by-id-user/${idUser}`,
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching all vocabulary by user:", error);
+    throw error;
+  }
+};
+
 export const createVocabAPI = async (data) => {
   const res = await API.post(`/vocabulary/create-vocabulary`, data);
   return res.data; // => { message, data }
@@ -80,10 +95,13 @@ export const getDueReviewAPI = async (idUser, limit = 20) => {
 
 export const submitReviewAPI = async (idVocab, idUser, quality) => {
   try {
+    // SM-2 (Wozniak 1987): quality < 3 resets repetitions=0, interval=1.
+    // Clamp to safe range so user never accidentally wipes their progress.
+    const safeQuality = Math.max(3, Math.min(5, Math.round(quality)));
     const response = await API.post("/vocabulary/review", {
       idVocab,
       idUser,
-      quality,
+      quality: safeQuality,
     });
     return response.data;
   } catch (error) {

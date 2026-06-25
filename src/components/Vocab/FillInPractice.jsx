@@ -3,6 +3,7 @@ import { getDailyVocabAPI, completeDailyVocabAPI, submitReviewAPI } from "@/serv
 import { useAuth } from "@/context/authContext";
 import { Check, X, ArrowRight, Star } from "lucide-react";
 import SaveWordModal from "./SaveWordModal";
+import usePracticeProgress from "@/stores/practiceProgress";
 
 const FillInPractice = ({ count = 20, onComplete }) => {
   const { user } = useAuth();
@@ -17,6 +18,7 @@ const FillInPractice = ({ count = 20, onComplete }) => {
   const [summary, setSummary] = useState(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [currentWordForSave, setCurrentWordForSave] = useState(null);
+  const { startSession, recordAnswer, incrementCorrect, setCurrentIndex: setStoreIndex } = usePracticeProgress();
 
   useEffect(() => {
     loadVocab();
@@ -25,8 +27,11 @@ const FillInPractice = ({ count = 20, onComplete }) => {
   const loadVocab = async () => {
     try {
       const data = await getDailyVocabAPI(user?.idUser, count);
-      setVocabList(data || []);
+      const list = Array.isArray(data) ? data : (data?.data ?? []);
+      const validList = list.filter((w) => w && w.idVocab);
+      setVocabList(validList);
       setLoading(false);
+      queueMicrotask(() => startSession("fill", validList.length));
     } catch (err) {
       console.error(err);
       setLoading(false);
@@ -47,6 +52,10 @@ const FillInPractice = ({ count = 20, onComplete }) => {
       return newAnswers;
     });
 
+    // Realtime progress: record answer + increment correct
+    recordAnswer("fill", current.idVocab, isCorrect);
+    if (isCorrect) incrementCorrect("fill");
+
     // Send SM-2 review per word immediately
     submitReviewAPI(current.idVocab, user.idUser, quality).catch(err => {
       console.error(`[FillIn] Failed to submit review for ${current.idVocab}:`, err);
@@ -57,7 +66,9 @@ const FillInPractice = ({ count = 20, onComplete }) => {
 
   const handleNext = () => {
     if (currentIndex < vocabList.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
+      setStoreIndex("fill", nextIdx);
       setUserAnswer("");
       setShowResult(false);
     } else {
@@ -186,6 +197,11 @@ const FillInPractice = ({ count = 20, onComplete }) => {
           onClose={() => setShowSaveModal(false)}
           word={currentWordForSave}
           user={user}
+          onSaved={() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("vocab-saved"));
+            }
+          }}
         />
       )}
     </div>
