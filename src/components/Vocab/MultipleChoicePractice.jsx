@@ -1,20 +1,52 @@
-import React, { useState, useEffect } from "react";
-import { getDailyVocabAPI, completeDailyVocabAPI, submitReviewAPI } from "@/services/apiVocab";
+import React, { useState, useEffect, useReducer } from "react";
+import { getDailyVocabAPI, submitReviewAPI } from "@/services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import { Check, X } from "lucide-react";
-import usePracticeProgress from "@/stores/practiceProgress";
+
+// Per-question state machine. Grouping index + selection + showResult into one
+// reducer means a single dispatch always commits atomically — no parent
+// subscription can race with these state updates.
+const initialState = {
+  currentIndex: 0,
+  selectedAnswer: null,
+  showResult: false,
+  answers: {},
+  correctCount: 0,
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case "SELECT":
+      return {
+        ...state,
+        selectedAnswer: action.option,
+        showResult: true,
+        answers: {
+          ...state.answers,
+          [action.idVocab]: { isCorrect: action.isCorrect, quality: action.quality },
+        },
+        correctCount: state.correctCount + (action.isCorrect ? 1 : 0),
+      };
+    case "NEXT":
+      return {
+        ...state,
+        currentIndex: state.currentIndex + 1,
+        selectedAnswer: null,
+        showResult: false,
+      };
+    default:
+      return state;
+  }
+}
 
 const MultipleChoicePractice = ({ count = 20, onComplete }) => {
   const { user } = useAuth();
   const [vocabList, setVocabList] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [showResult, setShowResult] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { currentIndex, selectedAnswer, showResult, answers, correctCount } = state;
   const [loading, setLoading] = useState(true);
   const [isCompleted, setIsCompleted] = useState(false);
   const [summary, setSummary] = useState(null);
-  const { startSession, recordAnswer, incrementCorrect, setCurrentIndex: setStoreIndex, endSession } = usePracticeProgress();
 
   useEffect(() => {
     loadVocab();
@@ -24,11 +56,8 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
     try {
       const data = await getDailyVocabAPI(user?.idUser, count);
       const list = Array.isArray(data) ? data : (data?.data ?? []);
-      // Filter out vocab without idVocab to avoid sending undefined to BE
       const validList = list.filter((w) => w && w.idVocab);
-      // Add random options for each word
       const withOptions = validList.map((word, idx) => {
-        // Create 4 options: correct + 3 dummy words
         const dummyWords = validList
           .filter((_, i) => i !== idx)
           .slice(0, 3)
@@ -38,9 +67,6 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
       });
       setVocabList(withOptions);
       setLoading(false);
-      // Start session in next tick to avoid setState-during-render warning
-      // (Zustand update triggers Vocabulary re-render during MultipleChoice render)
-      queueMicrotask(() => startSession("multiple", withOptions.length));
     } catch (err) {
       console.error(err);
       setLoading(false);
@@ -51,75 +77,39 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
     if (showResult) return;
 
     const current = vocabList[currentIndex];
+    if (!current) return;
     const isCorrect = option === current.word;
-
-    // Realtime progress: defer Zustand update to next tick to avoid setState-during-render
-    // warning (Zustand update notifies Vocabulary component during MultipleChoice render).
-    queueMicrotask(() => {
-      recordAnswer("multiple", current.idVocab, isCorrect);
-      if (isCorrect) incrementCorrect("multiple");
-    });
-
-    // Save per-answer: send SM-2 review immediately so progress + study plan update each word.
-    // Don't block UI on failure (best-effort, like FillInPractice).
     const quality = isCorrect ? 5 : 1;
+
+    // Best-effort SM-2 review (no UI blocking on failure).
     submitReviewAPI(current.idVocab, user?.idUser, quality).catch((err) => {
       console.error(`[MultipleChoice] submitReview failed for ${current.idVocab}:`, err);
     });
 
-    // Use functional update to avoid stale state
-    setAnswers(prevAnswers => {
-      const newAnswers = { ...prevAnswers, [current.idVocab]: { isCorrect, quality: isCorrect ? 5 : 1 } };
-
-      // Show result after state update
-      setSelectedAnswer(option);
-      setShowResult(true);
-
-      // If last item, submit after state update
-      if (currentIndex === vocabList.length - 1) {
-        setTimeout(() => submitResultsInternal(newAnswers), 0);
-      }
-
-      return newAnswers;
+    // Single dispatch commits all per-question state atomically.
+    dispatch({
+      type: "SELECT",
+      option,
+      idVocab: current.idVocab,
+      isCorrect,
+      quality,
     });
+
+    if (currentIndex === vocabList.length - 1) {
+      const totalCorrect = correctCount + (isCorrect ? 1 : 0);
+      setSummary({ correct: totalCorrect, total: vocabList.length });
+      setIsCompleted(true);
+    }
   };
 
   const handleNext = () => {
     if (currentIndex < vocabList.length - 1) {
-      const nextIdx = currentIndex + 1;
-      setCurrentIndex(nextIdx);
-      setStoreIndex("multiple", nextIdx);
-      setSelectedAnswer(null);
-      setShowResult(false);
+      dispatch({ type: "NEXT" });
     } else {
-      // Last item - submit with current answers
-      setAnswers(currentAnswers => {
-        submitResultsInternal(currentAnswers);
-        return currentAnswers;
-      });
-    }
-  };
-
-  // Helper to submit results with specific answers object
-  const submitResultsInternal = async (answersToSubmit) => {
-    const answerList = Object.entries(answersToSubmit)
-      .filter(([vocabId]) => vocabId && vocabId !== "undefined")
-      .map(([vocabId, data]) => ({
-        vocabId,
-        isCorrect: data.isCorrect,
-        quality: data.quality || (data.isCorrect ? 5 : 1),
-      }));
-    try {
-      const result = await completeDailyVocabAPI(user?.idUser, answerList);
-      setSummary(result?.summary || { correct: 0, total: 0 });
-      setIsCompleted(true);
-    } catch (err) {
-      console.error(err);
+      setSummary({ correct: correctCount, total: vocabList.length });
       setIsCompleted(true);
     }
   };
-
-  // NOTE: submitResults removed - use submitResultsInternal instead
 
   if (loading) return <div className="p-6 text-center">Loading...</div>;
 
@@ -191,9 +181,9 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
           </div>
 
           {showResult && (
-            <div className={`mt-4 p-3 rounded-xl ${currentAnswer ? 'bg-green-50' : 'bg-red-50'}`}>
-              <p className={`font-bold ${currentAnswer ? 'text-green-600' : 'text-red-600'}`}>
-                {currentAnswer ? 'Đúng!' : 'Sai!'}
+            <div className={`mt-4 p-3 rounded-xl ${currentAnswer?.isCorrect ? 'bg-green-50' : 'bg-red-50'}`}>
+              <p className={`font-bold ${currentAnswer?.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                {currentAnswer?.isCorrect ? 'Đúng!' : 'Sai!'}
               </p>
             </div>
           )}

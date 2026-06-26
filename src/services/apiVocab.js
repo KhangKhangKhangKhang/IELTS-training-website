@@ -96,8 +96,9 @@ export const getDueReviewAPI = async (idUser, limit = 20) => {
 export const submitReviewAPI = async (idVocab, idUser, quality) => {
   try {
     // SM-2 (Wozniak 1987): quality < 3 resets repetitions=0, interval=1.
-    // Clamp to safe range so user never accidentally wipes their progress.
-    const safeQuality = Math.max(3, Math.min(5, Math.round(quality)));
+    // Allow full 0-5 range so wrong answers can reset progress (previously
+    // clamped to max(3,...) which made the reset branch unreachable).
+    const safeQuality = Math.min(5, Math.max(0, Math.round(quality)));
     const response = await API.post("/vocabulary/review", {
       idVocab,
       idUser,

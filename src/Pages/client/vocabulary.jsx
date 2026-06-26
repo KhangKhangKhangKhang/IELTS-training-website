@@ -32,7 +32,8 @@ import {
 } from "../../services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import FlashcardModal from "@/components/Vocab/FlashcardModal";
-import { useSession } from "@/stores/practiceProgress";
+import FillInPractice from "@/components/Vocab/FillInPractice";
+import MultipleChoicePractice from "@/components/Vocab/MultipleChoicePractice";
 
 // === Color/icon pools (BE doesn't store these) ===
 const TOPIC_COLOR_POOL = [
@@ -323,6 +324,7 @@ const Vocabulary = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const practiceMode = searchParams.get("mode");
 
   // === Tab state ===
   const [tab, setTab] = useState("practice"); // 'practice' | 'saved' | 'topics'
@@ -338,8 +340,12 @@ const Vocabulary = () => {
   const [dailySession, setDailySession] = useState(null);
   const [loadingDaily, setLoadingDaily] = useState(false);
 
-  // === Realtime practice progress (shared via Zustand) ===
-  const flashcardSession = useSession("flashcard");
+  // Realtime practice progress used to come from Zustand here. Removed —
+  // Zustand subscription triggered vocabulary.jsx re-renders during the
+  // practice quiz, which raced with MultipleChoicePractice/FillInPractice
+  // state updates and broke "Tiếp theo" navigation. The realtime cards in
+  // the tab are now hidden; users see their progress in the quiz summary
+  // at the end of each session.
 
   // === Modal state ===
   const [showFlashcard, setShowFlashcard] = useState(false);
@@ -689,6 +695,17 @@ const Vocabulary = () => {
   const dueCount = dailySession?.dueCount || 0;
   const newCount = dailySession?.newCount || 0;
 
+  // === Practice mode (full-screen routes) — chỉ truy cập từ tab Luyện tập ===
+  if (practiceMode === "fill") {
+    return <PracticeWrapper onBack={handleBackFromPractice}><FillInPractice count={20} onComplete={handleBackFromPractice} /></PracticeWrapper>;
+  }
+  if (practiceMode === "multiple") {
+    return <PracticeWrapper onBack={handleBackFromPractice}><MultipleChoicePractice count={20} onComplete={handleBackFromPractice} /></PracticeWrapper>;
+  }
+  if (practiceMode === "review") {
+    return <PracticeWrapper onBack={handleBackFromPractice}><FillInPractice count={20} onComplete={handleBackFromPractice} /></PracticeWrapper>;
+  }
+
   return (
     <div className="min-h-screen bg-[#fafafc] dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4 sm:p-6 transition-colors">
       <div className="max-w-6xl mx-auto space-y-5">
@@ -770,7 +787,7 @@ const Vocabulary = () => {
                 <div className="flex items-center gap-2 text-slate-500">
                   <span>Tiến độ:</span>
                   <span className="font-extrabold text-slate-800 dark:text-white">
-                    {(flashcardSession?.correct ?? 0)} / {dueCount + newCount}
+                    0 / {dueCount + newCount}
                   </span>
                 </div>
                 <button
@@ -788,33 +805,15 @@ const Vocabulary = () => {
                 Chế độ luyện tập
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <PracticeModeCard icon="✍️" title="Điền từ" desc="Điền từ vào câu hoàn chỉnh từ ngữ cảnh." count="15 câu · 6 phút" gradient="from-[#06b6d4] to-[#0891b2]" accent="bg-[#06b6d4]" onClick={() => navigate("/vocabulary?mode=fill")} />
+                <PracticeModeCard icon="📝" title="Trắc nghiệm" desc="Chọn đáp án đúng trong 4 lựa chọn." count="20 câu · 8 phút" gradient="from-[#a855f7] to-[#7e22ce]" accent="bg-[#a855f7]" onClick={() => navigate("/vocabulary?mode=multiple")} />
                 <PracticeModeCard icon="👂" title="Listening" desc="Nghe và viết lại từ. Cải thiện cả phát âm." gradient="from-[#fb7185] to-[#e11d48]" accent="bg-[#fb7185]" comingSoon onClick={() => setComingSoon("Listening")} />
                 <PracticeModeCard icon="🔗" title="Matching" desc="Nối từ với nghĩa hoặc định nghĩa." gradient="from-[#f59e0b] to-[#d97706]" accent="bg-[#f59e0b]" comingSoon onClick={() => setComingSoon("Matching")} />
               </div>
             </section>
 
-            {/* === Realtime practice results (Zustand) === */}
-            {(flashcardSession) && (
-              <section className="bg-white dark:bg-slate-800 rounded-3xl border-2 border-slate-200 dark:border-slate-700 shadow-[0_3px_0_#e6e6ed] p-5 sm:p-6">
-                <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#10b981] mb-2">
-                  📊 Kết quả luyện tập hôm nay
-                </div>
-                <h2 className="text-lg font-black text-slate-800 dark:text-white mb-4" style={{ fontFamily: "Nunito, sans-serif" }}>
-                  Phiên đang chạy
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {flashcardSession && (
-                    <div className="rounded-2xl border-2 border-[#fb7185]/30 bg-[#fb7185]/5 p-4">
-                      <div className="text-xs font-extrabold uppercase tracking-wide text-[#e11d48] mb-1">🎴 Flashcard</div>
-                      <div className="text-3xl font-black text-[#1e1b4b]" style={{ fontFamily: "Nunito" }}>
-                        {flashcardSession.correct}/{flashcardSession.total}
-                      </div>
-                      <div className="text-xs text-slate-500 mt-1">đúng</div>
-                    </div>
-                  )}
-                </div>
-              </section>
-            )}
+            {/* Realtime practice results section removed — Zustand subscription
+                was causing re-render races during the quiz. */}
           </div>
         )}
 
