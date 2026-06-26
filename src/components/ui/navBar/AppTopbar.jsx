@@ -22,6 +22,7 @@ import {
   Bell,
   Search,
   Cookie,
+  Crown,
 } from "lucide-react";
 import ChatBotWidget from "./chatBotWidget";
 import Cookies from "js-cookie";
@@ -137,6 +138,7 @@ const ADMIN_LINKS = [
   { name: "Moderation", href: "/admin/moderation", icon: FileCheck },
   { name: "Content", href: "/admin/testManager", icon: FileStack },
   { name: "Chấm bài", href: "/admin/teacher-review", icon: ClipboardCheck },
+  { name: "Gói đăng ký", href: "/admin/subscriptions", icon: Crown },
 ];
 
 /* ------------------------------------------------------------------------- */

@@ -46,6 +46,7 @@ const VocabDaily = lazy(() => import("./Pages/client/VocabDaily"));
 const StudyPlanner = lazy(() => import("./Pages/client/studyPlanner"));
 const AdminDashboard = lazy(() => import("./Pages/admin/adminDashboard"));
 const AdminUserList = lazy(() => import("./Pages/admin/adminUserList"));
+const AdminSubscriptionPackages = lazy(() => import("./Pages/admin/adminSubscriptionPackages"));
 const TeacherReviewHistory = lazy(() => import("./Pages/client/teacherReviewHistory"));
 const TeacherQueue = lazy(() => import("./Pages/teacher/TeacherQueueView"));
 const TeacherReviewManager = lazy(() => import("./Pages/admin/teacherReviewManager"));
@@ -154,6 +155,7 @@ const router = createBrowserRouter([
           { index: true, element: <LazyRoute Component={AdminDashboard} /> },
           { path: "dashboard", element: <LazyRoute Component={AdminDashboard} /> },
           { path: "userList", element: <LazyRoute Component={AdminUserList} /> },
+          { path: "subscriptions", element: <LazyRoute Component={AdminSubscriptionPackages} /> },
           { path: "moderation", element: <LazyRoute Component={ForumModeration} /> },
           { path: "testManager", element: <LazyRoute Component={TestManager} /> },
           { path: "testManager/testCreate", element: <LazyRoute Component={TestCreate} /> },
