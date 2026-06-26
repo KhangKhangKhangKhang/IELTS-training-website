@@ -37,6 +37,7 @@ const ChatBotWidget = () => {
   // --- LOGIC CHAT ---
   const [messages, setMessages] = useState([
     {
+      id: "welcome-init",
       sender: "bot",
       text: "Xin chào 👋 Tôi là trợ lý ảo IELTS Training! Tôi có thể giúp gì cho bạn?",
       timestamp: new Date(),
@@ -45,6 +46,9 @@ const ChatBotWidget = () => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+
+  // Polling ref: poll history sau khi gửi để bắt reply thật từ worker
+  const pollRef = useRef(null);
 
   // Ẩn chatbot khi đang làm bài test
   const isOnTestPage = location.pathname.includes("/doTest");
@@ -57,12 +61,20 @@ const ChatBotWidget = () => {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
   const loadChatHistory = async () => {
     if (!user?.idUser) return;
     try {
       const res = await chatHistory(user.idUser, accessToken);
       if (Array.isArray(res.messages) && res.messages.length > 0) {
-        const mapped = res.messages.map((m) => ({
+        const mapped = res.messages.map((m, idx) => ({
+          id: `hist-${idx}-${m.time || ""}`,
           sender: m.sender,
           text: m.message,
           timestamp: new Date(),
@@ -76,10 +88,12 @@ const ChatBotWidget = () => {
 
   const handleClear = async () => {
     if (!user?.idUser) return;
+    stopPolling();
     try {
       await clearHistory(user.idUser, accessToken);
       setMessages([
         {
+          id: `welcome-clear-${Date.now()}`,
           sender: "bot",
           text: "Lịch sử chat đã được xoá sạch 🧹",
           timestamp: new Date(),
@@ -90,46 +104,137 @@ const ChatBotWidget = () => {
     }
   };
 
+  // Cleanup polling khi unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, []);
+
+  // Poll history từ BE để bắt bot reply mới do worker publish qua RabbitMQ.
+  // Khi tìm thấy bot message mới (sau message "user" cuối cùng), thay thế placeholder.
+  const startPollingForReply = (placeholderId, sentUserText) => {
+    stopPolling();
+    const startTime = Date.now();
+    const TIMEOUT_MS = 60000; // 60s timeout
+    const placeholderIdRef = placeholderId; // capture
+
+    pollRef.current = setInterval(async () => {
+      // Timeout guard
+      if (Date.now() - startTime > TIMEOUT_MS) {
+        stopPolling();
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === placeholderIdRef
+              ? { ...m, text: "Hết thời gian chờ. Vui lòng thử lại.", isPlaceholder: false }
+              : m
+          )
+        );
+        setLoading(false);
+        setIsTyping(false);
+        return;
+      }
+
+      try {
+        const res = await chatHistory(user.idUser, accessToken);
+        if (!Array.isArray(res.messages)) return;
+
+        // Tìm message user cuối trong BE
+        const lastUserInBE = [...res.messages].reverse().find((m) => m.sender === "user");
+
+        // Nếu tin nhắn user cuối ở BE chưa phải tin nhắn mình vừa gửi → race condition, chờ
+        if (!lastUserInBE || lastUserInBE.message !== sentUserText) {
+          return;
+        }
+
+        // Tìm message bot cuối trong BE
+        const lastBotInBE = [...res.messages].reverse().find((m) => m.sender === "bot");
+
+        if (!lastBotInBE) {
+          // Worker chưa reply, tiếp tục poll
+          return;
+        }
+
+        // Đã có bot reply từ worker → thay thế placeholder bằng nội dung thật.
+        // Dùng functional updater để tránh stale closure.
+        let replaced = false;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === placeholderIdRef && m.isPlaceholder)) {
+            replaced = true;
+            return prev.map((m) =>
+              m.id === placeholderIdRef
+                ? {
+                    id: placeholderIdRef,
+                    sender: "bot",
+                    text: lastBotInBE.message,
+                    timestamp: new Date(),
+                    isPlaceholder: false,
+                  }
+                : m
+            );
+          }
+          return prev;
+        });
+
+        if (replaced) {
+          stopPolling();
+          setLoading(false);
+          setIsTyping(false);
+        } else {
+          // Placeholder đã được thay thế rồi (timeout/error path) → stop poll
+          stopPolling();
+        }
+      } catch (err) {
+        console.error("Lỗi polling:", err);
+      }
+    }, 2000); // Poll mỗi 2s
+  };
+
   const handleSend = async () => {
     if (!input.trim() || !user?.idUser || loading) return;
 
-    const newMessage = { sender: "user", text: input, timestamp: new Date() };
-    setMessages((prev) => [...prev, newMessage]);
+    const userText = input;
+    const userMessage = { id: `u-${Date.now()}`, sender: "user", text: userText, timestamp: new Date() };
+    const placeholderId = `p-${Date.now()}`;
+    const placeholder = {
+      id: placeholderId,
+      sender: "bot",
+      text: "Processing your message...",
+      timestamp: new Date(),
+      isPlaceholder: true,
+    };
+
+    setMessages((prev) => [...prev, userMessage, placeholder]);
     setInput("");
     setLoading(true);
 
     try {
-      const res = await sendChat(
-        { idUser: user.idUser, message: input },
+      await sendChat(
+        { idUser: user.idUser, message: userText },
         accessToken
       );
-      setIsTyping(true);
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: "bot",
-            text: res.reply || "Tôi chưa hiểu ý bạn.",
-            timestamp: new Date(),
-          },
-        ]);
-        setLoading(false);
-        setIsTyping(false);
-      }, 1000 + Math.random() * 1000);
+      // Bắt đầu poll để chờ bot reply thật từ worker
+      startPollingForReply(placeholderId, userText);
     } catch (err) {
-      setIsTyping(true);
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: "bot",
-            text: "Lỗi kết nối 😢 Vui lòng thử lại.",
-            timestamp: new Date(),
-          },
-        ]);
-        setLoading(false);
-        setIsTyping(false);
-      }, 1000);
+      // Network/API error → hiển thị lỗi luôn, không poll
+      stopPolling();
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === placeholderId
+            ? {
+                sender: "bot",
+                text: "Lỗi kết nối 😢 Vui lòng thử lại.",
+                timestamp: new Date(),
+                isPlaceholder: false,
+              }
+            : m
+        )
+      );
+      setLoading(false);
+      setIsTyping(false);
     }
   };
 
