@@ -13,16 +13,16 @@ export function WritingEditor({ idTest, onChange }) {
   const [t1, setT1] = useState({
     id: null,
     title: "",
-    time_limit: 20,
+    timeLimit: 20,
     image: null,
     imageUrl: null,
-    task_type: "TASK1",
+    taskType: "TASK1",
   });
   const [t2, setT2] = useState({
     id: null,
     title: "",
-    time_limit: 40,
-    task_type: "TASK2",
+    timeLimit: 40,
+    taskType: "TASK2",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,17 +40,17 @@ export function WritingEditor({ idTest, onChange }) {
           const base = {
             id: t.idWritingTask,
             title: t.title || "",
-            time_limit: t.time_limit || t.timeLimit || 0,
+            timeLimit: t.timeLimit || t.time_limit || 0,
           };
-          if ((t.task_type || t.taskType) === "TASK1") {
+          if ((t.taskType || t.task_type) === "TASK1") {
             next1.id = base.id;
             next1.title = base.title;
-            next1.time_limit = base.time_limit || 20;
+            next1.timeLimit = base.timeLimit || 20;
             next1.imageUrl = t.image || t.imageUrl || null;
-          } else if ((t.task_type || t.taskType) === "TASK2") {
+          } else if ((t.taskType || t.task_type) === "TASK2") {
             next2.id = base.id;
             next2.title = base.title;
-            next2.time_limit = base.time_limit || t.timeLimit || 40;
+            next2.timeLimit = base.timeLimit || t.time_limit || 40;
           }
         });
         setT1(next1);
@@ -92,9 +92,9 @@ export function WritingEditor({ idTest, onChange }) {
       }
       const form = new FormData();
       form.append("idTest", idTest);
-      form.append("task_type", current.task_type);
+      form.append("taskType", current.taskType);
       form.append("title", current.title);
-      form.append("time_limit", Number(current.time_limit) || 0);
+      form.append("timeLimit", Number(current.timeLimit) || 0);
       if (isT1 && current.image instanceof File) {
         form.append("image", current.image);
       }
@@ -128,9 +128,9 @@ export function WritingEditor({ idTest, onChange }) {
     try {
       await deleteWritingTaskAPI(current.id);
       if (isT1) {
-        setT1({ id: null, title: "", time_limit: 20, image: null, imageUrl: null, task_type: "TASK1" });
+        setT1({ id: null, title: "", timeLimit: 20, image: null, imageUrl: null, taskType: "TASK1" });
       } else {
-        setT2({ id: null, title: "", time_limit: 40, task_type: "TASK2" });
+        setT2({ id: null, title: "", timeLimit: 40, taskType: "TASK2" });
       }
       message.success("Deleted");
     } catch (e) {
@@ -139,7 +139,7 @@ export function WritingEditor({ idTest, onChange }) {
     }
   };
 
-  const totalTime = (Number(t1.time_limit) || 0) + (Number(t2.time_limit) || 0);
+  const totalTime = (Number(t1.timeLimit) || 0) + (Number(t2.timeLimit) || 0);
   const bothDone = t1.title.trim() && t2.title.trim();
 
   if (loading) {
@@ -190,19 +190,19 @@ export function WritingEditor({ idTest, onChange }) {
           <Field label="Time limit (minutes)">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => updateField("time_limit", Math.max(0, Number(current.time_limit) - 5))}
+                onClick={() => updateField("timeLimit", Math.max(0, Number(current.timeLimit) - 5))}
                 className="w-10 h-10 rounded-xl bg-white border-2 border-[#e6e6ed] font-black text-[#64748b] hover:border-[#fb7185]"
               >
                 −
               </button>
               <input
                 type="number"
-                value={current.time_limit}
-                onChange={(e) => updateField("time_limit", Number(e.target.value) || 0)}
+                value={current.timeLimit}
+                onChange={(e) => updateField("timeLimit", Number(e.target.value) || 0)}
                 className={`${inputCls()} text-center w-24`}
               />
               <button
-                onClick={() => updateField("time_limit", Number(current.time_limit) + 5)}
+                onClick={() => updateField("timeLimit", Number(current.timeLimit) + 5)}
                 className="w-10 h-10 rounded-xl bg-white border-2 border-[#e6e6ed] font-black text-[#64748b] hover:border-[#fb7185]"
               >
                 +
@@ -257,7 +257,7 @@ export function WritingEditor({ idTest, onChange }) {
                 {isT1 ? "Writing Task 1" : "Writing Task 2"}
               </span>
               <span className="text-[10px] font-bold text-[#64748b]">
-                ⏱ {current.time_limit || 0} min
+                ⏱ {current.timeLimit || 0} min
               </span>
             </div>
             <p className="text-sm text-[#1e1b4b] leading-relaxed font-medium whitespace-pre-wrap">
