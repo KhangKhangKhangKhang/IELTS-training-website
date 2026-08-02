@@ -6,7 +6,7 @@
 //   initialTestResult?.finishedAt            → render code cũ (review mode)
 //   testType in [LISTENING, READING, WRITING, SPEAKING] → render magicpath screen
 
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Modal, Spin, message } from "antd";
 import { useAuth } from "@/context/authContext";
@@ -24,16 +24,24 @@ import {
 } from "@/services/magicpathAdapter";
 
 // Code cũ — giữ cho teacher preview + review + Speaking fallback
-import Listening from "@/components/test/type/listening";
-import Reading from "@/components/test/type/reading";
-import Writing from "@/components/test/type/writing";
-import Speaking from "@/components/test/type/speaking";
+const Listening = lazy(() => import("@/components/test/type/listening"));
+const Reading = lazy(() => import("@/components/test/type/reading"));
+const Writing = lazy(() => import("@/components/test/type/writing"));
+const Speaking = lazy(() => import("@/components/test/type/speaking"));
 
 // Magicpath screens
-import { IELTSListeningTestScreen } from "@/components/magicpath/ielts-listening-test-screen/IELTSListeningTestScreen";
-import { IELTSReadingTestScreen } from "@/components/magicpath/ielts-reading-test-screen/IELTSReadingTestScreen";
-import { IELTSWritingTestScreen } from "@/components/magicpath/ielts-writing-test-screen/IELTSWritingTestScreen";
-import { IELTSSpeakingTestScreen } from "@/components/magicpath/ielts-speaking-test-screen/IELTSSpeakingTestScreen";
+const IELTSListeningTestScreen = lazy(() =>
+  import("@/components/magicpath/ielts-listening-test-screen/IELTSListeningTestScreen").then((m) => ({ default: m.IELTSListeningTestScreen }))
+);
+const IELTSReadingTestScreen = lazy(() =>
+  import("@/components/magicpath/ielts-reading-test-screen/IELTSReadingTestScreen").then((m) => ({ default: m.IELTSReadingTestScreen }))
+);
+const IELTSWritingTestScreen = lazy(() =>
+  import("@/components/magicpath/ielts-writing-test-screen/IELTSWritingTestScreen").then((m) => ({ default: m.IELTSWritingTestScreen }))
+);
+const IELTSSpeakingTestScreen = lazy(() =>
+  import("@/components/magicpath/ielts-speaking-test-screen/IELTSSpeakingTestScreen").then((m) => ({ default: m.IELTSSpeakingTestScreen }))
+);
 
 const oldComponents = {
   LISTENING: Listening,
@@ -360,22 +368,36 @@ const DoTest = () => {
   };
 
   if (resolvedType === "LISTENING") {
-    return <IELTSListeningTestScreen {...commonProps} initialAnswers={initialAnswersForMagicpath} />;
+    return (
+      <Suspense fallback={<div className="text-center py-12"><Spin size="large" /></div>}>
+        <IELTSListeningTestScreen {...commonProps} initialAnswers={initialAnswersForMagicpath} />
+      </Suspense>
+    );
   }
   if (resolvedType === "READING") {
-    return <IELTSReadingTestScreen {...commonProps} initialAnswers={initialAnswersForMagicpath} />;
+    return (
+      <Suspense fallback={<div className="text-center py-12"><Spin size="large" /></div>}>
+        <IELTSReadingTestScreen {...commonProps} initialAnswers={initialAnswersForMagicpath} />
+      </Suspense>
+    );
   }
   if (resolvedType === "WRITING") {
     return (
-      <IELTSWritingTestScreen
-        {...commonProps}
-        writingTasks={writingTasks}
-        initialAnswers={initialAnswersForMagicpath}
-      />
+      <Suspense fallback={<div className="text-center py-12"><Spin size="large" /></div>}>
+        <IELTSWritingTestScreen
+          {...commonProps}
+          writingTasks={writingTasks}
+          initialAnswers={initialAnswersForMagicpath}
+        />
+      </Suspense>
     );
   }
   if (resolvedType === "SPEAKING") {
-    return <IELTSSpeakingTestScreen {...commonProps} />;
+    return (
+      <Suspense fallback={<div className="text-center py-12"><Spin size="large" /></div>}>
+        <IELTSSpeakingTestScreen {...commonProps} />
+      </Suspense>
+    );
   }
   return (
     <div className="text-center py-12 text-gray-500">
