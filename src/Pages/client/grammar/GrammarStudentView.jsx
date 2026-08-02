@@ -180,8 +180,8 @@ const GrammarStudentView = () => {
         activeCategory={activeCategoryId}
         onSelectCategory={(id) => setActiveCategoryId(id)}
         onStartTopic={(t) => navigate(`/grammar/${t.id}`)}
-        onStartPractice={() => navigate(`/grammar/practice`)}
-        onStartLevelTest={() => navigate(`/grammar/practice`)}
+        onStartPractice={() => navigate(`/grammar-practice`, { state: { categoryId: activeCategoryId } })}
+        onStartLevelTest={() => navigate(`/grammar-practice`, { state: { categoryId: activeCategoryId, levelTest: true } })}
       />
     </div>
   );
