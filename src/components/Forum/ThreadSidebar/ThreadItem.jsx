@@ -3,7 +3,7 @@
 import { Modal, message } from "antd";
 import { useAuth } from "@/context/authContext";
 import { deleteThreadAPI } from "@/services/apiForum";
-import { useState } from "react";
+import { useState, memo } from "react";
 import EditThreadModal from "@/components/Forum/Forum/Modal/EditThreadModal";
 import Avatar from "@/components/Forum/UI/Avatar";
 import Badge from "@/components/Forum/UI/Badge";
@@ -115,4 +115,4 @@ const ThreadItem = ({ thread, onClick, setThreads, isFirst, isSelected }) => {
   );
 };
 
-export default ThreadItem;
+export default memo(ThreadItem);

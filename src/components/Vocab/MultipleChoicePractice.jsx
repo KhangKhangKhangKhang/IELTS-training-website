@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useReducer } from "react";
+import React, { useState, useEffect, useReducer, memo } from "react";
 import { getDailyVocabAPI, submitReviewAPI } from "@/services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import { Check, X } from "lucide-react";
@@ -203,4 +203,4 @@ const MultipleChoicePractice = ({ count = 20, onComplete }) => {
   );
 };
 
-export default MultipleChoicePractice;
+export default memo(MultipleChoicePractice);

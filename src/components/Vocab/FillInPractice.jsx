@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useReducer } from "react";
+import React, { useState, useEffect, useReducer, memo } from "react";
 import { getDailyVocabAPI, submitReviewAPI } from "@/services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import { Check, X, ArrowRight, Star } from "lucide-react";
@@ -235,4 +235,4 @@ const FillInPractice = ({ count = 20, onComplete }) => {
   );
 };
 
-export default FillInPractice;
+export default memo(FillInPractice);

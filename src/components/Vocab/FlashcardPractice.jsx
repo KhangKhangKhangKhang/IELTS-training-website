@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import { getDailyVocabAPI, completeDailyVocabAPI, submitReviewAPI } from "@/services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import { Check, X } from "lucide-react";
@@ -164,4 +164,4 @@ const FlashcardPractice = ({ count = 20, onComplete }) => {
   );
 };
 
-export default FlashcardPractice;
+export default memo(FlashcardPractice);

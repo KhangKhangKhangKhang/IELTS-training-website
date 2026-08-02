@@ -1,5 +1,5 @@
 // PostItem - card 1 post theo MagicPath mockup, dùng UI Kit + thuần Tailwind
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Modal, message } from "antd";
 import { togglePostLikeAPI, deletePostAPI } from "@/services/apiForum";
 import CreateComment from "./CreateComment";
@@ -265,4 +265,4 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
   );
 };
 
-export default PostItem;
+export default memo(PostItem);

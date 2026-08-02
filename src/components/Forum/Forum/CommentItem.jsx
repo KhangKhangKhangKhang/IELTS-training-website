@@ -1,5 +1,5 @@
 // CommentItem - 1 bình luận, dùng UI Kit + inline edit
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Modal, message } from "antd";
 import {
   toggleCommentLikeAPI,
@@ -171,4 +171,4 @@ const CommentItem = ({ comment, onUpdated, onDeleted }) => {
   );
 };
 
-export default CommentItem;
+export default memo(CommentItem);
