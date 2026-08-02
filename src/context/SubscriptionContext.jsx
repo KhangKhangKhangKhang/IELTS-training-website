@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./authContext";
 import { getCurrentSubscriptionAPI } from "../services/apiSubscription";
 
@@ -41,8 +41,13 @@ export const SubscriptionProvider = ({ children }) => {
     refresh();
   }, [refresh]);
 
+  const value = useMemo(
+    () => ({ subscription, loading, refresh }),
+    [subscription, loading, refresh]
+  );
+
   return (
-    <SubscriptionContext.Provider value={{ subscription, loading, refresh }}>
+    <SubscriptionContext.Provider value={value}>
       {children}
     </SubscriptionContext.Provider>
   );
