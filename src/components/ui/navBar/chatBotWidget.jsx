@@ -402,9 +402,9 @@ const ChatBotWidget = () => {
                     <span className="text-sm">Chưa có tin nhắn nào</span>
                   </div>
                 )}
-                {messages.map((msg, i) => (
+                {messages.map((msg) => (
                   <motion.div
-                    key={i}
+                    key={msg.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={`flex mb-4 ${msg.sender === "user" ? "justify-end" : "justify-start"
