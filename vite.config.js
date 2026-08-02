@@ -13,17 +13,7 @@ export default defineConfig({
     },
   },
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          // ✅ Split vendor libraries into separate chunks
-          'vendor-react': ['react', 'react-dom', 'react-router', 'react-router-dom'],
-          'vendor-ui': ['antd', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
-          'vendor-charts': ['recharts'],
-          'vendor-utils': ['axios', 'date-fns', 'js-cookie'],
-        },
-      },
-    },
+    // Rollup tự detect shared modules và split chunks theo dynamic import
     chunkSizeWarningLimit: 1000, // Warn if chunk > 1MB
     sourcemap: false, // Disable sourcemaps in production for smaller builds
     minify: 'esbuild', // Use esbuild (built-in, faster than terser)
