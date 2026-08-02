@@ -14,6 +14,7 @@ import OnlyUserRoute from "./context/auth/onlyUserRoute";
 import Navbar from "./components/ui/navBar/navBar";
 import NavbarTeacher from "./components/ui/navBar/navBarTeacher";
 import NavbarAdmin from "./components/ui/navBar/navBarAdmin";
+import NotFound from "./Pages/client/NotFound";
 import { Spin } from "antd";
 import { ToastContainer } from "react-toastify";
 
@@ -171,6 +172,7 @@ const router = createBrowserRouter([
   { path: "newPassword", element: <LazyRoute Component={NewPassword} /> },
   { path: "forgetPassword", element: <LazyRoute Component={ForgetPassword} /> },
   { path: "landingPage", element: <LazyRoute Component={LandingPage} /> },
+  { path: "*", element: <LazyRoute Component={NotFound} /> },
 ]);
 createRoot(document.getElementById("root")).render(
   <StrictMode>
