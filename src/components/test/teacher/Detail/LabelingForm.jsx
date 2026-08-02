@@ -147,6 +147,7 @@ const LabelingForm = ({ value, onChange }) => {
             <img
               src={v.imageUrl}
               alt="labeling"
+              loading="lazy"
               className="w-24 h-24 object-cover rounded-xl border-2 border-[#e6e6ed]"
             />
             <button

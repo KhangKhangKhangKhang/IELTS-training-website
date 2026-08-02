@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Card, RoleBadge, Avatar, PillButton } from './userUI';
-import { UserModal, UserRow } from './userModal';
+import { UserModal, UserRow, UserFormData } from './userModal';
 const TONES = ['#6366f1', '#06b6d4', '#fb7185', '#a855f7', '#f59e0b', '#10b981'];
 const FILTERS = [{
   key: 'all',
@@ -18,8 +18,8 @@ const FILTERS = [{
 type Props = {
   users?: UserRow[];
   loading?: boolean;
-  onAddUser?: (data: { name: string; email: string; phone: string; role: UserRow['role'] }) => void | Promise<void>;
-  onUpdateUser?: (id: number, data: { name: string; email: string; phone: string; role: UserRow['role'] }) => void | Promise<void>;
+  onAddUser?: (data: UserFormData) => void | Promise<void>;
+  onUpdateUser?: (id: number, data: UserFormData) => void | Promise<void>;
   onDeleteUser?: (id: number) => void | Promise<void>;
   onToggleActive?: (id: number, next: boolean) => void | Promise<void>;
 };
@@ -53,7 +53,7 @@ export const IELTSUserManagement = ({
     const matchRole = filter === 'all' || u.role === filter;
     return matchSearch && matchRole;
   });
-  const handleSave = async (data: { name: string; email: string; phone: string; role: UserRow['role'] }) => {
+  const handleSave = async (data: UserFormData) => {
     try {
       if (modal.row && onUpdateUser) {
         await onUpdateUser(modal.row.id, data);

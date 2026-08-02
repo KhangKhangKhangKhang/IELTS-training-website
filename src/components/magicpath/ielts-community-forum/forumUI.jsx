@@ -20,6 +20,7 @@ export function Avatar({ name = "?", tone = "#6366f1", size = 48, online = false
         <img
           src={src}
           alt={name}
+          loading="lazy"
           className="w-full h-full rounded-2xl object-cover"
         />
         {online && (

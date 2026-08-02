@@ -545,6 +545,7 @@ const Writing = ({ idTest, duration, initialTestResult }) => {
                     <img
                       src={activeTask.image}
                       alt="Task 1 Visual"
+                      loading="lazy"
                       className="w-full h-auto object-contain"
                     />
                   </div>

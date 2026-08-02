@@ -228,6 +228,7 @@ export function PassageEditor({ onChange }) {
                   <img
                     src={imageUrl}
                     alt="passage"
+                    loading="lazy"
                     className="w-24 h-24 object-cover rounded-xl border-2 border-[#e6e6ed]"
                   />
                 )}

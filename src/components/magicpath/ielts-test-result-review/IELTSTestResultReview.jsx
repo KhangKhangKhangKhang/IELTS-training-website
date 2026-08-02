@@ -83,13 +83,31 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
 
   const result = data.result || data;
   const answers = data.userAnswer || data.userAnswers || data.answers || [];
-  const writingSubmissions = data.writingSubmissions || data.writingSubmission || [];
+  // Dedup writingSubmissions theo idWritingTask (BE có thể trả nhiều row
+  // cho cùng task do autosave). Giữ submission mới nhất theo submittedAt.
+  const rawSubmissions = data.writingSubmissions || data.writingSubmission || [];
+  const writingSubmissions = Object.values(
+    rawSubmissions.reduce((acc, s) => {
+      const key = s.idWritingTask;
+      const prev = acc[key];
+      if (!prev || new Date(s.submittedAt || 0) > new Date(prev.submittedAt || 0)) {
+        acc[key] = s;
+      }
+      return acc;
+    }, {})
+  ).sort((a, b) => {
+    const order = { TASK1: 1, TASK2: 2 };
+    const at = order[(data?.test?.writingTasks || []).find((w) => w.idWritingTask === a.idWritingTask)?.taskType] || 9;
+    const bt = order[(data?.test?.writingTasks || []).find((w) => w.idWritingTask === b.idWritingTask)?.taskType] || 9;
+    return at - bt;
+  });
   const band = result.band_score || result.bandScore || 0;
   const correctCount = result.total_correct || result.totalCorrect || answers.filter((a) => a.isCorrect).length;
   const totalQ = result.total_questions || result.totalQuestions || answers.length;
-  const skill = result.skill || result.testType || 'IELTS';
-  const testTitle = result.testTitle || result.title || 'IELTS Test';
+  const skill = result.skill || result.testType || data?.test?.testType || 'IELTS';
+  const testTitle = result.testTitle || result.title || data?.test?.title || 'IELTS Test';
   const duration = result.duration || 0;
+  const isWriting = (skill || '').toUpperCase() === 'WRITING' || (data?.test?.testType || '').toUpperCase() === 'WRITING';
   const submissionText = writingSubmissions.map((s) => s.submissionText || s.text).filter(Boolean).join('\n\n')
     || result.submissionText
     || answers.map((a) => a.answer).filter(Boolean).join('\n\n');
@@ -106,7 +124,77 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
     }));
 
   // Criteria từ result.scores (backend trả) hoặc null
-  const criteria = result.scores || null;
+  let criteria = result.scores || null;
+
+  // Writing: aggregate per-task AI feedback thành CriteriaList shape.
+  // Nếu BE không trả structured scores, fallback về string feedback
+  // bằng cách wrap thành 1 criterion duy nhất (text dài → không vào
+  // accordion, hiển thị full). Nếu submissions chưa chấm → null.
+  if (isWriting && !criteria) {
+    const writingCriteria = [];
+    writingSubmissions.forEach((s, i) => {
+      const taskInfo = (data?.test?.writingTasks || []).find(
+        (w) => w.idWritingTask === s.idWritingTask
+      );
+      const taskLabel = taskInfo?.taskType || `Task ${i + 1}`;
+      const fb = s.aiDetailedFeedback;
+      const scores = s.aiScores || s.criteriaScores || null;
+
+      if (scores && typeof scores === 'object' && !Array.isArray(scores)) {
+        // Object {taskResponse, coherence, lexical, grammar} → tách thành criteria
+        Object.entries(scores).forEach(([key, val]) => {
+          const num = typeof val === 'number' ? val : typeof val?.score === 'number' ? val.score : null;
+          const text = typeof val === 'object' && val !== null
+            ? (val.comment || val.feedback || val.text || '')
+            : (num != null ? `Band ${num.toFixed(1)}` : '');
+          if (num != null) {
+            writingCriteria.push({
+              name: `${taskLabel} · ${key}`,
+              icon: '📝',
+              score: num,
+              text,
+            });
+          }
+        });
+      } else if (Array.isArray(scores)) {
+        scores.forEach((c) => {
+          if (typeof c?.score === 'number') {
+            writingCriteria.push({
+              name: `${taskLabel} · ${c.name || c.criterion || 'Criterion'}`,
+              icon: c.icon || '📝',
+              score: c.score,
+              text: c.text || c.comment || c.feedback || '',
+            });
+          }
+        });
+      } else if (fb) {
+        // Fallback: 1 criterion per task chứa full feedback
+        writingCriteria.push({
+          name: taskLabel,
+          icon: '📝',
+          score: typeof s.aiOverallScore === 'number' ? s.aiOverallScore : 0,
+          text: typeof fb === 'string' ? fb : JSON.stringify(fb, null, 2),
+        });
+      }
+    });
+    if (writingCriteria.length > 0) {
+      criteria = writingCriteria;
+    }
+  }
+
+  // Writing feedback message (fallback khi chưa có criteria).
+  const writingFeedbackMessage = isWriting
+    ? (writingSubmissions.length === 0
+        ? 'Bạn chưa nộp bài viết nào.'
+        : writingSubmissions.every((s) => !s.aiDetailedFeedback && s.aiGradingStatus !== 'COMPLETED' && s.aiGradingStatus !== 'GRADED')
+          ? '🤖 AI đang phân tích bài viết của bạn. Vui lòng quay lại sau ít phút.'
+          : null)
+    : null;
+
+  const overallFeedback = result.overallFeedback
+    || result.feedback
+    || writingFeedbackMessage
+    || `Bạn đạt band ${band.toFixed(1)}. ${correctCount}/${totalQ} câu đúng. Hãy xem chi tiết bên dưới để cải thiện.`;
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#eef2ff] via-[#f1f1f6] to-[#eff6ff] py-6 px-4 sm:px-6 lg:px-8">
@@ -118,11 +206,32 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
               <div className="flex-1 text-center sm:text-left text-white">
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wide mb-2">✓ Hoàn thành</span>
                 <h1 className="text-2xl font-black">IELTS {skill} - {testTitle}</h1>
-                <p className="text-white/80 font-medium">Đúng {correctCount}/{totalQ} câu</p>
+                <p className="text-white/80 font-medium">
+                  {isWriting
+                    ? (() => {
+                        const scored = writingSubmissions.filter((s) => typeof s.aiOverallScore === 'number').length;
+                        const total = writingSubmissions.length;
+                        if (scored === 0) return 'Đang chờ chấm AI';
+                        if (scored < total) return `Đã chấm ${scored}/${total} task`;
+                        return 'Đã chấm AI';
+                      })()
+                    : `Đúng ${correctCount}/${totalQ} câu`}
+                </p>
                 <div className="flex flex-wrap justify-center sm:justify-start gap-4 mt-4">
                   <HeroStat label="Loại đề" value={skill} />
                   <HeroStat label="Thời gian" value={fmt(duration)} />
-                  <HeroStat label="Số câu đúng" value={`${correctCount}/${totalQ}`} />
+                  {isWriting ? (
+                    writingSubmissions.map((s, i) => {
+                      const t = (data?.test?.writingTasks || []).find((w) => w.idWritingTask === s.idWritingTask);
+                      const label = t?.taskType || `Task ${i + 1}`;
+                      const score = typeof s.aiOverallScore === 'number' ? s.aiOverallScore.toFixed(1) : '—';
+                      return (
+                        <HeroStat key={s.idWritingSubmission || i} label={label} value={score} />
+                      );
+                    })
+                  ) : (
+                    <HeroStat label="Số câu đúng" value={`${correctCount}/${totalQ}`} />
+                  )}
                 </div>
               </div>
             </div>
@@ -153,8 +262,8 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
           <>
             <Card className="p-5">
               <h3 className="font-extrabold text-[#1d4ed8] flex items-center gap-2 mb-2">🏆 Nhận xét tổng quát</h3>
-              <p className="text-sm text-[#475569] leading-relaxed">
-                {result.overallFeedback || result.feedback || `Bạn đạt band ${band.toFixed(1)}. ${correctCount}/${totalQ} câu đúng. Hãy xem chi tiết bên dưới để cải thiện.`}
+              <p className="text-sm text-[#475569] leading-relaxed whitespace-pre-line">
+                {overallFeedback}
               </p>
             </Card>
             {criteria && <CriteriaList criteria={criteria} />}
@@ -163,15 +272,46 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
         ) : (
           <Card className="p-5">
             <h3 className="font-extrabold text-[#1e1b4b] mb-3 flex items-center gap-2">📄 Bài làm của bạn</h3>
-            {answers.length > 0 ? (
-              <div className="space-y-2">
+            {answers.length > 0 || writingSubmissions.length > 0 ? (
+              <div className="space-y-3">
                 {answers.map((a, i) => (
-                  <div key={i} className={`rounded-xl border-2 p-3 ${a.isCorrect ? 'bg-[#f0fdf4] border-[#bbf7d0]' : 'bg-[#fef2f2] border-[#fecaca]'}`}>
+                  <div key={`a-${i}`} className={`rounded-xl border-2 p-3 ${a.isCorrect ? 'bg-[#f0fdf4] border-[#bbf7d0]' : 'bg-[#fef2f2] border-[#fecaca]'}`}>
                     <div className="text-[10px] font-bold uppercase text-[#64748b] mb-1">Câu {a.questionId || i + 1}</div>
                     <div className="text-sm text-[#334155]"><strong>Bạn:</strong> {a.userAnswer || '(bỏ trống)'}</div>
                     {!a.isCorrect && <div className="text-sm text-[#047857] mt-1"><strong>Đáp án:</strong> {a.correctAnswer}</div>}
                   </div>
                 ))}
+                {writingSubmissions.map((s, i) => {
+                  const taskInfo = (data?.test?.writingTasks || []).find(
+                    (w) => w.idWritingTask === s.idWritingTask
+                  );
+                  const taskLabel = taskInfo?.taskType || `Writing ${i + 1}`;
+                  const taskTitle = taskInfo?.title || '';
+                  return (
+                    <div key={`w-${i}`} className="rounded-xl border-2 border-[#e0e7ff] bg-[#eef2ff] p-3">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#4338ca] bg-white border-2 border-[#a5b4fc] rounded-lg px-2 py-0.5">
+                          {taskLabel}
+                        </span>
+                        {taskTitle && (
+                          <span className="text-xs font-bold text-[#1e1b4b]">{taskTitle}</span>
+                        )}
+                        <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-[#64748b]">
+                          {s.submissionText?.trim().split(/\s+/).filter(Boolean).length || 0} từ
+                        </span>
+                      </div>
+                      <div className="text-sm text-[#334155] whitespace-pre-wrap leading-relaxed">
+                        {s.submissionText || '(bỏ trống)'}
+                      </div>
+                      {s.aiGradingStatus && (
+                        <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
+                          Trạng thái chấm: {s.aiGradingStatus}
+                          {typeof s.aiOverallScore === 'number' && ` · ${s.aiOverallScore}`}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="bg-[#fffbeb] border-2 border-[#fde68a] rounded-2xl p-4 text-sm text-[#92400e] leading-relaxed">

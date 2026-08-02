@@ -52,7 +52,8 @@ export const IELTSWritingTestScreen = ({ testData, testResultId, userId, writing
         id: idx + 1,
         idWritingTask: String(idWritingTask),
         title: t.title || (idx === 0 ? 'Task 1' : 'Task 2'),
-        prompt: t.description || t.prompt || t.content || '',
+        taskType: t.taskType || t.task_type || null,
+        prompt: t.title || t.instructions || t.description || t.prompt || t.content || '',
         minWords: t.minWords || (idx === 0 ? 150 : 250),
         imageUrl: t.imageUrl || t.image || null,
       };
@@ -170,7 +171,7 @@ export const IELTSWritingTestScreen = ({ testData, testResultId, userId, writing
                   onClick={() => setActiveTaskId(t.id)}
                   className={`px-5 py-2 rounded-xl text-sm font-extrabold uppercase tracking-wide transition-all ${activeTaskId === t.id ? 'bg-white text-[#6366f1] shadow-[0_2px_0_#e6e6ed]' : 'text-[#64748b]'}`}
                 >
-                  {t.title} · {t.minWords === 150 ? '20' : '40'} phút
+                  {t.taskType || t.title} · {t.minWords === 150 ? '20' : '40'} phút
                 </button>
               ))}
             </div>
@@ -188,11 +189,11 @@ export const IELTSWritingTestScreen = ({ testData, testResultId, userId, writing
       </header>
 
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[1fr_1.4fr_280px] gap-6">
-        <section className="space-y-4 lg:sticky lg:top-[88px] lg:self-start">
+        <section className="space-y-4 lg:sticky lg:top-[88px] lg:self-start lg:max-h-[calc(100vh-110px)] lg:overflow-y-auto lg:pr-2">
           <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] overflow-hidden">
             <div className="px-5 py-3 bg-gradient-to-r from-[#eef2ff] to-white border-b-2 border-[#e6e6ed] flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-[#6366f1] text-white flex items-center justify-center text-xs font-black">{tasks.findIndex((t) => t.id === activeTaskId) + 1}</div>
-              <div className="text-sm font-extrabold text-[#1e1b4b]">{activeTask.title}</div>
+              <div className="text-sm font-extrabold text-[#1e1b4b]">{activeTask.taskType || activeTask.title}</div>
               <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-[#64748b]">≥ {targetWords} words</span>
             </div>
             <div className="p-5 text-sm text-[#1e1b4b] leading-relaxed whitespace-pre-line" style={{ fontFamily: 'Plus Jakarta Sans' }}>

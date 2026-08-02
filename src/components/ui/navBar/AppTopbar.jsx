@@ -98,6 +98,7 @@ const Avatar = ({ name, src }) => {
       <img
         src={src}
         alt={name ?? "avatar"}
+        loading="lazy"
         className="h-8 w-8 rounded-full object-cover ring-2 ring-white shadow-sm"
       />
     );

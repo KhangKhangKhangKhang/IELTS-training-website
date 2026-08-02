@@ -101,6 +101,7 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
             <img
               src={URL.createObjectURL(file)}
               alt="new"
+              loading="lazy"
               className="rounded-xl max-h-48 object-cover w-full"
             />
           </div>
@@ -114,6 +115,7 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
             <img
               src={post.file}
               alt="current"
+              loading="lazy"
               className="rounded-xl max-h-48 object-cover w-full"
             />
           </div>

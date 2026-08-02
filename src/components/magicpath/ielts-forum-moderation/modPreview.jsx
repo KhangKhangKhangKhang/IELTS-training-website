@@ -35,6 +35,7 @@ export function PreviewModal({ post, onClose, onAction, onDelete }) {
               <img
                 src={post.avatar}
                 alt={post.author}
+                loading="lazy"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -55,6 +56,7 @@ export function PreviewModal({ post, onClose, onAction, onDelete }) {
           <img
             src={post.file}
             alt=""
+            loading="lazy"
             className="w-full max-h-64 object-contain rounded-2xl border border-slate-100 bg-slate-50 mb-4"
           />
         )}

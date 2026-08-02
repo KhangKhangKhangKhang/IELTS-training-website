@@ -198,6 +198,7 @@ const PostItem = ({ post, onPostUpdated, onPostDeleted }) => {
             <img
               src={post.file}
               alt="post"
+              loading="lazy"
               className="w-full max-h-96 object-cover"
             />
           </div>

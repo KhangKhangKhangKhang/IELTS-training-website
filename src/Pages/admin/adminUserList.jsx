@@ -40,11 +40,18 @@ const AdminUserList = () => {
 
   const handleAdd = async (data) => {
     try {
-      await createUserAPI(toFormData({ ...data, password: "ChangeMe123!" }));
+      const { password, ...rest } = data;
+      if (!password) {
+        message.error("Vui lòng nhập mật khẩu cho người dùng");
+        throw new Error("Missing password");
+      }
+      await createUserAPI(toFormData({ ...rest, password }));
       message.success("Đã thêm người dùng");
       fetchAll();
     } catch (e) {
-      message.error("Thêm người dùng thất bại");
+      if (e?.message !== "Missing password") {
+        message.error("Thêm người dùng thất bại");
+      }
       throw e;
     }
   };

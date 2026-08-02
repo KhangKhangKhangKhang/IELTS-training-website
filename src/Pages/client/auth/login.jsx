@@ -159,6 +159,7 @@ const Login = () => {
                   <img
                     src="https://www.svgrepo.com/show/475656/google-color.svg"
                     alt="Google"
+                    loading="lazy"
                     className="w-5 h-5"
                   />
                 }

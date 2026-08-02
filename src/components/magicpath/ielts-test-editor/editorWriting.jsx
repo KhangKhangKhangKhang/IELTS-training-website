@@ -267,6 +267,7 @@ export function WritingEditor({ idTest, onChange }) {
               <img
                 src={current.imageUrl}
                 alt="Preview"
+                loading="lazy"
                 className="mt-4 max-w-full h-auto rounded-lg shadow-md border"
               />
             )}

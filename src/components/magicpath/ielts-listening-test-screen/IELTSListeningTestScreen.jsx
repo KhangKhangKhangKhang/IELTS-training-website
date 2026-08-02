@@ -94,7 +94,7 @@ function LabelingQuestion({ question, options, imageUrl, value, onChange }) {
     <div className="space-y-3">
       {imageUrl && (
         <div className="bg-[#fafafc] border-2 border-[#e6e6ed] rounded-2xl p-2 flex items-center justify-center">
-          <img src={imageUrl} alt="diagram" className="max-w-full max-h-64 object-contain" />
+          <img src={imageUrl} alt="diagram" loading="lazy" className="max-w-full max-h-64 object-contain" />
         </div>
       )}
       <div className="bg-[#eef2ff] border-2 border-[#a5b4fc] rounded-2xl p-3">

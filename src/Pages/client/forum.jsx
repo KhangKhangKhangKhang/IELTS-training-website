@@ -366,6 +366,7 @@ function PostCard({ post, currentUserId, onReload, isModerator, moderationPath }
           <img
             src={post.file}
             alt=""
+            loading="lazy"
             className="w-full max-h-[480px] object-contain mx-auto"
           />
         </button>
@@ -532,6 +533,7 @@ function ImageLightbox({ src, alt, onClose }) {
       <img
         src={src}
         alt={alt || ""}
+        loading="lazy"
         onClick={(e) => e.stopPropagation()}
         className="max-w-full max-h-full object-contain rounded-xl shadow-2xl cursor-default"
       />
@@ -708,6 +710,7 @@ function EditPostModal({ post, currentUserId, onCancel, onSaved }) {
               <img
                 src={preview}
                 alt="preview"
+                loading="lazy"
                 className="h-32 rounded-xl border border-slate-200 object-contain bg-slate-50"
               />
               <button
@@ -852,6 +855,7 @@ function ComposeBox({ threadId, currentUserId, onPosted }) {
               <img
                 src={filePreview}
                 alt="preview"
+                loading="lazy"
                 className="h-24 rounded-xl border border-slate-200 object-cover"
               />
               <button

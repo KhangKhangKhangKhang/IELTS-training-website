@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Input, Button, message, InputNumber } from "antd";
 import {
   UploadOutlined,
@@ -88,6 +88,23 @@ const TestCreate = () => {
     img: null,
     audioUrl: null,
   });
+
+  // FE-12b: stable blob URL for img preview + revoke on unmount/file change
+  const [imgPreviewUrl, setImgPreviewUrl] = useState("");
+  useEffect(() => {
+    if (!formData.img) {
+      setImgPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return "";
+      });
+      return undefined;
+    }
+    const url = URL.createObjectURL(formData.img);
+    setImgPreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [formData.img]);
 
   const handleChange = (key, value) => setFormData((p) => ({ ...p, [key]: value }));
   const handleFileChange = (key, file) => setFormData((p) => ({ ...p, [key]: file }));
@@ -378,8 +395,9 @@ const TestCreate = () => {
                 <>
                   <div className="w-12 h-12 rounded-xl overflow-hidden flex-none bg-white border border-[#e6e6ed]">
                     <img
-                      src={URL.createObjectURL(formData.img)}
+                      src={imgPreviewUrl}
                       alt="preview"
+                      loading="lazy"
                       className="w-full h-full object-cover"
                     />
                   </div>

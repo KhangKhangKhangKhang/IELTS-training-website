@@ -166,7 +166,6 @@ export const IELTSSpeakingTestScreen = ({ testData, testResultId, userId, onSubm
     if (questionId) formData.append('idQuestion', questionId);
     userSpeakingSubmission(formData).catch((e) => {
       console.error('upload speaking failed', e);
-      toast.error(`Upload audio ${phaseKey} thất bại.`);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioBlobs]);

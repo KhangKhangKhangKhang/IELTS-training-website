@@ -684,6 +684,7 @@ const TeacherQueuePage = () => {
                             <img
                               src={task.image}
                               alt="Task 1 visual"
+                              loading="lazy"
                               className="mt-2 max-h-48 rounded border"
                             />
                           )}
@@ -1056,6 +1057,7 @@ const TeacherQueuePage = () => {
                             <img
                               src={task.image}
                               alt="Task 1 visual"
+                              loading="lazy"
                               className="mt-2 max-h-48 rounded border"
                             />
                           )}

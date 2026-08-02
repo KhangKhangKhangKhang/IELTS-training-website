@@ -377,6 +377,7 @@ export const IELTSForumModeration = () => {
                       <img
                         src={p.avatar}
                         alt={p.author}
+                        loading="lazy"
                         className="w-full h-full object-cover"
                       />
                     ) : (
