@@ -94,6 +94,16 @@ export function PassageEditor({ onChange }) {
     };
   }, [activePartId, getPartDetail]);
 
+  // FE-12b: revoke blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (imageUrl && imageUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(imageUrl);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const wordCount = content.split(/\s+/).filter(Boolean).length;
   const readMinutes = Math.max(1, Math.round(wordCount / 200));
   // Count paragraphs: split on blank lines OR single newlines, take max
@@ -235,11 +245,19 @@ export function PassageEditor({ onChange }) {
                 <Upload
                   maxCount={1}
                   beforeUpload={(file) => {
+                    // FE-12b: revoke previous blob URL before creating a new one
+                    if (imageUrl && imageUrl.startsWith("blob:")) {
+                      URL.revokeObjectURL(imageUrl);
+                    }
                     setImageFile(file);
                     setImageUrl(URL.createObjectURL(file));
                     return false;
                   }}
                   onRemove={() => {
+                    // FE-12b: revoke blob URL when removing the picked image
+                    if (imageUrl && imageUrl.startsWith("blob:")) {
+                      URL.revokeObjectURL(imageUrl);
+                    }
                     setImageFile(null);
                     setImageUrl(passage?.imageUrl || null);
                   }}

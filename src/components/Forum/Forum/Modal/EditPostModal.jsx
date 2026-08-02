@@ -1,6 +1,6 @@
 // EditPostModal - modal sửa post, style indigo đồng bộ
 import { Modal, Input, Button, message } from "antd";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { updatePostAPI } from "@/services/apiForum";
 
 const EditPostModal = ({ post, open, onClose, onUpdated }) => {
@@ -8,6 +8,23 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
+
+  // FE-12b: stable blob URL for new-file preview + revoke on unmount/file change
+  const [newFilePreviewUrl, setNewFilePreviewUrl] = useState("");
+  useEffect(() => {
+    if (!file) {
+      setNewFilePreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return "";
+      });
+      return undefined;
+    }
+    const url = URL.createObjectURL(file);
+    setNewFilePreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
 
   const handleSave = async () => {
     if (!content.trim()) {
@@ -99,7 +116,7 @@ const EditPostModal = ({ post, open, onClose, onUpdated }) => {
           <div className="rounded-xl border-2 border-indigo-200 bg-indigo-50 p-3">
             <p className="text-sm font-bold text-indigo-700 mb-2">Ảnh mới:</p>
             <img
-              src={URL.createObjectURL(file)}
+              src={newFilePreviewUrl}
               alt="new"
               loading="lazy"
               className="rounded-xl max-h-48 object-cover w-full"

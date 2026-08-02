@@ -78,9 +78,21 @@ export function WritingEditor({ idTest, onChange }) {
 
   const handleFileChange = (file) => {
     if (!file) return;
+    // FE-12b: revoke previous blob URL before swapping to a new one
+    if (current.imageUrl && current.imageUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(current.imageUrl);
+    }
     updateField("image", file);
     updateField("imageUrl", URL.createObjectURL(file));
   };
+
+  // FE-12b: revoke blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (t1.imageUrl && t1.imageUrl.startsWith("blob:")) URL.revokeObjectURL(t1.imageUrl);
+      if (t2.imageUrl && t2.imageUrl.startsWith("blob:")) URL.revokeObjectURL(t2.imageUrl);
+    };
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);

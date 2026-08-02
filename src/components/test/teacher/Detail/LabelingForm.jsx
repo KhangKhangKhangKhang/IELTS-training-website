@@ -2,6 +2,10 @@ import React from "react";
 import { Input, InputNumber, Upload, Checkbox, Select } from "antd";
 import { PlusOutlined, UploadOutlined, PictureOutlined } from "@ant-design/icons";
 
+// FE-12b: only revoke when the URL is a blob: URL we created (avoid
+// revoking server URLs that may be in imageUrl from props).
+const isBlobUrl = (url) => typeof url === "string" && url.startsWith("blob:");
+
 // DIAGRAM_LABELING — covers IELTS Plan / Map / Diagram Labelling.
 //
 // In IELTS Listening Part 2, a single image (map, plan, or diagram) carries
@@ -60,7 +64,11 @@ const LabelingForm = ({ value, onChange }) => {
   const update = (patch) => onChange({ ...v, ...patch });
 
   const setKind = (kind) => update({ kind });
-  const setImage = (url) => update({ imageUrl: url });
+  const setImage = (url) => {
+    // FE-12b: revoke previous blob URL before swapping
+    if (isBlobUrl(v.imageUrl)) URL.revokeObjectURL(v.imageUrl);
+    update({ imageUrl: url });
+  };
 
   const setLabelField = (idx, patch) => {
     update({
@@ -162,11 +170,16 @@ const LabelingForm = ({ value, onChange }) => {
             listType="picture"
             maxCount={1}
             beforeUpload={(file) => {
+              // FE-12b: revoke previous blob URL if any, then create new one
+              if (isBlobUrl(v.imageUrl)) URL.revokeObjectURL(v.imageUrl);
               const url = URL.createObjectURL(file);
-              setImage(url);
+              update({ imageUrl: url });
               return false;
             }}
-            onRemove={() => setImage("")}
+            onRemove={() => {
+              if (isBlobUrl(v.imageUrl)) URL.revokeObjectURL(v.imageUrl);
+              update({ imageUrl: "" });
+            }}
             showUploadList={false}
             accept="image/*"
           >
