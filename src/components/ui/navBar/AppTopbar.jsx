@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -24,7 +24,7 @@ import {
   Cookie,
   Crown,
 } from "lucide-react";
-import ChatBotWidget from "./chatBotWidget";
+const ChatBotWidget = lazy(() => import("./chatBotWidget"));
 import Cookies from "js-cookie";
 import StreakWidget from "./StreakWidget";
 import XpWidget from "./xPWidget";
@@ -651,7 +651,9 @@ const AppTopbar = ({
       </nav>
 
       <Outlet />
-      <ChatBotWidget />
+      <Suspense fallback={null}>
+        <ChatBotWidget />
+      </Suspense>
     </>
   );
 };
