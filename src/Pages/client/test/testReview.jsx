@@ -11,7 +11,7 @@ import {
   mapTestTypeToSkill,
   mapLevelToDiff,
   formatDuration,
-  isNewByRecency,
+  computeRecentIds,
   getSkillCounts,
   getCachedUserStats,
   setCachedUserStats,
@@ -100,6 +100,11 @@ const TestPage = () => {
   // Map raw exam objects → DiscoveryTestItem shape the design component
   // expects. Memoized so the filter bar / typing in the search box
   // doesn't re-map the entire list on every keystroke.
+  const recentIds = useMemo(
+    () => computeRecentIds(exams, 5),
+    [exams]
+  );
+
   const discoveryTests = useMemo(() => {
     return (exams || []).map((e) => {
       const stats = userStatsById[e.idTest];
@@ -118,10 +123,10 @@ const TestPage = () => {
         lastFinishedAt: stats?.lastFinishedAt
           ? new Date(stats.lastFinishedAt).toISOString()
           : null,
-        isNew: isNewByRecency(exams, e, 5),
+        isNew: recentIds.has(e.idTest || e.id),
       };
     });
-  }, [exams, userStatsById]);
+  }, [exams, userStatsById, recentIds]);
 
   const counts = useMemo(() => getSkillCounts(exams), [exams]);
 

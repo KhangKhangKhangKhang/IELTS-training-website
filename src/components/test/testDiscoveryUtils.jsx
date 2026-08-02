@@ -78,6 +78,14 @@ export const isNewByRecency = (exams, exam, topN = 5) => {
   return topIds.has(exam.idTest || exam.id);
 };
 
+export const computeRecentIds = (exams, topN = 5) => {
+  if (!exams) return new Set();
+  const sorted = [...exams].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  return new Set(sorted.slice(0, topN).map((e) => e.idTest || e.id));
+};
+
 /**
  * Format a finishedAt ISO/string into a Vietnamese relative string.
  * Already handled inside the .tsx component as well; kept here for any
