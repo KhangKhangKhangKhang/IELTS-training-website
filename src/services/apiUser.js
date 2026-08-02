@@ -1,7 +1,10 @@
 import API from "./axios.custom";
+import { cachedFetch } from "./cacheService";
 export const userProfileAPI = async (id) => {
-  const res = await API.get(`/users/get-one/${id}`);
-  return res.data;
+  return cachedFetch(`profile:${id}`, async () => {
+    const res = await API.get(`/users/get-one/${id}`);
+    return res.data;
+  });
 };
 
 export const getAllUserAPI = async (params = {}) => {
@@ -29,8 +32,10 @@ export const deleteUserAPI = async (id) => {
 };
 
 export const getStreakAPI = async (idUser) => {
-  const res = await API.get(`/review-streak/get-streak-by-id-user/${idUser}`);
-  return res.data;
+  return cachedFetch(`streak:${idUser}`, async () => {
+    const res = await API.get(`/review-streak/get-streak-by-id-user/${idUser}`);
+    return res.data;
+  });
 };
 
 export const postVocabStreakAPI = async (data) => {
