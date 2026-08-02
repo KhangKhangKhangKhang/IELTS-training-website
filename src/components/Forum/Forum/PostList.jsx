@@ -1,4 +1,5 @@
 // PostList - danh sách PostItem, empty state.
+import { FixedSizeList } from "react-window";
 import PostItem from "./PostItem";
 
 const PostList = ({ posts, onPostUpdated, onPostDeleted }) => {
@@ -20,14 +21,39 @@ const PostList = ({ posts, onPostUpdated, onPostDeleted }) => {
 
   return (
     <div className="space-y-4">
-      {posts.map((p) => (
-        <PostItem
-          key={p.idForumPost}
-          post={p}
-          onPostUpdated={onPostUpdated}
-          onPostDeleted={onPostDeleted}
-        />
-      ))}
+      {posts.length > 50 ? (
+        <FixedSizeList
+          height={600}
+          width="100%"
+          itemSize={150}
+          itemCount={posts.length}
+          itemData={{ posts, onPostUpdated, onPostDeleted }}
+        >
+          {PostRow}
+        </FixedSizeList>
+      ) : (
+        posts.map((p) => (
+          <PostItem
+            key={p.idForumPost}
+            post={p}
+            onPostUpdated={onPostUpdated}
+            onPostDeleted={onPostDeleted}
+          />
+        ))
+      )}
+    </div>
+  );
+};
+
+const PostRow = ({ index, style, data }) => {
+  const post = data.posts[index];
+  return (
+    <div style={style}>
+      <PostItem
+        post={post}
+        onPostUpdated={data.onPostUpdated}
+        onPostDeleted={data.onPostDeleted}
+      />
     </div>
   );
 };
