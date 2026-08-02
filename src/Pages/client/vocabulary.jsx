@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { FixedSizeList } from "react-window";
 import { useNavigate, useSearchParams } from "react-router";
 import {
   Plus,
@@ -854,31 +855,45 @@ const Vocabulary = () => {
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#6366f1]"></div>
               </div>
             ) : filteredSavedVocabularies.length > 0 ? (
-              <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-                {filteredSavedVocabularies.map((vocab) => {
-                  const meta = STATUS_META[vocab.status] || STATUS_META.new;
-                  return (
-                    <div key={vocab.idVocab} className="group p-3 sm:p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-[#6366f1]/40 hover:bg-[#fafafc] dark:hover:bg-slate-700/30 transition-all">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="text-base font-black text-slate-800 dark:text-white" style={{ fontFamily: "Nunito, sans-serif" }}>{vocab.word}</span>
-                            {vocab.phonetic && <span className="text-xs font-mono text-slate-500">{vocab.phonetic}</span>}
-                            {vocab.VocabType && (
-                              <span className="px-2 py-0.5 rounded-md bg-[#eef2ff] text-[#4338ca] text-[10px] font-extrabold uppercase tracking-wide">{vocab.VocabType}</span>
-                            )}
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${meta.tone}`}>{meta.label}</span>
-                            {vocab.topicName && (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200">{vocab.topicName}</span>
-                            )}
+              <div className="max-h-[600px] pr-1">
+                {filteredSavedVocabularies.length > 50 ? (
+                  <FixedSizeList
+                    height={600}
+                    width="100%"
+                    itemSize={92}
+                    itemCount={filteredSavedVocabularies.length}
+                    itemData={{ vocabs: filteredSavedVocabularies, statusMeta: STATUS_META }}
+                  >
+                    {SavedVocabRowItem}
+                  </FixedSizeList>
+                ) : (
+                  <div className="space-y-2 overflow-y-auto" style={{ maxHeight: "600px" }}>
+                    {filteredSavedVocabularies.map((vocab) => {
+                      const meta = STATUS_META[vocab.status] || STATUS_META.new;
+                      return (
+                        <div key={vocab.idVocab} className="group p-3 sm:p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-[#6366f1]/40 hover:bg-[#fafafc] dark:hover:bg-slate-700/30 transition-all">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <span className="text-base font-black text-slate-800 dark:text-white" style={{ fontFamily: "Nunito, sans-serif" }}>{vocab.word}</span>
+                                {vocab.phonetic && <span className="text-xs font-mono text-slate-500">{vocab.phonetic}</span>}
+                                {vocab.VocabType && (
+                                  <span className="px-2 py-0.5 rounded-md bg-[#eef2ff] text-[#4338ca] text-[10px] font-extrabold uppercase tracking-wide">{vocab.VocabType}</span>
+                                )}
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${meta.tone}`}>{meta.label}</span>
+                                {vocab.topicName && (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200">{vocab.topicName}</span>
+                                )}
+                              </div>
+                              <div className="text-sm text-slate-700 dark:text-slate-300 mb-0.5">{vocab.meaning}</div>
+                              {vocab.example && <div className="text-xs text-slate-500 italic line-clamp-1">"{vocab.example}"</div>}
+                            </div>
                           </div>
-                          <div className="text-sm text-slate-700 dark:text-slate-300 mb-0.5">{vocab.meaning}</div>
-                          {vocab.example && <div className="text-xs text-slate-500 italic line-clamp-1">"{vocab.example}"</div>}
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ) : (
               <EmptyState
@@ -973,15 +988,33 @@ const Vocabulary = () => {
                 </div>
 
                 {filteredVocabularies.length > 0 ? (
-                  <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-                    {filteredVocabularies.map((vocab) => (
-                      <VocabRow
-                        key={vocab.idVocab}
-                        vocab={vocab}
-                        onEdit={() => { setVocabToEdit(vocab); setShowEditVocabulary(true); }}
-                        onDelete={() => handleDeleteVocabulary(vocab.idVocab)}
-                      />
-                    ))}
+                  <div className="max-h-[600px] pr-1">
+                    {filteredVocabularies.length > 50 ? (
+                      <FixedSizeList
+                        height={600}
+                        width="100%"
+                        itemSize={56}
+                        itemCount={filteredVocabularies.length}
+                        itemData={{
+                          vocabs: filteredVocabularies,
+                          onEdit: (vocab) => { setVocabToEdit(vocab); setShowEditVocabulary(true); },
+                          onDelete: (id) => handleDeleteVocabulary(id),
+                        }}
+                      >
+                        {VocabRowItem}
+                      </FixedSizeList>
+                    ) : (
+                      <div className="space-y-2 overflow-y-auto" style={{ maxHeight: "600px" }}>
+                        {filteredVocabularies.map((vocab) => (
+                          <VocabRow
+                            key={vocab.idVocab}
+                            vocab={vocab}
+                            onEdit={() => { setVocabToEdit(vocab); setShowEditVocabulary(true); }}
+                            onDelete={() => handleDeleteVocabulary(vocab.idVocab)}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <EmptyState
@@ -1281,5 +1314,46 @@ const EmptyState = ({ icon, title, desc, cta, onCta }) => (
     )}
   </div>
 );
+
+const VocabRowItem = ({ index, style, data }) => {
+  const vocab = data.vocabs[index];
+  return (
+    <div style={style}>
+      <VocabRow
+        vocab={vocab}
+        onEdit={() => data.onEdit(vocab)}
+        onDelete={() => data.onDelete(vocab.idVocab)}
+      />
+    </div>
+  );
+};
+
+const SavedVocabRowItem = ({ index, style, data }) => {
+  const vocab = data.vocabs[index];
+  const meta = data.statusMeta[vocab.status] || data.statusMeta.new;
+  return (
+    <div style={style}>
+      <div className="group p-3 sm:p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-[#6366f1]/40 hover:bg-[#fafafc] dark:hover:bg-slate-700/30 transition-all">
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="text-base font-black text-slate-800 dark:text-white" style={{ fontFamily: "Nunito, sans-serif" }}>{vocab.word}</span>
+              {vocab.phonetic && <span className="text-xs font-mono text-slate-500">{vocab.phonetic}</span>}
+              {vocab.VocabType && (
+                <span className="px-2 py-0.5 rounded-md bg-[#eef2ff] text-[#4338ca] text-[10px] font-extrabold uppercase tracking-wide">{vocab.VocabType}</span>
+              )}
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${meta.tone}`}>{meta.label}</span>
+              {vocab.topicName && (
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200">{vocab.topicName}</span>
+              )}
+            </div>
+            <div className="text-sm text-slate-700 dark:text-slate-300 mb-0.5">{vocab.meaning}</div>
+            {vocab.example && <div className="text-xs text-slate-500 italic line-clamp-1">"{vocab.example}"</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default Vocabulary;
