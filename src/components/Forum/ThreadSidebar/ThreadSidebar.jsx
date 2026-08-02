@@ -1,6 +1,7 @@
 // ThreadSidebar - refactor theo MagicPath mockup
 // Header gradient indigo, search input thuần Tailwind, hot strip, scrollable list.
 import { useEffect, useState } from "react";
+import { FixedSizeList } from "react-window";
 import ThreadItem from "./ThreadItem";
 import { getAllThreadAPI } from "@/services/apiForum";
 
@@ -66,7 +67,7 @@ const ThreadSidebar = ({ onSelect, threads, setThreads, selectedThreadId }) => {
       </div>
 
       {/* List scrollable */}
-      <div className="p-3 space-y-2 overflow-y-auto max-h-[560px]">
+      <div className="p-3 max-h-[560px]">
         {loading && (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-10 h-10 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin" />
@@ -74,17 +75,38 @@ const ThreadSidebar = ({ onSelect, threads, setThreads, selectedThreadId }) => {
           </div>
         )}
 
-        {!loading &&
-          filteredThreads.map((t, index) => (
-            <ThreadItem
-              key={t.idForumThreads}
-              thread={t}
-              onClick={() => onSelect?.(t)}
-              setThreads={setThreads}
-              isFirst={index === 0}
-              isSelected={t.idForumThreads === selectedThreadId}
-            />
-          ))}
+        {!loading && filteredThreads.length > 50 && (
+          <FixedSizeList
+            height={560}
+            width="100%"
+            itemSize={72}
+            itemCount={filteredThreads.length}
+            itemData={{
+              threads: filteredThreads,
+              onClick: onSelect,
+              setThreads,
+              isFirst: (i) => i === 0,
+              isSelected: (t) => t.idForumThreads === selectedThreadId,
+            }}
+          >
+            {ThreadRow}
+          </FixedSizeList>
+        )}
+
+        {!loading && filteredThreads.length <= 50 && filteredThreads.length > 0 && (
+          <div className="space-y-2 overflow-y-auto" style={{ maxHeight: "560px" }}>
+            {filteredThreads.map((t, index) => (
+              <ThreadItem
+                key={t.idForumThreads}
+                thread={t}
+                onClick={() => onSelect?.(t)}
+                setThreads={setThreads}
+                isFirst={index === 0}
+                isSelected={t.idForumThreads === selectedThreadId}
+              />
+            ))}
+          </div>
+        )}
 
         {!loading && filteredThreads.length === 0 && (
           <div className="text-center py-12">
@@ -101,6 +123,22 @@ const ThreadSidebar = ({ onSelect, threads, setThreads, selectedThreadId }) => {
         )}
       </div>
     </aside>
+  );
+};
+
+const ThreadRow = ({ index, style, data }) => {
+  const thread = data.threads[index];
+  return (
+    <div style={style}>
+      <ThreadItem
+        thread={thread}
+        index={index}
+        onClick={() => data.onClick?.(thread)}
+        setThreads={data.setThreads}
+        isFirst={data.isFirst(index)}
+        isSelected={data.isSelected(thread)}
+      />
+    </div>
   );
 };
 
