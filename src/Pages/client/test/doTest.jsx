@@ -109,6 +109,22 @@ const DoTest = () => {
     };
   }, [idTest]);
 
+  // Placement test handler — StartingPage passes testType='placement'
+  // without a specific idTest. Set a placeholder so loading resolves.
+  useEffect(() => {
+    if (testType !== 'placement' || !user?.idUser) return;
+    setLoading(true);
+    (async () => {
+      try {
+        setTest({ isPlacement: true, testType: 'placement', duration: 0 });
+      } catch (err) {
+        console.error('Placement test load failed:', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [testType, user?.idUser]);
+
   // Guard: nếu user navigate thẳng tới /do-test/:id (go back, deep link, …)
   // mà user đã hoàn thành bài này rồi (status FINISHED) thì block,
   // show modal + điều hướng về trang test list. Tránh bị BE trả 400
