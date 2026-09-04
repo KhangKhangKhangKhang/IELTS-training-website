@@ -1,4 +1,5 @@
 import React from 'react';
+import { Spin } from 'antd';
 
 export function Card({ children, className = '' }) {
   return <div className={`bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] ${className}`}>{children}</div>;
@@ -18,12 +19,22 @@ export function PillButton({ children, onClick, variant = 'primary', size = 'md'
   );
 }
 
-export function ScoreRing({ value }) {
+export function ScoreRing({ value, loading = false }) {
   const size = 150;
   const stroke = 12;
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const pct = Math.min(1, (value || 0) / 9);
+  if (loading) {
+    return (
+      <div
+        className="relative shrink-0 flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <Spin size="large" />
+      </div>
+    );
+  }
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">

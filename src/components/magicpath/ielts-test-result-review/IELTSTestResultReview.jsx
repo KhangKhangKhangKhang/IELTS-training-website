@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, PillButton, ScoreRing } from './resultUI';
 import { CriteriaList, Corrections } from './resultSections';
 import { getTestResultAndAnswersAPI } from '@/services/apiDoTest';
@@ -23,18 +23,85 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Ref mirror of `data` so the poll interval callback can read the latest
+  // fetched payload without re-creating the interval whenever data updates.
+  const dataRef = useRef(null);
+  React.useEffect(() => { dataRef.current = data; }, [data]);
+
   React.useEffect(() => {
     if (!testResultId) return;
     let mounted = true;
     setLoading(true);
-    getTestResultAndAnswersAPI(testResultId)
-      .then((res) => { if (mounted) setData(res?.data || res); })
-      .catch((e) => {
-        console.error('load result failed', e);
-        toast.error('Không tải được kết quả.');
-      })
-      .finally(() => { if (mounted) setLoading(false); });
-    return () => { mounted = false; };
+
+    const POLL_INTERVAL_MS = 3000;
+    const POLL_TIMEOUT_MS = 90_000;
+    const startTime = Date.now();
+    let pollRef = null;
+
+    const fetchOnce = () =>
+      getTestResultAndAnswersAPI(testResultId)
+        .then((res) => {
+          if (!mounted) return;
+          setData(res?.data || res);
+        })
+        .catch((e) => {
+          console.error('load result failed', e);
+        });
+
+    const stopPolling = () => {
+      if (pollRef) {
+        clearInterval(pollRef);
+        pollRef = null;
+      }
+    };
+
+    const shouldKeepPolling = () => {
+      const payload = dataRef.current;
+      const subs = (payload?.writingSubmissions || payload?.writingSubmission || []).filter(Boolean);
+      const allTerminal =
+        subs.length > 0 &&
+        subs.every(
+          (s) => s.aiGradingStatus === 'COMPLETED' || s.aiGradingStatus === 'FAILED',
+        );
+      const result = payload?.result || payload;
+      const bandScore = result?.band_score ?? result?.bandScore ?? payload?.bandScore;
+      if (allTerminal) return false;
+      if (typeof bandScore === 'number' && bandScore > 0) return false;
+      if (Date.now() - startTime > POLL_TIMEOUT_MS) return false;
+      return true;
+    };
+
+    const startPolling = () => {
+      stopPolling();
+      pollRef = setInterval(async () => {
+        await fetchOnce();
+        if (!mounted) {
+          stopPolling();
+          return;
+        }
+        if (!shouldKeepPolling()) {
+          stopPolling();
+        }
+      }, POLL_INTERVAL_MS);
+    };
+
+    (async () => {
+      await fetchOnce();
+      if (!mounted) return;
+      setLoading(false);
+      // Decide whether to keep polling based on the initial result.
+      const subs = (dataRef.current?.writingSubmissions ||
+        dataRef.current?.writingSubmission || []).filter(Boolean);
+      const anyInflight = subs.some(
+        (s) => s.aiGradingStatus === 'PENDING' || s.aiGradingStatus === 'GRADING',
+      );
+      if (anyInflight) startPolling();
+    })();
+
+    return () => {
+      mounted = false;
+      stopPolling();
+    };
   }, [testResultId]);
 
   // Check trạng thái ticket chấm bài
@@ -102,6 +169,9 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
     return at - bt;
   });
   const band = result.band_score || result.bandScore || 0;
+  const bandLoading = band === 0 && writingSubmissions.some(
+    (s) => s.aiGradingStatus === 'PENDING' || s.aiGradingStatus === 'GRADING',
+  );
   const correctCount = result.total_correct || result.totalCorrect || answers.filter((a) => a.isCorrect).length;
   const totalQ = result.total_questions || result.totalQuestions || answers.length;
   const skill = result.skill || result.testType || data?.test?.testType || 'IELTS';
@@ -202,7 +272,7 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
         <Card className="!p-0 overflow-hidden">
           <div className="bg-gradient-to-br from-[#6366f1] via-[#06b6d4] to-[#a855f7] p-6 sm:p-8">
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              <ScoreRing value={band} />
+              <ScoreRing value={band} loading={bandLoading} />
               <div className="flex-1 text-center sm:text-left text-white">
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wide mb-2">✓ Hoàn thành</span>
                 <h1 className="text-2xl font-black">IELTS {skill} - {testTitle}</h1>
