@@ -1,22 +1,48 @@
-import React, { useState } from "react";
+// Pages/client/auth/OTP.jsx
+// UI adapted from MagicPath "IELTS Auth Screens" · Logic/API calls preserved.
+// Used by both signup-flow (mode="OTP") and forgot-flow (mode="RESET_LINK").
+import React, { useEffect, useState } from "react";
 import { motion as Motion } from "framer-motion";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Shield, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-import { verifyOtpAPI, resendOtpAPI, resetPasswordOTP } from "@/services/apiAuth";
-import { Button } from "@/components/ui/button";
+  verifyOtpAPI,
+  resendOtpAPI,
+  resetPasswordOTP,
+} from "@/services/apiAuth";
+import AuthShell from "@/components/auth/AuthShell";
+import {
+  AuthButton,
+  OtpBoxes,
+  ProgressDots,
+  maskEmail,
+  fmtTime,
+} from "@/components/auth/AuthPrimitives";
 
 const OTP = () => {
   const [otp, setOtp] = useState("");
   const [isResending, setIsResending] = useState(false);
+  const [resendIn, setResendIn] = useState(18);
+  const [expiresIn, setExpiresIn] = useState(263);
   const location = useLocation();
   const email = location.state?.email || "";
   const mode = location.state?.mode || "OTP";
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setInterval(() => setResendIn((r) => Math.max(0, r - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendIn]);
+
+  useEffect(() => {
+    if (expiresIn <= 0) return;
+    const t = setInterval(
+      () => setExpiresIn((r) => Math.max(0, r - 1)),
+      1000
+    );
+    return () => clearInterval(t);
+  }, [expiresIn]);
 
   const handleVerifyOtp = async () => {
     if (otp.length !== 6) {
@@ -54,6 +80,7 @@ const OTP = () => {
         await resendOtpAPI({ email, type: "RESET_LINK" });
       }
       alert("Đã gửi lại mã OTP!");
+      setResendIn(18);
     } catch (error) {
       console.error("Error resending OTP:", error);
       alert("Có lỗi xảy ra. Vui lòng thử lại.");
@@ -62,90 +89,105 @@ const OTP = () => {
     }
   };
 
+  const title =
+    mode === "OTP"
+      ? "Bước 3 · Xác minh email sau signup"
+      : "Bước 2/3 · Nhập OTP";
+  const icon = mode === "OTP" ? "📬" : "🔑";
+  const backTarget = mode === "OTP" ? "/signup" : "/forgetPassword";
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
-      </div>
-
+    <AuthShell title={title} icon={icon}>
       <Motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md relative z-10"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-md mx-auto"
       >
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring" }}
-            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/30 mb-4"
+        <div className="space-y-5">
+          <button
+            type="button"
+            onClick={() => navigate(backTarget)}
+            className="text-xs font-bold text-[#64748b] hover:text-[#1e1b4b] flex items-center gap-1"
           >
-            <Shield className="w-8 h-8 text-white" />
-          </Motion.div>
-          <h1 className="text-2xl font-bold text-white">Xác thực OTP</h1>
-          <p className="text-slate-400 text-sm">Bảo mật tài khoản của bạn</p>
-        </div>
+            ← {mode === "OTP" ? "Đổi email khác" : "Đổi email"}
+          </button>
 
-        {/* Card */}
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-white">Nhập mã xác thực</h2>
-            <p className="text-slate-400 mt-1 text-sm">
-              Mã OTP 6 số đã được gửi đến email
-            </p>
-            <p className="text-blue-400 text-sm font-medium mt-1">{email}</p>
-          </div>
-
-          {/* OTP Input */}
-          <div className="flex justify-center mb-6">
-            <InputOTP
-              maxLength={6}
-              value={otp}
-              onChange={(value) => setOtp(value)}
-              className="gap-2"
+          <div className="text-center">
+            <Motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 2.5, repeat: Infinity }}
+              className="text-5xl inline-block mb-3"
             >
-              <InputOTPGroup className="gap-2">
-                {[0, 1, 2, 3, 4, 5].map((index) => (
-                  <InputOTPSlot
-                    key={index}
-                    index={index}
-                    className="w-12 h-14 text-xl font-bold bg-slate-900/50 border-slate-600 text-white rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                  />
-                ))}
-              </InputOTPGroup>
-            </InputOTP>
+              {icon}
+            </Motion.div>
+            <h1
+              className="text-3xl font-black text-[#1e1b4b] mb-1"
+              style={{ fontFamily: "Nunito" }}
+            >
+              {mode === "OTP" ? "Kiểm tra email" : "Nhập mã OTP"}
+            </h1>
+            <p className="text-sm text-[#64748b]">
+              Mã 6 chữ số đã gửi tới
+              <br />
+              <span className="font-extrabold text-[#1e1b4b]">
+                {maskEmail(email)}
+              </span>
+            </p>
           </div>
 
-          {/* Submit Button */}
-          <Button
-            onClick={handleVerifyOtp}
-            disabled={otp.length !== 6}
-            className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Xác nhận
-          </Button>
+          {mode !== "OTP" && <ProgressDots current={1} total={3} />}
 
-          {/* Resend OTP */}
-          <div className="text-center mt-6">
-            <p className="text-slate-400 text-sm">
-              Chưa nhận được mã?{" "}
-              <button
-                onClick={handleResendOtp}
-                disabled={isResending}
-                className="text-blue-400 hover:text-blue-300 font-semibold inline-flex items-center gap-1 transition-colors disabled:opacity-50"
-              >
-                {isResending && <RefreshCw className="w-4 h-4 animate-spin" />}
-                Gửi lại
-              </button>
-            </p>
+          <div className="space-y-4">
+            <OtpBoxes value={otp} onChange={setOtp} maxLength={6} />
+
+            <div className="bg-[#fef3c7] border-2 border-[#f59e0b]/30 rounded-2xl p-3 flex items-center gap-2.5">
+              <div className="text-xl">⏰</div>
+              <div className="flex-1">
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#b45309]">
+                  Mã hết hạn sau
+                </div>
+                <div className="font-mono font-black text-sm text-[#1e1b4b]">
+                  {fmtTime(expiresIn)}
+                </div>
+              </div>
+            </div>
+
+            <AuthButton
+              tone="indigo"
+              size="lg"
+              className="w-full"
+              disabled={otp.length !== 6}
+              onClick={handleVerifyOtp}
+            >
+              ✓ Xác minh
+            </AuthButton>
+
+            <div className="text-center text-xs">
+              <span className="text-[#64748b]">
+                Không nhận được mã?{" "}
+              </span>
+              {resendIn > 0 || isResending ? (
+                <span className="font-bold text-[#94a3b8] inline-flex items-center gap-1">
+                  {isResending && (
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                  )}
+                  Gửi lại sau 0:{String(resendIn).padStart(2, "0")}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  className="font-extrabold text-[#6366f1] hover:underline"
+                >
+                  Gửi lại mã
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </Motion.div>
-    </div>
+    </AuthShell>
   );
 };
 

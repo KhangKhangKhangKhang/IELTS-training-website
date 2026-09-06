@@ -1,279 +1,240 @@
-import React, { useState, useEffect } from "react";
-import { Button, Input, Select, message, Card } from "antd";
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import {
-  getQuestionsByIdGroupAPI,
-  getAnswersByIdQuestionAPI,
-  createManyQuestion,
-  updateManyQuestionAPI,
-} from "@/services/apiTest";
-import RichTextEditor from "@/components/ui/RichTextEditor";
+import React from "react";
+import { Input } from "antd";
+import MatchingPreview from "@/components/magicpath/ielts-test-editor/MatchingPreview";
 
-const { Option } = Select;
+// Clickable answer card — used for the correct-answer picker.
+const AnswerCard = ({ active, label, text, onClick, disabled }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className={`flex items-start gap-2 rounded-xl border-2 px-3 py-2 text-left text-xs transition-all ${
+      disabled
+        ? "border-[#e6e6ed] bg-[#fafafc] text-[#94a3b8] cursor-not-allowed"
+        : active
+          ? "border-[#6366f1] bg-[#eef2ff] text-[#4338ca] shadow-[0_2px_0_#4338ca]"
+          : "border-[#e6e6ed] bg-white text-[#1e1b4b] hover:border-[#c7d2fe]"
+    }`}
+  >
+    <span className="font-mono font-extrabold w-6 text-center flex-none">{label}</span>
+    <span className="flex-1 min-w-0">
+      {text || <span className="italic text-[#94a3b8]">—</span>}
+    </span>
+    {active && <span className="flex-none text-[#10b981]">✓</span>}
+  </button>
+);
 
-const MatchingForm = ({
-  idGroup,
-  groupData,
-  questionNumberOffset = 0,
-  onRefresh,
-}) => {
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  // 1. POOL OPTIONS: Danh sách các lựa chọn chung (A, B, C...)
-  // [{ key: "A", text: "Nội dung A" }, { key: "B", text: "Nội dung B" }]
-  const [optionsPool, setOptionsPool] = useState([]);
-
-  // 2. QUESTIONS: Danh sách câu hỏi
-  // [{ content: "Câu hỏi 1", correctKey: "A" }]
-  const [questions, setQuestions] = useState([]);
-
-  // Load dữ liệu khi sửa
-  useEffect(() => {
-    if (idGroup) loadData();
-  }, [idGroup]);
-
-  // Khởi tạo mặc định khi tạo mới
-  useEffect(() => {
-    if (
-      groupData?.quantity &&
-      questions.length === 0 &&
-      optionsPool.length === 0
-    ) {
-      // Tạo options mặc định A, B, C...
-      const defaultOptions = Array(groupData.quantity)
-        .fill(null)
-        .map((_, i) => ({
-          key: String.fromCharCode(65 + i),
-          text: "",
-        }));
-      setOptionsPool(defaultOptions);
-
-      // Tạo câu hỏi rỗng
-      const defaultQuestions = Array(groupData.quantity)
-        .fill(null)
-        .map(() => ({
-          content: "",
-          correctKey: undefined,
-        }));
-      setQuestions(defaultQuestions);
-    }
-  }, [groupData]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const res = await getQuestionsByIdGroupAPI(idGroup);
-      const group = res?.data?.[0];
-
-      if (group && group.question?.length > 0) {
-        // Lấy Options Pool từ câu hỏi đầu tiên (vì câu nào cũng lưu full options)
-        const firstQId = group.question[0].idQuestion;
-        const firstAnsRes = await getAnswersByIdQuestionAPI(firstQId);
-
-        // Reconstruct Options Pool
-        const loadedOptions = (firstAnsRes?.data || [])
-          .map((a) => ({ key: a.matching_key, text: a.answer_text }))
-          .sort((a, b) => a.key.localeCompare(b.key));
-
-        setOptionsPool(loadedOptions);
-
-        // Load từng câu hỏi để biết câu nào chọn key nào
-        const loadedQ = await Promise.all(
-          group.question.map(async (q) => {
-            const ansRes = await getAnswersByIdQuestionAPI(q.idQuestion);
-            const answers = ansRes?.data || [];
-            // Tìm đáp án đúng (có value là CORRECT)
-            const correctAns = answers.find(
-              (a) => a.matching_value === "CORRECT"
-            );
-
-            return {
-              idQuestion: q.idQuestion,
-              numberQuestion: q.numberQuestion,
-              content: q.content,
-              correctKey: correctAns ? correctAns.matching_key : undefined,
-            };
-          })
-        );
-
-        setQuestions(loadedQ);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- HANDLERS ---
-  const handleOptionChange = (idx, val) => {
-    const newPool = [...optionsPool];
-    newPool[idx].text = val;
-    setOptionsPool(newPool);
-  };
-
-  const handleAddOption = () => {
-    const nextChar = String.fromCharCode(65 + optionsPool.length);
-    setOptionsPool([...optionsPool, { key: nextChar, text: "" }]);
-  };
-
-  const handleRemoveOption = (idx) => {
-    const newPool = optionsPool.filter((_, i) => i !== idx);
-    setOptionsPool(newPool);
-  };
-
-  const handleQuestionChange = (idx, field, val) => {
-    const newQ = [...questions];
-    newQ[idx][field] = val;
-    setQuestions(newQ);
-  };
-
-  // --- SAVE ---
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-
-      const payload = questions.map((q, index) => {
-        // LOGIC QUAN TRỌNG:
-        // Mỗi câu hỏi sẽ chứa TOÀN BỘ danh sách options trong answers
-        // Để Frontend lúc làm bài hiển thị đủ list A, B, C, D...
-        const answersPayload = optionsPool.map((opt) => ({
-          // 1. answer_text: Lưu nội dung (Ví dụ: "1233214")
-          answer_text: opt.text,
-
-          // 2. matching_key: Lưu ký tự (Ví dụ: "B")
-          matching_key: opt.key,
-
-          // 3. matching_value: Lưu "CORRECT" nếu đúng, null nếu sai (theo yêu cầu của bạn)
-          matching_value: opt.key === q.correctKey ? "CORRECT" : null,
-        }));
-
-        return {
-          idGroupOfQuestions: idGroup,
-          idPart: groupData?.idPart,
-          idQuestion: q.idQuestion || null,
-          numberQuestion: q.numberQuestion || questionNumberOffset + index + 1,
-          content: q.content,
-          answers: answersPayload, // Gửi full options cho mỗi câu
-        };
-      });
-
-      const toUpdate = payload.filter((p) => p.idQuestion);
-      const toCreate = payload.filter((p) => !p.idQuestion);
-
-      const promises = [];
-      if (toUpdate.length > 0)
-        promises.push(updateManyQuestionAPI({ questions: toUpdate }));
-      if (toCreate.length > 0)
-        promises.push(createManyQuestion({ questions: toCreate }));
-
-      await Promise.all(promises);
-      message.success("Lưu Matching thành công!");
-      if (onRefresh) onRefresh();
-      loadData(); // Reload lại để đồng bộ ID
-    } catch (err) {
-      console.error(err);
-      message.error("Lưu thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
+// MATCHING_HEADING — per-question: just pick the correct heading index.
+const MatchingHeadingForm = ({ value = {}, onChange, pool = {}, questionIndex = 0 }) => {
+  const update = (patch) => onChange({ ...value, ...patch });
+  const headings = pool.headings || [];
+  const correctIdx = Number.isInteger(value.correctHeadingIndex) ? value.correctHeadingIndex : -1;
+  const paraLabel = String.fromCharCode(65 + questionIndex); // A, B, C…
   return (
-    <div className="space-y-6 pb-4">
-      {/* 1. Nhập danh sách lựa chọn */}
-      <Card
-        title="Bước 1: Tạo danh sách lựa chọn (Options)"
-        size="small"
-        className="bg-blue-50 border-blue-200"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {optionsPool.map((opt, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <div className="bg-white border px-3 py-1 rounded font-bold text-blue-600 w-12 text-center shrink-0">
-                {opt.key}
-              </div>
-              <Input
-                placeholder={`Nội dung cho ${opt.key}`}
-                value={opt.text}
-                onChange={(e) => handleOptionChange(idx, e.target.value)}
-              />
-              <Button
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleRemoveOption(idx)}
-              />
-            </div>
-          ))}
-        </div>
-        <Button
-          type="dashed"
-          icon={<PlusOutlined />}
-          onClick={handleAddOption}
-          className="mt-3"
-        >
-          Thêm lựa chọn
-        </Button>
-      </Card>
-
-      {/* 2. Ghép câu hỏi */}
-      <Card title="Bước 2: Câu hỏi & Đáp án đúng" size="small">
-        {questions.map((q, idx) => (
-          <div key={idx} className="mb-4 pb-4 border-b last:border-0">
-            <div className="font-bold text-gray-600 mb-2">
-              Câu {q.numberQuestion || questionNumberOffset + idx + 1}
-            </div>
-            <div className="flex gap-4 items-start">
-              <div className="flex-1">
-                <RichTextEditor
-                  value={q.content}
-                  onChange={(html) =>
-                    handleQuestionChange(idx, "content", html)
-                  }
-                  placeholder="Nhập nội dung câu hỏi (có thể định dạng text)..."
-                  minHeight="80px"
-                />
-              </div>
-              <div className="w-[200px]">
-                <Select
-                  className="w-full"
-                  placeholder="Chọn đáp án đúng"
-                  value={q.correctKey}
-                  onChange={(val) =>
-                    handleQuestionChange(idx, "correctKey", val)
-                  }
-                >
-                  {optionsPool.map((opt) => (
-                    <Option key={opt.key} value={opt.key}>
-                      <strong>{opt.key}.</strong>{" "}
-                      {opt.text
-                        ? opt.text.length > 15
-                          ? opt.text.substring(0, 15) + "..."
-                          : opt.text
-                        : "(Trống)"}
-                    </Option>
-                  ))}
-                </Select>
-              </div>
-            </div>
+    <div className="space-y-3">
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Correct heading (click to pick)
+        </span>
+        {headings.length === 0 ? (
+          <div className="text-[10px] text-[#be123c] italic font-bold">
+            ⚠ Add headings in the matching pool above first.
           </div>
-        ))}
-      </Card>
-
-      <div className="flex justify-end pt-2">
-        <Button
-          type="primary"
-          size="large"
-          onClick={handleSave}
-          loading={saving}
-        >
-          Lưu Matching
-        </Button>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
+            {headings.map((h, i) => (
+              <AnswerCard
+                key={`${h.label}-${i}`}
+                label={h.label}
+                text={h.text}
+                active={i === correctIdx}
+                onClick={() => update({ correctHeadingIndex: i })}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      <MatchingPreview
+        qType="MATCHING_HEADING"
+        metadata={{ ...value, headings, paragraphLabel: paraLabel }}
+        content={value.statement || ""}
+      />
     </div>
   );
+};
+
+// MATCHING_INFORMATION — per-question: statement + correctParagraph
+const MatchingInfoForm = ({ value = {}, onChange, pool = {} }) => {
+  const update = (patch) => onChange({ ...value, ...patch });
+  const labels = pool.paragraphLabels || [];
+  const correct = value.correctParagraph;
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Statement (what the student reads)
+        </span>
+        <Input.TextArea
+          value={value.statement}
+          onChange={(e) => update({ statement: e.target.value })}
+          rows={2}
+          placeholder="e.g. The author mentions renewable energy sources in…"
+        />
+      </label>
+
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Correct paragraph (click to pick)
+        </span>
+        {labels.length === 0 ? (
+          <div className="text-[10px] text-[#be123c] italic font-bold">
+            ⚠ Add paragraph labels in the matching pool above first.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+            {labels.map((l) => (
+              <AnswerCard
+                key={l}
+                label={l}
+                text=""
+                active={l === correct}
+                onClick={() => update({ correctParagraph: l })}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <MatchingPreview
+        qType="MATCHING_INFORMATION"
+        metadata={{ ...value, paragraphLabels: labels }}
+        content={value.statement || ""}
+      />
+    </div>
+  );
+};
+
+// MATCHING_FEATURES — per-question: statement + correctFeatureLabel
+const MatchingFeaturesForm = ({ value = {}, onChange, pool = {} }) => {
+  const update = (patch) => onChange({ ...value, ...patch });
+  const features = pool.features || [];
+  const correct = value.correctFeatureLabel;
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Statement (which feature is being described)
+        </span>
+        <Input.TextArea
+          value={value.statement}
+          onChange={(e) => update({ statement: e.target.value })}
+          rows={2}
+          placeholder="e.g. proposed the theory of evolution"
+        />
+      </label>
+
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Correct feature (click to pick)
+        </span>
+        {features.length === 0 ? (
+          <div className="text-[10px] text-[#be123c] italic font-bold">
+            ⚠ Add features in the matching pool above first.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+            {features.map((f) => (
+              <AnswerCard
+                key={f.label}
+                label={f.label}
+                text={f.text}
+                active={f.label === correct}
+                onClick={() => update({ correctFeatureLabel: f.label })}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <MatchingPreview
+        qType="MATCHING_FEATURES"
+        metadata={{ ...value, features }}
+        content={value.statement || ""}
+      />
+    </div>
+  );
+};
+
+// MATCHING_SENTENCE_ENDINGS — per-question: sentenceStem + correctEndingLabel
+const MatchingSentenceEndingsForm = ({ value = {}, onChange, pool = {} }) => {
+  const update = (patch) => onChange({ ...value, ...patch });
+  const endings = pool.endings || [];
+  const correct = value.correctEndingLabel;
+  return (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Sentence stem (incomplete sentence)
+        </span>
+        <Input.TextArea
+          value={value.sentenceStem}
+          onChange={(e) => update({ sentenceStem: e.target.value })}
+          rows={2}
+          placeholder="e.g. The capital of France is…"
+        />
+      </label>
+
+      <div>
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#64748b] block mb-1.5">
+          Correct ending (click to pick)
+        </span>
+        {endings.length === 0 ? (
+          <div className="text-[10px] text-[#be123c] italic font-bold">
+            ⚠ Add endings in the matching pool above first.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+            {endings.map((e) => (
+              <AnswerCard
+                key={e.label}
+                label={e.label}
+                text={e.text}
+                active={e.label === correct}
+                onClick={() => update({ correctEndingLabel: e.label })}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <MatchingPreview
+        qType="MATCHING_SENTENCE_ENDINGS"
+        metadata={{ ...value, endings }}
+        content={value.sentenceStem || ""}
+      />
+    </div>
+  );
+};
+
+const MatchingForm = (props) => {
+  const { qType, pool, ...rest } = props;
+  switch (qType) {
+    case "MATCHING_HEADING":
+      return <MatchingHeadingForm {...rest} pool={pool} />;
+    case "MATCHING_INFORMATION":
+      return <MatchingInfoForm {...rest} pool={pool} />;
+    case "MATCHING_FEATURES":
+      return <MatchingFeaturesForm {...rest} pool={pool} />;
+    case "MATCHING_SENTENCE_ENDINGS":
+      return <MatchingSentenceEndingsForm {...rest} pool={pool} />;
+    default:
+      return (
+        <div className="text-xs text-[#94a3b8] italic">
+          Unsupported matching sub-type: {qType}
+        </div>
+      );
+  }
 };
 
 export default MatchingForm;

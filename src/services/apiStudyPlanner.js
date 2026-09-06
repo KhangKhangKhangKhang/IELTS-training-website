@@ -45,10 +45,10 @@ export const calculateStudyPlanAPI = async (planData) => {
 };
 
 // Get user's personalized study plan
-export const getStudyPlanAPI = async (idUser, historyMonths = 6) => {
+export const getStudyPlanAPI = async (idUser) => {
   try {
     const response = await API.get("/study-planner/plan", {
-      params: { idUser, historyMonths },
+      params: { idUser },
     });
 
     return {
@@ -61,6 +61,20 @@ export const getStudyPlanAPI = async (idUser, historyMonths = 6) => {
     };
   } catch (error) {
     console.error("Error fetching study plan:", error);
+    throw error;
+  }
+};
+
+// Get direct daily-task completion map (source of truth for completion badges).
+// Bypasses /plan 60s cache so badges update immediately after submitting a test.
+export const getDailyCompletionAPI = async (idUser, date) => {
+  try {
+    const params = { idUser };
+    if (date) params.date = date;
+    const response = await API.get("/study-planner/daily-completion", { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching daily completion:", error);
     throw error;
   }
 };

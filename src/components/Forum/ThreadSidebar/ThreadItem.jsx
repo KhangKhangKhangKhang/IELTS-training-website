@@ -1,118 +1,107 @@
-// ThreadItem - Updated with enhanced UI
-import { Button, Popconfirm, message, Tooltip } from "antd";
+// ThreadItem - refactor theo MagicPath mockup (thuần Tailwind + UI Kit)
+// Tone màu avatar lấy từ idForumThreads hash qua TONE_POOL.
+import { Modal, message } from "antd";
 import { useAuth } from "@/context/authContext";
 import { deleteThreadAPI } from "@/services/apiForum";
-import { useState } from "react";
+import { useState, memo } from "react";
 import EditThreadModal from "@/components/Forum/Forum/Modal/EditThreadModal";
-import {
-  EditOutlined,
-  DeleteOutlined,
-  MessageOutlined,
-  FireFilled,
-  RightOutlined,
-} from "@ant-design/icons";
+import Avatar from "@/components/Forum/UI/Avatar";
+import Badge from "@/components/Forum/UI/Badge";
 
-const ThreadItem = ({ thread, onClick, setThreads, isFirst }) => {
+const TONE_POOL = [
+  "#6366f1", // indigo
+  "#06b6d4", // cyan
+  "#f43f5e", // rose
+  "#f59e0b", // amber
+  "#8b5cf6", // violet
+  "#10b981", // emerald
+  "#ec4899", // pink
+];
+
+// Deterministic tone từ idForumThreads — cùng thread luôn cùng màu.
+const toneFromId = (id = "") => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  }
+  return TONE_POOL[Math.abs(hash) % TONE_POOL.length];
+};
+
+const ThreadItem = ({ thread, onClick, setThreads, isFirst, isSelected }) => {
   const { user } = useAuth();
   const [openEdit, setOpenEdit] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
-  const handleDelete = async () => {
-    try {
-      await deleteThreadAPI(thread.idForumThreads);
-      message.success("Xóa thành công!");
-      setThreads((prev) =>
-        prev.filter((t) => t.idForumThreads !== thread.idForumThreads)
-      );
-    } catch (error) {
-      message.error("Xóa thất bại!");
-    }
+  const tone = toneFromId(thread.idForumThreads);
+  const isOwner = user?.role === "ADMIN" || user?.role === "GIAOVIEN";
+  // Hot nếu là thread đầu tiên trong list (proxy cho "nhiều post nhất" vì backend sort).
+  const isHot = !!isFirst;
+
+  const handleDelete = () => {
+    Modal.confirm({
+      title: "Xóa chủ đề",
+      content: "Bạn chắc chắn muốn xóa chủ đề này?",
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          await deleteThreadAPI(thread.idForumThreads);
+          message.success("Đã xóa chủ đề");
+          setThreads((prev) =>
+            prev.filter((t) => t.idForumThreads !== thread.idForumThreads),
+          );
+        } catch (err) {
+          message.error("Xóa thất bại");
+        }
+      },
+    });
   };
 
   return (
     <div
-      className={`p-4 rounded-2xl transition-all duration-300 cursor-pointer group relative overflow-hidden ${isHovered
-        ? "bg-gradient-to-r from-blue-50 via-blue-50 to-pink-50 dark:from-blue-900/30 dark:via-blue-900/20 dark:to-purple-900/20 border-2 border-blue-200 dark:border-blue-700 shadow-md"
-        : "bg-slate-50 dark:bg-slate-700/50 border-2 border-transparent hover:border-slate-200 dark:hover:border-slate-600"
-        }`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onClick={onClick}
+      className={`group relative flex items-start gap-3 p-3 rounded-2xl border-2 cursor-pointer transition-all ${
+        isSelected
+          ? "border-indigo-500 bg-indigo-50"
+          : "border-transparent hover:border-indigo-200 hover:bg-indigo-50/30"
+      }`}
     >
-      {/* Trending badge cho item đầu tiên */}
-      {isFirst && (
-        <div className="absolute -top-1 -right-1">
-          <div className="w-8 h-8 bg-gradient-to-r from-orange-400 to-blue-400 rounded-bl-xl flex items-center justify-center shadow-lg">
-            <FireFilled className="text-white text-xs" />
-          </div>
-        </div>
-      )}
+      <Avatar name={thread.title} tone={tone} size="md" />
 
-      <div onClick={onClick} className="mb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-slate-900 dark:text-white mb-1.5 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
-              {thread.title}
-            </div>
-            <div className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-              {thread.content}
-            </div>
-          </div>
-          <RightOutlined
-            className={`text-slate-300 dark:text-slate-500 transition-all duration-300 flex-shrink-0 mt-1 ${isHovered ? "text-blue-500 dark:text-blue-400 translate-x-1" : ""
-              }`}
-          />
-        </div>
-
-        {/* Meta info */}
-        <div className="flex items-center gap-3 mt-3 text-xs text-slate-400">
-          <div className="flex items-center gap-1">
-            <MessageOutlined />
-            <span>Thảo luận</span>
-          </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm text-slate-900 leading-snug line-clamp-2">
+          {thread.title}
+        </p>
+        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+          <Badge tone="slate">Thảo luận</Badge>
+          {isHot && <Badge tone="coral">🔥 Hot</Badge>}
         </div>
       </div>
 
-      {user?.role === "ADMIN" && (
-        <div
-          className={`flex gap-2 transition-all duration-300 ${isHovered ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"
-            }`}
-        >
-          <Tooltip title="Chỉnh sửa">
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenEdit(true);
-              }}
-              className="text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 hover:bg-blue-50 rounded-lg"
-            >
-              Sửa
-            </Button>
-          </Tooltip>
-
-          <Popconfirm
-            title="Xác nhận xóa"
-            description="Bạn chắc chắn muốn xóa chủ đề này?"
-            onConfirm={handleDelete}
-            okText="Xóa"
-            cancelText="Hủy"
-            okButtonProps={{
-              className: "bg-red-600 border-red-600 rounded-lg",
+      {isOwner && (
+        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenEdit(true);
             }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+            title="Sửa"
+            aria-label="Sửa chủ đề"
           >
-            <Tooltip title="Xóa chủ đề">
-              <Button
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={(e) => e.stopPropagation()}
-                className="rounded-lg"
-              >
-                Xóa
-              </Button>
-            </Tooltip>
-          </Popconfirm>
+            ✏️
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete();
+            }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+            title="Xóa"
+            aria-label="Xóa chủ đề"
+          >
+            🗑️
+          </button>
         </div>
       )}
 
@@ -126,4 +115,4 @@ const ThreadItem = ({ thread, onClick, setThreads, isFirst }) => {
   );
 };
 
-export default ThreadItem;
+export default memo(ThreadItem);

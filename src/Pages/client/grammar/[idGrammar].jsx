@@ -1,55 +1,206 @@
 // src/Pages/client/grammar/[idGrammar].jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getNextExerciseAPI, submitGrammarAnswerAPI } from "@/services/apiGrammar";
+import { getGrammarPracticeByTopicAPI, submitGrammarAnswerAPI, getGrammarDueReviewsAPI } from "@/services/apiGrammar";
+import { useAuth } from "@/context/authContext";
 import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 
 const GrammarPractice = () => {
   const navigate = useNavigate();
   const { idGrammar } = useParams();
+  const { user } = useAuth();
+
+  const [queue, setQueue] = useState([]);
+  const [queueIndex, setQueueIndex] = useState(0);
   const [exercise, setExercise] = useState(null);
   const [userAnswer, setUserAnswer] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showHint, setShowHint] = useState(false);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [finished, setFinished] = useState(false);
+  const [dueCount, setDueCount] = useState(0);
+  const [dueMode, setDueMode] = useState(false);
 
-  useEffect(() => {
-    loadNextExercise();
+  const exerciseToView = (item, total) => ({
+    idExercise: item.id,
+    idGrammar: item.idGrammar,
+    type: item.type,
+    content: item.content,
+    title: item.title || "Bài tập",
+    progress: { total },
+  });
+
+  const loadDueCount = useCallback(async () => {
+    if (!user?.idUser) return;
+    try {
+      const res = await getGrammarDueReviewsAPI(user.idUser, idGrammar);
+      const list = Array.isArray(res?.data) ? res.data : [];
+      setDueCount(list.length);
+    } catch (err) {
+      console.error("Error loading due count:", err);
+      setDueCount(0);
+    }
+  }, [user?.idUser, idGrammar]);
+
+  const loadPracticeSet = useCallback(async () => {
+    setLoading(true);
+    setResult(null);
+    setUserAnswer("");
+    setShowHint(false);
+    setFinished(false);
+    setCorrectCount(0);
+    setWrongCount(0);
+    setQueueIndex(0);
+    try {
+      const data = await getGrammarPracticeByTopicAPI(idGrammar, 10);
+      const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      setQueue(list);
+      setExercise(list.length ? exerciseToView(list[0], list.length) : null);
+    } catch (error) {
+      console.error("Error:", error);
+      setQueue([]);
+      setExercise(null);
+    } finally {
+      setLoading(false);
+    }
   }, [idGrammar]);
 
-  const loadNextExercise = async () => {
+  const loadDueExercise = useCallback(async () => {
     setLoading(true);
     setResult(null);
     setUserAnswer("");
     setShowHint(false);
     try {
-      const data = await getNextExerciseAPI(idGrammar);
-      setExercise(data);
-    } catch (error) {
-      console.error("Error:", error);
+      const res = await getGrammarDueReviewsAPI(user.idUser, idGrammar);
+      const list = Array.isArray(res?.data) ? res.data : [];
+      const due = list[0];
+      if (!due) {
+        setDueMode(false);
+        await loadPracticeSet();
+        return;
+      }
+      setQueue(list);
+      setQueueIndex(0);
+      setExercise(exerciseToView(due, list.length));
+    } catch (err) {
+      console.error("Error loading due exercise:", err);
+      setDueMode(false);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.idUser, idGrammar, loadPracticeSet]);
+
+  useEffect(() => {
+    setDueMode(false);
+    loadPracticeSet();
+    loadDueCount();
+  }, [loadPracticeSet, loadDueCount]);
 
   const handleSubmit = async () => {
-    if (!userAnswer) return;
+    if (!userAnswer || !exercise) return;
     try {
-      const data = await submitGrammarAnswerAPI(exercise.idExercise, userAnswer);
-      setResult(data);
+      const data = await submitGrammarAnswerAPI(
+        exercise.idGrammar,
+        exercise.idExercise,
+        userAnswer,
+      );
+      const payload = data?.data ?? data;
+      setResult(payload);
+      if (payload?.isCorrect) setCorrectCount((c) => c + 1);
+      else setWrongCount((w) => w + 1);
     } catch (error) {
       console.error("Error:", error);
+      // Graceful fallback: mark as incorrect so user can move on
+      const fallback = {
+        isCorrect: false,
+        correctAnswer: userAnswer,
+        explanation: "Không thể chấm bài. Vui lòng thử lại.",
+      };
+      setResult(fallback);
+      setWrongCount((w) => w + 1);
     }
   };
 
-  const handleNext = () => {
-    loadNextExercise();
+  const handleNext = async () => {
+    if (dueMode) {
+      const nextIdx = queueIndex + 1;
+      if (nextIdx < queue.length) {
+        setQueueIndex(nextIdx);
+        setResult(null);
+        setUserAnswer("");
+        setShowHint(false);
+        setExercise(exerciseToView(queue[nextIdx], queue.length));
+      } else {
+        setDueMode(false);
+        await loadPracticeSet();
+      }
+      await loadDueCount();
+      return;
+    }
+
+    const nextIdx = queueIndex + 1;
+    if (nextIdx < queue.length) {
+      setQueueIndex(nextIdx);
+      setResult(null);
+      setUserAnswer("");
+      setShowHint(false);
+      setExercise(exerciseToView(queue[nextIdx], queue.length));
+    } else {
+      setFinished(true);
+    }
+  };
+
+  const handleRestart = async () => {
+    await loadPracticeSet();
   };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (finished) {
+    const total = correctCount + wrongCount;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <div className="bg-white rounded-xl p-8 shadow-sm max-w-md w-full text-center">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">
+            Hoàn thành {queue.length} bài tập!
+          </h1>
+          <p className="text-slate-600 mb-4">
+            Tổng: {total} câu đã trả lời
+          </p>
+          <div className="flex justify-center gap-8 mb-6">
+            <div>
+              <p className="text-3xl font-bold text-green-600">{correctCount}</p>
+              <p className="text-sm text-slate-500">Đúng</p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-red-500">{wrongCount}</p>
+              <p className="text-sm text-slate-500">Sai</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleRestart}
+              className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+            >
+              Làm lại
+            </button>
+            <button
+              onClick={() => navigate("/grammar")}
+              className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg hover:bg-slate-300"
+            >
+              Về danh sách
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -67,6 +218,10 @@ const GrammarPractice = () => {
     );
   }
 
+  const progressPct = queue.length
+    ? Math.round(((queueIndex + 1) / queue.length) * 100)
+    : 0;
+
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-2xl mx-auto">
@@ -78,9 +233,25 @@ const GrammarPractice = () => {
           <div className="flex-1">
             <h1 className="text-xl font-bold text-slate-800">{exercise.title}</h1>
             <p className="text-sm text-slate-500">
-              Bài {exercise.progress.done + 1}/{exercise.progress.total}
+              Bài {queueIndex + 1}/{queue.length}
             </p>
           </div>
+          {dueCount > 0 && !dueMode && (
+            <button
+              onClick={() => {
+                setDueMode(true);
+                loadDueExercise();
+              }}
+              className="text-xs bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full border border-orange-300 hover:bg-orange-200 font-semibold whitespace-nowrap"
+            >
+              🔔 Có {dueCount} bài cần ôn
+            </button>
+          )}
+          {dueMode && (
+            <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full border border-purple-300 font-semibold whitespace-nowrap">
+              📚 Đang ôn tập
+            </span>
+          )}
           <button
             onClick={() => navigate("/grammar")}
             className="text-sm text-blue-600 hover:text-blue-700"
@@ -93,12 +264,12 @@ const GrammarPractice = () => {
         <div className="mb-6">
           <div className="flex justify-between text-xs text-slate-500 mb-1">
             <span>Tiến độ</span>
-            <span>{Math.round(((exercise.progress.done + 1) / exercise.progress.total) * 100)}%</span>
+            <span>{progressPct}%</span>
           </div>
           <div className="w-full bg-slate-200 rounded-full h-2">
             <div
               className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${((exercise.progress.done + 1) / exercise.progress.total) * 100}%` }}
+              style={{ width: `${progressPct}%` }}
             />
           </div>
         </div>
@@ -228,6 +399,18 @@ const GrammarPractice = () => {
               )}
               {result.explanation && (
                 <p className="text-sm text-slate-500 mt-2">{result.explanation}</p>
+              )}
+              {typeof result.srInterval === 'number' && (
+                <p className="text-xs text-slate-500 mt-2">
+                  {result.isCorrect
+                    ? `Ôn tiếp theo sau ${result.srInterval} ngày`
+                    : `Ôn lại sau ${result.srInterval} ngày`}
+                </p>
+              )}
+              {result.proficiency && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Trình độ chủ điểm: <span className="font-semibold">{result.proficiency}</span>
+                </p>
               )}
             </div>
           )}

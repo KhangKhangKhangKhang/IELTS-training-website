@@ -88,7 +88,7 @@ const UserList = () => {
       }
     } catch (error) {
       console.log(error);
-      message.error("Lấy danh sách người dùng thất bại");
+      message.error("Failed to load user list");
     } finally {
       setLoading(false);
     }
@@ -110,16 +110,16 @@ const UserList = () => {
 
       if (editingUser) {
         await updateUserAPI(editingUser.idUser, values);
-        message.success("Cập nhật người dùng thành công");
+        message.success("User updated successfully");
       } else {
         await createUserAPI(values);
-        message.success("Thêm người dùng thành công");
+        message.success("User added successfully");
       }
       setOpen(false);
       fetchUser();
     } catch (error) {
       console.log(error);
-      message.error("Thao tác thất bại");
+      message.error("Action failed");
     }
   };
 
@@ -131,7 +131,7 @@ const UserList = () => {
 
   const handleDelete = async (record) => {
     Modal.confirm({
-      title: "Xác nhận xóa người dùng",
+      title: "Confirm delete user",
       content: (
         <div className="py-3">
           <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
@@ -147,22 +147,22 @@ const UserList = () => {
             </div>
           </div>
           <p className="mt-3 text-slate-600 text-sm">
-            Hành động này không thể hoàn tác.
+            This action cannot be undone.
           </p>
         </div>
       ),
-      okText: "Xóa",
+      okText: "Delete",
       okType: "danger",
-      cancelText: "Hủy",
+      cancelText: "Cancel",
       centered: true,
       onOk: async () => {
         try {
           await deleteUserAPI(record.idUser);
-          message.success("Xóa người dùng thành công");
+          message.success("User deleted successfully");
           fetchUser();
         } catch (error) {
           console.log(error);
-          message.error("Xóa thất bại");
+          message.error("Delete failed");
         }
       },
     });
@@ -181,14 +181,14 @@ const UserList = () => {
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium">
             <BookOutlined />
-            Giáo viên
+            Teacher
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-medium">
             <UserOutlined />
-            Học viên
+            Student
           </span>
         );
     }
@@ -196,7 +196,7 @@ const UserList = () => {
 
   const columns = [
     {
-      title: "Người dùng",
+      title: "User",
       key: "user",
       width: 280,
       render: (_, record) => (
@@ -217,7 +217,7 @@ const UserList = () => {
       ),
     },
     {
-      title: "Giới tính",
+      title: "Gender",
       dataIndex: "gender",
       key: "gender",
       align: "center",
@@ -234,14 +234,14 @@ const UserList = () => {
           return (
             <span className="inline-flex items-center gap-1 text-pink-600 text-sm">
               <WomanOutlined />
-              Nữ
+              Female
             </span>
           );
         return <span className="text-slate-400">—</span>;
       },
     },
     {
-      title: "Vai trò",
+      title: "Role",
       dataIndex: "role",
       key: "role",
       align: "center",
@@ -249,7 +249,7 @@ const UserList = () => {
       render: (role) => getRoleTag(role),
     },
     {
-      title: "Loại TK",
+      title: "Account type",
       dataIndex: "accountType",
       key: "accountType",
       align: "center",
@@ -267,13 +267,13 @@ const UserList = () => {
       ),
     },
     {
-      title: "Số điện thoại",
+      title: "Phone number",
       dataIndex: "phoneNumber",
       key: "phoneNumber",
       width: 140,
       render: (phone) => (
         <span className="text-slate-600">
-          {phone || <span className="text-slate-400 italic">Chưa có</span>}
+          {phone || <span className="text-slate-400 italic">Not set</span>}
         </span>
       ),
     },
@@ -313,14 +313,14 @@ const UserList = () => {
                   {
                     key: "edit",
                     icon: <EditOutlined />,
-                    label: "Chỉnh sửa",
+                    label: "Edit",
                     onClick: () => handleEdit(record),
                   },
                   { type: "divider" },
                   {
                     key: "delete",
                     icon: <DeleteOutlined />,
-                    label: "Xóa",
+                    label: "Delete",
                     danger: true,
                     onClick: () => handleDelete(record),
                   },
@@ -344,7 +344,7 @@ const UserList = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 transition-colors duration-300">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header - giống Forum */}
+        {/* Header - same as Forum */}
         <div className="relative overflow-hidden bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 rounded-2xl shadow-lg p-8 border border-slate-700">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-400/10 rounded-full translate-y-1/2 -translate-x-1/2" />
@@ -357,14 +357,14 @@ const UserList = () => {
                 </div>
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold text-white">
-                    Quản lý người dùng
+                    Manage users
                   </h1>
                   <p className="text-slate-400 text-sm mt-1">
-                    Tổng số:{" "}
+                    Total:{" "}
                     <span className="text-blue-400 font-semibold">
                       {stats.total}
                     </span>{" "}
-                    người dùng
+                    users
                   </p>
                 </div>
               </div>
@@ -377,7 +377,7 @@ const UserList = () => {
                   size="large"
                   className="bg-blue-600 hover:bg-blue-500 border-0 shadow-lg shadow-blue-600/30 rounded-xl h-11 px-6"
                 >
-                  Thêm người dùng
+                  Add users
                 </Button>
               )}
             </div>
@@ -394,14 +394,14 @@ const UserList = () => {
               <div className="flex items-center gap-2 text-slate-400 text-sm">
                 <BookOutlined className="text-blue-400" />
                 <span>
-                  Giáo viên:{" "}
+                  Teacher:{" "}
                   <span className="text-white font-medium">{stats.teacher}</span>
                 </span>
               </div>
               <div className="flex items-center gap-2 text-slate-400 text-sm">
                 <UserOutlined className="text-emerald-400" />
                 <span>
-                  Học viên:{" "}
+                  Student:{" "}
                   <span className="text-white font-medium">{stats.user}</span>
                 </span>
               </div>
@@ -414,7 +414,7 @@ const UserList = () => {
           <div className="flex flex-col sm:flex-row gap-3 items-center">
             <div className="flex-1 w-full">
               <Input
-                placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
+                placeholder="Search by name, email or phone..."
                 prefix={<SearchOutlined className="text-slate-400" />}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
@@ -431,12 +431,12 @@ const UserList = () => {
                 className="w-full sm:w-40"
                 suffixIcon={<FilterOutlined />}
               >
-                <Option value="all">Tất cả</Option>
+                <Option value="all">All</Option>
                 <Option value="ADMIN">Admin</Option>
-                <Option value="GIAOVIEN">Giáo viên</Option>
-                <Option value="USER">Học viên</Option>
+                <Option value="GIAOVIEN">Teacher</Option>
+                <Option value="USER">Student</Option>
               </Select>
-              <Tooltip title="Làm mới">
+              <Tooltip title="Refresh">
                 <Button
                   icon={<ReloadOutlined />}
                   size="large"
@@ -458,7 +458,7 @@ const UserList = () => {
               pageSize: 10,
               showSizeChanger: true,
               showTotal: (total, range) =>
-                `${range[0]}-${range[1]} của ${total} người dùng`,
+                `${range[0]}-${range[1]} of ${total} users`,
               className: "px-4 py-3",
             }}
             columns={columns}
@@ -482,12 +482,12 @@ const UserList = () => {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-slate-800">
-                {editingUser ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
+                {editingUser ? "Edit user" : "Add new user"}
               </h3>
               <p className="text-sm text-slate-500">
                 {editingUser
-                  ? "Cập nhật thông tin người dùng"
-                  : "Điền thông tin để tạo tài khoản"}
+                  ? "Update info users"
+                  : "Fill info to create account"}
               </p>
             </div>
           </div>
@@ -497,7 +497,7 @@ const UserList = () => {
         footer={
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <Button size="large" onClick={() => setOpen(false)}>
-              Hủy
+              Cancel
             </Button>
             <Button
               type="primary"
@@ -505,7 +505,7 @@ const UserList = () => {
               onClick={handleSubmit}
               className="bg-blue-600 hover:bg-blue-500"
             >
-              {editingUser ? "Cập nhật" : "Tạo mới"}
+              {editingUser ? "Update" : "Create new"}
             </Button>
           </div>
         }
@@ -520,15 +520,15 @@ const UserList = () => {
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Form.Item
-              label="Tên người dùng"
+              label="Name users"
               name="nameUser"
               rules={[
-                { required: true, message: "Vui lòng nhập tên người dùng" },
+                { required: true, message: "Please enter user name" },
               ]}
             >
               <Input
                 size="large"
-                placeholder="Nhập tên người dùng"
+                placeholder="Enter user name"
                 prefix={<UserOutlined className="text-slate-400" />}
               />
             </Form.Item>
@@ -537,12 +537,12 @@ const UserList = () => {
               label="Email"
               name="email"
               rules={[
-                { required: true, type: "email", message: "Email không hợp lệ" },
+                { required: true, type: "email", message: "Invalid email" },
               ]}
             >
               <Input
                 size="large"
-                placeholder="Nhập email"
+                placeholder="Enter email"
                 prefix={<MailOutlined className="text-slate-400" />}
               />
             </Form.Item>
@@ -550,58 +550,58 @@ const UserList = () => {
 
           {!editingUser && (
             <Form.Item
-              label="Mật khẩu"
+              label="Password"
               name="password"
-              rules={[{ required: true, message: "Vui lòng nhập mật khẩu" }]}
+              rules={[{ required: true, message: "Please enter password" }]}
             >
               <Input.Password
                 size="large"
-                placeholder="Nhập mật khẩu"
+                placeholder="Enter password"
                 prefix={<LockOutlined className="text-slate-400" />}
               />
             </Form.Item>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Form.Item label="Số điện thoại" name="phoneNumber">
+            <Form.Item label="Phone number" name="phoneNumber">
               <Input
                 size="large"
-                placeholder="Nhập số điện thoại"
+                placeholder="Enter phone number"
                 prefix={<PhoneOutlined className="text-slate-400" />}
               />
             </Form.Item>
 
             <Form.Item
-              label="Giới tính"
+              label="Gender"
               name="gender"
-              rules={[{ required: true, message: "Vui lòng chọn giới tính" }]}
+              rules={[{ required: true, message: "Please choose gender" }]}
             >
-              <Select size="large" placeholder="Chọn giới tính">
+              <Select size="large" placeholder="Choose gender">
                 <Option value="Male">Nam</Option>
-                <Option value="Female">Nữ</Option>
+                <Option value="Female">Female</Option>
               </Select>
             </Form.Item>
           </div>
 
-          <Form.Item label="Địa chỉ" name="address">
+          <Form.Item label="Address" name="address">
             <Input
               size="large"
-              placeholder="Nhập địa chỉ"
+              placeholder="Enter address"
               prefix={<HomeOutlined className="text-slate-400" />}
             />
           </Form.Item>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Form.Item label="Vai trò" name="role" initialValue="USER">
+            <Form.Item label="Role" name="role" initialValue="USER">
               <Select size="large">
-                <Option value="USER">Học viên</Option>
+                <Option value="USER">Student</Option>
                 <Option value="ADMIN">Admin</Option>
-                <Option value="GIAOVIEN">Giáo viên</Option>
+                <Option value="GIAOVIEN">Teacher</Option>
               </Select>
             </Form.Item>
 
             <Form.Item
-              label="Loại tài khoản"
+              label="Account type"
               name="accountType"
               initialValue="LOCAL"
             >
@@ -614,9 +614,9 @@ const UserList = () => {
             <Form.Item
               label="Level"
               name="level"
-              rules={[{ required: true, message: "Vui lòng chọn level" }]}
+              rules={[{ required: true, message: "Please choose level" }]}
             >
-              <Select size="large" placeholder="Chọn level">
+              <Select size="large" placeholder="Choose level">
                 <Option value="Low">Low</Option>
                 <Option value="Mid">Mid</Option>
                 <Option value="High">High</Option>

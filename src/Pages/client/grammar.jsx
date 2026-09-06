@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import GrammarStudentView from "./grammar/GrammarStudentView";
+import GrammarTeacherView from "./grammar/GrammarTeacherView";
 import {
   Plus,
   Search,
@@ -82,6 +84,16 @@ const Grammar = () => {
   const isAdminOrTeacher = user?.role === "ADMIN" || user?.role === "GIAOVIEN";
   const isTeacher = user?.role === "GIAOVIEN";
 
+  // Student view: learning canvas.
+  if (!isAdminOrTeacher) {
+    return <GrammarStudentView />;
+  }
+
+  // Teacher/Admin view: management canvas with full CRUD.
+  if (isAdminOrTeacher) {
+    return <GrammarTeacherView />;
+  }
+
   // Grammar stats state
   const [grammarStats, setGrammarStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
@@ -154,6 +166,13 @@ const Grammar = () => {
         const res = await getGrammarDashboardAPI(user.idUser);
         setGrammarStats(res);
         setWeakAreas(res.weakAreas || []);
+        // Cache dashboard so getGrammarTopicsAPI / getGrammarRecommendationsAPI
+        // (used by grammar/index.jsx) have data to map from.
+        try {
+          localStorage.setItem("grammarDashboard", JSON.stringify(res));
+        } catch {
+          // ignore quota / SSR errors
+        }
       } catch (err) {
         console.error("Failed to fetch grammar stats:", err);
       } finally {

@@ -1,10 +1,11 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Listening from "@/components/test/type/listening";
 import Reading from "@/components/test/type/reading";
 import Writing from "@/components/test/type/writing";
 import Speaking from "@/components/test/type/speaking";
 import { useState, useEffect } from "react";
 import { Spin } from "antd";
+import { getDetailInTestAPI } from "@/services/apiDoTest";
 
 const testComponents = {
   LISTENING: Listening,
@@ -15,26 +16,47 @@ const testComponents = {
 
 const TestDetail = () => {
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const previewMode = searchParams.get("preview") === "teacher";
   const navigate = useNavigate();
-  // Lấy thêm initialTestResult
-  const { idTest, testType, duration, initialTestResult } =
-    location.state || {};
+  const params = useParams();
+  const routeId = params.id || params.idTest;
+  const state = location.state || {};
+  const idTest = state.idTest || routeId;
+  const testType = state.testType;
+  const duration = state.duration;
+  const initialTestResult = state.initialTestResult;
   const [timedOut, setTimedOut] = useState(false);
+  const [test, setTest] = useState(null);
+  const [loading, setLoading] = useState(!testType);
 
-  const Comp = testComponents[testType?.toUpperCase()];
+  const resolvedType = (test?.testType || testType || "").toUpperCase();
+  const Comp = testComponents[resolvedType];
+
+  useEffect(() => {
+    if (testType) return;
+    if (!idTest) return;
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await getDetailInTestAPI(idTest);
+        setTest(res?.data || null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [idTest, testType]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Nếu không có idTest hoặc không có kết quả khởi tạo (người dùng cố tình paste link)
-      // thì đá về trang chủ
-      if (!idTest || !testType) {
+      if (!idTest) {
         setTimedOut(true);
         navigate("/test", { replace: true });
       }
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [idTest, testType, navigate]);
+  }, [idTest, navigate]);
 
   if (timedOut) {
     return (
@@ -44,7 +66,7 @@ const TestDetail = () => {
     );
   }
 
-  if (!idTest || !testType) {
+  if (loading) {
     return (
       <div className="text-center py-12">
         <Spin size="large" />
@@ -52,20 +74,28 @@ const TestDetail = () => {
     );
   }
 
-  if (!Comp) {
+  if (!idTest || !resolvedType) {
     return (
       <div className="text-center py-12 text-gray-500">
-        Không tìm thấy loại đề: {testType}
+        Không đủ dữ liệu để preview đề.
       </div>
     );
   }
 
-  // Truyền initialTestResult xuống
+  if (!Comp) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        Không tìm thấy loại đề: {resolvedType}
+      </div>
+    );
+  }
+
   return (
     <Comp
       idTest={idTest}
-      duration={duration}
+      duration={duration || test?.duration}
       initialTestResult={initialTestResult}
+      previewMode={previewMode}
     />
   );
 };

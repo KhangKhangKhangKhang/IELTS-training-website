@@ -1,14 +1,13 @@
-// EditThreadModal - Updated with enhanced UI
+// EditThreadModal - modal sửa thread, style indigo đồng bộ
 import { Modal, Input, Button, message } from "antd";
 import { useState } from "react";
 import { updateThreadAPI } from "@/services/apiForum";
 import { useAuth } from "@/context/authContext";
-import { EditOutlined, FileTextOutlined } from "@ant-design/icons";
 
 const EditThreadModal = ({ open, onClose, thread, setThreads }) => {
   const [title, setTitle] = useState(thread.title);
-  const { user } = useAuth();
   const [content, setContent] = useState(thread.content);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const handleUpdate = async () => {
@@ -21,12 +20,10 @@ const EditThreadModal = ({ open, onClose, thread, setThreads }) => {
         title,
         content,
       });
-
-      const updatedThread = res.data;
       setThreads((prev) =>
         prev.map((t) =>
-          t.idForumThreads === thread.idForumThreads ? updatedThread : t
-        )
+          t.idForumThreads === thread.idForumThreads ? res.data : t,
+        ),
       );
       message.success("Cập nhật thành công!");
       onClose();
@@ -42,11 +39,11 @@ const EditThreadModal = ({ open, onClose, thread, setThreads }) => {
       open={open}
       title={
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center">
-            <EditOutlined className="text-white text-lg" />
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-lg">
+            ✏️
           </div>
           <div>
-            <span className="text-slate-900 font-semibold text-lg">
+            <span className="text-slate-900 font-bold text-lg block">
               Chỉnh sửa chủ đề
             </span>
             <p className="text-slate-500 text-xs font-normal">
@@ -57,26 +54,24 @@ const EditThreadModal = ({ open, onClose, thread, setThreads }) => {
       }
       onCancel={onClose}
       footer={false}
-      className="rounded-2xl"
       width={520}
     >
-      <div className="space-y-5 pt-4">
+      <div className="space-y-4 pt-2">
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
-            <FileTextOutlined className="text-amber-500" />
+          <label className="block text-sm font-bold text-slate-700 mb-1.5">
             Tên chủ đề
           </label>
           <Input
             placeholder="Nhập tên chủ đề..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="rounded-xl border-slate-200 h-11 hover:border-amber-300 focus:border-amber-400"
+            className="!rounded-xl !border-slate-200 hover:!border-indigo-300 focus:!border-indigo-500"
+            size="large"
           />
         </div>
 
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
-            <FileTextOutlined className="text-orange-500" />
+          <label className="block text-sm font-bold text-slate-700 mb-1.5">
             Mô tả chủ đề
           </label>
           <Input.TextArea
@@ -84,14 +79,14 @@ const EditThreadModal = ({ open, onClose, thread, setThreads }) => {
             rows={4}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="rounded-xl border-slate-200 hover:border-amber-300 focus:border-amber-400"
+            className="!rounded-xl !border-slate-200 hover:!border-indigo-300 focus:!border-indigo-500"
           />
         </div>
 
-        <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
+        <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
           <Button
             onClick={onClose}
-            className="border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 rounded-xl px-6 h-10"
+            className="!rounded-xl !px-5 !h-10 !border-slate-200 !text-slate-600"
           >
             Hủy
           </Button>
@@ -100,7 +95,7 @@ const EditThreadModal = ({ open, onClose, thread, setThreads }) => {
             onClick={handleUpdate}
             loading={loading}
             disabled={!title.trim()}
-            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 border-0 rounded-xl px-6 h-10 font-medium shadow-md shadow-amber-200"
+            className="!rounded-xl !px-5 !h-10 !bg-indigo-600 hover:!bg-indigo-700 !border-0 !font-bold"
           >
             Lưu thay đổi
           </Button>

@@ -1,279 +1,817 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Modal, message, Spin } from "antd";
+import { Modal, message } from "antd";
+import { motion } from "framer-motion";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  getOverallScroreAPI,
-  getAvgScoreByDayAPI,
-  getTestResultByIdUserAPI,
   getRecomendedTestsAPI,
-  getTargetScoresAPI,
-  updateTargetScoresAPI,
-  getGrammarWeaknessAPI,
-  getQuestionTypeWeaknessAPI,
-  getSkillStatusAPI,
+  getSkillOverviewAPI,
+  getTestResultByIdUserAPI,
 } from "@/services/apiStatistics";
-import { getAllQuestionTypePerformanceAPI, getWeakQuestionTypesAPI } from "@/services/apiQuestionTypePerformance";
+import { getGrammarDashboardAPI } from "@/services/apiGrammar";
+import { getStreakAPI, userProfileAPI } from "@/services/apiUser";
+import { getStudyPlanAPI, getDailyCompletionAPI } from "@/services/apiStudyPlanner";
 import { StartTestAPI } from "@/services/apiDoTest";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  BarChart,
-  Bar,
-} from "recharts";
-import {
-  BookOpen,
-  Headphones,
-  PenTool,
-  Mic,
-  Cpu,
-  Wallet,
-  RefreshCw,
-  MessageCircle,
-  Calendar,
-  Target,
-  Award,
-  Clock,
-  ChevronRight,
-  Filter,
-  ChevronLeft, // Import thêm icon cho pagination
-} from "lucide-react";
 import { useAuth } from "@/context/authContext";
 
-// --- IMPORT COMPONENT REVIEW MỚI ---
-import SimpleResultModal from "@/components/test/SimpleResultModal";
-import OnboardingGuide from '../../components/onboarding';
-
-// --- Components Con (SkillCard) ---
-const SkillCard = ({ type, score, icon, color }) => (
-  <div className="p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-gray-100 dark:border-slate-700 flex items-center justify-between hover:shadow-md transition-shadow">
-    <div>
-      <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">
-        {type}
-      </p>
-      <h3 className="text-3xl font-bold text-gray-800 dark:text-white">
-        {score}
-      </h3>
-    </div>
-    <div className={`p-3 rounded-xl ${color}`}>
-      {icon && React.createElement(icon, { size: 24, className: "text-white" })}
-    </div>
-  </div>
-);
-
-// --- Helper: Get Default Test Image ---
-const getDefaultTestImage = (testType) => {
-  const canvas = document.createElement("canvas");
-  canvas.width = 400;
-  canvas.height = 400;
-  const ctx = canvas.getContext("2d");
-
-  // Gradient backgrounds based on test type
-  const gradients = {
-    READING: ["#3b82f6", "#06b6d4"],
-    LISTENING: ["#10b981", "#059669"],
-    WRITING: ["#8b5cf6", "#ec4899"],
-    SPEAKING: ["#f59e0b", "#ef4444"],
+// --- LessonRow (MagicPath style) ---
+function LessonRow({ icon, title, sub, status, badge }) {
+  const colors = {
+    done: "bg-[#10b981] shadow-[0_3px_0_#047857]",
+    current: "bg-[#6366f1] shadow-[0_3px_0_#4338ca] ring-4 ring-[#6366f1]/20",
+    locked: "bg-[#cbd5e1] shadow-[0_3px_0_#94a3b8]",
   };
+  return (
+    <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] hover:border-[#6366f1] cursor-pointer transition-colors">
+      <div
+        className={`${colors[status]} w-12 h-12 rounded-2xl flex items-center justify-center text-xl flex-none`}
+      >
+        {status === "locked" ? "🔒" : icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-extrabold text-[#1e1b4b] text-sm truncate">
+          {title}
+        </div>
+        <div className="text-xs text-[#64748b] truncate">{sub}</div>
+      </div>
+      {badge && (
+        <span
+          className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${
+            status === "done"
+              ? "bg-[#d1fae5] text-[#047857]"
+              : status === "current"
+                ? "bg-[#eef2ff] text-[#4338ca]"
+                : "bg-[#f1f1f6] text-[#64748b]"
+          }`}
+        >
+          {badge}
+        </span>
+      )}
+      <span className="text-[#64748b] text-lg">→</span>
+    </div>
+  );
+}
 
-  const colors = gradients[testType] || ["#6b7280", "#4b5563"];
-  const gradient = ctx.createLinearGradient(0, 0, 400, 400);
-  gradient.addColorStop(0, colors[0]);
-  gradient.addColorStop(1, colors[1]);
+// --- SkillCard (MagicPath style, lessons dropped per plan) ---
+function SkillCard({ icon, name, band, target, color, accent }) {
+  return (
+    <motion.div
+      whileHover={{ y: -4 }}
+      className="relative bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] hover:shadow-[0_5px_0_#e6e6ed] hover:border-[#6366f1]/40 p-5 cursor-pointer transition-all overflow-hidden"
+    >
+      <div
+        className={`absolute -top-12 -right-12 w-40 h-40 ${accent} rounded-full opacity-20 blur-2xl`}
+      />
+      <div className="relative">
+        <div
+          className={`w-12 h-12 rounded-2xl ${color} shadow-[0_3px_0_rgba(0,0,0,0.15)] flex items-center justify-center text-2xl mb-3`}
+        >
+          {icon}
+        </div>
+        <h3
+          className="text-lg font-black text-[#1e1b4b] mb-1"
+          style={{ fontFamily: "Nunito" }}
+        >
+          {name}
+        </h3>
+        <div className="text-xs text-[#64748b] mb-3">
+          Mục tiêu: {target != null ? target.toFixed(1) : "—"}
+        </div>
 
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 400, 400);
+        <div className="flex items-baseline gap-2 mb-2">
+          <span
+            className="text-3xl font-black text-[#1e1b4b]"
+            style={{ fontFamily: "Nunito" }}
+          >
+            {band == null ? "—" : band.toFixed(1)}
+          </span>
+          <span className="text-xs font-bold text-[#64748b]">band hiện tại</span>
+        </div>
+        <div className="h-2 bg-[#f1f1f6] rounded-full overflow-hidden">
+          <div
+            className={`h-full ${color} rounded-full`}
+            style={{
+              width: `${
+                band != null && target
+                  ? Math.min(100, (band / target) * 100)
+                  : 0
+              }%`,
+            }}
+          />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
-  // Add icon text
-  ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-  ctx.font = "bold 80px Arial";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+// --- Helpers ---
+const SKILL_CARDS = [
+  { key: "reading", icon: "📖", name: "Reading", color: "bg-[#6366f1]", accent: "bg-[#6366f1]" },
+  { key: "listening", icon: "🎧", name: "Listening", color: "bg-[#06b6d4]", accent: "bg-[#06b6d4]" },
+  { key: "writing", icon: "✍️", name: "Writing", color: "bg-[#fb7185]", accent: "bg-[#fb7185]" },
+  { key: "speaking", icon: "🎤", name: "Speaking", color: "bg-[#a855f7]", accent: "bg-[#a855f7]" },
+];
 
-  const icons = {
-    READING: "📖",
-    LISTENING: "🎧",
-    WRITING: "✍️",
-    SPEAKING: "🎤",
-  };
-
-  ctx.fillText(icons[testType] || "📝", 200, 200);
-
-  return canvas.toDataURL("image/png");
+const ACTIVITY_META = {
+  READING: { icon: "📖", color: "bg-[#6366f1]" },
+  LISTENING: { icon: "🎧", color: "bg-[#06b6d4]" },
+  WRITING: { icon: "✍️", color: "bg-[#fb7185]" },
+  SPEAKING: { icon: "🎤", color: "bg-[#a855f7]" },
 };
 
-// --- MAIN COMPONENT ---
+const formatGreeting = (now = new Date()) => {
+  const h = now.getHours();
+  if (h < 11) return "Chào buổi sáng";
+  if (h < 14) return "Chào buổi trưa";
+  if (h < 18) return "Chào buổi chiều";
+  return "Chào buổi tối";
+};
 
+const formatActivityTime = (date) => {
+  if (!date) return "";
+  const d = new Date(date);
+  const diffMs = Date.now() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Vừa xong";
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH} giờ trước`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD === 1) return "Hôm qua";
+  if (diffD < 7) return `${diffD} ngày trước`;
+  return d.toLocaleDateString("vi-VN");
+};
+
+// --- PROGRESSIVE SECTIONS ---
+// Each section fetches its own data and renders its own skeleton.
+// Sections mount in parallel; the page becomes interactive as each
+// section resolves independently. No global Promise.allSettled.
+
+function HeroSection({ idUser, fallbackName }) {
+  const [profile, setProfile] = useState(null);
+  const [streak, setStreak] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!idUser) return undefined;
+    let cancelled = false;
+    (async () => {
+      const [rProfile, rStreak] = await Promise.allSettled([
+        userProfileAPI(idUser).catch(() => null),
+        getStreakAPI(idUser).catch(() => null),
+      ]);
+      if (cancelled) return;
+      const p = rProfile.status === "fulfilled" ? rProfile.value?.data : null;
+      setProfile(p || (fallbackName ? { nameUser: fallbackName } : null));
+      if (rStreak.status === "fulfilled" && rStreak.value?.data) {
+        setStreak(rStreak.value.data);
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [idUser, fallbackName]);
+
+  const greetingName =
+    profile?.nameUser || fallbackName || "bạn";
+  const currentStreak = streak?.currentStreak ?? 0;
+
+  if (loading) {
+    return <Skeleton className="h-44 rounded-3xl" />;
+  }
+
+  return (
+    <section className="relative bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#fb7185] rounded-3xl p-7 text-white overflow-hidden shadow-[0_4px_0_#4338ca]">
+      <div className="absolute -top-12 -right-12 w-56 h-56 bg-white/10 rounded-full blur-3xl" />
+      <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
+      <div className="relative grid md:grid-cols-[1fr_auto] gap-6 items-center">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider opacity-90 mb-1">
+            {formatGreeting()}, {greetingName} 🌞
+          </div>
+          <h1
+            className="text-3xl font-black mb-2"
+            style={{ fontFamily: "Nunito" }}
+          >
+            Hôm nay học gì nào?
+          </h1>
+          <p className="opacity-90 text-sm mb-4 max-w-md">
+            Bạn đã giữ streak <strong>{currentStreak} ngày</strong> liên tục.
+          </p>
+
+          <div className="flex flex-wrap gap-2.5">
+            <button
+              onClick={() => navigate("/study-planner")}
+              className="bg-white text-[#4338ca] px-5 py-2.5 rounded-2xl font-extrabold uppercase tracking-wide text-sm shadow-[0_4px_0_rgba(0,0,0,0.25)] active:translate-y-[2px] active:shadow-[0_2px_0_rgba(0,0,0,0.25)] transition-all"
+            >
+              ▶ Tiếp tục lesson
+            </button>
+            <button
+              onClick={() => navigate("/study-planner")}
+              className="bg-white/15 backdrop-blur text-white px-5 py-2.5 rounded-2xl font-extrabold uppercase tracking-wide text-sm border-2 border-white/30 hover:bg-white/25 transition-all"
+            >
+              Xem lộ trình
+            </button>
+          </div>
+        </div>
+
+        <div className="hidden md:block">
+          <div className="text-8xl">🦉</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SkillsSection({ idUser }) {
+  const [skillOverview, setSkillOverview] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!idUser) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getSkillOverviewAPI(idUser);
+        if (!cancelled) setSkillOverview(res?.data ?? null);
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [idUser]);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-36 rounded-3xl" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2
+            className="text-xl font-black text-[#1e1b4b]"
+            style={{ fontFamily: "Nunito" }}
+          >
+            4 kỹ năng của bạn
+          </h2>
+          <div className="text-xs text-[#64748b]">
+            Điểm trung bình theo các bài test đã hoàn thành
+          </div>
+        </div>
+        <button
+          onClick={() => navigate("/weakness")}
+          className="text-xs font-bold text-[#6366f1] hover:underline"
+        >
+          Chi tiết →
+        </button>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {SKILL_CARDS.map((s) => {
+          const skill = skillOverview?.[s.key];
+          return (
+            <SkillCard
+              key={s.key}
+              icon={s.icon}
+              name={s.name}
+              band={skill?.currentBand ?? null}
+              target={skill?.targetBand ?? null}
+              color={s.color}
+              accent={s.accent}
+            />
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function TodayPlanSection({ idUser }) {
+  const [tasks, setTasks] = useState([]);
+  const [completionMap, setCompletionMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!idUser) return undefined;
+    let cancelled = false;
+    (async () => {
+      const [rPlan, rCompletion] = await Promise.allSettled([
+        getStudyPlanAPI(idUser).catch(() => null),
+        getDailyCompletionAPI(idUser).catch(() => null),
+      ]);
+      if (cancelled) return;
+      if (rPlan.status === "fulfilled") {
+        const v = rPlan.value;
+        const list = v?.dailyTasks ?? v?.data?.dailyTasks ?? [];
+        setTasks(Array.isArray(list) ? list : []);
+      }
+      if (rCompletion.status === "fulfilled" && rCompletion.value?.tasks) {
+        setCompletionMap(rCompletion.value.tasks);
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [idUser]);
+
+  const isTaskCompleted = (t) =>
+    completionMap?.[t.type]?.completed === true;
+  const completedCount = tasks.filter(isTaskCompleted).length;
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] p-5 space-y-3">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-12 w-full rounded-2xl" />
+        <Skeleton className="h-12 w-full rounded-2xl" />
+        <Skeleton className="h-12 w-3/4 rounded-2xl" />
+      </div>
+    );
+  }
+
+  return (
+    <section className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6366f1]">
+            Hôm nay · {new Date().toLocaleDateString("vi-VN")}
+          </div>
+          <h2
+            className="text-xl font-black text-[#1e1b4b]"
+            style={{ fontFamily: "Nunito" }}
+          >
+            Kế hoạch học hôm nay
+          </h2>
+        </div>
+        {tasks.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#eef2ff] text-[#4338ca] font-extrabold text-xs border-2 border-[#a5b4fc]">
+            <span>⏱</span> {completedCount} / {tasks.length}
+          </div>
+        )}
+      </div>
+
+      {tasks.length === 0 ? (
+        <div className="text-center py-6">
+          <div className="text-4xl mb-2">📭</div>
+          <p className="text-sm text-[#64748b] mb-3">
+            Chưa có kế hoạch hôm nay.
+          </p>
+          <button
+            onClick={() => navigate("/study-planner")}
+            className="px-4 py-2 rounded-xl bg-[#eef2ff] text-[#4338ca] font-extrabold text-xs uppercase tracking-wide hover:bg-[#e0e7ff] transition-all"
+          >
+            Tạo lộ trình →
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {tasks.map((t, i) => {
+            const completed = isTaskCompleted(t);
+            const lessonIcon = (() => {
+              const k = (t.type || t.skill)?.toLowerCase();
+              if (k === "reading") return "📖";
+              if (k === "listening") return "🎧";
+              if (k === "writing") return "✍️";
+              if (k === "speaking") return "🎤";
+              if (k === "grammar") return "📝";
+              return "📚";
+            })();
+            return (
+              <LessonRow
+                key={t.id ?? i}
+                icon={lessonIcon}
+                title={t.name || t.title || `Lesson ${i + 1}`}
+                sub={
+                  t.estimatedMinutes ?? t.durationMinutes
+                    ? `${t.estimatedMinutes ?? t.durationMinutes} phút`
+                    : t.description || ""
+                }
+                status={completed ? "done" : "current"}
+                badge={completed ? "✓ Hoàn thành" : "Chưa làm"}
+              />
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function WeaknessSection({ idUser }) {
+  const [grammar, setGrammar] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!idUser) return undefined;
+    let cancelled = false;
+    (async () => {
+      const [rG] = await Promise.allSettled([
+        getGrammarDashboardAPI(idUser).catch(() => null),
+      ]);
+      if (cancelled) return;
+      if (rG.status === "fulfilled" && rG.value) {
+        const dash = rG.value;
+        const weakAreas = Array.isArray(dash?.weakAreas)
+          ? dash.weakAreas
+          : Array.isArray(dash)
+            ? dash
+            : [];
+        setGrammar(weakAreas.slice(0, 3));
+        // localStorage write deferred — don't block render
+        queueMicrotask(() => {
+          try {
+            localStorage.setItem("grammarDashboard", JSON.stringify(dash));
+          } catch (_) {
+            // ignore
+          }
+        });
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [idUser]);
+
+  // Listen for test-submitted → refetch weakness data
+  useEffect(() => {
+    if (!idUser) return undefined;
+    const onTestSubmitted = () => {
+      getGrammarDashboardAPI(idUser)
+        .catch(() => null)
+        .then((dash) => {
+          if (!dash) return;
+          const weakAreas = Array.isArray(dash?.weakAreas)
+            ? dash.weakAreas
+            : Array.isArray(dash)
+              ? dash
+              : [];
+          setGrammar(weakAreas.slice(0, 3));
+        });
+    };
+    window.addEventListener("test-submitted", onTestSubmitted);
+    return () => window.removeEventListener("test-submitted", onTestSubmitted);
+  }, [idUser]);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] p-5 space-y-3">
+        <Skeleton className="h-5 w-32" />
+        <div className="grid md:grid-cols-2 gap-4">
+          <Skeleton className="h-24 rounded-xl" />
+          <Skeleton className="h-24 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (grammar.length === 0) return null;
+
+  return (
+    <section className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#fb7185]">
+            ⚠️ Cần cải thiện
+          </div>
+          <h2
+            className="text-xl font-black text-[#1e1b4b]"
+            style={{ fontFamily: "Nunito" }}
+          >
+            Điểm yếu của bạn
+          </h2>
+        </div>
+        <button
+          onClick={() => navigate("/weakness")}
+          className="text-xs font-bold text-[#6366f1] hover:underline"
+        >
+          Xem tất cả →
+        </button>
+      </div>
+      <div>
+        <h3 className="text-xs font-extrabold text-[#64748b] mb-2 uppercase tracking-wider">
+          📚 Ngữ pháp
+        </h3>
+        {grammar.length === 0 ? (
+          <p className="text-sm text-[#64748b] p-2.5">Chưa có dữ liệu.</p>
+        ) : (
+          <ul className="space-y-2">
+            {grammar.map((item, idx) => {
+              const title = item.title || item.name || "Grammar";
+              const errCount =
+                item.violations ?? item.wrongCount ?? item.exercisesWrong ?? 0;
+              return (
+                <li
+                  key={item.idGrammar || idx}
+                  className="p-2.5 bg-red-50 rounded-xl flex justify-between items-center border border-red-100"
+                >
+                  <span className="text-sm font-bold text-[#1e1b4b] truncate flex-1 min-w-0">
+                    {title}
+                  </span>
+                  <span className="text-xs text-red-600 font-extrabold ml-2 flex-none">
+                    {errCount} lỗi
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function RecommendedSection({ idUser, onStartTest }) {
+  const [recommended, setRecommended] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!idUser) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getRecomendedTestsAPI(idUser);
+        if (!cancelled) {
+          const rec = Array.isArray(res) ? res : res?.data ?? [];
+          setRecommended(Array.isArray(rec) ? rec.slice(0, 3) : []);
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [idUser]);
+
+  if (loading) {
+    return (
+      <div className="grid md:grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-40 rounded-3xl" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#fb7185]">
+            🎯 Đề xuất cho bạn
+          </div>
+          <h2
+            className="text-xl font-black text-[#1e1b4b]"
+            style={{ fontFamily: "Nunito" }}
+          >
+            Test phù hợp band hiện tại
+          </h2>
+        </div>
+      </div>
+
+      {recommended.length === 0 ? (
+        <div className="text-sm text-[#64748b] bg-white rounded-2xl border-2 border-[#e6e6ed] p-5">
+          Chưa có đề xuất nào.
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-3 gap-3">
+          {recommended.map((t, i) => {
+            const meta = ACTIVITY_META[t.testType] || ACTIVITY_META.READING;
+            return (
+              <motion.div
+                key={t.idTest ?? i}
+                whileHover={{ y: -3 }}
+                className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] hover:border-[#6366f1]/30 hover:shadow-[0_5px_0_#e6e6ed] p-5 cursor-pointer transition-all"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div
+                    className={`w-10 h-10 rounded-xl ${meta.color} shadow-[0_3px_0_rgba(0,0,0,0.15)] text-white flex items-center justify-center text-lg`}
+                  >
+                    {meta.icon}
+                  </div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wide bg-[#f1f1f6] text-[#64748b] px-2 py-0.5 rounded-full">
+                    {t.level || "—"}
+                  </span>
+                </div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#6366f1] mb-1">
+                  {t.testType || ""}
+                </div>
+                <h3 className="font-extrabold text-[#1e1b4b] mb-3">
+                  {t.title || `Test ${i + 1}`}
+                </h3>
+                <div className="flex items-center gap-3 text-xs text-[#64748b] mb-3">
+                  <span>⏱ {t.duration ? `${t.duration} phút` : "—"}</span>
+                </div>
+                <button
+                  onClick={() => onStartTest?.(t)}
+                  className="w-full py-2 rounded-xl bg-[#eef2ff] text-[#4338ca] font-extrabold text-xs uppercase tracking-wide hover:bg-[#e0e7ff] transition-all"
+                >
+                  Bắt đầu →
+                </button>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RecentActivitySection({ idUser }) {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!idUser) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getTestResultByIdUserAPI(idUser);
+        if (!cancelled) {
+          const hist = res?.data ?? res ?? [];
+          setHistory(Array.isArray(hist) ? hist.slice(0, 4) : []);
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [idUser]);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] p-5 space-y-3">
+        <Skeleton className="h-5 w-44" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <section className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2
+          className="text-lg font-black text-[#1e1b4b]"
+          style={{ fontFamily: "Nunito" }}
+        >
+          Hoạt động gần đây
+        </h2>
+        <button
+          onClick={() => navigate("/test")}
+          className="text-xs font-bold text-[#6366f1] hover:underline"
+        >
+          Xem tất cả →
+        </button>
+      </div>
+      {history.length === 0 ? (
+        <p className="text-sm text-[#64748b]">Chưa có hoạt động nào.</p>
+      ) : (
+        <div className="space-y-3">
+          {history.map((a, i) => {
+            const meta =
+              ACTIVITY_META[a.test?.testType] || {
+                icon: "📝",
+                color: "bg-[#6366f1]",
+              };
+            return (
+              <div
+                key={a.idTestResult ?? i}
+                className="flex items-center gap-3 py-2 border-b border-[#f1f1f6] last:border-0"
+              >
+                <div
+                  className={`w-10 h-10 rounded-xl ${meta.color} text-white shadow-[0_2px_0_rgba(0,0,0,0.15)] flex items-center justify-center text-base`}
+                >
+                  {meta.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold text-sm text-[#1e1b4b] truncate">
+                    {a.test?.title || `Test ${a.test?.testType || ""}`}
+                  </div>
+                  <div className="text-xs text-[#64748b]">
+                    Band {a.bandScore?.toFixed?.(1) ?? "—"} ·{" "}
+                    {a.totalCorrect ?? 0}/{a.totalQuestions ?? 0} đúng
+                  </div>
+                </div>
+                <div className="text-xs text-[#94a3b8] flex-none">
+                  {formatActivityTime(a.finishedAt || a.createdAt)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function StreakSidebar({ idUser }) {
+  const [streak, setStreak] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!idUser) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getStreakAPI(idUser);
+        if (!cancelled) setStreak(res?.data ?? null);
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [idUser]);
+
+  const currentStreak = streak?.currentStreak ?? 0;
+  const longestStreak = streak?.longestStreak ?? 0;
+
+  if (loading) {
+    return (
+      <>
+        <Skeleton className="h-32 rounded-3xl" />
+        <Skeleton className="h-24 rounded-3xl" />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="bg-gradient-to-br from-[#fb7185] via-[#f59e0b] to-[#fbbf24] rounded-3xl shadow-[0_4px_0_#b45309] text-white p-5 overflow-hidden relative">
+        <div className="absolute -top-6 -right-6 text-9xl opacity-20">🔥</div>
+        <div className="relative">
+          <div className="text-[10px] font-bold uppercase tracking-wider opacity-90 mb-1">
+            Streak hiện tại
+          </div>
+          <div
+            className="text-5xl font-black mb-1"
+            style={{ fontFamily: "Nunito" }}
+          >
+            {currentStreak} 🔥
+          </div>
+          <div className="text-xs opacity-90 mb-2">
+            {longestStreak > 0
+              ? `Kỷ lục: ${longestStreak} ngày · Tiếp tục để phá kỷ lục`
+              : "Hãy học mỗi ngày để giữ streak!"}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-[#eef2ff] border-2 border-[#a5b4fc] rounded-3xl p-4 flex gap-3">
+        <div className="text-3xl flex-none">🦉</div>
+        <div>
+          <div className="text-xs font-extrabold text-[#4338ca] mb-1">
+            Mẹo từ Owl
+          </div>
+          <div className="text-xs text-[#1e1b4b] leading-relaxed">
+            Học 25 phút mỗi ngày hiệu quả hơn 3 giờ cuối tuần. Giữ thói quen!
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// --- MAIN COMPONENT ---
 const HomePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const idUser = user?.idUser;
 
-  // --- Data States ---
-  const [overall, setOverall] = useState(null);
-  const [chartData, setChartData] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [recommended, setRecommended] = useState([]);
-  const [target, setTarget] = useState({
-    targetBandScore: 0,
-    targetExamDate: null,
-  });
-
-  // --- UI States ---
-  const [loading, setLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [selectedTestDetail, setSelectedTestDetail] = useState(null);
-  const [isEditingTarget, setIsEditingTarget] = useState(false);
-  const [tempTarget, setTempTarget] = useState({});
-
-  // --- START TEST STATES ---
+  // Modal state (cross-section: only RecommendedSection needs to open it)
   const [confirmStartOpen, setConfirmStartOpen] = useState(false);
   const [selectedExamToStart, setSelectedExamToStart] = useState(null);
   const [startingTest, setStartingTest] = useState(false);
 
-  // --- FILTER CHART STATES ---
-  const [filterYear, setFilterYear] = useState(new Date().getFullYear());
-  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
-  const [selectedSkillType, setSelectedSkillType] = useState("ALL");
-
-  const [grammarWeakness, setGrammarWeakness] = useState([]);
-  const [questionTypeWeakness, setQuestionTypeWeakness] = useState([]);
-  const [questionTypePerformance, setQuestionTypePerformance] = useState([]);
-  const [weakQuestionTypes, setWeakQuestionTypes] = useState([]);
-  const [selectedQuestionFilter, setSelectedQuestionFilter] = useState("ALL");
-
-  // --- FILTER & PAGINATION HISTORY STATES ---
-  const [historyPage, setHistoryPage] = useState(1);
-  const [historyFilter, setHistoryFilter] = useState("ALL");
-  const ITEMS_PER_PAGE = 5;
-
-  // --- SKILL STATUS STATES ---
-  const [skillStatus, setSkillStatus] = useState(null);  // { skills, missingSkills, assessedCount }
-
-  // --- AI FLOW MVP STATES ---
-  const [studyMode, setStudyMode] = useState(
-    () => localStorage.getItem("studyMode") || "BALANCED",
-  );
-  const [studyHoursPerDay, setStudyHoursPerDay] = useState(() => {
-    const saved = Number(localStorage.getItem("studyHoursPerDay"));
-    return Number.isFinite(saved) && saved > 0 ? saved : 1.5;
-  });
-  const [lastGeneratedPlanAt, setLastGeneratedPlanAt] = useState(
-    () => localStorage.getItem("lastGeneratedPlanAt") || "",
-  );
-
-  // --- API CALLS ---
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [
-          resOverall,
-          resChart,
-          resHistory,
-          resRec,
-          resTarget,
-          resGrammarWeak,
-          resQTWeak,
-          resQTP,
-          resWeakQT,
-        ] = await Promise.all([
-          getOverallScroreAPI(idUser),
-          getAvgScoreByDayAPI(idUser),
-          getTestResultByIdUserAPI(idUser),
-          getRecomendedTestsAPI(idUser),
-          getTargetScoresAPI(idUser),
-          getGrammarWeaknessAPI(idUser),
-          getQuestionTypeWeaknessAPI(idUser),
-          getAllQuestionTypePerformanceAPI(idUser),
-          getWeakQuestionTypesAPI(idUser),
-        ]);
-
-        if (resOverall) setOverall(resOverall);
-        if (resChart?.data) setChartData(resChart.data);
-        if (resHistory?.data) setHistory(resHistory.data);
-        if (resRec) setRecommended(resRec);
-        if (resTarget?.data) {
-          setTarget(resTarget.data);
-          setTempTarget(resTarget.data);
-        }
-        if (resGrammarWeak) setGrammarWeakness(resGrammarWeak);
-        if (resQTWeak) setQuestionTypeWeakness(resQTWeak);
-        if (resQTP?.data) {
-          // Backend returns {READING: [...], LISTENING: [...]} - flatten to array
-          const allTypes = [
-            ...(resQTP.data.READING || []).map(q => ({ ...q, skillType: 'READING' })),
-            ...(resQTP.data.LISTENING || []).map(q => ({ ...q, skillType: 'LISTENING' })),
-          ];
-          setQuestionTypePerformance(allTypes);
-        }
-        if (resWeakQT?.weakTypes) setWeakQuestionTypes(resWeakQT.weakTypes);
-        if (resSkillStatus?.data) setSkillStatus(resSkillStatus.data);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [idUser]);
-
-  useEffect(() => {
-    localStorage.setItem("studyMode", studyMode);
-  }, [studyMode]);
-
-  useEffect(() => {
-    localStorage.setItem("studyHoursPerDay", String(studyHoursPerDay));
-  }, [studyHoursPerDay]);
-
-  // --- ONBOARDING CHECK ---
-  useEffect(() => {
-    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
-    if (!hasSeenOnboarding) {
-      setShowOnboarding(true);
-    }
-  }, []);
-
-  // --- LOGIC 1: Xử lý Target & Countdown ---
-  const targetInfo = useMemo(() => {
-    if (!target.targetExamDate) return null;
-
-    const now = new Date();
-    const examDate = new Date(target.targetExamDate);
-
-    const formattedDate = examDate.toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-
-    const diffTime = examDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return {
-      formattedDate,
-      daysLeft: diffDays > 0 ? diffDays : 0,
-      isPassed: diffDays < 0,
-    };
-  }, [target.targetExamDate]);
-
-  const handleUpdateTarget = async () => {
-    try {
-      await updateTargetScoresAPI(idUser, tempTarget);
-      setTarget(tempTarget);
-      setIsEditingTarget(false);
-    } catch (e) {
-      console.error(e);
-      message.error("Cập nhật mục tiêu thất bại");
-    }
-  };
-
-  // --- LOGIC 2: Xử lý Start Test ---
   const handleRecommendClick = (test) => {
     setSelectedExamToStart(test);
     setConfirmStartOpen(true);
@@ -281,12 +819,10 @@ const HomePage = () => {
 
   const handleConfirmStart = async () => {
     if (!idUser || !selectedExamToStart) return;
-
     setStartingTest(true);
     try {
       const res = await StartTestAPI(idUser, selectedExamToStart.idTest, {});
       const testResultData = res?.data;
-
       if (testResultData?.idTestResult) {
         message.success("Bắt đầu làm bài!");
         setConfirmStartOpen(false);
@@ -309,992 +845,23 @@ const HomePage = () => {
     }
   };
 
-  // --- LOGIC 3: Xử lý Filter Chart ---
-  const filteredChartData = useMemo(() => {
-    if (!chartData) return [];
-    if (filterYear === "ALL") return chartData;
-
-    return chartData.filter((item) => {
-      const d = new Date(item.date);
-      const matchYear = d.getFullYear() === parseInt(filterYear);
-      if (filterMonth === "ALL") return matchYear;
-      return matchYear && d.getMonth() + 1 === parseInt(filterMonth);
-    });
-  }, [chartData, filterMonth, filterYear]);
-
-  // --- LOGIC 4: Xử lý Filter & Pagination History ---
-  const filteredHistory = useMemo(() => {
-    if (!history) return [];
-    if (historyFilter === "ALL") return history;
-    return history.filter((item) => item.test?.testType === historyFilter);
-  }, [history, historyFilter]);
-
-  const totalPages = Math.ceil(filteredHistory.length / ITEMS_PER_PAGE);
-
-  const paginatedHistory = useMemo(() => {
-    const startIndex = (historyPage - 1) * ITEMS_PER_PAGE;
-    return filteredHistory.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredHistory, historyPage]);
-
-  // Reset page về 1 khi đổi filter
-  useEffect(() => {
-    setHistoryPage(1);
-  }, [historyFilter]);
-
-  const assessmentCoverage = useMemo(() => {
-    const checkedSkills = new Set(
-      history
-        .map((item) => item?.test?.testType)
-        .filter((type) =>
-          ["READING", "LISTENING", "WRITING", "SPEAKING"].includes(type),
-        ),
-    );
-
-    const allSkills = ["READING", "LISTENING", "WRITING", "SPEAKING"];
-    const missing = allSkills.filter((skill) => !checkedSkills.has(skill));
-
-    return {
-      completedCount: checkedSkills.size,
-      missingSkills: missing,
-    };
-  }, [history]);
-
-  const weakSkills = useMemo(() => {
-    const details = Array.isArray(overall?.details) ? [...overall.details] : [];
-
-    return details
-      .sort((a, b) => Number(a.avg ?? 0) - Number(b.avg ?? 0))
-      .slice(0, 2)
-      .map((item) => ({ type: item.type, score: Number(item.avg ?? 0) }));
-  }, [overall?.details]);
-
-  const aiPlan = useMemo(() => {
-    const totalMinutes = Math.max(
-      30,
-      Math.round(Number(studyHoursPerDay || 1) * 60),
-    );
-    const focusPrimary = weakSkills[0]?.type || "READING";
-    const focusSecondary = weakSkills[1]?.type || "LISTENING";
-    const modeDescriptions = {
-      LOW_COST: "Prefer free resources, low AI calls, and manual review.",
-      BALANCED: "Mix free resources with selective AI grading.",
-      PREMIUM: "Use full AI feedback flow with frequent evaluation.",
-    };
-    const estimatedCredits = {
-      LOW_COST: 0,
-      BALANCED: 2,
-      PREMIUM: 5,
-    };
-
-    const tasks = [
-      `10m SRS warm-up for ${focusPrimary}`,
-      `${Math.round(totalMinutes * 0.4)}m focused practice on ${focusPrimary}`,
-      `${Math.round(totalMinutes * 0.3)}m focused practice on ${focusSecondary}`,
-      `${Math.max(10, Math.round(totalMinutes * 0.2))}m review and error log`,
-    ];
-
-    if (recommended[0]?.title) {
-      tasks.push(`Recommended test: ${recommended[0].title}`);
-    }
-
-    if (targetInfo?.daysLeft <= 30) {
-      tasks.push("Exam countdown < 30 days: prioritize timed tests.");
-    }
-
-    return {
-      tasks,
-      modeDescription: modeDescriptions[studyMode] || modeDescriptions.BALANCED,
-      estimatedCredits: estimatedCredits[studyMode] ?? 2,
-    };
-  }, [
-    recommended,
-    studyHoursPerDay,
-    studyMode,
-    targetInfo?.daysLeft,
-    weakSkills,
-  ]);
-
-  const generatedAtLabel = useMemo(() => {
-    if (!lastGeneratedPlanAt) {
-      return "Not generated yet";
-    }
-
-    return new Date(lastGeneratedPlanAt).toLocaleString("vi-VN");
-  }, [lastGeneratedPlanAt]);
-
-  const handleGenerateAiPlan = () => {
-    const nowIso = new Date().toISOString();
-    setLastGeneratedPlanAt(nowIso);
-    localStorage.setItem("lastGeneratedPlanAt", nowIso);
-    message.success("Adaptive plan generated on dashboard.");
-  };
-
-  const handleQuestionTypeFilter = (filter) => {
-    setSelectedQuestionFilter(filter);
-  };
-
-  const filteredQuestionTypes = useMemo(() => {
-    if (!questionTypePerformance || questionTypePerformance.length === 0) return [];
-    if (selectedQuestionFilter === "ALL") return questionTypePerformance;
-    return questionTypePerformance.filter(q => q.skillType === selectedQuestionFilter);
-  }, [questionTypePerformance, selectedQuestionFilter]);
-
-  const getProgressColor = (errorRate) => {
-    const accuracy = Math.round((1 - errorRate) * 100);
-    if (accuracy >= 70) return { bar: "bg-green-500", text: "text-green-500", bg: "bg-green-100" };
-    if (accuracy >= 50) return { bar: "bg-yellow-500", text: "text-yellow-500", bg: "bg-yellow-100" };
-    return { bar: "bg-red-500", text: "text-red-500", bg: "bg-red-100" };
-  };
-
-  const handleStartAssessment = () => {
-    navigate("/test");
-  };
-
-  const handleOpenAiTutor = () => {
-    window.dispatchEvent(new Event("open-ielts-chat"));
-  };
-
-  const getSkillScore = (type) =>
-    overall?.details?.find((d) => d.type === type)?.avg || 0;
-
-  if (loading)
-    return (
-      <div className="min-h-screen flex justify-center items-center text-purple-600 dark:bg-slate-900">
-        <Spin size="large" />
-      </div>
-    );
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 font-sans text-gray-800 dark:text-gray-100 transition-colors duration-300">
-      {/* Onboarding Guide for first-time users */}
-      {showOnboarding && (
-        <OnboardingGuide
-          visible={showOnboarding}
-          onClose={() => setShowOnboarding(false)}
-        />
-      )}
-
-      {/* --- HEADER & TARGET INFO BAR --- */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Dashboard Tổng quan
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Chào mừng trở lại! Cùng theo dõi tiến độ và đếm ngược tới ngày thi.
-          </p>
+    <div className="min-h-screen w-full bg-[#fafafc]">
+      <main className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <div className="space-y-6">
+          <HeroSection idUser={idUser} fallbackName={user?.nameUser} />
+          <SkillsSection idUser={idUser} />
+          <TodayPlanSection idUser={idUser} />
+          <WeaknessSection idUser={idUser} />
+          <RecommendedSection idUser={idUser} onStartTest={handleRecommendClick} />
+          <RecentActivitySection idUser={idUser} />
         </div>
 
-        <div className="bg-white dark:bg-slate-800 p-1 rounded-2xl shadow-sm border border-purple-100 dark:border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center">
-          {/* Target Info Blocks */}
-          <div className="flex items-center gap-4 px-6 py-4 border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-slate-700 min-w-[160px]">
-            <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-xl">
-              <Target
-                className="text-purple-600 dark:text-purple-400"
-                size={24}
-              />
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">
-                Target
-              </p>
-              <p className="text-2xl font-extrabold text-purple-700 dark:text-purple-400">
-                {target.targetBandScore || "N/A"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 px-6 py-4 border-b sm:border-b-0 sm:border-r border-gray-100 dark:border-slate-700 min-w-[180px]">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-xl">
-              <Calendar
-                className="text-blue-600 dark:text-blue-400"
-                size={24}
-              />
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">
-                Ngày thi
-              </p>
-              <p className="text-lg font-bold text-gray-800 dark:text-white">
-                {targetInfo?.formattedDate || "--/--/----"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 px-6 py-4 min-w-[180px]">
-            <div
-              className={`${
-                targetInfo?.daysLeft <= 30 ? "bg-red-100" : "bg-green-100"
-              } p-3 rounded-xl transition-colors`}
-            >
-              <Clock
-                className={`${
-                  targetInfo?.daysLeft <= 30 ? "text-red-600" : "text-green-600"
-                }`}
-                size={24}
-              />
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">
-                Còn lại
-              </p>
-              <div className="flex items-baseline gap-1">
-                <p
-                  className={`text-2xl font-extrabold ${
-                    targetInfo?.daysLeft <= 30
-                      ? "text-red-600"
-                      : "text-green-600"
-                  }`}
-                >
-                  {targetInfo ? targetInfo.daysLeft : "--"}
-                </p>
-                <span className="text-xs font-semibold text-gray-500">
-                  ngày
-                </span>
-              </div>
-            </div>
-          </div>
+        <aside className="space-y-4 lg:sticky lg:top-[78px] lg:self-start">
+          <StreakSidebar idUser={idUser} />
+        </aside>
+      </main>
 
-          <div className="px-4 py-4 sm:pl-0">
-            <button
-              onClick={() => setIsEditingTarget(true)}
-              className="w-full sm:w-auto h-full px-4 py-2 text-sm font-bold text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all border border-transparent hover:border-purple-200"
-            >
-              Sửa
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* --- AI FLOW MVP --- */}
-      <section className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
-          <div>
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white">
-              AI Study Flow (MVP)
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Initial assessment to plan generator to adaptive schedule to AI
-              tutor support.
-            </p>
-          </div>
-          <span className="inline-flex w-fit rounded-full bg-blue-100 dark:bg-blue-900/30 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-400">
-            Flow-first implementation
-          </span>
-        </div>
-
-        <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-4">
-          <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-2">
-              <Cpu size={18} className="text-purple-600" />
-              <p className="font-semibold text-gray-800 dark:text-white">
-                1) Initial Assessment
-              </p>
-            </div>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              Coverage: {assessmentCoverage.completedCount}/4 skills
-            </p>
-            {assessmentCoverage.missingSkills.length > 0 ? (
-              <div>
-                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                  Missing: {assessmentCoverage.missingSkills.join(", ")}
-                </p>
-                {skillStatus?.missingSkills && skillStatus.missingSkills.length > 0 && (
-                  <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                    <p className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-2">
-                      Cần làm đề để có lộ trình chuẩn:
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {skillStatus.missingSkills.map((skill) => (
-                        <button
-                          key={skill}
-                          onClick={() => navigate(`/doTest?skill=${skill}`)}
-                          className="px-3 py-1.5 text-xs font-medium bg-amber-100 hover:bg-amber-200 dark:bg-amber-800 dark:hover:bg-amber-700 text-amber-700 dark:text-amber-200 rounded-full transition-colors"
-                        >
-                          Làm đề {skill}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                Baseline data is available for all skills.
-              </p>
-            )}
-            <button
-              onClick={handleStartAssessment}
-              className="mt-3 w-full rounded-lg bg-slate-900 text-white py-2 text-sm font-semibold hover:bg-slate-800"
-            >
-              Start / Continue Assessment
-            </button>
-          </article>
-
-          <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-2">
-              <Wallet size={18} className="text-emerald-600" />
-              <p className="font-semibold text-gray-800 dark:text-white">
-                2) Plan Generator
-              </p>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              <select
-                value={studyMode}
-                onChange={(event) => setStudyMode(event.target.value)}
-                className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 p-2 text-sm text-gray-800 dark:text-white"
-              >
-                <option value="LOW_COST">Low-cost</option>
-                <option value="BALANCED">Balanced</option>
-                <option value="PREMIUM">Premium</option>
-              </select>
-              <input
-                type="number"
-                min="0.5"
-                max="8"
-                step="0.5"
-                value={studyHoursPerDay}
-                onChange={(event) =>
-                  setStudyHoursPerDay(Number(event.target.value || 0.5))
-                }
-                className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 p-2 text-sm text-gray-800 dark:text-white"
-              />
-            </div>
-
-            <button
-              onClick={handleGenerateAiPlan}
-              className="mt-3 w-full rounded-lg bg-purple-600 text-white py-2 text-sm font-semibold hover:bg-purple-700"
-            >
-              Generate plan
-            </button>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Last generated: {generatedAtLabel}
-            </p>
-          </article>
-
-          <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-2">
-              <RefreshCw size={18} className="text-blue-600" />
-              <p className="font-semibold text-gray-800 dark:text-white">
-                3) Adaptive Scheduler
-              </p>
-            </div>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              {aiPlan.modeDescription}
-            </p>
-            <ul className="mt-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">
-              {aiPlan.tasks.slice(0, 4).map((task) => (
-                <li key={task}>- {task}</li>
-              ))}
-            </ul>
-          </article>
-
-          <article className="rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-            <div className="flex items-center gap-2">
-              <MessageCircle size={18} className="text-pink-600" />
-              <p className="font-semibold text-gray-800 dark:text-white">
-                4) Tutor + Next Action
-              </p>
-            </div>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              Estimated credits/session: {aiPlan.estimatedCredits}
-            </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Use AI tutor for grammar/explanation then run the suggested test.
-            </p>
-
-            <div className="mt-3 grid grid-cols-1 gap-2">
-              <button
-                onClick={handleOpenAiTutor}
-                className="rounded-lg bg-blue-600 text-white py-2 text-sm font-semibold hover:bg-blue-700"
-              >
-                Open AI Tutor
-              </button>
-              <button
-                onClick={() => navigate("/statistic")}
-                className="rounded-lg border border-gray-200 dark:border-slate-600 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700"
-              >
-                Open Forum Discussion
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      {/* 4 Cards Kỹ Năng */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <SkillCard
-          type="READING"
-          score={getSkillScore("READING")}
-          icon={BookOpen}
-          color="bg-blue-500"
-        />
-        <SkillCard
-          type="LISTENING"
-          score={getSkillScore("LISTENING")}
-          icon={Headphones}
-          color="bg-green-500"
-        />
-        <SkillCard
-          type="WRITING"
-          score={getSkillScore("WRITING")}
-          icon={PenTool}
-          color="bg-yellow-500"
-        />
-        <SkillCard
-          type="SPEAKING"
-          score={getSkillScore("SPEAKING")}
-          icon={Mic}
-          color="bg-red-500"
-        />
-      </div>
-
-      {/* Grammar Weak Areas Widget */}
-      {grammarWeakness.length > 0 && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <span className="text-xl">⚠️</span> Grammar Yếu
-            </h3>
-            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Từ Writing/Speaking</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {grammarWeakness.map((weak) => (
-              <div key={weak.idGrammar} className={`p-4 rounded-xl border ${
-                weak.wrongCount >= 4 ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'
-              }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-medium text-gray-800">{weak.title}</p>
-                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                    weak.wrongCount >= 4 ? 'bg-red-500 text-white' : 'bg-orange-500 text-white'
-                  }`}>
-                    {weak.wrongCount} lần sai
-                  </span>
-                </div>
-                <button
-                  onClick={() => navigate(`/grammar?topic=${weak.idGrammar}`)}
-                  className="w-full mt-2 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
-                >
-                  Ôn ngay
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Weak Question Types Widget - Compact Gradient */}
-      {weakQuestionTypes.length > 0 && (
-        <div className="bg-gradient-to-br from-red-500 to-orange-500 rounded-2xl p-6 shadow-lg mb-8 text-white">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <span className="text-xl">🔴</span>
-              </div>
-              <h3 className="text-lg font-semibold">Loại Câu Hỏi Yếu</h3>
-            </div>
-            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Reading/Listening</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {weakQuestionTypes.slice(0, 3).map((wt) => {
-              const accuracy = Math.round((1 - wt.errorRate) * 100);
-              return (
-                <div key={wt.questionType} className="bg-white/10 backdrop-blur rounded-xl p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium text-sm">{wt.questionType.replace(/_/g, " ")}</span>
-                    <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">{accuracy}%</span>
-                  </div>
-                  <div className="bg-white/20 rounded-full h-2">
-                    <div className="bg-white rounded-full h-2" style={{ width: `${accuracy}%` }}></div>
-                  </div>
-                  <p className="text-xs mt-2 opacity-75">{wt.totalAttempts} lần làm</p>
-                </div>
-              );
-            })}
-          </div>
-          <button
-            onClick={() => navigate(`/test?filter=weakQuestionType`)}
-            className="w-full mt-4 bg-white text-red-600 font-semibold py-2.5 rounded-xl hover:bg-red-50 transition-colors text-sm"
-          >
-            Luyện tập ngay
-          </button>
-        </div>
-      )}
-
-      {/* Flex-row: Question Type Performance + Đề xuất ngang nhau */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 items-stretch">
-        {/* Cột trái: Question Type Performance */}
-        <div className="lg:col-span-2 flex flex-col">
-          {/* Question Type Performance Section */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 flex-1">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
-                  <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Hiệu Suất Theo Loại Câu Hỏi</h3>
-              </div>
-              <div className="flex bg-purple-50 dark:bg-slate-700 rounded-xl p-1">
-                <button onClick={() => handleQuestionTypeFilter("READING")} className={`px-4 py-2 text-sm font-medium rounded-lg ${selectedQuestionFilter === "READING" ? "bg-purple-600 text-white" : "text-purple-700 dark:text-purple-300 hover:bg-purple-100"}`}>READING</button>
-                <button onClick={() => handleQuestionTypeFilter("LISTENING")} className={`px-4 py-2 text-sm font-medium rounded-lg ${selectedQuestionFilter === "LISTENING" ? "bg-purple-600 text-white" : "text-purple-700 dark:text-purple-300 hover:bg-purple-100"}`}>LISTENING</button>
-                <button onClick={() => handleQuestionTypeFilter("ALL")} className={`px-4 py-2 text-sm font-medium rounded-lg ${selectedQuestionFilter === "ALL" ? "bg-purple-600 text-white" : "text-purple-700 dark:text-purple-300 hover:bg-purple-100"}`}>ALL</button>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredQuestionTypes.map((qt) => {
-                const accuracy = Math.round((1 - qt.errorRate) * 100);
-                const colors = getProgressColor(qt.errorRate);
-                return (
-                  <div key={qt.questionType} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600 hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start mb-3">
-                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 px-2 py-0.5 rounded">{qt.skillType}</span>
-                      <span className={`text-sm font-bold ${colors.text}`}>{accuracy}%</span>
-                    </div>
-                    <h4 className="font-medium text-gray-800 dark:text-white text-sm mb-3 leading-tight">{qt.questionType.replace(/_/g, " ")}</h4>
-                    <div className="mb-3">
-                      <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
-                        <div className={`h-2 rounded-full ${colors.bar}`} style={{ width: `${accuracy}%` }}></div>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
-                      <span>{qt.totalAttempts} lần</span>
-                      <span>{qt.lastAttemptAt ? new Date(qt.lastAttemptAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }) : "-"}</span>
-                    </div>
-                  </div>
-                );
-              })}
-              {filteredQuestionTypes.length === 0 && (
-                <div className="col-span-full text-center py-12 text-gray-400 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-600">
-                  <div className="text-4xl mb-2">📊</div>
-                  <p className="font-medium">Chưa có dữ liệu loại câu hỏi</p>
-                  <p className="text-sm mt-1">Làm bài thi Reading/Listening để hệ thống track performance</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Cột phải: Đề xuất cho bạn */}
-        <div className="flex flex-col">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white">Đề xuất cho bạn</h3>
-              <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-3 py-1 rounded-full font-semibold">{recommended.length} đề</span>
-            </div>
-            <div className="space-y-3 flex-1 overflow-y-auto">
-              {recommended.slice(0, 3).map((test) => {
-                const testIcons = { READING: <BookOpen size={18} className="text-white" />, LISTENING: <Headphones size={18} className="text-white" />, WRITING: <PenTool size={18} className="text-white" />, SPEAKING: <Mic size={18} className="text-white" /> };
-                const testColors = { READING: "from-blue-500 to-cyan-500", LISTENING: "from-green-500 to-emerald-500", WRITING: "from-purple-500 to-pink-500", SPEAKING: "from-orange-500 to-red-500" };
-                return (
-                  <div key={test.idTest} onClick={() => handleRecommendClick(test)} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-100 dark:border-slate-600 hover:border-purple-300 cursor-pointer transition-all">
-                    <div className={`w-10 h-10 bg-gradient-to-r ${testColors[test.testType] || "from-gray-400 to-gray-500"} rounded-lg flex items-center justify-center shrink-0`}>
-                      {testIcons[test.testType] || <BookOpen size={18} className="text-white" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{test.title}</p>
-                      <p className="text-xs text-gray-500">{test.duration}p • {test.level || "Mid"}</p>
-                    </div>
-                    <ChevronRight size={16} className="text-gray-400 shrink-0" />
-                  </div>
-                );
-              })}
-              {recommended.length === 0 && (
-                <div className="text-center py-8 text-gray-400">
-                  <Award size={32} className="mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Chưa có đề xuất</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Question Type Weak Areas Widget */}
-      {questionTypeWeakness.length > 0 && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <span className="text-xl">🔴</span> Question Types Yếu
-            </h3>
-            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Reading/Listening</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {questionTypeWeakness.map((wt) => (
-              <div key={wt.questionType} className={`p-4 rounded-xl border ${
-                wt.errorRate >= 0.4 ? 'bg-red-50 border-red-100' : 'bg-orange-50 border-orange-100'
-              }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm font-bold px-2 py-1 rounded ${
-                    wt.errorRate >= 0.4 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
-                  }`}>
-                    {wt.questionType}
-                  </span>
-                  <span className="text-xs font-bold text-white bg-red-500 px-2 py-1 rounded">
-                    {Math.round(wt.errorRate * 100)}% lỗi
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">{wt.totalAttempts} lần làm</p>
-                <button
-                  onClick={() => navigate(`/test?filter=weakQuestionType&type=${wt.questionType}`)}
-                  className="w-full mt-2 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
-                >
-                  Luyện ngay
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-
-      {/* Band Progression Chart */}
-<div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 mb-8">
-  <div className="flex items-center gap-3 mb-6">
-    <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
-      <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-      </svg>
-    </div>
-    <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Biến Động Điểm Band (12 tháng)</h3>
-  </div>
-  <div className="h-64">
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={filteredChartData}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-        <XAxis
-          dataKey="date"
-          tick={{ fontSize: 12 }}
-          tickFormatter={(str) => {
-            const d = new Date(str);
-            return `${d.getDate()}/${d.getMonth() + 1}`;
-          }}
-        />
-        <YAxis domain={[0, 9]} tick={{ fontSize: 12 }} />
-        <Tooltip
-          contentStyle={{
-            borderRadius: "8px",
-            border: "none",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-          }}
-        />
-        <Legend />
-        <Line
-          name="Overall Band"
-          type="monotone"
-          dataKey="OVERALL"
-          stroke="#6366f1"
-          strokeWidth={3}
-          dot={{ r: 4 }}
-          fill="#6366f1"
-        />
-        {target.targetBandScore && (
-          <Line
-            name={`Target (${target.targetBandScore})`}
-            type="monotone"
-            dataKey={() => target.targetBandScore}
-            stroke="#22c55e"
-            strokeDasharray="5 5"
-            dot={false}
-          />
-        )}
-      </LineChart>
-    </ResponsiveContainer>
-  </div>
-</div>
-
-      {/* --- BẢNG LỊCH SỬ (Updated with Pagination & Filter) --- */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white">
-            Lịch sử làm bài
-          </h3>
-          {/* History Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Lọc theo:
-            </span>
-            <select
-              className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-sm text-gray-800 dark:text-white rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800"
-              value={historyFilter}
-              onChange={(e) => setHistoryFilter(e.target.value)}
-            >
-              <option value="ALL">Tất cả đề thi</option>
-              <option value="READING">Reading</option>
-              <option value="LISTENING">Listening</option>
-              <option value="WRITING">Writing</option>
-              <option value="SPEAKING">Speaking</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto min-h-[300px]">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-gray-300 font-semibold uppercase">
-              <tr>
-                <th className="p-3 rounded-tl-lg">Bài thi</th>
-                <th className="p-3">Kỹ năng</th>
-                <th className="p-3">Điểm</th>
-                <th className="p-3">Ngày</th>
-                <th className="p-3">Giáo viên chấm</th>
-                <th className="p-3 text-right rounded-tr-lg"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {paginatedHistory.length > 0 ? (
-                paginatedHistory.map((item) => (
-                  <tr
-                    key={item.idTestResult}
-                    className="hover:bg-purple-50 dark:hover:bg-slate-700/50 transition-colors"
-                  >
-                    <td className="p-3 font-medium max-w-[200px] truncate">
-                      <span className="text-gray-800 dark:text-gray-200">
-                        {item.test?.title || "Unknown Test"}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <span
-                        className={`text-xs font-semibold px-2 py-1 rounded ${
-                          item.test?.testType === "READING"
-                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                            : item.test?.testType === "LISTENING"
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                              : item.test?.testType === "WRITING"
-                                ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                                : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                        }`}
-                      >
-                        {item.test?.testType}
-                      </span>
-                    </td>
-                    <td className="p-3 font-bold text-gray-800 dark:text-gray-100">
-                      {item.bandScore ?? item.band_score ?? "-"}
-                    </td>
-                    <td className="p-3 text-gray-500 dark:text-gray-400">
-                      {new Date(item.createdAt).toLocaleDateString("vi-VN", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td className="p-3">
-                      {(() => {
-                        const tickets = item.teacherReviewTickets || [];
-                        if (tickets.length === 0) {
-                          return (
-                            <span className="text-gray-400 text-xs">
-                              Chưa yêu cầu
-                            </span>
-                          );
-                        }
-                        // Ưu tiên: hiển thị điểm COMPLETED trước
-                        const completedTicket = tickets.find(
-                          (t) => t.status === "COMPLETED" && t.teacherBandScore,
-                        );
-                        if (completedTicket) {
-                          return (
-                            <span className="text-green-600 font-bold">
-                              {completedTicket.teacherBandScore}
-                            </span>
-                          );
-                        }
-                        // Sau đó mới check PENDING/CLAIMED
-                        const pendingTicket = tickets.find((t) =>
-                          ["PENDING", "CLAIMED", "IN_PROGRESS"].includes(
-                            t.status,
-                          ),
-                        );
-                        if (pendingTicket) {
-                          return (
-                            <span className="text-yellow-600 text-xs font-semibold">
-                              Đang chờ
-                            </span>
-                          );
-                        }
-                        return (
-                          <span className="text-gray-400 text-xs">
-                            Chưa yêu cầu
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="p-3 text-right">
-                      <button
-                        onClick={() => setSelectedTestDetail(item)}
-                        className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 font-bold text-xs flex items-center justify-end gap-1 ml-auto"
-                      >
-                        Chi tiết <ChevronRight size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="p-8 text-center text-gray-400 dark:text-gray-500 italic"
-                  >
-                    Không tìm thấy lịch sử làm bài nào.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination Controls */}
-        {filteredHistory.length > 0 && (
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Hiển thị{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {(historyPage - 1) * ITEMS_PER_PAGE + 1}
-              </span>{" "}
-              -{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {Math.min(historyPage * ITEMS_PER_PAGE, filteredHistory.length)}
-              </span>{" "}
-              trên tổng số{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {filteredHistory.length}
-              </span>
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
-                disabled={historyPage === 1}
-                className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (page) => {
-                    // Logic hiển thị nút trang rút gọn (đơn giản)
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= historyPage - 1 && page <= historyPage + 1)
-                    ) {
-                      return (
-                        <button
-                          key={page}
-                          onClick={() => setHistoryPage(page)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
-                            historyPage === page
-                              ? "bg-purple-600 text-white shadow-sm"
-                              : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      );
-                    } else if (
-                      page === historyPage - 2 ||
-                      page === historyPage + 2
-                    ) {
-                      return (
-                        <span key={page} className="text-gray-400 text-xs px-1">
-                          ...
-                        </span>
-                      );
-                    }
-                    return null;
-                  },
-                )}
-              </div>
-              <button
-                onClick={() =>
-                  setHistoryPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={historyPage === totalPages}
-                className="p-2 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* --- CÁC POPUP/MODAL --- */}
-
-      {/* 1. Modal sửa mục tiêu */}
-      {isEditingTarget && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl w-96 shadow-lg border border-transparent dark:border-slate-700">
-            <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">
-              Cập nhật mục tiêu
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block">
-                  Target Band Score
-                </label>
-                <input
-                  className="w-full border border-gray-200 dark:border-slate-600 p-2 rounded focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                  type="number"
-                  step="0.5"
-                  max="9"
-                  placeholder="Band Score (e.g. 7.5)"
-                  value={tempTarget.targetBandScore}
-                  onChange={(e) =>
-                    setTempTarget({
-                      ...tempTarget,
-                      targetBandScore: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 dark:text-slate-400 mb-1 block">
-                  Ngày thi dự kiến
-                </label>
-                <input
-                  className="w-full border border-gray-200 dark:border-slate-600 p-2 rounded focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800 outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                  type="date"
-                  value={
-                    tempTarget.targetExamDate
-                      ? tempTarget.targetExamDate.split("T")[0]
-                      : ""
-                  }
-                  onChange={(e) =>
-                    setTempTarget({
-                      ...tempTarget,
-                      targetExamDate: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <button
-                  onClick={() => setIsEditingTarget(false)}
-                  className="px-4 py-2 text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleUpdateTarget}
-                  className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-                >
-                  Lưu
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2. Modal Chi tiết lịch sử MỚI */}
-      <SimpleResultModal
-        open={!!selectedTestDetail}
-        onClose={() => setSelectedTestDetail(null)}
-        idTestResult={selectedTestDetail?.idTestResult}
-      />
-
-      {/* 3. Modal Xác nhận làm bài (Recommended) */}
       <Modal
         title="Xác nhận làm bài"
         open={confirmStartOpen}
@@ -1303,13 +870,13 @@ const HomePage = () => {
         confirmLoading={startingTest}
         okText="Bắt đầu ngay"
         cancelText="Để sau"
-        okButtonProps={{ className: "bg-purple-600 hover:bg-purple-700" }}
+        okButtonProps={{ className: "bg-[#6366f1] hover:opacity-90" }}
       >
         <p>
           Bạn có muốn bắt đầu làm đề thi được đề xuất:{" "}
           <strong>{selectedExamToStart?.title}</strong>?
         </p>
-        <div className="bg-blue-50 text-blue-700 p-3 rounded mt-3 text-sm">
+        <div className="bg-[#eef2ff] text-[#4338ca] p-3 rounded mt-3 text-sm">
           <p>
             • Thời gian: <strong>{selectedExamToStart?.duration} phút</strong>
           </p>

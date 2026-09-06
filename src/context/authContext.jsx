@@ -1,12 +1,19 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { introspectAPI } from "@/services/apiAuth";
 import Cookies from "js-cookie";
 const AuthContext = createContext(null);
 
+const safeParseCookie = (key) => {
+  try {
+    const v = Cookies.get(key);
+    return v ? JSON.parse(v) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(
-    Cookies.get("user") ? JSON.parse(Cookies.get("user")) : ""
-  );
+  const [user, setUser] = useState(() => safeParseCookie("user") ?? "");
   const [isAuth, setIsAuth] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -24,7 +31,7 @@ export const AuthProvider = ({ children }) => {
         if (res?.data?.active) {
           const storedUser = Cookies.get("user");
           setIsAuth(true);
-          setUser(storedUser ? JSON.parse(storedUser) : null);
+          setUser(storedUser ? safeParseCookie("user") : null);
         } else {
           setIsAuth(false);
           setUser(null);
@@ -44,8 +51,13 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  const value = useMemo(
+    () => ({ user, isAuth, loading, setUser, setIsAuth }),
+    [user, isAuth, loading]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, isAuth, loading, setUser, setIsAuth }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

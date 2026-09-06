@@ -200,6 +200,11 @@ export const deleteGroupOfQuestionsAPI = async (idGroupOfQuestions) => {
   return res.data;
 };
 
+export const deleteQuestionAPI = async (idQuestion) => {
+  const res = await API.delete(`/question/delete-question/${idQuestion}`);
+  return res.data;
+};
+
 //get
 export const getAllPartByIdAPI = async (idTest) => {
   const res = await API.get(`/part/get-all-part-by-idTest/${idTest}`);
@@ -209,9 +214,14 @@ export const getAllPartByIdAPI = async (idTest) => {
 export const getPartByIdAPI = async (idPart) => {
   const res = await API.get(`/part/get-one/${idPart}`);
 
-  return normalizeEnvelope(res.data, (parts) =>
-    (Array.isArray(parts) ? parts : []).map((part) => normalizePartForLegacy(part))
-  );
+  // findUnique returns a single object (NOT array). Normalize to legacy
+  // shape: { data: <normalizedPart>, message, status }
+  const inner = res.data?.data !== undefined ? res.data.data : res.data;
+  const normalized = inner ? normalizePartForLegacy(inner) : null;
+  return {
+    ...res.data,
+    data: normalized,
+  };
 };
 export const getQuestionsByIdGroupAPI = async (idGroupOfQuestions) => {
   const res = await API.get(`/question-group/get-by-id/${idGroupOfQuestions}`);
@@ -287,10 +297,22 @@ export const updateQuestionAPI = async (idQuestion, data) => {
 
 export const updateManyQuestionAPI = async (data) => {
   const sourceQuestions = Array.isArray(data?.questions) ? data.questions : [];
-  const mappedQuestions = await mapLegacyQuestionsPayloadToBackend(
-    API,
-    sourceQuestions
+  // Skip the legacy answers[]→metadata mapper when the caller already
+  // produced structured metadata (teacher editor flow). The legacy adapter
+  // rebuilds metadata from scratch from `question.answers[]`, which throws
+  // away teacher-edited fields like `correctAnswers` for SENTENCE_COMPLETION
+  // because new edits have an empty answers[] and the mapper falls back to
+  // `["N/A"]`. Heuristic: caller provides `metadata.type` (typed metadata)
+  // AND no legacy `answers[]` array.
+  const needsLegacyMapping = sourceQuestions.some(
+    (q) => !q?.metadata?.type || Array.isArray(q?.answers)
   );
+  const mappedQuestions = needsLegacyMapping
+    ? await mapLegacyQuestionsPayloadToBackend(API, sourceQuestions)
+    : sourceQuestions.map((q) => ({
+        ...q,
+        idQuestionGroup: q.idGroupOfQuestions || q.idQuestionGroup,
+      }));
 
   const toUpdate = mappedQuestions.filter((question) => !!question.idQuestion);
   const toCreate = mappedQuestions

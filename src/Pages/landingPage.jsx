@@ -1,307 +1,430 @@
-// components/LandingPage.jsx
+// Pages/landingPage.jsx
+// Adapted from MagicPath "IELTS Landing Page" (sparklingly-tide-6083)
+// Brand: AIELTS · Theme: light (paper #fafafc) with playful stacked-shadow buttons
 import React from "react";
 import { motion } from "framer-motion";
-import "@ant-design/v5-patch-for-react-19";
-import {
-  BookOpen,
-  TrendingUp,
-  BookMarked,
-  ArrowRight,
-  Star,
-  Users,
-  Target,
-  Zap,
-  BrainCircuit,
-  Award,
-} from "lucide-react";
-import { Button, Card } from "antd";
-import FloatingWords from "@/components/landingPage/FloatingWords";
 import { useNavigate } from "react-router";
-
-// Lưu ý: Đã bỏ StatsSection import vì mình sẽ tích hợp các chỉ số chung vào Hero để mạch lạc hơn
-// Nếu bạn muốn tách riêng thì có thể giữ lại component đó.
+import {
+  StackedButton,
+  FeatureCard,
+  Testimonial,
+  PricingCard,
+} from "@/components/landingPage/landingSections";
 
 const LandingPage = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 overflow-x-hidden">
-      {/* Navigation */}
-      <Navbar />
-
-      {/* Hero Section */}
-      <HeroSection />
-
-      {/* Features Section */}
-      <FeaturesSection />
-
-      {/* Vocabulary Section */}
-      <VocabularySection />
-
-      {/* Footer */}
+    <div className="min-h-screen w-full bg-[#fafafc] text-[#1e1b4b]">
+      <Nav />
+      <Hero />
+      <StatsStrip />
+      <Features />
+      <HowItWorks />
+      <Testimonials />
+      <Pricing />
+      <CTA />
       <Footer />
     </div>
   );
 };
 
-// Component Navbar
-const Navbar = () => {
-  const navigate = useNavigate();
-  return (
-    <nav className="fixed w-full bg-slate-900/80 backdrop-blur-md z-50 border-b border-slate-700/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center space-x-2 "
-          >
-            <div className="relative">
-              <BookOpen className="h-8 w-8 text-blue-500" />
-              <span className="absolute -top-1 -right-1 flex h-3 w-3"></span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">
-                AIELTS
-              </span>
-              <span className="text-xs text-slate-400 tracking-wider uppercase">
-                Future of Learning
-              </span>
-            </div>
-          </motion.div>
+export default LandingPage;
 
-          {/* Auth Buttons */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex space-x-3"
+/* ----------------------------- Nav ----------------------------- */
+const Nav = () => {
+  const navigate = useNavigate();
+  const items = ["Khóa học", "Practice tests", "Vocab", "Cộng đồng", "Giá"];
+
+  const scrollTo = (label) => {
+    const map = {
+      "Khóa học": "features",
+      "Practice tests": "features",
+      Vocab: "features",
+      "Cộng đồng": "testimonials",
+      Giá: "pricing",
+    };
+    const id = map[label];
+    if (id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  return (
+    <nav className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b-2 border-[#e6e6ed]">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-6">
+        <a
+          href="#top"
+          onClick={(e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className="flex items-center gap-2.5"
+        >
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#6366f1] to-[#a855f7] shadow-[0_3px_0_#4338ca] flex items-center justify-center text-lg">
+            📘
+          </div>
+          <span
+            className="text-xl font-black text-[#1e1b4b]"
+            style={{ fontFamily: "Nunito" }}
           >
-            <Button
-              ghost
-              className="!text-slate-300 !border-slate-600 hover:!text-white hover:!border-white hidden sm:block"
-              onClick={() => navigate("/login")}
+            AIELTS
+          </span>
+        </a>
+
+        <div className="hidden md:flex items-center gap-1 ml-6">
+          {items.map((item) => (
+            <button
+              key={item}
+              onClick={() => scrollTo(item)}
+              className="px-3 py-2 rounded-xl text-sm font-bold text-[#64748b] hover:bg-[#f1f1f6] hover:text-[#1e1b4b] cursor-pointer transition-all"
             >
-              Đăng nhập
-            </Button>
-            <Button
-              type="primary"
-              className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 border-none shadow-lg shadow-blue-900/20"
-              onClick={() => navigate("/signup")}
-            >
-              Đăng ký ngay
-            </Button>
-          </motion.div>
+              {item}
+            </button>
+          ))}
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => navigate("/login")}
+            className="px-3 py-2 rounded-xl text-sm font-bold text-[#1e1b4b] hover:bg-[#f1f1f6] cursor-pointer transition-all"
+          >
+            Đăng nhập
+          </button>
+          <button
+            onClick={() => navigate("/signup")}
+            className="bg-[#6366f1] text-white shadow-[0_5px_0_#4338ca] hover:brightness-110 px-5 py-2.5 text-sm font-extrabold uppercase tracking-wide rounded-2xl active:translate-y-[2px] active:shadow-[0_2px_0_#4338ca] transition-all"
+          >
+            Bắt đầu miễn phí
+          </button>
         </div>
       </div>
     </nav>
   );
 };
 
-// Hero Section Component
-const HeroSection = () => {
+/* ----------------------------- Hero ----------------------------- */
+const Hero = () => {
   const navigate = useNavigate();
   return (
-    <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
-      {/* Background decoration elements */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl -z-10 animate-pulse"></div>
-      <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl -z-10"></div>
+    <section
+      id="top"
+      className="relative overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-[#eef2ff] via-white to-[#fff1f2]" />
+      <div className="absolute -top-32 -right-32 w-96 h-96 bg-[#6366f1]/15 rounded-full blur-3xl" />
+      <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-[#fb7185]/15 rounded-full blur-3xl" />
 
-      <div className="max-w-7xl mx-auto text-center relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <div className="flex flex-col md:flex-row justify-center items-center mb-8 gap-4">
-            <span className="text-8xl md:text-9xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-300 leading-none tracking-tighter">
-              AI
+      <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border-2 border-[#e6e6ed] shadow-[0_2px_0_#e6e6ed] mb-6">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#6366f1]">
+              🎉 Mới ra mắt
             </span>
-            <div className="flex flex-col items-center md:items-start text-center md:text-left">
-              <div className="text-5xl md:text-6xl font-bold text-white tracking-tight">
-                ELTS
-              </div>
-              <div className="text-slate-400 text-xl md:text-2xl mt-2 font-light">
-                Cũng có thể học được
-              </div>
-            </div>
+            <span className="text-xs font-semibold text-[#1e1b4b]">
+              AI Speaking với band realtime
+            </span>
           </div>
-
-          <p className="max-w-2xl mx-auto text-lg text-slate-300 mb-10 leading-relaxed">
-            Hệ thống tối ưu hóa lộ trình học tập dựa trên năng lực cá nhân.
-            Không chỉ là luyện thi, chúng tôi giúp bạn nhìn thấy sự
-            <span className="text-blue-400 font-semibold">
-              {" "}
-              tăng trưởng kỹ năng{" "}
+          <h1
+            className="text-5xl lg:text-6xl font-black text-[#1e1b4b] leading-[1.05] tracking-tight mb-5"
+            style={{ fontFamily: "Nunito" }}
+          >
+            Master IELTS,
+            <br />
+            <span className="bg-gradient-to-r from-[#6366f1] via-[#a855f7] to-[#fb7185] bg-clip-text text-transparent">
+              không cần ra trung tâm.
             </span>
-            rõ rệt qua từng bài học.
+          </h1>
+          <p className="text-lg text-[#64748b] leading-relaxed mb-8 max-w-xl">
+            Luyện 4 kỹ năng với{" "}
+            <strong className="text-[#1e1b4b]">đề Cambridge real</strong>, AI chấm
+            Writing & Speaking trong 30 giây, từ vựng theo chủ đề và streak để
+            giữ động lực hằng ngày.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="large"
+          <div className="flex flex-wrap items-center gap-3 mb-8">
+            <StackedButton
+              tone="indigo"
+              size="lg"
               onClick={() => navigate("/signup")}
-              className="!h-14 !px-8 !text-lg !rounded-full bg-blue-600 hover:bg-blue-500 border-none shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.5)] transition-all duration-300"
-              type="primary"
             >
-              Khám phá năng lực ngay
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
+              🚀 Học ngay miễn phí
+            </StackedButton>
+            <StackedButton
+              tone="ghost"
+              size="lg"
+              onClick={() => navigate("/login")}
+            >
+              Xem demo 2 phút
+            </StackedButton>
           </div>
-        </motion.div>
 
-        {/* Generic Stats Preview - Thay số cụ thể bằng giá trị định tính */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20 max-w-5xl mx-auto"
-        >
-          {[
-            {
-              icon: TrendingUp,
-              title: "Tiến bộ liên tục",
-              desc: "Cải thiện điểm số qua từng bài test",
-              color: "text-green-400",
-            },
-            {
-              icon: BrainCircuit,
-              title: "Lộ trình thông minh",
-              desc: "Cá nhân hóa theo điểm mạnh & yếu",
-              color: "text-blue-400",
-            },
-            {
-              icon: Award,
-              title: "Kết quả thực tế",
-              desc: "Hàng ngàn học viên đạt mục tiêu",
-              color: "text-yellow-400",
-            },
-          ].map((stat, index) => (
-            <div
-              key={index}
-              className="p-6 bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl hover:border-slate-600 transition-all duration-300 group"
-            >
-              <div className="flex justify-center mb-4">
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex -space-x-2">
+              {["👨", "👩", "🧑", "👨‍🎓", "👩‍🎓"].map((e, i) => (
                 <div
-                  className={`p-3 rounded-full bg-slate-900 group-hover:scale-110 transition-transform duration-300 ${stat.color}`}
+                  key={i}
+                  className="w-9 h-9 rounded-full bg-gradient-to-br from-[#6366f1] to-[#fb7185] flex items-center justify-center text-sm border-2 border-white"
                 >
-                  <stat.icon className="h-6 w-6" />
+                  {e}
+                </div>
+              ))}
+            </div>
+            <div>
+              <div className="font-extrabold text-[#1e1b4b]">
+                12,400+ học viên
+              </div>
+              <div className="text-xs text-[#64748b]">
+                ⭐ 4.9 / 5 từ 2,800 reviews
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Hero illustration */}
+        <div className="relative">
+          <div className="bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_5px_0_#e6e6ed] p-6 pt-10 pb-12 relative">
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 4, repeat: Infinity }}
+              className="absolute -top-5 right-4 z-10 bg-white rounded-2xl border-2 border-[#e6e6ed] shadow-[0_4px_0_#e6e6ed] px-4 py-3"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-[#10b981] text-white flex items-center justify-center text-sm font-black">
+                  ✓
+                </div>
+                <div className="leading-tight">
+                  <div className="font-extrabold text-[#1e1b4b] text-sm">
+                    Đúng rồi!
+                  </div>
+                  <div className="text-[10px] text-[#64748b] font-bold">
+                    +10 XP · Streak +1
+                  </div>
                 </div>
               </div>
-              <div className="text-xl font-bold text-white mb-2">
-                {stat.title}
+            </motion.div>
+
+            <motion.div
+              animate={{ y: [0, 6, 0] }}
+              transition={{ duration: 5, repeat: Infinity }}
+              className="absolute -bottom-5 -left-5 z-10 bg-gradient-to-br from-[#fb7185] to-[#f59e0b] rounded-2xl shadow-[0_4px_0_#b45309] px-4 py-3 text-white"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-2xl leading-none">🔥</span>
+                <div className="leading-tight">
+                  <div className="text-lg font-black">12</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide opacity-90">
+                    Day streak
+                  </div>
+                </div>
               </div>
-              <div className="text-slate-400 text-sm">{stat.desc}</div>
+            </motion.div>
+
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#6366f1]">
+                  Cambridge IELTS 17
+                </div>
+                <div className="font-extrabold text-[#1e1b4b]">
+                  Reading · Test 3
+                </div>
+              </div>
+              <div className="px-3 py-1 rounded-full bg-[#eef2ff] text-[#4338ca] text-xs font-extrabold">
+                ⏱ 18:42
+              </div>
             </div>
-          ))}
-        </motion.div>
+
+            <div className="bg-[#fafafc] rounded-2xl p-4 mb-3 text-sm leading-relaxed text-[#1e1b4b]">
+              Tea is one of the world's most popular{" "}
+              <span className="bg-[#fef3c7] rounded px-1">beverages</span>,
+              second only to{" "}
+              <span className="bg-[#eef2ff] rounded px-1">water</span>...
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#eef2ff] border-2 border-[#6366f1]">
+                <div className="w-8 h-8 rounded-lg bg-[#6366f1] text-white font-black flex items-center justify-center text-sm">
+                  B
+                </div>
+                <div className="text-sm font-semibold text-[#1e1b4b]">
+                  Tang Dynasty
+                </div>
+                <span className="ml-auto text-[#6366f1]">✓</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border-2 border-[#e6e6ed]">
+                <div className="w-8 h-8 rounded-lg bg-[#f1f1f6] text-[#64748b] font-black flex items-center justify-center text-sm">
+                  C
+                </div>
+                <div className="text-sm font-semibold text-[#64748b]">
+                  Ming Dynasty
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className={`w-7 h-7 rounded-md text-xs font-extrabold flex items-center justify-center ${
+                      i <= 2
+                        ? "bg-[#eef2ff] text-[#4338ca] border-2 border-[#a5b4fc]"
+                        : i === 3
+                        ? "bg-[#6366f1] text-white"
+                        : "bg-white border-2 border-[#e6e6ed] text-[#64748b]"
+                    }`}
+                  >
+                    {i}
+                  </div>
+                ))}
+              </div>
+              <span className="text-xs font-bold text-[#6366f1]">Q3 / 13</span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
 };
 
-// Features Section Component
-const FeaturesSection = () => {
+/* --------------------------- Stats strip --------------------------- */
+const StatsStrip = () => {
+  const stats = [
+    { num: "12.4K+", label: "Học viên đang học" },
+    { num: "7.5", label: "Band trung bình đạt" },
+    { num: "50+", label: "Đề Cambridge thật" },
+    { num: "94%", label: "Đạt mục tiêu band" },
+  ];
+  return (
+    <section className="bg-gradient-to-r from-[#1e1b4b] via-[#312e81] to-[#4338ca] text-white py-10">
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        {stats.map((s) => (
+          <div key={s.label}>
+            <div
+              className="text-4xl font-black mb-1"
+              style={{ fontFamily: "Nunito" }}
+            >
+              {s.num}
+            </div>
+            <div className="text-xs font-bold uppercase tracking-wider opacity-80">
+              {s.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+/* --------------------------- Features --------------------------- */
+const Features = () => {
   const features = [
     {
-      icon: Target,
-      title: "Luyện tập đúng trọng tâm",
-      description:
-        "Hệ thống tự động phân tích và đề xuất các bài tập tập trung vào kỹ năng bạn còn yếu, giúp tối ưu thời gian học.",
-      tags: ["Tối ưu thời gian", "Đúng trình độ"],
-      color: "blue",
+      icon: "📖",
+      title: "Reading thật từ Cambridge",
+      desc: "50+ test từ Cambridge IELTS 1-19, kèm bản dịch và giải thích từng câu.",
+      gradient: "bg-gradient-to-br from-[#6366f1] to-[#a855f7]",
     },
     {
-      icon: Zap,
-      title: "Phản hồi tức thì",
-      description:
-        "Nhận kết quả và phân tích chi tiết ngay sau khi nộp bài. Hiểu rõ lỗi sai để khắc phục ngay lập tức.",
-      tags: ["Chấm điểm AI", "Giải thích chi tiết"],
-      color: "yellow",
+      icon: "🎧",
+      title: "Listening 4 sections",
+      desc: "Nghe accent đa dạng (UK/US/AU), tốc độ nói thật 1x, không tua được như thi.",
+      gradient: "bg-gradient-to-br from-[#06b6d4] to-[#0891b2]",
     },
     {
-      icon: BookMarked,
-      title: "Kho tài liệu không giới hạn",
-      description:
-        "Tiếp cận nguồn đề thi phong phú và cập nhật liên tục, sát với xu hướng ra đề mới nhất.",
-      tags: ["Đa dạng", "Cập nhật"],
-      color: "purple",
+      icon: "✍️",
+      title: "AI chấm Writing",
+      desc: "Dự đoán band trong 30 giây + sửa lỗi grammar và gợi ý từ vựng C1.",
+      gradient: "bg-gradient-to-br from-[#fb7185] to-[#f59e0b]",
+    },
+    {
+      icon: "🎤",
+      title: "Speaking với AI examiner",
+      desc: "Examiner ảo phỏng vấn 3 parts, đánh giá fluency & pronunciation realtime.",
+      gradient: "bg-gradient-to-br from-[#a855f7] to-[#ec4899]",
     },
   ];
 
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-900 relative">
-      {/* Decorative divider */}
-      <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
-
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
+    <section id="features" className="max-w-7xl mx-auto px-6 py-20">
+      <div className="text-center mb-12">
+        <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6366f1] mb-2">
+          Tính năng
+        </div>
+        <h2
+          className="text-4xl font-black text-[#1e1b4b] mb-3"
+          style={{ fontFamily: "Nunito" }}
         >
-          <span className="text-blue-400 font-semibold tracking-wide uppercase text-sm">
-            Tại sao chọn chúng tôi?
-          </span>
-          <h2 className="text-3xl md:text-4xl font-bold text-white mt-2 mb-4">
-            Công nghệ kiến tạo tri thức
+          Mọi thứ bạn cần để đạt band 7+
+        </h2>
+        <p className="text-lg text-[#64748b]">
+          4 kỹ năng · AI chấm bài · Vocab có hệ thống · Cộng đồng học viên
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {features.map((f) => (
+          <FeatureCard key={f.title} {...f} />
+        ))}
+      </div>
+    </section>
+  );
+};
+
+/* ------------------------- How it works ------------------------- */
+const HowItWorks = () => {
+  const steps = [
+    {
+      num: "1",
+      title: "Test đầu vào",
+      desc: "Làm 1 mock test mini để OwlIELTS biết band hiện tại.",
+      emoji: "🎯",
+    },
+    {
+      num: "2",
+      title: "Lộ trình AI",
+      desc: "AI tạo lộ trình 4-12 tuần dựa trên band mục tiêu của bạn.",
+      emoji: "🗺",
+    },
+    {
+      num: "3",
+      title: "Học hằng ngày",
+      desc: "Mỗi ngày 20-30 phút, giữ streak, lên band thật.",
+      emoji: "🚀",
+    },
+  ];
+  return (
+    <section className="bg-white border-y-2 border-[#e6e6ed] py-20">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-12">
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6366f1] mb-2">
+            3 bước
+          </div>
+          <h2
+            className="text-4xl font-black text-[#1e1b4b]"
+            style={{ fontFamily: "Nunito" }}
+          >
+            Học IELTS như chơi game
           </h2>
-          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-            Chúng tôi không chỉ cung cấp đề thi, chúng tôi cung cấp giải pháp để
-            bạn học tập hiệu quả hơn mỗi ngày.
-          </p>
-        </motion.div>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.2 }}
-              whileHover={{ y: -8 }}
+        <div className="grid md:grid-cols-3 gap-6 relative">
+          {steps.map((s) => (
+            <div
+              key={s.num}
+              className="relative bg-white rounded-3xl border-2 border-[#e6e6ed] shadow-[0_3px_0_#e6e6ed] p-6"
             >
-              {/* SỬA LỖI Ở ĐÂY: Thêm !bg-slate-800 và !border-slate-700 để ép màu nền tối */}
-              <Card
-                bordered={false}
-                className="h-full !bg-slate-800 !border !border-slate-700 hover:!border-blue-500/50 hover:!shadow-2xl hover:!shadow-blue-900/20 transition-all duration-300"
-                styles={{
-                  body: {
-                    padding: "2.5rem",
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                  },
-                }}
+              <div className="absolute -top-4 -left-2 w-12 h-12 rounded-2xl bg-gradient-to-br from-[#6366f1] to-[#a855f7] text-white shadow-[0_3px_0_#4338ca] flex items-center justify-center text-xl font-black">
+                {s.num}
+              </div>
+              <div className="text-5xl mt-6 mb-4">{s.emoji}</div>
+              <h3
+                className="text-xl font-black text-[#1e1b4b] mb-2"
+                style={{ fontFamily: "Nunito" }}
               >
-                <div
-                  className={`w-14 h-14 rounded-xl bg-slate-900 flex items-center justify-center mb-6 text-${feature.color}-400 shadow-inner ring-1 ring-slate-700`}
-                >
-                  <feature.icon className="h-7 w-7" />
-                </div>
-
-                {/* Tiêu đề chắc chắn hiển thị màu trắng */}
-                <h3 className="text-xl font-bold !text-white mb-3">
-                  {feature.title}
-                </h3>
-
-                {/* Nội dung màu xám sáng để dễ đọc trên nền tối */}
-                <p className="!text-slate-400 leading-relaxed mb-6 flex-grow text-base">
-                  {feature.description}
-                </p>
-
-                <div className="flex flex-wrap gap-2 mt-auto">
-                  {feature.tags.map((tag, tagIndex) => (
-                    <span
-                      key={tagIndex}
-                      className="px-3 py-1 bg-slate-700/50 border border-slate-600 rounded-full text-xs text-slate-300"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </Card>
-            </motion.div>
+                {s.title}
+              </h3>
+              <p className="text-sm text-[#64748b] leading-relaxed">{s.desc}</p>
+            </div>
           ))}
         </div>
       </div>
@@ -309,142 +432,196 @@ const FeaturesSection = () => {
   );
 };
 
-// Vocabulary Section Component
-const VocabularySection = () => {
+/* -------------------------- Testimonials -------------------------- */
+const Testimonials = () => {
+  const items = [
+    {
+      name: "Minh Anh",
+      band: "7.5",
+      avatar: "👩‍🎓",
+      color: "bg-gradient-to-br from-[#6366f1] to-[#a855f7]",
+      text: "Mình tự học hoàn toàn ở nhà, 3 tháng từ 6.0 lên 7.5. AI Speaking giúp mình tự tin nói nhiều hơn, không còn ngại.",
+    },
+    {
+      name: "Quang Hưng",
+      band: "8.0",
+      avatar: "👨‍💼",
+      color: "bg-gradient-to-br from-[#06b6d4] to-[#0891b2]",
+      text: "Bộ đề Cambridge thật giá quá ổn so với học trung tâm. Giải thích từng câu sai cực kỹ.",
+    },
+    {
+      name: "Lan Phương",
+      band: "7.0",
+      avatar: "🧕",
+      color: "bg-gradient-to-br from-[#fb7185] to-[#f59e0b]",
+      text: "Streak là động lực lớn nhất. Mỗi ngày 30 phút, không ngày nào bỏ qua suốt 80 ngày.",
+    },
+  ];
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-slate-900">
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-800/30 to-slate-900"></div>
+    <section id="testimonials" className="max-w-7xl mx-auto px-6 py-20">
+      <div className="text-center mb-12">
+        <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6366f1] mb-2">
+          Học viên nói gì
+        </div>
+        <h2
+          className="text-4xl font-black text-[#1e1b4b]"
+          style={{ fontFamily: "Nunito" }}
+        >
+          Họ đã đạt band như thế
+        </h2>
+      </div>
+      <div className="grid md:grid-cols-3 gap-5">
+        {items.map((t) => (
+          <Testimonial key={t.name} {...t} />
+        ))}
+      </div>
+    </section>
+  );
+};
 
-      {/* Component này giữ nguyên vì hiệu ứng đẹp */}
-      <FloatingWords />
-
-      <div className="max-w-7xl mx-auto relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="text-left"
+/* ----------------------------- Pricing ----------------------------- */
+const Pricing = () => {
+  const tiers = [
+    {
+      tier: "Free",
+      price: "0₫",
+      features: [
+        "10 test/tháng",
+        "Vocab cơ bản 500 từ",
+        "Cộng đồng forum",
+        "Streak tracker",
+      ],
+    },
+    {
+      tier: "Pro",
+      price: "299K",
+      badge: "Phổ biến nhất",
+      highlight: true,
+      features: [
+        "Toàn bộ 50+ test Cambridge",
+        "AI chấm Writing & Speaking",
+        "Vocab 5,000 từ phân band",
+        "Lộ trình AI cá nhân hóa",
+        "Teacher review 4 bài/tháng",
+      ],
+    },
+    {
+      tier: "Premium",
+      price: "599K",
+      features: [
+        "Tất cả Pro",
+        "Teacher review 16 bài/tháng",
+        "Live class 1-1 với giáo viên",
+        "Cam kết hoàn tiền nếu không đạt",
+      ],
+    },
+  ];
+  return (
+    <section id="pricing" className="bg-white border-y-2 border-[#e6e6ed] py-20">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-12">
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#6366f1] mb-2">
+            Học phí
+          </div>
+          <h2
+            className="text-4xl font-black text-[#1e1b4b]"
+            style={{ fontFamily: "Nunito" }}
           >
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm mb-6">
-              <BookOpen className="w-4 h-4" />
-              <span>Phương pháp học tập mới</span>
-            </div>
-            <h2 className="text-4xl font-bold text-white mb-6 leading-tight">
-              Mở rộng vốn từ <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
-                Tự nhiên & Bền vững
-              </span>
-            </h2>
-            <p className="text-lg text-slate-300 mb-8 leading-relaxed">
-              Quên đi cách học vẹt truyền thống. Hệ thống giúp bạn nạp từ vựng
-              thông qua ngữ cảnh bài học, giúp nhớ lâu hơn và vận dụng linh hoạt
-              hơn.
-            </p>
+            Chọn plan phù hợp
+          </h2>
+          <p className="text-[#64748b] mt-2">
+            Hủy bất kỳ lúc nào · 7 ngày dùng thử miễn phí
+          </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+          {tiers.map((p) => (
+            <PricingCard key={p.tier} {...p} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
 
-            <ul className="space-y-5">
-              {[
-                "Học từ vựng qua ngữ cảnh IELTS thực tế",
-                "Thuật toán nhắc lại ngắt quãng (Spaced Repetition)",
-                "Theo dõi biểu đồ tăng trưởng vốn từ",
-                "Gợi ý từ vựng theo chủ đề bạn quan tâm",
-              ].map((item, index) => (
-                <motion.li
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-center text-slate-300 group"
+/* --------------------------------- CTA --------------------------------- */
+const CTA = () => {
+  const navigate = useNavigate();
+  return (
+    <section className="max-w-5xl mx-auto px-6 py-20">
+      <div className="relative bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#fb7185] rounded-[40px] p-12 text-center text-white overflow-hidden shadow-[0_5px_0_#4338ca]">
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
+        <div className="relative">
+          <div className="text-6xl mb-4">📘</div>
+          <h2
+            className="text-4xl font-black mb-3"
+            style={{ fontFamily: "Nunito" }}
+          >
+            Sẵn sàng đạt band mơ ước?
+          </h2>
+          <p className="text-lg opacity-90 mb-6 max-w-xl mx-auto">
+            7 ngày dùng thử miễn phí. Không cần thẻ. Hủy bất cứ lúc nào.
+          </p>
+          <button
+            onClick={() => navigate("/signup")}
+            className="bg-white text-[#4338ca] px-8 py-4 rounded-2xl font-extrabold uppercase tracking-wide shadow-[0_5px_0_rgba(0,0,0,0.25)] active:translate-y-[2px] active:shadow-[0_2px_0_rgba(0,0,0,0.25)] transition-all text-base"
+          >
+            🚀 Bắt đầu miễn phí
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+/* ------------------------------- Footer ------------------------------- */
+const Footer = () => {
+  const cols = [
+    { title: "Sản phẩm", items: ["Practice tests", "Vocab", "Speaking AI", "Writing AI"] },
+    { title: "Công ty", items: ["Giới thiệu", "Blog", "Tuyển dụng", "Liên hệ"] },
+    { title: "Hỗ trợ", items: ["Trung tâm trợ giúp", "Cộng đồng", "Điều khoản", "Bảo mật"] },
+  ];
+  return (
+    <footer className="bg-[#1e1b4b] text-white py-12">
+      <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-8">
+        <div>
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#6366f1] to-[#a855f7] flex items-center justify-center text-base">
+              📘
+            </div>
+            <span
+              className="text-lg font-black"
+              style={{ fontFamily: "Nunito" }}
+            >
+              AIELTS
+            </span>
+          </div>
+          <p className="text-sm opacity-70 leading-relaxed">
+            App học IELTS thông minh nhất Việt Nam.
+          </p>
+        </div>
+        {cols.map((col) => (
+          <div key={col.title}>
+            <div className="text-xs font-extrabold uppercase tracking-wider mb-3 opacity-90">
+              {col.title}
+            </div>
+            <ul className="space-y-2 text-sm opacity-70">
+              {col.items.map((it) => (
+                <li
+                  key={it}
+                  className="hover:opacity-100 cursor-pointer transition-opacity"
                 >
-                  <div className="w-6 h-6 rounded-full bg-green-500/10 flex items-center justify-center mr-4 group-hover:bg-green-500/20 transition-colors">
-                    <div className="w-2 h-2 bg-green-500 rounded-full" />
-                  </div>
-                  {item}
-                </motion.li>
+                  {it}
+                </li>
               ))}
             </ul>
-
-            <div className="mt-10">
-              <Button className="!bg-slate-800 !border-slate-600 !text-white hover:!bg-slate-700 hover:!border-slate-500 !px-6 !h-12 !rounded-lg">
-                Trải nghiệm học từ vựng
-              </Button>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="relative"
-          >
-            <div className="absolute inset-0 bg-blue-500/20 blur-[100px] rounded-full"></div>
-            <div className="relative bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl border border-slate-700 shadow-2xl">
-              <div className="text-white text-center py-10">
-                <BookMarked className="h-16 w-16 text-blue-400 mx-auto mb-6 opacity-80" />
-                <div className="text-4xl md:text-5xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white to-slate-400">
-                  Không giới hạn
-                </div>
-                <div className="text-slate-400 font-medium text-lg">
-                  Khả năng tiếp thu của bạn
-                </div>
-                <div className="mt-6 pt-6 border-t border-slate-700/50 flex justify-center space-x-8 text-sm text-slate-500">
-                  <div className="flex flex-col items-center">
-                    <span className="text-white font-bold text-lg">∞</span>
-                    <span>Từ vựng</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-white font-bold text-lg">24/7</span>
-                    <span>Truy cập</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
+          </div>
+        ))}
       </div>
-    </section>
-  );
-};
-
-// Footer Component
-const Footer = () => {
-  return (
-    <footer className="bg-slate-950 border-t border-slate-800/50 pt-16 pb-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto flex flex-col items-center text-center">
-        <div className="flex items-center space-x-2 mb-6">
-          <BookOpen className="h-8 w-8 text-blue-500" />
-          <span className="text-2xl font-bold text-white tracking-tight">
-            AIELTS
-          </span>
-        </div>
-
-        <p className="text-slate-400 mb-8 max-w-md mx-auto leading-relaxed">
-          Nền tảng luyện thi IELTS thông minh, giúp bạn bứt phá giới hạn và chạm
-          tới ước mơ du học.
-        </p>
-
-        <div className="flex space-x-6 mb-8">
-          {/* Social placeholders */}
-          {["Facebook", "Twitter", "Instagram", "LinkedIn"].map((social) => (
-            <a
-              key={social}
-              href="#"
-              className="text-slate-500 hover:text-blue-400 transition-colors"
-            >
-              {social}
-            </a>
-          ))}
-        </div>
-
-        <div className="w-full h-px bg-slate-800/50 mb-8"></div>
-
-        <div className="text-slate-600 text-sm">
-          © {new Date().getFullYear()} AIELTS. Kiến tạo tương lai cùng AI.
-        </div>
+      <div className="max-w-7xl mx-auto px-6 mt-8 pt-6 border-t border-white/10 text-xs opacity-60 flex items-center justify-between">
+        <span>© {new Date().getFullYear()} AIELTS. All rights reserved.</span>
+        <span>Made with 💜 in Vietnam</span>
       </div>
     </footer>
   );
 };
-
-export default LandingPage;

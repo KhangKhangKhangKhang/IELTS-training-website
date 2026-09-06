@@ -1,17 +1,24 @@
-// CreateComment - Updated with emoji picker
-import { useState, useRef, useEffect } from "react";
+// CreateComment - composer bình luận gọn, dùng EmojiPicker trong popover thuần Tailwind
+import { useRef, useState } from "react";
 import { createCommentAPI } from "@/services/apiForum";
-import { Input, Button, message, Avatar, Popover } from "antd";
-import { SendOutlined, SmileOutlined } from "@ant-design/icons";
+import { message } from "antd";
 import { useAuth } from "@/context/authContext";
 import EmojiPicker from "emoji-picker-react";
+import Avatar from "@/components/Forum/UI/Avatar";
+
+// Deterministic tone từ idUser — dùng chung pattern.
+const toneFromId = (id = "") => {
+  const palette = ["#6366f1", "#06b6d4", "#f43f5e", "#f59e0b", "#8b5cf6", "#10b981", "#ec4899"];
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return palette[Math.abs(h) % palette.length];
+};
 
 const CreateComment = ({ idForumPost, onCommentCreated }) => {
   const { user } = useAuth();
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
   const inputRef = useRef(null);
 
   const handleComment = async () => {
@@ -26,97 +33,75 @@ const CreateComment = ({ idForumPost, onCommentCreated }) => {
       });
       setContent("");
       message.success("Đã bình luận");
-      if (onCommentCreated) onCommentCreated(res.data);
-    } catch (error) {
+      onCommentCreated?.(res.data);
+    } catch {
       message.error("Lỗi khi bình luận");
     } finally {
       setLoading(false);
     }
   };
 
-  const onEmojiClick = (emojiData) => {
-    setContent((prev) => prev + emojiData.emoji);
-    setShowEmojiPicker(false);
+  const handleKey = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleComment();
+    }
   };
 
-  const emojiPickerContent = (
-    <div className="emoji-picker-container">
-      <EmojiPicker
-        onEmojiClick={onEmojiClick}
-        width={320}
-        height={400}
-        searchPlaceHolder="Tìm emoji..."
-        previewConfig={{ showPreview: false }}
-        skinTonesDisabled
-        lazyLoadEmojis
-        categories={[
-          { name: "Hay dùng", category: "suggested" },
-          { name: "Mặt cười", category: "smileys_people" },
-          { name: "Động vật", category: "animals_nature" },
-          { name: "Đồ ăn", category: "food_drink" },
-          { name: "Hoạt động", category: "activities" },
-          { name: "Du lịch", category: "travel_places" },
-          { name: "Vật thể", category: "objects" },
-          { name: "Biểu tượng", category: "symbols" },
-        ]}
-      />
-    </div>
-  );
-
   return (
-    <div
-      className={`flex gap-3 p-4 rounded-2xl transition-all duration-300 ${isFocused
-        ? "bg-gradient-to-r from-blue-50 to-blue-50 dark:from-slate-700 dark:to-slate-700 border-2 border-blue-100 dark:border-blue-800"
-        : "bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700"
-        }`}
-    >
+    <div className="flex items-center gap-2.5 pt-2">
       <Avatar
-        size={40}
-        src={user?.avatar || null}
-        className="border-2 border-white dark:border-slate-600 shadow-sm flex-shrink-0"
-      >
-        {user?.nameUser?.charAt(0)?.toUpperCase()}
-      </Avatar>
+        name={user?.nameUser}
+        tone={toneFromId(user?.idUser || "")}
+        size="sm"
+      />
 
-      <div className="flex-1 flex gap-2">
-        <div className="flex-1 relative">
-          <Input
-            ref={inputRef}
-            placeholder="Viết bình luận của bạn..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            className="rounded-full border-0 bg-slate-100 dark:bg-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 focus:bg-white dark:focus:bg-slate-700 pl-4 pr-10 h-10 text-sm"
-            onPressEnter={handleComment}
-          />
-          <Popover
-            content={emojiPickerContent}
-            trigger="click"
-            open={showEmojiPicker}
-            onOpenChange={setShowEmojiPicker}
-            placement="topRight"
-            arrow={false}
-            overlayClassName="emoji-popover"
-          >
-            <button
-              type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500 transition-colors cursor-pointer"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            >
-              <SmileOutlined className="text-lg" />
-            </button>
-          </Popover>
-        </div>
-
-        <Button
-          onClick={handleComment}
-          loading={loading}
-          disabled={!content.trim()}
-          icon={<SendOutlined />}
-          className="bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700 border-0 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-md shadow-blue-200 dark:shadow-blue-900/20 disabled:opacity-50 disabled:shadow-none"
+      <div className="flex-1 relative">
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Viết bình luận..."
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          onKeyDown={handleKey}
+          className="w-full pl-4 pr-10 py-2.5 rounded-2xl border-2 border-slate-200 text-sm focus:border-indigo-500 outline-none bg-slate-50 focus:bg-white transition-colors"
         />
+
+        <button
+          type="button"
+          onClick={() => setShowEmoji((s) => !s)}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500 transition-colors"
+          title="Emoji"
+        >
+          😊
+        </button>
+
+        {showEmoji && (
+          <div className="absolute bottom-full right-0 mb-2 z-20 shadow-2xl rounded-2xl overflow-hidden border-2 border-slate-200">
+            <EmojiPicker
+              onEmojiClick={(e) => {
+                setContent((p) => p + e.emoji);
+                setShowEmoji(false);
+              }}
+              width={300}
+              height={360}
+              searchPlaceHolder="Tìm emoji..."
+              previewConfig={{ showPreview: false }}
+              skinTonesDisabled
+              lazyLoadEmojis
+            />
+          </div>
+        )}
       </div>
+
+      <button
+        type="button"
+        onClick={handleComment}
+        disabled={loading || !content.trim()}
+        className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-[0_2px_0_#4338ca] active:translate-y-[1px] active:shadow-[0_1px_0_#4338ca] transition-all disabled:opacity-50 disabled:shadow-none"
+      >
+        Gửi
+      </button>
     </div>
   );
 };

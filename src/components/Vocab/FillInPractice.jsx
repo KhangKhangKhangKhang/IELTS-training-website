@@ -1,17 +1,51 @@
-import React, { useState, useEffect, useRef } from "react";
-import { getDailyVocabAPI, completeDailyVocabAPI, submitReviewAPI } from "@/services/apiVocab";
+import React, { useState, useEffect, useReducer, memo } from "react";
+import { getDailyVocabAPI, submitReviewAPI } from "@/services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import { Check, X, ArrowRight, Star } from "lucide-react";
 import SaveWordModal from "./SaveWordModal";
 
+// Per-question state machine. Grouping index + userAnswer + showResult into one
+// reducer means a single dispatch always commits atomically — no parent
+// subscription can race with these state updates.
+const initialState = {
+  currentIndex: 0,
+  userAnswer: "",
+  showResult: false,
+  answers: {},
+  correctCount: 0,
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case "SET_ANSWER":
+      return { ...state, userAnswer: action.value };
+    case "SUBMIT":
+      return {
+        ...state,
+        showResult: true,
+        answers: {
+          ...state.answers,
+          [action.idVocab]: { isCorrect: action.isCorrect, quality: action.quality },
+        },
+        correctCount: state.correctCount + (action.isCorrect ? 1 : 0),
+      };
+    case "NEXT":
+      return {
+        ...state,
+        currentIndex: state.currentIndex + 1,
+        userAnswer: "",
+        showResult: false,
+      };
+    default:
+      return state;
+  }
+}
+
 const FillInPractice = ({ count = 20, onComplete }) => {
   const { user } = useAuth();
   const [vocabList, setVocabList] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [userAnswer, setUserAnswer] = useState("");
-  const [answers, setAnswers] = useState({});
-  const answersRef = useRef({}); // Ref to always have current answers
-  const [showResult, setShowResult] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { currentIndex, userAnswer, showResult, answers, correctCount } = state;
   const [loading, setLoading] = useState(true);
   const [isCompleted, setIsCompleted] = useState(false);
   const [summary, setSummary] = useState(null);
@@ -25,7 +59,9 @@ const FillInPractice = ({ count = 20, onComplete }) => {
   const loadVocab = async () => {
     try {
       const data = await getDailyVocabAPI(user?.idUser, count);
-      setVocabList(data || []);
+      const list = Array.isArray(data) ? data : (data?.data ?? []);
+      const validList = list.filter((w) => w && w.idVocab);
+      setVocabList(validList);
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -40,34 +76,36 @@ const FillInPractice = ({ count = 20, onComplete }) => {
     const isCorrect = userAnswer.trim().toLowerCase() === current.word.trim().toLowerCase();
     const quality = isCorrect ? 5 : 1;
 
-    // Update local state
-    setAnswers(prev => {
-      const newAnswers = { ...prev, [current.idVocab]: { isCorrect, quality } };
-      answersRef.current = newAnswers;
-      return newAnswers;
-    });
-
-    // Send SM-2 review per word immediately
+    // Best-effort SM-2 review (no UI blocking).
     submitReviewAPI(current.idVocab, user.idUser, quality).catch(err => {
       console.error(`[FillIn] Failed to submit review for ${current.idVocab}:`, err);
     });
 
-    setShowResult(true);
+    dispatch({
+      type: "SUBMIT",
+      idVocab: current.idVocab,
+      isCorrect,
+      quality,
+    });
+
+    if (currentIndex === vocabList.length - 1) {
+      const totalCorrect = correctCount + (isCorrect ? 1 : 0);
+      setSummary({ correct: totalCorrect, total: vocabList.length });
+      setIsCompleted(true);
+    }
   };
 
   const handleNext = () => {
     if (currentIndex < vocabList.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setUserAnswer("");
-      setShowResult(false);
+      dispatch({ type: "NEXT" });
     } else {
-      // Last word - mark as completed
+      setSummary({ correct: correctCount, total: vocabList.length });
       setIsCompleted(true);
     }
   };
 
   const handleOpenSaveModal = () => {
-    setCurrentWordForSave(current);
+    setCurrentWordForSave(vocabList[currentIndex]);
     setShowSaveModal(true);
   };
 
@@ -151,7 +189,7 @@ const FillInPractice = ({ count = 20, onComplete }) => {
               <input
                 type="text"
                 value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
+                onChange={(e) => dispatch({ type: "SET_ANSWER", value: e.target.value })}
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 outline-none"
                 placeholder="Nhập từ..."
@@ -186,10 +224,15 @@ const FillInPractice = ({ count = 20, onComplete }) => {
           onClose={() => setShowSaveModal(false)}
           word={currentWordForSave}
           user={user}
+          onSaved={() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("vocab-saved"));
+            }
+          }}
         />
       )}
     </div>
   );
 };
 
-export default FillInPractice;
+export default memo(FillInPractice);

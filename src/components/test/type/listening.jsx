@@ -43,12 +43,17 @@ const formatTime = (seconds) => {
   return `${m < 10 ? "0" + m : m}:${s < 10 ? "0" + s : s}`;
 };
 
+const getSequentialQuestionNumber = (question, fallbackNumber) => {
+  const raw = Number(question?.numberQuestion || question?.questionNumber);
+  return Number.isFinite(raw) && raw > 0 && raw !== 1 ? raw : fallbackNumber;
+};
+
 // Helper: Map API data to Component data
-function mapGroup(apiGroup) {
+function mapGroup(apiGroup, startNumber = 1) {
   const type_question =
     TYPE_MAPPING[apiGroup.typeQuestion] || apiGroup.typeQuestion;
 
-  const questions = (apiGroup.question || []).map((q) => {
+  const questions = (apiGroup.question || []).map((q, index) => {
     const answers = (q.answers || []).map((a) => ({
       answer_id: a.idAnswer,
       answer_text: a.answer_text,
@@ -58,7 +63,7 @@ function mapGroup(apiGroup) {
 
     return {
       question_id: q.idQuestion,
-      question_number: q.numberQuestion,
+      question_number: getSequentialQuestionNumber(q, startNumber + index),
       question_text: q.content,
       correct_answers: q.correct_answers,
       answers,
@@ -76,7 +81,7 @@ function mapGroup(apiGroup) {
   };
 }
 
-const Listening = ({ idTest, initialTestResult, duration }) => {
+const Listening = ({ idTest, initialTestResult, duration, previewMode = false }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -258,15 +263,17 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
       const partDetail = loadedParts[part.idPart] || part;
       const groups = partDetail.groupOfQuestions || [];
 
+      let nextQuestionNumber = 1;
       groups.forEach((group) => {
         const questions = group.question || [];
         questions.forEach((q) => {
           flattened.push({
             question_id: q.idQuestion,
-            question_number: q.numberQuestion,
+            question_number: getSequentialQuestionNumber(q, nextQuestionNumber),
             partIndex: partIndex,
             groupId: group.idGroupOfQuestions,
           });
+          nextQuestionNumber += 1;
         });
       });
     });
@@ -303,7 +310,7 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
     questionType,
     textContent = null
   ) => {
-    if (!inProgress) return;
+    if (previewMode || !inProgress) return;
     const finalContent = textContent !== null ? textContent : value;
     setAnswers((prev) => ({
       ...prev,
@@ -333,6 +340,10 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
 
   // --- 4. SUBMIT LOGIC (ĐÃ FIX) ---
   const handleFinish = async (isAutoSubmit = false) => {
+    if (previewMode) {
+      message.info("Preview mode only — no submission will be created.");
+      return;
+    }
     if (isSubmittingRef.current || !inProgress) return;
     isSubmittingRef.current = true;
     setIsSubmitting(true);
@@ -455,7 +466,7 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
 
   // Timer Countdown
   useEffect(() => {
-    if (loading || !inProgress || !test) return;
+    if (previewMode || loading || !inProgress || !test) return;
     if (timeLeft <= 0) {
       handleFinish(true);
       return;
@@ -569,15 +580,21 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
                 <ClockCircleOutlined />
                 {formatTime(timeLeft)}
               </div>
-              <Button
-                type="primary"
-                danger
-                size="large"
-                onClick={() => handleFinish(false)}
-                className="font-bold shadow-xl hover:scale-105 transition-transform bg-blue-600 hover:bg-blue-700 border-0 h-12 px-6"
-              >
-                🚀 SUBMIT TEST
-              </Button>
+              {previewMode ? (
+                <div className="px-4 py-2 rounded-xl bg-amber-100 text-amber-800 border-2 border-amber-200 font-black text-sm shadow-sm">
+                  👁 Teacher Preview · Read-only
+                </div>
+              ) : (
+                <Button
+                  type="primary"
+                  danger
+                  size="large"
+                  onClick={() => handleFinish(false)}
+                  className="font-bold shadow-xl hover:scale-105 transition-transform bg-blue-600 hover:bg-blue-700 border-0 h-12 px-6"
+                >
+                  🚀 SUBMIT TEST
+                </Button>
+              )}
             </>
           ) : (
             <div className="flex items-center gap-3 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700">
@@ -621,8 +638,28 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
         </div>
       </div>
 
+      {previewMode && (
+        <div className="fixed top-[140px] left-0 right-0 z-30 bg-amber-50 border-b-2 border-amber-200 px-6 py-3 shadow-sm">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-black text-amber-900">Teacher preview mode</div>
+              <div className="text-xs font-semibold text-amber-700">
+                This page shows how students will see the listening test. Answers and submissions are disabled.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.close()}
+              className="px-3 py-1.5 rounded-lg bg-white border border-amber-200 text-amber-800 text-xs font-black hover:bg-amber-100"
+            >
+              Close preview
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 3. MAIN CONTENT */}
-      <div className="pt-[140px] pb-20 px-4 md:px-8 w-full">
+      <div className={`${previewMode ? "pt-[210px]" : "pt-[140px]"} pb-20 px-4 md:px-8 w-full`}>
         {/* Tab Navigation */}
         <div className="flex gap-2 overflow-x-auto mb-6 pb-2 shrink-0 justify-center">
           {test.parts.map((p, idx) => (
@@ -706,8 +743,12 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
 
             {renderPart && (
               <div className="space-y-8 animate-fadeIn">
-                {(renderPart.groupOfQuestions || part.groupOfQuestions || []).map(
+                {(() => {
+                  let nextQuestionNumber = 1;
+                  return (renderPart.groupOfQuestions || part.groupOfQuestions || []).map(
                   (group) => {
+                    const startNumber = nextQuestionNumber;
+                    nextQuestionNumber += Number(group.quantity || group.question?.length || 0);
                     const rawType = group.typeQuestion;
                     const finalType = TYPE_MAPPING[rawType] || "SHORT_ANSWER";
 
@@ -775,21 +816,23 @@ const Listening = ({ idTest, initialTestResult, duration }) => {
                         {/* Questions Body */}
                         <div className="p-6">
                           <QuestionRenderer
-                            group={mapGroup(group)}
+                            group={mapGroup(group, startNumber)}
                             onAnswerChange={(qId, val, text) =>
+                              !previewMode &&
                               !isReviewMode &&
                               handleAnswerChange(qId, val, finalType, text)
                             }
                             userAnswers={answers}
-                            isReviewMode={isReviewMode}
+                            isReviewMode={previewMode || isReviewMode}
                             isMultiple={isMultiple}
                             questionRefs={questionRefs}
                           />
                         </div>
                       </div>
                     );
-                  }
-                )}
+                  })
+                  ;
+                })()}
 
                 {(!renderPart.groupOfQuestions ||
                   renderPart.groupOfQuestions.length === 0) && (

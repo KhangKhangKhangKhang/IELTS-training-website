@@ -145,6 +145,13 @@ export const DeleteTestResultAPI = async (idTestResult) => {
   return res.data;
 };
 
+export const findAllTestResultByIdUserAPI = async (idUser) => {
+  const res = await API.get(
+    `/user-test-result/get-all-test-result-by-id-user/${idUser}`
+  );
+  return normalizeEnvelope(res.data, normalizeTestResultDataForLegacy);
+};
+
 export const getTestResultByIdAPI = async (idTestResult) => {
   const res = await API.get(
     `/user-test-result/get-test-result/${idTestResult}`
@@ -165,4 +172,17 @@ export const getTestResultAndAnswersAPI = async (idTestResult) => {
   );
 
   return withTopLevelAliases(res.data);
+};
+
+/**
+ * Get the user's best band score and last finishedAt for each test.
+ * Lightweight payload (select-only 3 columns) — used by the /test
+ * discovery page to render the "Best band" card block.
+ * Returns: { data: { [idTest]: { maxBand, lastFinishedAt } } }
+ */
+export const getBestBandByTestAPI = async (idUser) => {
+  const res = await API.get(
+    `/user-test-result/get-best-band-by-test/${idUser}`
+  );
+  return res.data;
 };

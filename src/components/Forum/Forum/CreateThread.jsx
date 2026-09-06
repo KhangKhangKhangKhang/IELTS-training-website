@@ -1,9 +1,8 @@
-// CreateThread - Updated with enhanced UI
+// CreateThread - modal tạo thread, style indigo đồng bộ với mockup
 import { useState } from "react";
 import { Modal, Input, Button, message } from "antd";
 import { createThreadAPI } from "@/services/apiForum";
 import { useAuth } from "@/context/authContext";
-import { PlusCircleOutlined, FileTextOutlined } from "@ant-design/icons";
 
 const CreateThread = ({ open, onClose, setThreads }) => {
   const [title, setTitle] = useState("");
@@ -21,14 +20,12 @@ const CreateThread = ({ open, onClose, setThreads }) => {
         title,
         content,
       });
-
-      const newThread = res.data;
-      setThreads((prev) => [newThread, ...prev]);
+      setThreads((prev) => [res.data, ...prev]);
       message.success("Tạo chủ đề thành công!");
       setTitle("");
       setContent("");
       onClose();
-    } catch (error) {
+    } catch {
       message.error("Tạo chủ đề thất bại!");
     } finally {
       setLoading(false);
@@ -40,11 +37,11 @@ const CreateThread = ({ open, onClose, setThreads }) => {
       open={open}
       title={
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-blue-500 flex items-center justify-center">
-            <PlusCircleOutlined className="text-white text-lg" />
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-lg">
+            💬
           </div>
           <div>
-            <span className="text-slate-900 font-semibold text-lg">
+            <span className="text-slate-900 font-bold text-lg block">
               Tạo chủ đề mới
             </span>
             <p className="text-slate-500 text-xs font-normal">
@@ -55,26 +52,24 @@ const CreateThread = ({ open, onClose, setThreads }) => {
       }
       onCancel={onClose}
       footer={false}
-      className="rounded-2xl"
       width={520}
     >
-      <div className="space-y-5 pt-4">
+      <div className="space-y-4 pt-2">
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
-            <FileTextOutlined className="text-blue-500" />
+          <label className="block text-sm font-bold text-slate-700 mb-1.5">
             Tên chủ đề
           </label>
           <Input
             placeholder="VD: Chia sẻ tips học IELTS Writing Task 2..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="rounded-xl border-slate-200 h-11 hover:border-blue-300 focus:border-blue-400"
+            className="!rounded-xl !border-slate-200 hover:!border-indigo-300 focus:!border-indigo-500"
+            size="large"
           />
         </div>
 
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
-            <FileTextOutlined className="text-blue-500" />
+          <label className="block text-sm font-bold text-slate-700 mb-1.5">
             Mô tả chủ đề
           </label>
           <Input.TextArea
@@ -82,14 +77,14 @@ const CreateThread = ({ open, onClose, setThreads }) => {
             rows={4}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="rounded-xl border-slate-200 hover:border-blue-300 focus:border-blue-400"
+            className="!rounded-xl !border-slate-200 hover:!border-indigo-300 focus:!border-indigo-500"
           />
         </div>
 
-        <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
+        <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
           <Button
             onClick={onClose}
-            className="border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300 rounded-xl px-6 h-10"
+            className="!rounded-xl !px-5 !h-10 !border-slate-200 !text-slate-600 hover:!text-slate-900"
           >
             Hủy
           </Button>
@@ -98,7 +93,7 @@ const CreateThread = ({ open, onClose, setThreads }) => {
             onClick={handleCreate}
             loading={loading}
             disabled={!title.trim()}
-            className="bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-purple-700 border-0 rounded-xl px-6 h-10 font-medium shadow-md shadow-blue-200"
+            className="!rounded-xl !px-5 !h-10 !bg-indigo-600 hover:!bg-indigo-700 !border-0 !font-bold"
           >
             Tạo chủ đề
           </Button>

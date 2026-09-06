@@ -71,7 +71,7 @@ const StartingPage = () => {
     setIsExiting(true);
     setTimeout(() => {
       setShowPrompt(false);
-      navigate('/doTest');
+      navigate('/doTest', { state: { testType: 'placement' } });
     }, 800);
   };
 

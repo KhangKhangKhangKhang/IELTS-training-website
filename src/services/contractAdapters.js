@@ -1,12 +1,28 @@
 const LEGACY_GROUP_TO_BACKEND_TYPE = {
+  // Legacy / canvas keys
   MCQ: "MULTIPLE_CHOICE",
   TFNG: "TRUE_FALSE_NOT_GIVEN",
   YES_NO_NOTGIVEN: "YES_NO_NOT_GIVEN",
+  YES_NO_NOT_GIVEN: "YES_NO_NOT_GIVEN",
   MATCHING: "MATCHING_FEATURES",
   FILL_BLANK: "SENTENCE_COMPLETION",
   LABELING: "DIAGRAM_LABELING",
   SHORT_ANSWER: "SHORT_ANSWER",
-  OTHER: "SHORT_ANSWER",
+  OTHER: "OTHER",
+  // Pass-through: backend enum values (caller may already send BE format)
+  MULTIPLE_CHOICE: "MULTIPLE_CHOICE",
+  TRUE_FALSE_NOT_GIVEN: "TRUE_FALSE_NOT_GIVEN",
+  YES_NO_NOT_GIVEN: "YES_NO_NOT_GIVEN",
+  MATCHING_HEADING: "MATCHING_HEADING",
+  MATCHING_INFORMATION: "MATCHING_INFORMATION",
+  MATCHING_FEATURES: "MATCHING_FEATURES",
+  MATCHING_SENTENCE_ENDINGS: "MATCHING_SENTENCE_ENDINGS",
+  SENTENCE_COMPLETION: "SENTENCE_COMPLETION",
+  SUMMARY_COMPLETION: "SUMMARY_COMPLETION",
+  NOTE_COMPLETION: "NOTE_COMPLETION",
+  TABLE_COMPLETION: "TABLE_COMPLETION",
+  FLOW_CHART_COMPLETION: "FLOW_CHART_COMPLETION",
+  DIAGRAM_LABELING: "DIAGRAM_LABELING",
 };
 
 const BACKEND_TO_LEGACY_GROUP_TYPE = {
@@ -214,8 +230,38 @@ const mapMetadataToLegacyAnswers = (metadata, backendQuestionType) => {
 
   if (type === "DIAGRAM_LABELING") {
     const wordBank = toArray(metadata?.wordBank);
-    const correctSet = new Set(toArray(metadata?.correctAnswers).map((ans) => ans.toLowerCase().trim()));
 
+    // Multi-label shape (BE): `labels[]` — each entry has its own
+    // `correctAnswers[]`. Flatten into one legacy answer row per
+    // (label, acceptable answer) tuple so the student-facing renderer can
+    // still consume a flat answers[] list.
+    const labels = toArray(metadata?.labels);
+    const flattened = [];
+    labels.forEach((label, labelIdx) => {
+      const labelKey = toStringSafe(label?.pointLabel || labelIdx + 1);
+      toArray(label?.correctAnswers).forEach((ans, ansIdx) => {
+        const text = toStringSafe(ans).trim();
+        if (!text) return;
+        flattened.push({
+          answer_id: `${labelKey}-${ansIdx + 1}`,
+          answer_text: text,
+          matching_key: labelKey,
+          matching_value: "CORRECT",
+          labelCoordinate: label?.labelCoordinate,
+        });
+      });
+    });
+
+    if (flattened.length > 0) {
+      return { answers: flattened, correct_answers: flattened };
+    }
+
+    // Backwards-compat: legacy single-point payloads used a flat
+    // `correctAnswers[]` on the metadata root. Keep this branch so old
+    // records continue to render.
+    const correctSet = new Set(
+      toArray(metadata?.correctAnswers).map((ans) => ans.toLowerCase().trim())
+    );
     const answers = wordBank.map((item, index) => {
       const key = indexToKey(index) || toStringSafe(item?.id || index + 1);
       const text = toStringSafe(item?.text || item?.id);
@@ -608,16 +654,50 @@ const buildMetadataFromLegacy = (question, legacyType, groupContext = {}) => {
     const imageUrl =
       groupContext?.imageUrl || groupContext?.img || groupContext?.groupImage || EMPTY_IMAGE_FALLBACK;
 
+    // Build a multi-label labels[] array — the BE schema requires it. If
+    // the source question has structured labels, forward them; otherwise
+    // wrap the single correct answer into a one-element labels array.
+    const sourceLabels = Array.isArray(question?.metadata?.labels)
+      ? question.metadata.labels
+      : null;
+    const labels = sourceLabels && sourceLabels.length > 0
+      ? sourceLabels
+      : [
+          {
+            pointLabel: toStringSafe(
+              question?.numberQuestion || question?.questionNumber || "1"
+            ),
+            labelCoordinate: { x: 0, y: 0 },
+            correctAnswers: ensureCorrectAnswers([correctText]),
+          },
+        ];
+
     return {
       questionType: "DIAGRAM_LABELING",
       metadata: {
         type: "DIAGRAM_LABELING",
         imageUrl,
-        labelCoordinate: { x: 0, y: 0 },
-        pointLabel: toStringSafe(question?.numberQuestion || question?.questionNumber || "1"),
+        labels,
         hasWordBank: wordBank.length > 0,
         wordBank,
-        correctAnswers: ensureCorrectAnswers([correctText]),
+      },
+    };
+  }
+
+  if (legacyType === "OTHER") {
+    const correctTexts = ensureCorrectAnswers(
+      answers.map((ans) => ans?.answer_text).filter(Boolean).length > 0
+        ? answers.map((ans) => ans?.answer_text)
+        : [contentText]
+    );
+
+    return {
+      questionType: "OTHER",
+      metadata: {
+        type: "OTHER",
+        maxWords: 50,
+        correctAnswers: correctTexts,
+        notes: toStringSafe(question?.notes || question?.gradingNotes || ""),
       },
     };
   }
@@ -811,6 +891,55 @@ export const mapLegacyAnswerToSubmitItem = (answer, fallbackLegacyType = null) =
     answerType,
     answerPayload,
   };
+};
+
+/**
+ * Build a legacy-shape answer from a { qid, val, questionType } triplet
+ * so that mapLegacyAnswerToSubmitItem can convert it. This is the shape
+ * that the magicpath test screens must emit for autosave/submit.
+ *
+ * - MCQ / MATCHING / LABELING: emits { matching_key: val, userAnswerType }
+ * - TFNG / YES_NO_NOT_GIVEN: emits { matching_value: val, userAnswerType }
+ * - Fill-in (SENTENCE_COMPLETION, SUMMARY_COMPLETION, ...): emits { answerText, userAnswerType }
+ *
+ * `qid` may be a number or string — it will be stringified.
+ * `userAnswerType` may be either a backend enum (TRUE_FALSE_NOT_GIVEN) or
+ * a legacy alias (TFNG, MCQ, FILL_BLANK, MATCHING, LABELING) — the
+ * adapter normalizes both forms.
+ */
+export const buildLegacyAnswerForAdapter = (qid, val, userAnswerType) => {
+  const idQuestion = toStringSafe(qid);
+  if (!idQuestion || val === undefined || val === null || val === "") {
+    return null;
+  }
+
+  const base = { idQuestion, userAnswerType };
+  const normalized = toStringSafe(userAnswerType).trim().toUpperCase();
+
+  // Selected a letter/index → matching_key (MCQ + all MATCHING_*)
+  if (
+    normalized === "MCQ" ||
+    normalized === "MULTIPLE_CHOICE" ||
+    normalized === "MATCHING" ||
+    normalized.startsWith("MATCHING_") ||
+    normalized === "LABELING" ||
+    normalized === "DIAGRAM_LABELING"
+  ) {
+    return { ...base, matching_key: toStringSafe(val) };
+  }
+
+  // Picked an answer label like TRUE / FALSE / NOT GIVEN / YES / NO
+  if (
+    normalized === "TFNG" ||
+    normalized === "TRUE_FALSE_NOT_GIVEN" ||
+    normalized === "YES_NO_NOT_GIVEN" ||
+    normalized === "YES_NO_NOTGIVEN"
+  ) {
+    return { ...base, matching_value: toStringSafe(val) };
+  }
+
+  // Free text answer
+  return { ...base, answerText: toStringSafe(val) };
 };
 
 export const mapLegacyAnswersToSubmitItems = (answers, fallbackTypeMap = {}) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/authContext";
 import API from "@/services/axios.custom";
 import { ArrowLeft, Check, X } from "lucide-react";
@@ -8,8 +8,11 @@ import { getGrammarPracticeByTopicAPI } from "@/services/apiGrammar";
 const GrammarPractice = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const topic = searchParams.get('topic');
+  const initialCategoryId = location.state?.categoryId;
+  const isLevelTest = location.state?.levelTest === true;
   const [exercises, setExercises] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState("");

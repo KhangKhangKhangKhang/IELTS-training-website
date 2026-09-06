@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { getDailyVocabAPI, completeDailyVocabAPI } from "@/services/apiVocab";
+import React, { useState, useEffect, memo } from "react";
+import { getDailyVocabAPI, completeDailyVocabAPI, submitReviewAPI } from "@/services/apiVocab";
 import { useAuth } from "@/context/authContext";
 import { Check, X } from "lucide-react";
+import usePracticeProgress from "@/stores/practiceProgress";
 
 const FlashcardPractice = ({ count = 20, onComplete }) => {
   const { user } = useAuth();
@@ -12,6 +13,7 @@ const FlashcardPractice = ({ count = 20, onComplete }) => {
   const [loading, setLoading] = useState(true);
   const [isCompleted, setIsCompleted] = useState(false);
   const [summary, setSummary] = useState(null);
+  const { startSession, recordAnswer, incrementCorrect, setCurrentIndex: setStoreIndex } = usePracticeProgress();
 
   useEffect(() => {
     loadVocab();
@@ -20,8 +22,11 @@ const FlashcardPractice = ({ count = 20, onComplete }) => {
   const loadVocab = async () => {
     try {
       const data = await getDailyVocabAPI(user?.idUser, count);
-      setVocabList(data || []);
+      const list = Array.isArray(data) ? data : (data?.data ?? []);
+      const validList = list.filter((w) => w && w.idVocab);
+      setVocabList(validList);
       setLoading(false);
+      queueMicrotask(() => startSession("flashcard", validList.length));
     } catch (err) {
       console.error(err);
       setLoading(false);
@@ -32,14 +37,28 @@ const FlashcardPractice = ({ count = 20, onComplete }) => {
     const current = vocabList[currentIndex];
     if (!current) return;
 
+    // Realtime progress (deferred to avoid setState-during-render)
+    queueMicrotask(() => {
+      recordAnswer("flashcard", current.idVocab, isCorrect);
+      if (isCorrect) incrementCorrect("flashcard");
+    });
+
+    // Save per-answer: send SM-2 review immediately
+    const quality = isCorrect ? 5 : 1;
+    submitReviewAPI(current.idVocab, user?.idUser, quality).catch((err) => {
+      console.error(`[Flashcard] submitReview failed for ${current.idVocab}:`, err);
+    });
+
     // Use functional setState to avoid stale closure
     setAnswers(prevAnswers => {
       const newAnswers = { ...prevAnswers, [current.idVocab]: isCorrect };
 
       if (currentIndex < vocabList.length - 1) {
         // Move to next immediately
+        const nextIdx = currentIndex + 1;
         setTimeout(() => {
-          setCurrentIndex(currentIndex + 1);
+          setCurrentIndex(nextIdx);
+          setStoreIndex("flashcard", nextIdx);
           setIsFlipped(false);
         }, 0);
       } else {
@@ -145,4 +164,4 @@ const FlashcardPractice = ({ count = 20, onComplete }) => {
   );
 };
 
-export default FlashcardPractice;
+export default memo(FlashcardPractice);

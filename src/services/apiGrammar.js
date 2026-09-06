@@ -135,3 +135,68 @@ export const saveGrammarViolationAPI = async (data) => {
   const res = await API.post('/grammar/violation', data);
   return res.data;
 };
+
+// Submit a single grammar exercise answer. BE grades, updates per-topic
+// proficiency, and schedules SM-2 spaced repetition. Returns
+// { isCorrect, correctAnswer, explanation, nextReviewAt, srInterval, proficiency }.
+export const submitGrammarAnswerAPI = async (
+  idGrammar,
+  idExercise,
+  userAnswer,
+) => {
+  const res = await API.post(`/grammar/practice/${idGrammar}/answer`, {
+    idExercise,
+    userAnswer,
+  });
+  return res?.data?.data ?? res?.data;
+};
+
+// List grammar topics (used by grammar dashboard / index page).
+// BE has GET /grammar/all-grammar + GET /grammar/dashboard. We map from
+// dashboard.allTopics (preferred) so the shape matches what grammar/index.jsx
+// expects: [{ idGrammar, title, exerciseCount }].
+export const getGrammarTopicsAPI = async () => {
+  // Read dashboard from localStorage (set by GrammarStudentView) or return empty.
+  // Caller (grammar/index.jsx) wraps in try/catch and degrades gracefully.
+  try {
+    const cached = localStorage.getItem('grammarDashboard');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      const topics = parsed?.allTopics ?? [];
+      return Array.isArray(topics) ? topics : [];
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+};
+
+// Recommended grammar topics to focus on (weak areas + due reviews).
+// Maps from cached dashboard.weakAreas (top 3).
+export const getGrammarRecommendationsAPI = async () => {
+  try {
+    const cached = localStorage.getItem('grammarDashboard');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      const weak = parsed?.weakAreas ?? [];
+      return Array.isArray(weak) ? weak.slice(0, 3) : [];
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+};
+
+// Learning summary for the student Grammar hero card
+export const getGrammarLearningSummaryAPI = async (idUser) => {
+  const res = await API.get(`/grammar/learning-summary/${idUser}`);
+  return res.data;
+};
+
+// Topics list for a category with proficiency/accuracy
+export const getGrammarLearningTopicsAPI = async (idUser, idGrammarCategory) => {
+  const res = await API.get(
+    `/grammar/learning-topics/${idUser}/${idGrammarCategory}`
+  );
+  return res.data;
+};
