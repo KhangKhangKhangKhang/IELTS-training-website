@@ -38,6 +38,19 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
     const startTime = Date.now();
     let pollRef = null;
 
+    // Pick the submissions array based on test type. Reading/listening use
+    // neither (sync grade); writing uses writingSubmissions; speaking uses
+    // speakingSubmissions. Each has slightly different field aliases in
+    // some normalize paths, so fall back to the singular form too.
+    const getSubs = (payload) => {
+      const tt = (payload?.test?.testType || payload?.result?.testType || payload?.skill || '').toUpperCase();
+      if (tt === 'SPEAKING') {
+        return (payload?.speakingSubmissions || payload?.speakingSubmission || []).filter(Boolean);
+      }
+      // WRITING (default for the async path)
+      return (payload?.writingSubmissions || payload?.writingSubmission || []).filter(Boolean);
+    };
+
     const fetchOnce = () =>
       getTestResultAndAnswersAPI(testResultId)
         .then((res) => {
@@ -57,7 +70,7 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
 
     const shouldKeepPolling = () => {
       const payload = dataRef.current;
-      const subs = (payload?.writingSubmissions || payload?.writingSubmission || []).filter(Boolean);
+      const subs = getSubs(payload);
       const allTerminal =
         subs.length > 0 &&
         subs.every(
@@ -90,8 +103,7 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
       if (!mounted) return;
       setLoading(false);
       // Decide whether to keep polling based on the initial result.
-      const subs = (dataRef.current?.writingSubmissions ||
-        dataRef.current?.writingSubmission || []).filter(Boolean);
+      const subs = getSubs(dataRef.current);
       const anyInflight = subs.some(
         (s) => s.aiGradingStatus === 'PENDING' || s.aiGradingStatus === 'GRADING',
       );
@@ -169,20 +181,67 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
     return at - bt;
   });
   const band = result.band_score || result.bandScore || 0;
-  const bandLoading = band === 0 && writingSubmissions.some(
-    (s) => s.aiGradingStatus === 'PENDING' || s.aiGradingStatus === 'GRADING',
-  );
+
   const correctCount = result.total_correct || result.totalCorrect || answers.filter((a) => a.isCorrect).length;
   const totalQ = result.total_questions || result.totalQuestions || answers.length;
   const skill = result.skill || result.testType || data?.test?.testType || 'IELTS';
   const testTitle = result.testTitle || result.title || data?.test?.title || 'IELTS Test';
   const duration = result.duration || 0;
   const isWriting = (skill || '').toUpperCase() === 'WRITING' || (data?.test?.testType || '').toUpperCase() === 'WRITING';
+  const isSpeaking = (skill || '').toUpperCase() === 'SPEAKING' || (data?.test?.testType || '').toUpperCase() === 'SPEAKING';
+
+  // Speaking submissions: dedup by idSpeakingTask (autosave can produce
+  // multiple rows per part). Keep the newest by submittedAt.
+  const rawSpeaking = data?.speakingSubmissions || data?.speakingSubmission || [];
+  const speakingSubmissions = Object.values(
+    rawSpeaking.reduce((acc, s) => {
+      const key = s.idSpeakingTask;
+      const prev = acc[key];
+      if (!prev || new Date(s.submittedAt || 0) > new Date(prev.submittedAt || 0)) {
+        acc[key] = s;
+      }
+      return acc;
+    }, {})
+  ).sort((a, b) => {
+    const order = { PART1: 1, PART2: 2, PART3: 3 };
+    const at = order[(data?.test?.speakingTasks || []).find((t) => t.idSpeakingTask === a.idSpeakingTask)?.part] || 9;
+    const bt = order[(data?.test?.speakingTasks || []).find((t) => t.idSpeakingTask === b.idSpeakingTask)?.part] || 9;
+    return at - bt;
+  });
+
+  // Pick the active submission array for state flags based on test type.
+  const activeSubs = isSpeaking ? speakingSubmissions : writingSubmissions;
+
+  // Derive per-state flags so the UI knows what to render.
+  const allTerminal = activeSubs.length > 0 && activeSubs.every(
+    (s) => s.aiGradingStatus === 'COMPLETED' || s.aiGradingStatus === 'FAILED',
+  );
+  const allFailed = activeSubs.length > 0 && activeSubs.every(
+    (s) => s.aiGradingStatus === 'FAILED',
+  );
+  const anyInflight = activeSubs.some(
+    (s) => s.aiGradingStatus === 'PENDING' || s.aiGradingStatus === 'GRADING',
+  );
+  // Loading = band not yet known: still grading OR aggregator race window
+  // (all submissions terminal but worker hasn't yet written bandScore).
+  const bandLoading = band === 0 && !allFailed && (anyInflight || allTerminal);
+  // Failed = AI grading failed for every submission.
+  const bandFailed = allFailed;
+
   const submissionText = writingSubmissions.map((s) => s.submissionText || s.text).filter(Boolean).join('\n\n')
     || result.submissionText
     || answers.map((a) => a.answer).filter(Boolean).join('\n\n');
 
-  // Group answers theo question type
+  // Map of writing-criterion key → human label for corrections list.
+  const CRIT_LABEL = {
+    TA: 'Task Response',
+    CC: 'Coherence',
+    LR: 'Vocabulary',
+    GRA: 'Grammar',
+    FC: 'Fluency',
+    P: 'Pronunciation',
+  };
+  // Reading/Listening: MCQ/FillBlank mismatches.
   const corrections = answers
     .filter((a) => !a.isCorrect && a.correctAnswer && a.userAnswer)
     .slice(0, 5)
@@ -192,78 +251,124 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
       correct: a.correctAnswer,
       explanation: a.explanation || 'Cần ôn lại phần này.',
     }));
+  // Writing + Speaking: append detailedCorrections from each submission's
+  // AI feedback. Each criterion code (TA/CC/LR/GRA for writing;
+  // FC/LR/GRA/P for speaking) maps to a human-readable label.
+  const aiSubs = isSpeaking ? speakingSubmissions : writingSubmissions;
+  if (isWriting || isSpeaking) {
+    aiSubs.forEach((s) => {
+      const dc = s.aiDetailedFeedback?.detailedCorrections;
+      if (!Array.isArray(dc)) return;
+      dc.forEach((corr) => {
+        corrections.push({
+          type: CRIT_LABEL[corr.criterion] || (isSpeaking ? 'Speaking' : 'Writing'),
+          mistake: corr.original,
+          correct: corr.corrected,
+          explanation: corr.explanation || '',
+        });
+      });
+    });
+  }
 
   // Criteria từ result.scores (backend trả) hoặc null
   let criteria = result.scores || null;
 
-  // Writing: aggregate per-task AI feedback thành CriteriaList shape.
-  // Nếu BE không trả structured scores, fallback về string feedback
-  // bằng cách wrap thành 1 criterion duy nhất (text dài → không vào
-  // accordion, hiển thị full). Nếu submissions chưa chấm → null.
+  // Writing: structured AI feedback shape (per criterion, score + comment).
+  // Each entry of aiDetailedFeedback.{taskAchievement, coherenceAndCohesion,
+  // lexicalResource, grammaticalRangeAndAccuracy} becomes its own card.
+  const WRITING_CRITERIA = [
+    { key: 'taskAchievement',             label: 'Task Achievement',       icon: '🎯' },
+    { key: 'coherenceAndCohesion',        label: 'Coherence & Cohesion',   icon: '🔗' },
+    { key: 'lexicalResource',             label: 'Lexical Resource',       icon: '📚' },
+    { key: 'grammaticalRangeAndAccuracy', label: 'Grammatical Range',      icon: '✍️' },
+  ];
+  // Speaking: aiDetailedFeedback.{fluencyAndCoherence, lexicalResource,
+  // grammaticalRangeAndAccuracy, pronunciation}.
+  const SPEAKING_CRITERIA = [
+    { key: 'fluencyAndCoherence',         label: 'Fluency & Coherence',    icon: '🗣️' },
+    { key: 'lexicalResource',             label: 'Lexical Resource',       icon: '📚' },
+    { key: 'grammaticalRangeAndAccuracy', label: 'Grammatical Range',      icon: '✍️' },
+    { key: 'pronunciation',               label: 'Pronunciation',          icon: '🎤' },
+  ];
+
   if (isWriting && !criteria) {
     const writingCriteria = [];
     writingSubmissions.forEach((s, i) => {
       const taskInfo = (data?.test?.writingTasks || []).find(
-        (w) => w.idWritingTask === s.idWritingTask
+        (w) => w.idWritingTask === s.idWritingTask,
       );
       const taskLabel = taskInfo?.taskType || `Task ${i + 1}`;
       const fb = s.aiDetailedFeedback;
-      const scores = s.aiScores || s.criteriaScores || null;
+      if (!fb || typeof fb !== 'object' || Array.isArray(fb)) return;
 
-      if (scores && typeof scores === 'object' && !Array.isArray(scores)) {
-        // Object {taskResponse, coherence, lexical, grammar} → tách thành criteria
-        Object.entries(scores).forEach(([key, val]) => {
-          const num = typeof val === 'number' ? val : typeof val?.score === 'number' ? val.score : null;
-          const text = typeof val === 'object' && val !== null
-            ? (val.comment || val.feedback || val.text || '')
-            : (num != null ? `Band ${num.toFixed(1)}` : '');
-          if (num != null) {
-            writingCriteria.push({
-              name: `${taskLabel} · ${key}`,
-              icon: '📝',
-              score: num,
-              text,
-            });
-          }
-        });
-      } else if (Array.isArray(scores)) {
-        scores.forEach((c) => {
-          if (typeof c?.score === 'number') {
-            writingCriteria.push({
-              name: `${taskLabel} · ${c.name || c.criterion || 'Criterion'}`,
-              icon: c.icon || '📝',
-              score: c.score,
-              text: c.text || c.comment || c.feedback || '',
-            });
-          }
-        });
-      } else if (fb) {
-        // Fallback: 1 criterion per task chứa full feedback
-        writingCriteria.push({
-          name: taskLabel,
-          icon: '📝',
-          score: typeof s.aiOverallScore === 'number' ? s.aiOverallScore : 0,
-          text: typeof fb === 'string' ? fb : JSON.stringify(fb, null, 2),
-        });
-      }
+      WRITING_CRITERIA.forEach(({ key, label, icon }) => {
+        const c = fb[key];
+        if (c && typeof c === 'object' && typeof c.score === 'number') {
+          writingCriteria.push({
+            name: `${taskLabel} · ${label}`,
+            icon,
+            score: c.score,
+            text: c.comment || '',
+          });
+        }
+      });
     });
     if (writingCriteria.length > 0) {
       criteria = writingCriteria;
     }
   }
 
-  // Writing feedback message (fallback khi chưa có criteria).
-  const writingFeedbackMessage = isWriting
-    ? (writingSubmissions.length === 0
-        ? 'Bạn chưa nộp bài viết nào.'
-        : writingSubmissions.every((s) => !s.aiDetailedFeedback && s.aiGradingStatus !== 'COMPLETED' && s.aiGradingStatus !== 'GRADED')
-          ? '🤖 AI đang phân tích bài viết của bạn. Vui lòng quay lại sau ít phút.'
+  if (isSpeaking && !criteria) {
+    const speakingCriteria = [];
+    speakingSubmissions.forEach((s, i) => {
+      const taskInfo = (data?.test?.speakingTasks || []).find(
+        (t) => t.idSpeakingTask === s.idSpeakingTask,
+      );
+      const taskLabel = taskInfo?.part || `Part ${i + 1}`;
+      const fb = s.aiDetailedFeedback;
+      if (!fb || typeof fb !== 'object' || Array.isArray(fb)) return;
+
+      SPEAKING_CRITERIA.forEach(({ key, label, icon }) => {
+        const c = fb[key];
+        if (c && typeof c === 'object' && typeof c.score === 'number') {
+          speakingCriteria.push({
+            name: `${taskLabel} · ${label}`,
+            icon,
+            score: c.score,
+            text: c.comment || '',
+          });
+        }
+      });
+    });
+    if (speakingCriteria.length > 0) {
+      criteria = speakingCriteria;
+    }
+  }
+
+  // In-flight feedback message (fallback khi chưa có criteria).
+  const inFlightMessage = (isWriting || isSpeaking)
+    ? (activeSubs.length === 0
+        ? (isSpeaking ? 'Bạn chưa nộp phần thi nào.' : 'Bạn chưa nộp bài viết nào.')
+        : activeSubs.every((s) => !s.aiDetailedFeedback && s.aiGradingStatus !== 'COMPLETED' && s.aiGradingStatus !== 'GRADED')
+          ? (isSpeaking
+              ? '🤖 AI đang phân tích bài nói của bạn. Vui lòng quay lại sau ít phút.'
+              : '🤖 AI đang phân tích bài viết của bạn. Vui lòng quay lại sau ít phút.')
           : null)
     : null;
 
+  // Pull generalFeedback prose from each submission's AI feedback so the
+  // top "Nhận xét tổng quát" paragraph is meaningful instead of a dummy.
+  const generalFb = (isWriting || isSpeaking)
+    ? aiSubs
+        .map((s) => s.aiDetailedFeedback?.generalFeedback)
+        .filter(Boolean)
+        .join('\n\n')
+    : '';
+
   const overallFeedback = result.overallFeedback
     || result.feedback
-    || writingFeedbackMessage
+    || generalFb
+    || inFlightMessage
     || `Bạn đạt band ${band.toFixed(1)}. ${correctCount}/${totalQ} câu đúng. Hãy xem chi tiết bên dưới để cải thiện.`;
 
   return (
@@ -272,17 +377,25 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
         <Card className="!p-0 overflow-hidden">
           <div className="bg-gradient-to-br from-[#6366f1] via-[#06b6d4] to-[#a855f7] p-6 sm:p-8">
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              <ScoreRing value={band} loading={bandLoading} />
+              {bandFailed ? (
+                <div className="bg-red-500/20 backdrop-blur rounded-3xl p-6 text-white text-center w-[150px] h-[150px] flex flex-col items-center justify-center">
+                  <div className="text-3xl">⚠️</div>
+                  <div className="text-xs font-bold uppercase mt-2">AI chấm lỗi</div>
+                  <div className="text-[10px] mt-1 opacity-80">Vui lòng thử lại</div>
+                </div>
+              ) : (
+                <ScoreRing value={band} loading={bandLoading} />
+              )}
               <div className="flex-1 text-center sm:text-left text-white">
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wide mb-2">✓ Hoàn thành</span>
                 <h1 className="text-2xl font-black">IELTS {skill} - {testTitle}</h1>
                 <p className="text-white/80 font-medium">
-                  {isWriting
+                  {isWriting || isSpeaking
                     ? (() => {
-                        const scored = writingSubmissions.filter((s) => typeof s.aiOverallScore === 'number').length;
-                        const total = writingSubmissions.length;
+                        const scored = activeSubs.filter((s) => typeof s.aiOverallScore === 'number').length;
+                        const total = activeSubs.length;
                         if (scored === 0) return 'Đang chờ chấm AI';
-                        if (scored < total) return `Đã chấm ${scored}/${total} task`;
+                        if (scored < total) return `Đã chấm ${scored}/${total} phần`;
                         return 'Đã chấm AI';
                       })()
                     : `Đúng ${correctCount}/${totalQ} câu`}
@@ -297,6 +410,15 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
                       const score = typeof s.aiOverallScore === 'number' ? s.aiOverallScore.toFixed(1) : '—';
                       return (
                         <HeroStat key={s.idWritingSubmission || i} label={label} value={score} />
+                      );
+                    })
+                  ) : isSpeaking ? (
+                    speakingSubmissions.map((s, i) => {
+                      const t = (data?.test?.speakingTasks || []).find((st) => st.idSpeakingTask === s.idSpeakingTask);
+                      const label = t?.part || `Part ${i + 1}`;
+                      const score = typeof s.aiOverallScore === 'number' ? s.aiOverallScore.toFixed(1) : '—';
+                      return (
+                        <HeroStat key={s.idSpeakingSubmission || i} label={label} value={score} />
                       );
                     })
                   ) : (
@@ -342,7 +464,7 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
         ) : (
           <Card className="p-5">
             <h3 className="font-extrabold text-[#1e1b4b] mb-3 flex items-center gap-2">📄 Bài làm của bạn</h3>
-            {answers.length > 0 || writingSubmissions.length > 0 ? (
+            {answers.length > 0 || writingSubmissions.length > 0 || speakingSubmissions.length > 0 ? (
               <div className="space-y-3">
                 {answers.map((a, i) => (
                   <div key={`a-${i}`} className={`rounded-xl border-2 p-3 ${a.isCorrect ? 'bg-[#f0fdf4] border-[#bbf7d0]' : 'bg-[#fef2f2] border-[#fecaca]'}`}>
@@ -373,6 +495,39 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
                       <div className="text-sm text-[#334155] whitespace-pre-wrap leading-relaxed">
                         {s.submissionText || '(bỏ trống)'}
                       </div>
+                      {s.aiGradingStatus && (
+                        <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
+                          Trạng thái chấm: {s.aiGradingStatus}
+                          {typeof s.aiOverallScore === 'number' && ` · ${s.aiOverallScore}`}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {speakingSubmissions.map((s, i) => {
+                  const taskInfo = (data?.test?.speakingTasks || []).find(
+                    (t) => t.idSpeakingTask === s.idSpeakingTask
+                  );
+                  const taskLabel = taskInfo?.part || `Part ${i + 1}`;
+                  const taskTitle = taskInfo?.title || '';
+                  return (
+                    <div key={`s-${i}`} className="rounded-xl border-2 border-[#fce7f3] bg-[#fdf2f8] p-3">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#be185d] bg-white border-2 border-[#fbcfe8] rounded-lg px-2 py-0.5">
+                          {taskLabel}
+                        </span>
+                        {taskTitle && (
+                          <span className="text-xs font-bold text-[#1e1b4b]">{taskTitle}</span>
+                        )}
+                        {s.audioUrl && (
+                          <audio controls preload="none" src={s.audioUrl} className="ml-auto h-8 max-w-[200px]" />
+                        )}
+                      </div>
+                      {s.transcript && (
+                        <div className="text-sm text-[#334155] whitespace-pre-wrap leading-relaxed italic">
+                          "{s.transcript}"
+                        </div>
+                      )}
                       {s.aiGradingStatus && (
                         <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
                           Trạng thái chấm: {s.aiGradingStatus}
