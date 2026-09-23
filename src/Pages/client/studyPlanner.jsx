@@ -968,7 +968,7 @@ const StudyPlanner = () => {
     const task = dailyTasks.find((t) => t.id === taskId);
     if (!task) return;
     try {
-      await completeTaskAPI(taskId, !task.completed);
+      await completeTaskAPI(taskId, !task.completed, task.type);
       const updated = dailyTasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t));
       // Trigger re-fetch của completionMap để đồng bộ
       refetchCompletion();

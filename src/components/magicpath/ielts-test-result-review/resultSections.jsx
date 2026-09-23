@@ -1,5 +1,117 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from './resultUI';
+import { getResultBreakdownAPI } from '@/services/apiDoTest';
+
+const SKILL_LABEL = {
+  READING: 'Reading',
+  LISTENING: 'Listening',
+  WRITING: 'Writing',
+  SPEAKING: 'Speaking',
+};
+
+const KIND_LABEL = {
+  per_question_type: 'Phân tích theo dạng câu hỏi',
+  per_task_type: 'Phân tích theo task',
+  per_part: 'Phân tích theo phần',
+};
+
+const QUESTION_TYPE_LABEL = {
+  TRUE_FALSE_NOT_GIVEN: 'True/False/Not Given',
+  YES_NO_NOT_GIVEN: 'Yes/No/Not Given',
+  MATCHING_HEADING: 'Matching Heading',
+  MATCHING_INFORMATION: 'Matching Information',
+  MATCHING_FEATURES: 'Matching Features',
+  MATCHING_SENTENCE_ENDINGS: 'Matching Sentence Endings',
+  SENTENCE_COMPLETION: 'Sentence Completion',
+  SUMMARY_COMPLETION: 'Summary Completion',
+  NOTE_COMPLETION: 'Note Completion',
+  TABLE_COMPLETION: 'Table Completion',
+  FLOW_CHART_COMPLETION: 'Flow Chart Completion',
+  DIAGRAM_LABELING: 'Diagram Labeling',
+  SHORT_ANSWER: 'Short Answer',
+  MULTIPLE_CHOICE: 'Multiple Choice',
+  TASK1: 'Task 1 (mô tả graph/chart)',
+  TASK2: 'Task 2 (essay)',
+  PART1: 'Part 1 (interview)',
+  PART2: 'Part 2 (long turn)',
+  PART3: 'Part 3 (discussion)',
+};
+
+export function BreakdownCard({ idTestResult }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(null);
+
+  useEffect(() => {
+    if (!idTestResult) return;
+    let mounted = true;
+    setLoading(true);
+    getResultBreakdownAPI(idTestResult)
+      .then((res) => {
+        if (!mounted) return;
+        setData(res?.data || res);
+      })
+      .catch((e) => {
+        if (!mounted) return;
+        setErr(e?.response?.data?.message || 'Không tải được breakdown');
+      })
+      .finally(() => mounted && setLoading(false));
+    return () => {
+      mounted = false;
+    };
+  }, [idTestResult]);
+
+  if (loading) {
+    return (
+      <Card className="p-5">
+        <h2 className="text-lg font-extrabold text-[#1e1b4b] mb-2">📈 Phân tích chi tiết</h2>
+        <div className="text-sm text-[#94a3b8]">Đang tải...</div>
+      </Card>
+    );
+  }
+
+  if (err || !data || !data.breakdown || data.breakdown.length === 0) {
+    return null;
+  }
+
+  const skillLabel = SKILL_LABEL[data.skillType] || data.skillType;
+  const kindLabel = KIND_LABEL[data.kind] || 'Phân tích';
+  const isScoreKind = data.kind !== 'per_question_type';
+
+  return (
+    <Card className="p-5">
+      <h2 className="text-lg font-extrabold text-[#1e1b4b] mb-1 flex items-center gap-2">
+        📈 {kindLabel} ({skillLabel})
+      </h2>
+      <p className="text-xs text-[#64748b] mb-4">Biết mạnh/yếu ở đâu để tập trung luyện.</p>
+      <div className="space-y-3">
+        {data.breakdown.map((row) => {
+          const label = QUESTION_TYPE_LABEL[row.questionType] || row.questionType;
+          const value = isScoreKind ? row.avgScore : row.accuracy;
+          const max = isScoreKind ? 9 : 100;
+          const pct = max > 0 ? Math.max(0, Math.min(100, (value / max) * 100)) : 0;
+          const color = pct >= 70 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+          return (
+            <div key={row.questionType}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-bold text-[#1e1b4b]">{label}</span>
+                <span className="text-sm font-black" style={{ color }}>
+                  {isScoreKind ? `${(row.avgScore ?? 0).toFixed(1)} / 9` : `${row.correct}/${row.total} (${row.accuracy}%)`}
+                </span>
+              </div>
+              <div className="h-2.5 rounded-full bg-[#e6e6ed] overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${pct}%`, background: color }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
 
 export function CriteriaList({ criteria }) {
   const [open, setOpen] = useState(0);

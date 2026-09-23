@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Card, PillButton, ScoreRing } from './resultUI';
-import { CriteriaList, Corrections } from './resultSections';
+import { CriteriaList, Corrections, BreakdownCard } from './resultSections';
 import { getTestResultAndAnswersAPI } from '@/services/apiDoTest';
 import { requestTeacherReviewAPI, checkStudentTicketAPI } from '@/services/apiTeacherReview';
 import { toast } from 'react-toastify';
@@ -460,6 +460,7 @@ export const IELTSTestResultReview = ({ testResultId, user, onBack, onRetake }) 
             </Card>
             {criteria && <CriteriaList criteria={criteria} />}
             {corrections.length > 0 && <Corrections corrections={corrections} />}
+            {testResultId && <BreakdownCard idTestResult={testResultId} />}
           </>
         ) : (
           <Card className="p-5">
