@@ -53,7 +53,7 @@ export const IELTSWritingTestScreen = ({ testData, testResultId, userId, writing
         idWritingTask: String(idWritingTask),
         title: t.title || (idx === 0 ? 'Task 1' : 'Task 2'),
         taskType: t.taskType || t.task_type || null,
-        prompt: t.title || t.instructions || t.description || t.prompt || t.content || '',
+        prompt: t.instructions || t.description || t.title || t.prompt || t.content || '',
         minWords: t.minWords || (idx === 0 ? 150 : 250),
         imageUrl: t.imageUrl || t.image || null,
       };

@@ -186,3 +186,25 @@ export const getBestBandByTestAPI = async (idUser) => {
   );
   return res.data;
 };
+
+/**
+ * Get per-questionType / per-taskType / per-part breakdown for a finished test result.
+ * R/L: { questionType, total, correct, accuracy }
+ * W:   { questionType ('TASK1'|'TASK2'), total, avgScore }
+ * S:   { questionType ('PART1'|'PART2'|'PART3'), total, avgScore }
+ */
+export const getResultBreakdownAPI = async (idTestResult) => {
+  const res = await API.get(
+    `/user-test-result/breakdown/${idTestResult}`
+  );
+  return res.data;
+};
+
+/**
+ * Get test structure preview: question type counts per part.
+ * Used by FE "Xem trước đề" card before starting a test.
+ */
+export const getTestPreviewAPI = async (idTest) => {
+  const res = await API.get(`/test/preview/${idTest}`);
+  return res.data;
+};

@@ -118,9 +118,11 @@ export const submitMilestoneAPI = async (idUser, milestoneData) => {
 };
 
 // Complete a daily task
-export const completeTaskAPI = async (taskId, completed) => {
+// taskType: DailyTask.type from BE (READING | LISTENING | WRITING | SPEAKING | VOCABULARY | GRAMMAR).
+// Backend trusts this value instead of parsing taskId, so FE must send the matching type.
+export const completeTaskAPI = async (taskId, completed, taskType) => {
   try {
-    const response = await API.patch(`/study-planner/daily-tasks/${taskId}/complete`, { completed });
+    const response = await API.patch(`/study-planner/daily-tasks/${taskId}/complete`, { completed, taskType });
     return response.data;
   } catch (error) {
     console.error("Error completing task:", error);
